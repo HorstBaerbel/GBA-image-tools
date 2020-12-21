@@ -25,17 +25,17 @@ int main(int argc, char *argv[])
     std::ofstream of;
     of.open("GBA.gpl", std::fstream::trunc);
     of << "GIMP Palette" << std::endl;
-    of << "Name: Gameboy Advance RGB555" << std::endl;
+    of << "Name: Game Boy Advance RGB555" << std::endl;
     of << "Columns: 256" << std::endl;
-    for (uint32_t i = 0; i < pixels.size(); i+=3)
+    for (uint32_t i = 0; i < pixels.size(); i += 3)
     {
         of << std::right << std::dec << std::setw(3) << std::setfill(' ') << (int32_t)pixels[i] << " ";
-        of << std::right << std::dec << std::setw(3) << std::setfill(' ') << (int32_t)pixels[i+1] << " ";
-        of << std::right << std::dec << std::setw(3) << std::setfill(' ') << (int32_t)pixels[i+2];
+        of << std::right << std::dec << std::setw(3) << std::setfill(' ') << (int32_t)pixels[i + 1] << " ";
+        of << std::right << std::dec << std::setw(3) << std::setfill(' ') << (int32_t)pixels[i + 2];
         of << "\t#";
         of << std::right << std::hex << std::setw(2) << std::setfill('0') << (int32_t)pixels[i];
-        of << std::right << std::hex << std::setw(2) << std::setfill('0') << (int32_t)pixels[i+1];
-        of << std::right << std::hex << std::setw(2) << std::setfill('0') << (int32_t)pixels[i+2];
+        of << std::right << std::hex << std::setw(2) << std::setfill('0') << (int32_t)pixels[i + 1];
+        of << std::right << std::hex << std::setw(2) << std::setfill('0') << (int32_t)pixels[i + 2];
         of << std::endl;
     }
     of.close();

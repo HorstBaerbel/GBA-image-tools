@@ -24,15 +24,18 @@ bool m_asSprites = false;
 uint32_t m_spriteWidth = 0;
 uint32_t m_spriteHeight = 0;
 std::vector<uint8_t> m_spriteSizes;
-bool m_addColor0 = false;
-std::string m_color0String;
-Color m_color0;
+bool m_doAddColor0 = false;
+std::string m_addColor0String;
+Color m_addColor0;
+bool m_doMoveColor0 = false;
+std::string m_moveColor0String;
+Color m_moveColor0;
 
 bool readArguments(int argc, const char *argv[])
 {
     cxxopts::Options options("img2h", "Convert an image to a .h / .c file to compile it into a program");
     options.allow_unrecognised_options();
-    options.add_options()("h,help", "Print help")("a,addcolor0", "Optional. Add specified color at palette index #0 and move all other colors to indices +1. Only usable for paletted images", cxxopts::value<std::string>(m_color0String))("i,infile", "Input file, e.g. \"foo.png\"", cxxopts::value<std::string>())("o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>())("t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles))("s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes))("positional", "", cxxopts::value<std::vector<std::string>>());
+    options.add_options()("h,help", "Print help")("a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String))("i,infile", "Input file, e.g. \"foo.png\"", cxxopts::value<std::string>())("o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>())("t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles))("s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes))("m,movecolor", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String))("positional", "", cxxopts::value<std::vector<std::string>>());
     options.parse_positional({"infile", "outname", "positional"});
     auto result = options.parse(argc, argv);
     // check if help was requested
@@ -70,16 +73,33 @@ bool readArguments(int argc, const char *argv[])
     if (result.count("addcolor0"))
     {
         // try converting argument to a color
-        std::string colorArg = m_color0String;
+        std::string colorArg = m_addColor0String;
         colorArg = std::string("#") + colorArg;
         try
         {
-            m_color0 = Color(colorArg);
-            m_addColor0 = true;
+            m_addColor0 = Color(colorArg);
+            m_doAddColor0 = true;
         }
         catch (const Exception &ex)
         {
-            std::cerr << m_color0String << " is not a valid color. Format must be e.g. \"--addcolor0 abc012\". Aborting. " << std::endl;
+            std::cerr << m_addColor0String << " is not a valid color. Format must be e.g. \"--addcolor0 abc012\". Aborting. " << std::endl;
+            return false;
+        }
+    }
+    // check color moving
+    if (result.count("movecolor"))
+    {
+        // try converting argument to a color
+        std::string colorArg = m_moveColor0String;
+        colorArg = std::string("#") + colorArg;
+        try
+        {
+            m_moveColor0 = Color(colorArg);
+            m_doMoveColor0 = true;
+        }
+        catch (const Exception &ex)
+        {
+            std::cerr << m_moveColor0String << " is not a valid color. Format must be e.g. \"--movecolor0 abc012\". Aborting. " << std::endl;
             return false;
         }
     }
@@ -112,9 +132,12 @@ void printUsage()
     std::cout << "Convert an image to a .h / .c file to compile it into a program. Will either" << std::endl;
     std::cout << "save indices and a palette or truecolor data. All colors will be converted to" << std::endl;
     std::cout << "RGB555 directly. You might want to use ImageMagicks \"convert +remap\" before." << std::endl;
-    std::cout << "Usage: img2h [--tiles OR --sprites W H] INFILE OUTNAME" << std::endl;
-    std::cout << "--addcolor0: Optional. Add specified color at palette index #0 and move all" << std::endl;
-    std::cout << "other colors to indices +1. Only usable for paletted images. Format \"abcd012\"" << std::endl;
+    std::cout << "Usage: img2h [OPTIONS] INFILE OUTNAME" << std::endl;
+    std::cout << "OPTIONS:" << std::endl;
+    std::cout << "--addcolor0 COLOR: Optional. Add COLOR at palette index #0 and increase all" << std::endl;
+    std::cout << "other color indices by 1. Only usable for paletted images. Format \"abcd012\"" << std::endl;
+    std::cout << "--movecolor0=COLOR: Optional. Move COLOR to palette index #0 and move all" << std::endl;
+    std::cout << "other colors accordingly. Only usable for paletted images. Format \"abcd012\"" << std::endl;
     std::cout << "--tiles: Optional. Cut data into 8x8 tiles and store data tile-wise. The image" << std::endl;
     std::cout << "needs to be paletted and its width and height must be a multiple of 8 pixels." << std::endl;
     std::cout << "--sprites=W,H: Optional. Cut data into sprites of size W x H and store data" << std::endl;
@@ -133,24 +156,24 @@ int main(int argc, const char *argv[])
     if (argc < 3 || !readArguments(argc, argv))
     {
         printUsage();
-        return -1;
+        return 2;
     }
     // check input and output
     if (m_inFile.empty())
     {
         std::cerr << "No input file passed. Aborting." << std::endl;
-        return -2;
+        return 2;
     }
     if (m_outFile.empty())
     {
         std::cerr << "No output name passed. Aborting." << std::endl;
-        return -2;
+        return 2;
     }
     // check sprites option
     if (m_asSprites && m_spriteWidth % 8 != 0 && m_spriteHeight % 8 != 0)
     {
         std::cerr << "Sprite width and height must be a multiple of 8. Aborting." << std::endl;
-        return -2;
+        return 1;
     }
     // fire up ImageMagick
     InitializeMagick(*argv);
@@ -175,25 +198,25 @@ int main(int argc, const char *argv[])
         }
         else
         {
-            std::cerr << "unsupported format. Aborting" << std::endl;
-            return -4;
+            std::cerr << "unsupported format. Aborting." << std::endl;
+            return 1;
         }
     }
     catch (const Exception &ex)
     {
         std::cerr << ". Failed to read " << m_inFile << ": " << ex.what() << std::endl;
-        return -3;
+        return 1;
     }
     // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width
     if ((m_asSprites || m_asTiles) && (imgType != ImageType::PaletteType || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
     {
-        std::cerr << "Image must be paletted and width / height must be a multiple of 8. Aborting" << std::endl;
-        return -5;
+        std::cerr << "Image must be paletted and width / height must be a multiple of 8. Aborting." << std::endl;
+        return 1;
     }
     if (m_asSprites && (imgSize.width() % m_spriteWidth != 0 || imgSize.height() % m_spriteHeight != 0))
     {
-        std::cerr << "Image width / height must be a multiple of sprite width / height. Aborting" << std::endl;
-        return -5;
+        std::cerr << "Image width / height must be a multiple of sprite width / height. Aborting." << std::endl;
+        return 1;
     }
     // read image data
     std::vector<uint8_t> imageData = getImageData(img);
@@ -204,30 +227,70 @@ int main(int argc, const char *argv[])
         colorMap = getColorMap(img);
     }
     // add extra color #0 if wanted
-    if (m_addColor0)
+    if (m_doAddColor0)
     {
         if (img.classType() != PseudoClass || imgType != ImageType::PaletteType)
         {
             std::cerr << "Adding color #0 can only be done for paletted images. Aborting." << std::endl;
-            return -6;
+            return 1;
         }
         // check if the color map has one free entry
         if (colorMap.size() > 255)
         {
             std::cerr << "No space in color map (image has " << img.colorMapSize() << " colors). Aborting." << std::endl;
-            return -6;
+            return 1;
         }
         // add color at front of color map
-        std::vector<Color> tempMap(colorMap.size() + 1, m_color0);
+        std::vector<Color> tempMap(colorMap.size() + 1, m_addColor0);
         std::copy(colorMap.cbegin(), colorMap.cend(), std::next(tempMap.begin()));
         colorMap = tempMap;
         // increase all color index values by 1
         std::for_each(imageData.begin(), imageData.end(), [](auto &index) { index++; });
-        std::cout << "Added color #0. Image now has " << colorMap.size() << " colors" << std::endl;
+        std::cout << "Added " << m_addColor0String << " as color #0. Image now has " << colorMap.size() << " colors." << std::endl;
+    }
+    // move color to index #0 if wanted
+    if (m_doMoveColor0)
+    {
+        if (img.classType() != PseudoClass || imgType != ImageType::PaletteType)
+        {
+            std::cerr << "Moving colors can only be done for paletted images. Aborting." << std::endl;
+            return 1;
+        }
+        // try to find color in palette
+        auto oldColorIt = std::find(colorMap.begin(), colorMap.end(), m_moveColor0);
+        if (oldColorIt == colorMap.end())
+        {
+            std::cerr << "Color " << m_moveColor0String << " not found in image color map. Aborting." << std::endl;
+            return 1;
+        }
+        const size_t oldIndex = std::distance(colorMap.begin(), oldColorIt);
+        // check if index needs to move
+        if (oldIndex == 0)
+        {
+            std::cout << "Color " << m_moveColor0String << " already at index #0. Skipping." << std::endl;
+        }
+        else
+        {
+            // move index in color map and image data
+            std::swap(colorMap[oldIndex], colorMap[0]);
+            for (size_t i = 0; i < imageData.size(); ++i)
+            {
+                if (imageData[i] == oldIndex)
+                {
+                    imageData[i] = 0;
+                }
+                else if (imageData[i] == 0)
+                {
+                    imageData[i] = oldIndex;
+                }
+            }
+        }
+        std::cout << "Moved color " << m_addColor0String << " to index #0." << std::endl;
     }
     if (m_asTiles)
     {
         imageData = convertToTiles(imageData, imgSize.width(), imgSize.height(), colorMap.size() <= 16 ? 4 : 8);
+        std::cout << "Converted to 8x8 tile data." << std::endl;
     }
     else if (m_asSprites)
     {
@@ -235,8 +298,10 @@ int main(int argc, const char *argv[])
         {
             imageData = convertToWidth(imageData, imgSize.width(), imgSize.height(), colorMap.size() <= 16 ? 4 : 8, m_spriteWidth);
             imgSize = Magick::Geometry(m_spriteWidth, (imgSize.width() * imgSize.height()) / m_spriteWidth);
+            std::cout << "Converted to " << m_spriteWidth << "x" << m_spriteHeight << " sprite data." << std::endl;
         }
         imageData = convertToTiles(imageData, imgSize.width(), imgSize.height(), colorMap.size() <= 16 ? 4 : 8);
+        std::cout << "Converted to 8x8 tile data." << std::endl;
     }
     fillUpToMultipleOf(imageData, 4);
     // open output files
@@ -295,7 +360,7 @@ int main(int argc, const char *argv[])
             hFile.close();
             cFile.close();
             std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
-            return -7;
+            return 1;
         }
     }
     else
@@ -303,7 +368,7 @@ int main(int argc, const char *argv[])
         hFile.close();
         cFile.close();
         std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
-        return -6;
+        return 1;
     }
     return 0;
 }

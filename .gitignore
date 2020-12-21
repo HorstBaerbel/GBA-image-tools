@@ -5,6 +5,11 @@ CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
 
+colormap555
+compressvideo
+gimppalette555
+img2h
+
 # Prerequisites
 *.d
 

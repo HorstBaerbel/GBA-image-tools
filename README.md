@@ -2,8 +2,8 @@
 This folder contains some tools to convert / compress images and videos to GBA and NDS formats:  
 
 * [colormap555](colormap555.cpp) - Generate the file [colormap555.png](colormap555.png) that can be used to convert images directly to the GBA RGB555 color-space with good quality.
+* [gimppalette555](gimppalette555.cpp) - Generate the file [GBA.gpl](GBA.gpl) for using / editing / painting with GBA colors in Gimp.
 * [img2h](img2h.cpp) - Convert an image (that can be read with [ImageMagick](https://imagemagick.org/index.php)) to a .h / .c file to compile it into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order).
-* [movecolor](movecolor.cpp) - Move a color in the color palette of an image to a specific position / index in the palette. Useful for making sure your transparent color is at index 0.
 * [compressvideo](compressvideo.cpp) - Compress a list of images using the external tool GBALZSS (included in devKitPro) and convert the compressed data to a .h and .c file, so you can compile it into your program.
 
 If you find a bug or make an improvement your pull requests are appreciated.
@@ -50,7 +50,7 @@ make
 * Improve docs / README
 * Use cxxopts in all tools
 * Add --addcolor option to compressvideo
-* Add --movecolor option to img2h and compressvideo
+* Add --movecolor option to compressvideo
 
 ## Convert images / videos to GBA formats
 
@@ -76,13 +76,13 @@ If you have images with larger flat areas of color and they come out all garbled
 
 ### Making a color the transparent color / move it to index #0 in the palette
 
-On GBA the color at palette index #0 is always transparent. When using ImageMagick for color mapping / conversion the correct color might not end up being the first in the color palette. You can use the tool [movecolor](movecolor.cpp) to move a color to an index in the palette:
+On GBA the color at palette index #0 is always transparent. When using ImageMagick for color mapping / conversion the correct color might not end up being the first in the color palette. You can use the option ```--movecolor0``` in [img2h](img2h.cpp) to move a color to index #0 in the palette:
 
-```movecolor COLORVALUE NEWINDEX INFILE OUTFILE```
+```img2h --movecolor0 COLORVALUE INFILE OUTNAME```
 
-COLORVALUE is a hex color value, e.g. "AA2345" or "123def". NEWINDEX is the new index the color should be moved to. You can use a wildcard for INFILE, e.g. "in*.png". You can add "%0Xd" (printf-style) to OUTFILE to make sure your files are properly numbered.
+COLORVALUE is a hex color value, e.g. "AA2345" or "123def".
 
-Some conversions leave you with the correct color palette, but no transparent color at index #0. You can use the option --addcolor0 in [img2h](img2h.cpp) to add a specific color at index #0 in the palette:
+Some conversions leave you with the correct color palette, but no transparent color at index #0. You can use the option ```--addcolor0``` in [img2h](img2h.cpp) to add a specific color at index #0 in the palette:
 
 ```img2h --addcolor0 COLORVALUE INFILE OUTNAME```
 
