@@ -1,3 +1,10 @@
+build/*
+.vscode/ipch/*
+*.code-workspace
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+
 # Prerequisites
 *.d
 
@@ -10,6 +17,7 @@
 # Precompiled Headers
 *.gch
 *.pch
+*.ipch
 
 # Compiled Dynamic libraries
 *.so
