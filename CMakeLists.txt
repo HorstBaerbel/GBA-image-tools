@@ -38,6 +38,8 @@ set(LIBRARY_OUTPUT_PATH ${dir} CACHE PATH "Build directory" FORCE)
 set(HELPERS_SRC
     colorhelpers.cpp
     helpers.cpp
+    imagehelpers.cpp
+    spritehelpers.cpp
 )
 
 include_directories(${ImageMagick_INCLUDE_DIRS})

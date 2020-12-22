@@ -14,7 +14,7 @@ std::vector<Color> getColorMap(const Image &img);
 void setColorMap(Image &img, const std::vector<Color> &colorMap);
 
 /// @brief Add color to color map and shift all other colors to the back by one
-std::vector<Color> addColor0ToColorMap(const std::vector<Color> colorMap, const Color &color0);
+std::vector<Color> addColorAtIndex0(const std::vector<Color> &colorMap, const Color &color0);
 
 /// @brief Convert ImageMagick Colors to RGB555 colors for GBA.
 std::vector<uint16_t> convertToBGR555(const std::vector<Color> &colors);

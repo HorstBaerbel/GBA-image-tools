@@ -18,7 +18,7 @@ void setColorMap(Image &img, const std::vector<Color> &colorMap)
     }
 }
 
-std::vector<Color> addColor0ToColorMap(const std::vector<Color> colorMap, const Color &color0)
+std::vector<Color> addColorAtIndex0(const std::vector<Color> &colorMap, const Color &color0)
 {
     std::vector<Color> tempMap(colorMap.size() + 1, color0);
     std::copy(colorMap.cbegin(), colorMap.cend(), std::next(tempMap.begin()));

@@ -1,143 +1,31 @@
 #include "helpers.h"
 
-#include <cstring>
-
-std::vector<uint8_t> getImageData(const Image &img)
+/// @brief Write values as a comma-separated array of hex numbers.
+template <typename T>
+void writeValues(std::ofstream &outFile, const std::vector<T> &data, bool asHex = false)
 {
-    std::vector<uint8_t> data;
-    if (img.type() == PaletteType)
+    auto flags = outFile.flags();
+    size_t loopCount = 0;
+    for (auto current : data)
     {
-        const auto nrOfColors = img.colorMapSize();
-        const auto nrOfIndices = img.columns() * img.rows();
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getIndices to work...
-        auto indices = img.getConstIndexes();
-        if (nrOfColors <= 16)
+        if (asHex)
         {
-            // size must be a multiple of 2
-            if (nrOfIndices & 1)
-            {
-                throw std::runtime_error("Number of indices must be even!");
-            }
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 2)
-            {
-                uint8_t v = (((indices[i + 1]) & 0x0F) << 4);
-                v |= ((indices[i]) & 0x0F);
-                data.push_back(v);
-            }
-        }
-        else if (nrOfColors <= 256)
-        {
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
-            {
-                data.push_back(indices[i]);
-            }
+            outFile << "0x" << std::hex << std::noshowbase << std::setw(sizeof(T) * 2) << std::setfill('0') << current;
         }
         else
         {
-            throw std::runtime_error("Only up to 256 colors supported in color map!");
+            outFile << std::dec << current;
         }
-    }
-    else if (img.type() == TrueColorType)
-    {
-        // get pixel colors and rescale to RGB555
-        const auto nrOfPixels = img.columns() * img.rows();
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
-        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
+        if (loopCount < data.size() - 1)
         {
-            auto pixel = pixels[i];
-            data.push_back((31 * pixel.red) / QuantumRange);
-            data.push_back((31 * pixel.green) / QuantumRange);
-            data.push_back((31 * pixel.blue) / QuantumRange);
+            outFile << ", ";
         }
-    }
-    else
-    {
-        throw std::runtime_error("Unsupported image type!");
-    }
-    /*std::ofstream of("dump.hex", std::ios::binary | std::ios::out);
-    of.write(reinterpret_cast<const char *>(data.data()), data.size());
-    of.close();*/
-    return data;
-}
-
-std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData)
-{
-    auto tempData = imageData;
-    std::for_each(tempData.begin(), tempData.end(), [](auto &index) { index++; });
-    return tempData;
-}
-
-std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t tileWidth)
-{
-    std::vector<uint8_t> dst(src.size());
-    const uint32_t bytesPerTileLine = bitsPerPixel * (tileWidth / 8);
-    const uint32_t bytesPerSrcLine = (width * bitsPerPixel) / 8;
-    uint8_t *dstData = dst.data();
-    for (uint32_t blockX = 0; blockX < width; blockX += tileWidth)
-    {
-        const uint8_t *srcLine = src.data() + (blockX * bitsPerPixel) / 8;
-        for (uint32_t tileY = 0; tileY < height; ++tileY)
+        if (++loopCount % 10 == 0)
         {
-            std::memcpy(dstData, srcLine, bytesPerTileLine);
-            dstData += bytesPerTileLine;
-            srcLine += bytesPerSrcLine;
+            outFile << std::endl;
         }
     }
-    return dst;
-}
-
-std::vector<uint8_t> convertToTiles(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t tileWidth, uint32_t tileHeight)
-{
-    std::vector<uint8_t> dst(src.size());
-    const uint32_t bytesPerTileLine = bitsPerPixel * (tileWidth / 8);
-    const uint32_t bytesPerSrcLine = (width * bitsPerPixel) / 8;
-    uint8_t *dstData = dst.data();
-    for (uint32_t blockY = 0; blockY < height; blockY += tileHeight)
-    {
-        const uint8_t *srcBlock = src.data() + blockY * bytesPerSrcLine;
-        for (uint32_t blockX = 0; blockX < width; blockX += tileWidth)
-        {
-            const uint8_t *srcLine = srcBlock + (blockX * bitsPerPixel) / 8;
-            for (uint32_t tileY = 0; tileY < tileHeight; ++tileY)
-            {
-                std::memcpy(dstData, srcLine, bytesPerTileLine);
-                dstData += bytesPerTileLine;
-                srcLine += bytesPerSrcLine;
-            }
-        }
-    }
-    return dst;
-}
-
-std::vector<uint8_t> convertToSprites(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t spriteWidth, uint32_t spriteHeight)
-{
-    // convert to tiles first
-    auto tileData = convertToTiles(src, width, height, bitsPerPixel);
-    // now convert to sprites
-    std::vector<uint8_t> dst(src.size());
-    const uint32_t bytesPerTile = bitsPerPixel * 8;
-    const uint32_t bytesPerSrcLine = (width * bitsPerPixel) / 8;
-    const uint32_t spritesHorizontal = width / spriteWidth;
-    const uint32_t spritesVertical = height / spriteHeight;
-    const uint32_t spriteTileWidth = spriteWidth / 8;
-    const uint32_t spriteTileHeight = spriteHeight / 8;
-    const uint32_t bytesPerSpriteLine = spriteTileWidth * bytesPerTile;
-    uint8_t *dstData = dst.data();
-    for (uint32_t spriteY = 0; spriteY < spritesVertical; ++spriteY)
-    {
-        const uint8_t *srcBlock = src.data() + spriteY * spriteHeight * bytesPerSrcLine;
-        for (uint32_t spriteX = 0; spriteX < spritesHorizontal; ++spriteX)
-        {
-            const uint8_t *srcTile = srcBlock + spriteX * bytesPerSpriteLine;
-            for (uint32_t tileY = 0; tileY < spriteTileHeight; ++tileY)
-            {
-                std::memcpy(dstData, srcTile, bytesPerSpriteLine);
-                dstData += bytesPerSpriteLine;
-                srcTile += bytesPerSrcLine * 8;
-            }
-        }
-    }
-    return dst;
+    outFile.flags(flags);
 }
 
 void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages, bool asTiles)

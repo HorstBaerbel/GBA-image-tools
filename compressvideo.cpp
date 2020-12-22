@@ -15,6 +15,8 @@
 
 #include "colorhelpers.h"
 #include "helpers.h"
+#include "imagehelpers.h"
+#include "spritehelpers.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>

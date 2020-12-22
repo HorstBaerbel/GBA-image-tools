@@ -79,52 +79,6 @@ std::vector<R> convertTo(const std::vector<T> &data)
     return result;
 }
 
-/// @brief Write values as a comma-separated array of hex numbers.
-template <typename T>
-void writeValues(std::ofstream &outFile, const std::vector<T> &data, bool asHex = false)
-{
-    auto flags = outFile.flags();
-    size_t loopCount = 0;
-    for (auto current : data)
-    {
-        if (asHex)
-        {
-            outFile << "0x" << std::hex << std::noshowbase << std::setw(sizeof(T) * 2) << std::setfill('0') << current;
-        }
-        else
-        {
-            outFile << std::dec << current;
-        }
-        if (loopCount < data.size() - 1)
-        {
-            outFile << ", ";
-        }
-        if (++loopCount % 10 == 0)
-        {
-            outFile << std::endl;
-        }
-    }
-    outFile.flags(flags);
-}
-
-/// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes.
-/// If the palette has < 16 entries, two (nibble-sized) indices will be combined into a byte.
-std::vector<uint8_t> getImageData(const Image &img);
-
-/// @brief Increase all image indices by 1
-std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData);
-
-/// @brief Cut data to tileWidth * height pixel wide tiles. Width and height and tileWidth MUST be a multiple of 8!
-std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerTile, uint32_t tileWidth);
-
-/// @brief Cut data to 8x8 pixel wide tiles and store per tile instead of per scanline.
-/// Width and height MUST be a multiple of 8!
-std::vector<uint8_t> convertToTiles(const std::vector<uint8_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerTile, uint32_t tileWidth = 8, uint32_t tileHeight = 8);
-
-/// @brief Cut data to 8x8 pixel wide tiles and store per sprite instead of per scanline.
-/// Width and height MUST be a multiple of 8 and of spriteWidth and spriteHeight.
-std::vector<uint8_t> convertToSprites(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t spriteWidth, uint32_t spriteHeight);
-
 /// @brief Write image information to a .h file.
 void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages = 1, bool asTiles = false);
 /// @brief Write additional palette information to a .h file. Use after write writeImageInfoToH.

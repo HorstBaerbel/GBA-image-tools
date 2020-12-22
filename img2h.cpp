@@ -3,6 +3,8 @@
 
 #include "colorhelpers.h"
 #include "helpers.h"
+#include "imagehelpers.h"
+#include "spritehelpers.h"
 #include <iostream>
 #include <string>
 #include <cstdio>
@@ -242,7 +244,7 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // add color at front of color map and increase all color index values by 1
-        colorMap = addColor0ToColorMap(colorMap, m_addColor0);
+        colorMap = addColorAtIndex0(colorMap, m_addColor0);
         imageData = incImageIndicesBy1(imageData);
         std::cout << "Added " << m_addColor0String << " as color #0. Image now has " << colorMap.size() << " colors." << std::endl;
     }
@@ -271,17 +273,7 @@ int main(int argc, const char *argv[])
         {
             // move index in color map and image data
             std::swap(colorMap[oldIndex], colorMap[0]);
-            for (size_t i = 0; i < imageData.size(); ++i)
-            {
-                if (imageData[i] == oldIndex)
-                {
-                    imageData[i] = 0;
-                }
-                else if (imageData[i] == 0)
-                {
-                    imageData[i] = oldIndex;
-                }
-            }
+            imageData = swapIndexToIndex0(imageData, oldIndex);
         }
         std::cout << "Moved color " << m_addColor0String << " to index #0." << std::endl;
     }
