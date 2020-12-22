@@ -1,6 +1,7 @@
 // Convert an image to a .h / .c file to compile it into a program.
 // You'll need the libmagick++-dev installed!
 
+#include "colorhelpers.h"
 #include "helpers.h"
 #include <iostream>
 #include <string>
@@ -240,12 +241,9 @@ int main(int argc, const char *argv[])
             std::cerr << "No space in color map (image has " << img.colorMapSize() << " colors). Aborting." << std::endl;
             return 1;
         }
-        // add color at front of color map
-        std::vector<Color> tempMap(colorMap.size() + 1, m_addColor0);
-        std::copy(colorMap.cbegin(), colorMap.cend(), std::next(tempMap.begin()));
-        colorMap = tempMap;
-        // increase all color index values by 1
-        std::for_each(imageData.begin(), imageData.end(), [](auto &index) { index++; });
+        // add color at front of color map and increase all color index values by 1
+        colorMap = addColor0ToColorMap(colorMap, m_addColor0);
+        imageData = incImageIndicesBy1(imageData);
         std::cout << "Added " << m_addColor0String << " as color #0. Image now has " << colorMap.size() << " colors." << std::endl;
     }
     // move color to index #0 if wanted

@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-std::vector<uint8_t> getImageData(const Image & img)
+std::vector<uint8_t> getImageData(const Image &img)
 {
     std::vector<uint8_t> data;
     if (img.type() == PaletteType)
@@ -18,9 +18,9 @@ std::vector<uint8_t> getImageData(const Image & img)
             {
                 throw std::runtime_error("Number of indices must be even!");
             }
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i+=2)
+            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 2)
             {
-                uint8_t v = (((indices[i+1]) & 0x0F) << 4);
+                uint8_t v = (((indices[i + 1]) & 0x0F) << 4);
                 v |= ((indices[i]) & 0x0F);
                 data.push_back(v);
             }
@@ -60,30 +60,19 @@ std::vector<uint8_t> getImageData(const Image & img)
     return data;
 }
 
-std::vector<Color> getColorMap(const Image &img)
+std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData)
 {
-    std::vector<Color> colorMap(img.colorMapSize());
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
-    {
-        colorMap[i] = img.colorMap(i);
-    }
-    return colorMap;
-}
-
-void setColorMap(Image &img, const std::vector<Color> &colorMap)
-{
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
-    {
-        img.colorMap(i, colorMap.at(i));
-    }
+    auto tempData = imageData;
+    std::for_each(tempData.begin(), tempData.end(), [](auto &index) { index++; });
+    return tempData;
 }
 
 std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t tileWidth)
 {
     std::vector<uint8_t> dst(src.size());
     const uint32_t bytesPerTileLine = bitsPerPixel * (tileWidth / 8);
-	const uint32_t bytesPerSrcLine = (width * bitsPerPixel) / 8;
-	uint8_t *dstData = dst.data();
+    const uint32_t bytesPerSrcLine = (width * bitsPerPixel) / 8;
+    uint8_t *dstData = dst.data();
     for (uint32_t blockX = 0; blockX < width; blockX += tileWidth)
     {
         const uint8_t *srcLine = src.data() + (blockX * bitsPerPixel) / 8;
@@ -101,10 +90,10 @@ std::vector<uint8_t> convertToTiles(const std::vector<uint8_t> &src, uint32_t wi
 {
     std::vector<uint8_t> dst(src.size());
     const uint32_t bytesPerTileLine = bitsPerPixel * (tileWidth / 8);
-	const uint32_t bytesPerSrcLine = (width * bitsPerPixel) / 8;
-	uint8_t *dstData = dst.data();
-	for (uint32_t blockY = 0; blockY < height; blockY += tileHeight)
-	{
+    const uint32_t bytesPerSrcLine = (width * bitsPerPixel) / 8;
+    uint8_t *dstData = dst.data();
+    for (uint32_t blockY = 0; blockY < height; blockY += tileHeight)
+    {
         const uint8_t *srcBlock = src.data() + blockY * bytesPerSrcLine;
         for (uint32_t blockX = 0; blockX < width; blockX += tileWidth)
         {
@@ -116,7 +105,7 @@ std::vector<uint8_t> convertToTiles(const std::vector<uint8_t> &src, uint32_t wi
                 srcLine += bytesPerSrcLine;
             }
         }
-	}
+    }
     return dst;
 }
 
@@ -133,13 +122,13 @@ std::vector<uint8_t> convertToSprites(const std::vector<uint8_t> &src, uint32_t 
     const uint32_t spriteTileWidth = spriteWidth / 8;
     const uint32_t spriteTileHeight = spriteHeight / 8;
     const uint32_t bytesPerSpriteLine = spriteTileWidth * bytesPerTile;
-	uint8_t *dstData = dst.data();
+    uint8_t *dstData = dst.data();
     for (uint32_t spriteY = 0; spriteY < spritesVertical; ++spriteY)
-	{
+    {
         const uint8_t *srcBlock = src.data() + spriteY * spriteHeight * bytesPerSrcLine;
         for (uint32_t spriteX = 0; spriteX < spritesHorizontal; ++spriteX)
-	    {
-            const uint8_t *srcTile = srcBlock + spriteX * bytesPerSpriteLine; 
+        {
+            const uint8_t *srcTile = srcBlock + spriteX * bytesPerSpriteLine;
             for (uint32_t tileY = 0; tileY < spriteTileHeight; ++tileY)
             {
                 std::memcpy(dstData, srcTile, bytesPerSpriteLine);
@@ -147,52 +136,38 @@ std::vector<uint8_t> convertToSprites(const std::vector<uint8_t> &src, uint32_t 
                 srcTile += bytesPerSrcLine * 8;
             }
         }
-	}
+    }
     return dst;
-}
-
-std::vector<uint16_t> convertToBGR555(const std::vector<Color> &colors)
-{
-    std::vector<uint16_t> result;
-    std::transform(colors.cbegin(), colors.cend(), std::back_inserter(result), colorToBGR555);
-    return result;
-}
-
-uint16_t colorToBGR555(const Color &color)
-{
-    uint16_t b = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.blueQuantum())) / static_cast<uint32_t>(QuantumRange));
-    uint16_t g = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.greenQuantum())) / static_cast<uint32_t>(QuantumRange));
-    uint16_t r = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.redQuantum())) / static_cast<uint32_t>(QuantumRange));
-    return (b << 10 | g << 5 | r);
 }
 
 void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages, bool asTiles)
 {
     hFile << "#pragma once" << std::endl;
-    hFile << "#include <stdint.h>" << std::endl << std::endl;
+    hFile << "#include <stdint.h>" << std::endl
+          << std::endl;
     if (asTiles)
     {
         hFile << "#define " << varName << "_WIDTH " << width << " // width of sprites/tiles in pixels" << std::endl;
-        hFile << "#define " << varName << "_HEIGHT " << height << " // height of sprites/tiles in pixels"<< std::endl;
-        hFile << "#define " << varName << "_BYTES_PER_TILE " << bytesPerImage << " // bytes for one complete sprite/tile"<< std::endl;
+        hFile << "#define " << varName << "_HEIGHT " << height << " // height of sprites/tiles in pixels" << std::endl;
+        hFile << "#define " << varName << "_BYTES_PER_TILE " << bytesPerImage << " // bytes for one complete sprite/tile" << std::endl;
         hFile << "#define " << varName << "_DATA_SIZE " << data.size() << " // size of sprite/tile data in DWORDs" << std::endl;
     }
     else
     {
         hFile << "#define " << varName << "_WIDTH " << width << " // width of image in pixels" << std::endl;
-        hFile << "#define " << varName << "_HEIGHT " << height << " // height of image in pixels"<< std::endl;
-        hFile << "#define " << varName << "_BYTES_PER_IMAGE " << bytesPerImage << " // bytes for one complete image"<< std::endl;
+        hFile << "#define " << varName << "_HEIGHT " << height << " // height of image in pixels" << std::endl;
+        hFile << "#define " << varName << "_BYTES_PER_IMAGE " << bytesPerImage << " // bytes for one complete image" << std::endl;
         hFile << "#define " << varName << "_DATA_SIZE " << data.size() << " // size of image data in DWORDs" << std::endl;
     }
     if (nrOfImages > 1)
     {
         if (asTiles)
         {
-            hFile << "#define " << varName << "_NR_OF_TILES " << nrOfImages << " // # of sprites/tiles in data"<< std::endl;
+            hFile << "#define " << varName << "_NR_OF_TILES " << nrOfImages << " // # of sprites/tiles in data" << std::endl;
         }
         else
         {
-            hFile << "#define " << varName << "_NR_OF_IMAGES " << nrOfImages << " // # of images in data"<< std::endl;
+            hFile << "#define " << varName << "_NR_OF_IMAGES " << nrOfImages << " // # of images in data" << std::endl;
             hFile << "extern const uint32_t " << varName << "_DATA_START[" << varName << "_NR_OF_IMAGES]; // index where the data for an image starts" << std::endl;
         }
     }
@@ -201,8 +176,8 @@ void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const s
 
 void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<uint16_t> &data, uint32_t nrOfColors, bool singleColorMap, bool asTiles)
 {
-    hFile << "#define " << varName << "_PALETTE_LENGTH " << nrOfColors << " // # of palette entries per palette"<< std::endl;
-    hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data in WORDs"<< std::endl;
+    hFile << "#define " << varName << "_PALETTE_LENGTH " << nrOfColors << " // # of palette entries per palette" << std::endl;
+    hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data in WORDs" << std::endl;
     if (!singleColorMap)
     {
         hFile << "extern const uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES]; // index where a palette for a sprite/tile starts" : "_NR_OF_IMAGES]; // index where a palette for an image starts") << std::endl;
@@ -212,18 +187,21 @@ void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, 
 
 void writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &startIndices, bool asTiles)
 {
-    cFile << "#include \"" << hFileBaseName << ".h\"" << std::endl << std::endl;
+    cFile << "#include \"" << hFileBaseName << ".h\"" << std::endl
+          << std::endl;
     // write data start indices if passed
     if (!startIndices.empty())
     {
         cFile << "const uint32_t " << varName << "_DATA_START[" << varName << (asTiles ? "_NR_OF_TILES] = { " : "_NR_OF_IMAGES] = { ") << std::endl;
         writeValues(cFile, startIndices);
-        cFile << "};" << std::endl << std::endl;
+        cFile << "};" << std::endl
+              << std::endl;
     }
     // write image data
     cFile << "const _Alignas(4) uint32_t " << varName << "_DATA[" << varName << "_DATA_SIZE] = { " << std::endl;
     writeValues(cFile, data, true);
-    cFile << "};" << std::endl << std::endl;
+    cFile << "};" << std::endl
+          << std::endl;
 }
 
 void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &data, const std::vector<uint32_t> &startIndices, bool asTiles)
@@ -233,12 +211,14 @@ void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const
     {
         cFile << "const uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES] = { " : "_NR_OF_IMAGES] = { ") << std::endl;
         writeValues(cFile, startIndices);
-        cFile << "};" << std::endl << std::endl;
+        cFile << "};" << std::endl
+              << std::endl;
     }
     // write palette data
     cFile << "const _Alignas(4) uint16_t " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE] = { " << std::endl;
     writeValues(cFile, data, true);
-    cFile << "};" << std::endl << std::endl;
+    cFile << "};" << std::endl
+          << std::endl;
 }
 
 std::string getBaseNameFromFilePath(const std::string &filePath)

@@ -35,11 +35,16 @@ set(LIBRARY_OUTPUT_PATH ${dir} CACHE PATH "Build directory" FORCE)
 #-------------------------------------------------------------------------------
 #define targets
 
+set(HELPERS_SRC
+    colorhelpers.cpp
+    helpers.cpp
+)
+
 include_directories(${ImageMagick_INCLUDE_DIRS})
-add_executable(colormap555 ${CMAKE_CURRENT_SOURCE_DIR}/colormap555.cpp ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp)
+add_executable(colormap555 colormap555.cpp ${HELPERS_SRC})
 target_link_libraries(colormap555 ${ImageMagick_LIBRARIES})
-add_executable(gimppalette555 ${CMAKE_CURRENT_SOURCE_DIR}/gimppalette555.cpp)
-add_executable(img2h ${CMAKE_CURRENT_SOURCE_DIR}/img2h.cpp ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp)
+add_executable(gimppalette555 gimppalette555.cpp)
+add_executable(img2h img2h.cpp ${HELPERS_SRC})
 target_link_libraries(img2h ${ImageMagick_LIBRARIES} stdc++fs)
-add_executable(compressvideo ${CMAKE_CURRENT_SOURCE_DIR}/compressvideo.cpp ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp)
+add_executable(compressvideo compressvideo.cpp ${HELPERS_SRC})
 target_link_libraries(compressvideo ${ImageMagick_LIBRARIES} stdc++fs)

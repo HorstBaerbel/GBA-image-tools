@@ -13,6 +13,7 @@
 // your compiler might barf at you.
 // You'll need the libmagick++-dev installed!
 
+#include "colorhelpers.h"
 #include "helpers.h"
 #include <iostream>
 #include <fstream>

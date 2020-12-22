@@ -109,12 +109,10 @@ void writeValues(std::ofstream &outFile, const std::vector<T> &data, bool asHex 
 
 /// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes.
 /// If the palette has < 16 entries, two (nibble-sized) indices will be combined into a byte.
-std::vector<uint8_t> getImageData(const Image & img);
+std::vector<uint8_t> getImageData(const Image &img);
 
-/// @brief Get color map from ImageMagick Image.
-std::vector<Color> getColorMap(const Image &img);
-/// @brief set color map in an ImageMagick Image.
-void setColorMap(Image &img, const std::vector<Color> &colorMap);
+/// @brief Increase all image indices by 1
+std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData);
 
 /// @brief Cut data to tileWidth * height pixel wide tiles. Width and height and tileWidth MUST be a multiple of 8!
 std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerTile, uint32_t tileWidth);
@@ -127,17 +125,11 @@ std::vector<uint8_t> convertToTiles(const std::vector<uint8_t> &data, uint32_t w
 /// Width and height MUST be a multiple of 8 and of spriteWidth and spriteHeight.
 std::vector<uint8_t> convertToSprites(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t spriteWidth, uint32_t spriteHeight);
 
-/// @brief Convert ImageMagick Colors to RGB555 colors for GBA.
-std::vector<uint16_t> convertToBGR555(const std::vector<Color> &colors);
-
-/// @brief Convert a ImageMagick Color to a RGB555 color for GBA.
-uint16_t colorToBGR555(const Color &color);
-
-/// @brief Write image information to a .h file. 
+/// @brief Write image information to a .h file.
 void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages = 1, bool asTiles = false);
 /// @brief Write additional palette information to a .h file. Use after write writeImageInfoToH.
 void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<uint16_t> &data, uint32_t nrOfColors, bool singleColorMap = true, bool asTiles = false);
-/// @brief Write image data to a .c file. 
+/// @brief Write image data to a .c file.
 void writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false);
 /// @brief Write palette data to a .c file. Use after write writeImageDataToC.
 void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false);
