@@ -37,7 +37,7 @@ set(LIBRARY_OUTPUT_PATH ${dir} CACHE PATH "Build directory" FORCE)
 
 set(HELPERS_SRC
     colorhelpers.cpp
-    helpers.cpp
+    filehelpers.cpp
     imagehelpers.cpp
     spritehelpers.cpp
 )

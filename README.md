@@ -1,4 +1,5 @@
 # GBA / NDS image and video conversion tools
+
 This folder contains some tools to convert / compress images and videos to GBA and NDS formats:  
 
 * [colormap555](colormap555.cpp) - Generate the file [colormap555.png](colormap555.png) that can be used to convert images directly to the GBA RGB555 color-space with good quality.
@@ -24,7 +25,7 @@ All of this is under the [MIT License](LICENSE). Uses the wonderful [cxxopts](ht
 
 * For running the [vid2h](vid2h.cpp) tool you must have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) or the gbalzss tool in your PATH.
 
-##  Building
+## Building
 
 ### From the command line
 
@@ -47,6 +48,7 @@ make
 * You should be able to build now using F7 and build + run using F5.
 
 ## TODO
+
 * Improve docs / README
 * Compress with LZSS directly
 

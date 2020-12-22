@@ -14,9 +14,11 @@
 // You'll need the libmagick++-dev installed!
 
 #include "colorhelpers.h"
-#include "helpers.h"
+#include "datahelpers.h"
+#include "filehelpers.h"
 #include "imagehelpers.h"
 #include "spritehelpers.h"
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>

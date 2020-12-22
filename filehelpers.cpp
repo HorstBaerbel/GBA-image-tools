@@ -1,4 +1,7 @@
-#include "helpers.h"
+#include "filehelpers.h"
+
+#include <iomanip>
+#include <iostream>
 
 /// @brief Write values as a comma-separated array of hex numbers.
 template <typename T>
@@ -115,23 +118,4 @@ std::string getBaseNameFromFilePath(const std::string &filePath)
     baseName = baseName.substr(baseName.find_last_of("/\\") + 1);
     baseName = baseName.substr(0, baseName.find_first_of("."));
     return baseName;
-}
-
-std::pair<bool, uint32_t> stringToUint(const std::string &s)
-{
-    std::pair<bool, uint32_t> result;
-    try
-    {
-        result.second = std::stoul(s);
-        result.first = true;
-    }
-    catch (const std::invalid_argument &ex)
-    {
-        result.first = false;
-    }
-    catch (const std::out_of_range &ex)
-    {
-        result.first = false;
-    }
-    return result;
 }
