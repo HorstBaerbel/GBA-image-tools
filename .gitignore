@@ -6,9 +6,9 @@ CMakeFiles
 cmake_install.cmake
 
 colormap555
-compressvideo
 gimppalette555
 img2h
+vid2h
 
 # Prerequisites
 *.d

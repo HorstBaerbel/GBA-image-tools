@@ -4,7 +4,7 @@ This folder contains some tools to convert / compress images and videos to GBA a
 * [colormap555](colormap555.cpp) - Generate the file [colormap555.png](colormap555.png) that can be used to convert images directly to the GBA RGB555 color-space with good quality.
 * [gimppalette555](gimppalette555.cpp) - Generate the file [GBA.gpl](GBA.gpl) for using / editing / painting with GBA colors in Gimp.
 * [img2h](img2h.cpp) - Convert an image (that can be read with [ImageMagick](https://imagemagick.org/index.php)) to a .h / .c file to compile it into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order).
-* [compressvideo](compressvideo.cpp) - Compress a list of images using the external tool GBALZSS (included in devKitPro) and convert the compressed data to a .h and .c file, so you can compile it into your program.
+* [vid2h](vid2h.cpp) - Compress a list of images using the external tool GBALZSS (included in devKitPro) and convert the compressed data to a .h and .c file, so you can compile it into your program.
 
 If you find a bug or make an improvement your pull requests are appreciated.
 
@@ -22,7 +22,7 @@ All of this is under the [MIT License](LICENSE). Uses the wonderful [cxxopts](ht
 
   ```apt install imagemagick```
 
-* For running the [compressvideo](compressvideo.cpp) tool you must have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) or the gbalzss tool in your PATH.
+* For running the [vid2h](vid2h.cpp) tool you must have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) or the gbalzss tool in your PATH.
 
 ##  Building
 
@@ -48,9 +48,7 @@ make
 
 ## TODO
 * Improve docs / README
-* Use cxxopts in all tools
-* Add --addcolor option to compressvideo
-* Add --movecolor option to compressvideo
+* Compress with LZSS directly
 
 ## Convert images / videos to GBA formats
 

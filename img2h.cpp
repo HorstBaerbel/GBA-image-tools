@@ -240,7 +240,7 @@ int main(int argc, const char *argv[])
         // check if the color map has one free entry
         if (colorMap.size() > 255)
         {
-            std::cerr << "No space in color map (image has " << img.colorMapSize() << " colors). Aborting." << std::endl;
+            std::cerr << "No space in color map (image has " << colorMap.size() << " colors). Aborting." << std::endl;
             return 1;
         }
         // add color at front of color map and increase all color index values by 1
