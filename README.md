@@ -76,13 +76,13 @@ If you have images with larger flat areas of color and they come out all garbled
 
 ### Making a color the transparent color / move it to index #0 in the palette
 
-On GBA the color at palette index #0 is always transparent. When using ImageMagick for color mapping / conversion the correct color might not end up being the first in the color palette. You can use the option ```--movecolor0``` in [img2h](img2h.cpp) to move a color to index #0 in the palette:
+On GBA the color at palette index #0 is always transparent. When using ImageMagick for color mapping / conversion the correct color might not end up being the first in the color palette. You can use the option ```--movecolor0``` in [img2h](img2h.cpp) / [vid2h](vid2h.cpp) to move a color to index #0 in the palette:
 
 ```img2h --movecolor0 COLORVALUE INFILE OUTNAME```
 
 COLORVALUE is a hex color value, e.g. "AA2345" or "123def".
 
-Some conversions leave you with the correct color palette, but no transparent color at index #0. You can use the option ```--addcolor0``` in [img2h](img2h.cpp) to add a specific color at index #0 in the palette:
+Some conversions leave you with the correct color palette, but no transparent color at index #0. You can use the option ```--addcolor0``` in [img2h](img2h.cpp) / [vid2h](vid2h.cpp) to add a specific color at index #0 in the palette:
 
 ```img2h --addcolor0 COLORVALUE INFILE OUTNAME```
 
