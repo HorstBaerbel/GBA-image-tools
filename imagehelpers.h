@@ -16,3 +16,6 @@ std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData);
 
 /// @brief Swap index in image data with 0
 std::vector<uint8_t> swapIndexToIndex0(std::vector<uint8_t> &imageData, uint8_t oldIndex);
+
+/// @brief Swap indices in image data according to index table
+std::vector<uint8_t> swapIndices(std::vector<uint8_t> &imageData, const std::vector<uint8_t> &newIndices);

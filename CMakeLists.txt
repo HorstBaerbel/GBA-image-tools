@@ -37,6 +37,7 @@ set(LIBRARY_OUTPUT_PATH ${dir} CACHE PATH "Build directory" FORCE)
 
 set(HELPERS_SRC
     colorhelpers.cpp
+    datahelpers.cpp
     filehelpers.cpp
     imagehelpers.cpp
     spritehelpers.cpp
@@ -47,6 +48,4 @@ add_executable(colormap555 colormap555.cpp ${HELPERS_SRC})
 target_link_libraries(colormap555 ${ImageMagick_LIBRARIES})
 add_executable(gimppalette555 gimppalette555.cpp)
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
-target_link_libraries(img2h ${ImageMagick_LIBRARIES} stdc++fs)
-add_executable(vid2h vid2h.cpp ${HELPERS_SRC})
-target_link_libraries(vid2h ${ImageMagick_LIBRARIES} stdc++fs)
+target_link_libraries(img2h ${ImageMagick_LIBRARIES} stdc++fs pthread)

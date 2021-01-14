@@ -83,3 +83,15 @@ std::vector<uint8_t> swapIndexToIndex0(std::vector<uint8_t> &imageData, uint8_t 
     }
     return tempData;
 }
+
+std::vector<uint8_t> swapIndices(std::vector<uint8_t> &imageData, const std::vector<uint8_t> &newIndices)
+{
+    std::vector<uint8_t> reverseIndices(newIndices.size(), 0);
+    for (uint32_t i = 0; i < newIndices.size(); i++)
+    {
+        reverseIndices[newIndices[i]] = i;
+    }
+    auto tempData = imageData;
+    std::for_each(tempData.begin(), tempData.end(), [&reverseIndices](auto &i) { i = reverseIndices[i]; });
+    return tempData;
+}

@@ -5,6 +5,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <stdexcept>
 
 /// @brief Fill up the vector with values until its size is a multiple of multipleOf.
 template <typename T>
@@ -61,3 +62,6 @@ std::vector<R> convertTo(const std::vector<T> &data)
     std::memcpy(result.data(), data.data(), data.size() * sizeof(T));
     return result;
 }
+
+/// @brief Interleave all pixel data: D0P0, D1P0, D0P1, D1P1...
+std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, uint32_t bitsPerPixel);
