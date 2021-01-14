@@ -32,7 +32,6 @@
 using namespace Magick;
 
 bool m_interleaveData = false;
-bool m_interleavePalettes = false;
 bool m_vramCompatible = false;
 bool m_lz10Compression = false;
 bool m_lz11Compression = false;
@@ -61,7 +60,7 @@ bool readArguments(int argc, const char *argv[])
 {
     cxxopts::Options options("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
     options.allow_unrecognised_options();
-    options.add_options()("h,help", "Print help")("a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String))("i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>())("o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>())("v,vram", "Optional: Make compression VRAM-safe", cxxopts::value<bool>(m_vramCompatible))("0,lz10", "Optional: Use LZ compression variant 10 (default: no compression)", cxxopts::value<bool>(m_lz10Compression))("1,lz11", "Optional: Use LZ compression variant 11 (default: no compression)", cxxopts::value<bool>(m_lz11Compression))("t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles))("s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes))("m,movecolor0", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String))("d,interleavedata", "Optional: Interleave all image data into one array", cxxopts::value<bool>(m_interleaveData))("p,interleavepalettes", "Optional: Interleave all palette data into one array", cxxopts::value<bool>(m_interleavePalettes))("r,reordercolors", "Optional: Reorder palette colors to minimize preceived color distance", cxxopts::value<bool>(m_reorderColors))("positional", "", cxxopts::value<std::vector<std::string>>());
+    options.add_options()("h,help", "Print help")("a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String))("i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>())("o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>())("v,vram", "Optional: Make compression VRAM-safe", cxxopts::value<bool>(m_vramCompatible))("0,lz10", "Optional: Use LZ compression variant 10 (default: no compression)", cxxopts::value<bool>(m_lz10Compression))("1,lz11", "Optional: Use LZ compression variant 11 (default: no compression)", cxxopts::value<bool>(m_lz11Compression))("t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles))("s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes))("m,movecolor0", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String))("d,interleavedata", "Optional: Interleave all image data into one array", cxxopts::value<bool>(m_interleaveData))("r,reordercolors", "Optional: Reorder palette colors to minimize preceived color distance", cxxopts::value<bool>(m_reorderColors))("positional", "", cxxopts::value<std::vector<std::string>>());
     options.parse_positional({"infile", "outname", "positional"});
     auto result = options.parse(argc, argv);
     // check if help was requested
@@ -181,9 +180,6 @@ void printUsage()
     std::cout << "--interleavedata=: Optional. Interleave data from images into one big array." << std::endl;
     std::cout << "Interleaving is done like this (image/value): I0V0,I1V0,I2V0,I0V1,I1V1,I2V1..." << std::endl;
     std::cout << "All images need to have the SAME number of pixels and bit depth!" << std::endl;
-    std::cout << "--interleavepalettes=: Optional. Interleave image palettes into one big array." << std::endl;
-    std::cout << "Interleaving is done like this (image/color): I0C0,I1C0,I2C0,I0C1,I1C1,I2C1..." << std::endl;
-    std::cout << "All palettes will be filled up to have the SAME number of colors!" << std::endl;
     std::cout << "COMPRESSION options:" << std::endl;
     std::cout << "--lz10: Optional: Use LZ compression variant 10 (default: no compression)." << std::endl;
     std::cout << "--lz11: Optional: Use LZ compression variant 11 (default: no compression)." << std::endl;
@@ -641,21 +637,6 @@ int main(int argc, const char *argv[])
         catch (std::runtime_error e)
         {
             std::cerr << "Failed to interleave image data: " << e.what() << std::endl;
-            return 1;
-        }
-    }
-    if (m_interleavePalettes)
-    {
-        try
-        {
-            auto tempPalette = interleave(colorMaps);
-            colorMaps.clear();
-            colorMaps.push_back(tempPalette);
-            std::cout << "Interleaved palette data" << std::endl;
-        }
-        catch (std::runtime_error e)
-        {
-            std::cerr << "Failed to interleave palette data: " << e.what() << std::endl;
             return 1;
         }
     }

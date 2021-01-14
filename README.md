@@ -49,6 +49,7 @@ make
 ## TODO
 
 * Improve docs / README
+* Sort colors by hue and lightness before reordering
 * Compress with LZSS directly
 
 ## Convert images / videos to GBA formats
@@ -86,3 +87,14 @@ Some conversions leave you with the correct color palette, but no transparent co
 ```img2h --addcolor0 COLORVALUE INFILE OUTNAME```
 
 COLORVALUE is a hex color value, e.g. "AA2345" or "123def".
+
+## img2h options
+
+Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / jittering with paletted colors. Uses the a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).
+![reordered colors](reorderedcolors.png)
+
+Use ```--interleavedata``` interleave data of multiple images into one data "stream". This can help save clock cycles on the GBA by combining reads:
+
+```img2h --interleavedata INFILE0 INFILE1 OUTNAME```
+
+This will put image data 0 of file 0 and image data 0 of file 1 next to each other: I0D0, I1D0, I0D1, I1D1...
