@@ -58,15 +58,17 @@ make
 
 ```convert INFILE -colors NROFCOLORS -remap colormap555.png OUTFILE```
 
-This will use the color map [colormap555.png](colormap555.png) to restrict output colors to the GBA color "palette" of possible RGB555 colors, which gives much better results. If you use regular dithering the image will be converted to RGB888 first, dithered and then later converted to RGB555 trying to match colors, which gives worse results.  
+This will use the RGB555 color map [colormap555.png](colormap555.png)  
+![colormap555.png](colormap555.png)  
+to restrict output colors to the GBA color "palette" of possible RGB555 colors, which gives much better results. If you use regular dithering the image will be converted to RGB888 first, dithered and then later converted to RGB555 trying to match colors, which gives worse results.  
 If you use wildcards for a list of images, you can create common palette for all images using "[+remap](https://www.imagemagick.org/script/command-line-options.php?#remap)" instead:
 
-```convert INFILE -colors 256 +remap colormap555.png png8:OUTFILE```
+```convert INFILE -colors 255 +remap colormap555.png png8:OUTFILE```
 
 Use a wildcard for INFILE, e.g. "in*.png". This will create a common palette from all images it finds for "in*.png" first and store it. Then the conversion to a palette image is done. The "png8:" prefix tells ImageMagick to store indexed 8-bit PNGs.  
 To make sure your files are correctly ordered for further processing steps add "%0Xd" (printf-style) to the output to append a custom number to the file name:
 
-```convert INFILE -colors 256 +remap colormap555.png png8:foo_%02d.png```
+```convert INFILE -colors 255 +remap colormap555.png png8:foo_%02d.png```
 
 This will generate the file names "foo_00.png", "foo_01.png" and so on.
 
@@ -90,10 +92,10 @@ COLORVALUE is a hex color value, e.g. "AA2345" or "123def".
 
 ## img2h options
 
-Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / jittering with paletted colors. Uses the a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).
+Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / jittering with paletted colors. Uses the a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).  
 ![reordered colors](reorderedcolors.png)
 
-Use ```--interleavedata``` interleave data of multiple images into one data "stream". This can help save clock cycles on the GBA by combining reads:
+Use ```--interleavedata``` interleave data of multiple images into one data "stream". This can help save wait cycles on the GBA by combining reads:
 
 ```img2h --interleavedata INFILE0 INFILE1 OUTNAME```
 

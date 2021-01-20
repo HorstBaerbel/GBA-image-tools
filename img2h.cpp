@@ -1,4 +1,4 @@
-// Converets and (optionally) compresses image files using
+// Converts and (optionally) compresses image files using
 // a GBA-compatible LZSS/LZ77/LZ10 one by one.
 // The type and size of the first file MUST match all following files.
 // Only paletted and true color images are allowed. The alpha channel is ignored.
@@ -12,7 +12,7 @@
 // and padded to a multiple of 4 bytes as needed.
 // Note that this only works for small video sequences, otherwise
 // your compiler might barf at you.
-// You'll need the libmagick++-dev installed!
+// You'll need libmagick++-dev installed!
 
 #include "colorhelpers.h"
 #include "datahelpers.h"
@@ -29,6 +29,7 @@
 
 #include "cxxopts/include/cxxopts.hpp"
 #include <Magick++.h>
+
 using namespace Magick;
 
 bool m_interleaveData = false;
@@ -177,7 +178,7 @@ void printUsage()
     std::cout << "sprite- and 8x8-tile-wise. The image needs to be paletted and its width and" << std::endl;
     std::cout << "height must be a multiple of W and H and also a multiple of 8 pixels." << std::endl;
     std::cout << "Sprite data is stored in \"1D mapping\" order and can be read with memcpy." << std::endl;
-    std::cout << "--interleavedata=: Optional. Interleave data from images into one big array." << std::endl;
+    std::cout << "--interleavedata=: Optional. Interleave image data into one big array." << std::endl;
     std::cout << "Interleaving is done like this (image/value): I0V0,I1V0,I2V0,I0V1,I1V1,I2V1..." << std::endl;
     std::cout << "All images need to have the SAME number of pixels and bit depth!" << std::endl;
     std::cout << "COMPRESSION options:" << std::endl;
@@ -188,11 +189,12 @@ void printUsage()
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: can be a file list and/or can have * as a wildcard. Multiple input " << std::endl;
     std::cout << "images MUST have the same type (palette / true color) and resolution!" << std::endl;
-    std::cout << "OUTNAME: is determined from the first non-existant file name. Two files" << std::endl;
-    std::cout << "OUTNAME.h and OUTNAME.c will be generated. All variables will begin with" << std::endl;
-    std::cout << "\"OUTNAME\". If OUTNAME is a path, only the file name portion will be used. " << std::endl;
+    std::cout << "OUTNAME: is determined from the first non-existant file path. It can be an " << std::endl;
+    std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
+    std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
+    std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, tiles, sprites, " << std::endl;
-    std::cout << "compress, interleavedata, interleavepalette, output" << std::endl;
+    std::cout << "compress, interleavedata, output" << std::endl;
 }
 
 std::string getEnv(const std::string &var)
@@ -533,7 +535,7 @@ int main(int argc, const char *argv[])
                 imageData[i] = swapIndexToIndex0(imageData[i], oldIndex);
             }
         }
-        std::cout << "Moved color " << m_addColor0String << " to index #0." << std::endl;
+        std::cout << "Moved color " << m_moveColor0String << " to index #0." << std::endl;
     }
     // check if color maps have same size
     bool allColorMapsSame = true;
