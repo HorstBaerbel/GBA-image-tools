@@ -16,13 +16,13 @@ void setColorMap(Image &img, const std::vector<Color> &colorMap);
 /// @brief Add color to color map and shift all other colors to the back by one
 std::vector<Color> addColorAtIndex0(const std::vector<Color> &colorMap, const Color &color0);
 
-/// @brief Convert ImageMagick Colors to RGB555 colors for GBA.
+/// @brief Convert ImageMagick Colors to BGR555 colors for GBA.
 std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Color>> &colors);
 
-/// @brief Convert ImageMagick Colors to RGB555 colors for GBA.
+/// @brief Convert ImageMagick Colors to BGR555 colors for GBA.
 std::vector<uint16_t> convertToBGR555(const std::vector<Color> &colors);
 
-/// @brief Convert a ImageMagick Color to a RGB555 color for GBA.
+/// @brief Convert a ImageMagick Color to a BGR555 color for GBA.
 uint16_t colorToBGR555(const Color &color);
 
 /// @brief Interleave all palette colors: P0C0, P1C0, P0C1, P1C1...
