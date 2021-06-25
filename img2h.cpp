@@ -204,12 +204,11 @@ std::string getEnv(const std::string &var)
 
 bool findGbalzss()
 {
-    // try finding gbalzss
+    std::string cmdLine;
     auto dkpPath = getEnv("DEVKITPRO");
     if (!dkpPath.empty())
     {
-        std::string cmdLine;
-        // DevkitPro found. We assume the executable is there...
+        // DevkitPro found. We assume the gbalzss executable is there...
 #ifdef WIN32
         m_gbalzssPath = dkpPath + "\\tools\\bin\\gbalzss.exe";
         cmdLine = m_gbalzssPath;
@@ -220,7 +219,19 @@ bool findGbalzss()
         // try to execute gbalzss and see if it works
         return WEXITSTATUS(system(cmdLine.c_str())) == 1;
     }
-    return false;
+    else
+    {
+        // DevkitPro not found. See if we can call gbalzss anyway
+#ifdef WIN32
+        m_gbalzssPath = "gbalzss.exe";
+        cmdLine = m_gbalzssPath;
+#else
+        m_gbalzssPath = "gbalzss";
+        cmdLine = m_gbalzssPath + " 2> /dev/null";
+#endif
+        // try to execute gbalzss and see if it works
+        return WEXITSTATUS(system(cmdLine.c_str())) == 1;
+    }
 }
 
 // TODO: On Windows we might need to resolve wildcards in input files
