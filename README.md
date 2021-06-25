@@ -49,8 +49,8 @@ make
 
 ## Hints for paint programs
 
-* Store images as Truecolor PNGs and [convert / dither them using imagemagick](#convert-an-image-to-gba-rgb555-format-with-a-restricted-number-of-colors). This usually gives higher quality results.
-* In Gimp make sure that when you store your paletted / indexed images to PNG to select the "automatic pixel format" option. This will ensure the minimum number of colors will be stored in the palette. Storing "8bpc GRAY" or "8bpc GRAYA" will store a full 256 color palette.
+* Store images as Truecolor PNGs and [convert / dither them using ImageMagick](#convert-an-image-to-gba-rgb555-format-with-a-restricted-number-of-colors). This usually gives higher quality results.
+* In Gimp make sure that when you store your paletted / indexed images to PNG select the "automatic pixel format" option. This will ensure the minimum number of colors will be stored in the palette. Storing as "8bpc GRAY" or "8bpc GRAYA" will store a full 256 color palette.
 
 ## Convert an image to GBA RGB555 format with a restricted number of colors
 
@@ -59,11 +59,11 @@ make
 If you convert an image for GBA and use regular dithering it will be converted to RGB888 first, dithered and then later converted to RGB555 trying to match colors, which can give bad results. This option will use the GBAs RGB555 color map [colormap555.png](colormap555.png)  
 ![colormap555.png](colormap555.png)  
 to restrict output colors to the GBA color "palette" of possible RGB555 colors while dithering, which gives much better results.  
-If you use wildcards for a list of images, you can also create common palette for all images using "[+remap](https://www.imagemagick.org/script/command-line-options.php?#remap)" instead:
+If you use wildcards for a list of images, you can also a create common palette for all images using "[+remap](https://www.imagemagick.org/script/command-line-options.php?#remap)" instead:
 
 ```convert INFILE -colors 255 +remap colormap555.png png8:OUTFILE```
 
-Use a wildcard for INFILE, e.g. "in*.png". This will create a common palette from all images it finds for "in*.png" first and store it. Then the conversion to a palette image is done. The "png8:" prefix tells ImageMagick to store indexed 8-bit PNGs.  
+Use a wildcard for INFILE, e.g. "in*.png". This will create a common palette from all images it finds for "in*.png" first and store it. Then the individual conversion to paletted images is done. The "png8:" prefix tells ImageMagick to store indexed 8-bit PNGs.  
 To make sure your files are correctly ordered for further processing steps add "%0Xd" (printf-style) to the output to append a custom number to the file name:
 
 ```convert INFILE -colors 255 +remap colormap555.png png8:foo_%02d.png```
@@ -76,7 +76,7 @@ If you have images with larger flat areas of color and they come out all garbled
 
 ## img2h general usage
 
-Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME```.
+Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME```
 
 * ```CONVERSION``` is optional and means the type of conversion to be done:
   * [```--reordercolors```](#reordering-palette-colors) - Reorder palette colors to minimize preceived color distance.
@@ -99,30 +99,31 @@ Some general information:
 
 * Some combinations of options make no sense, but img2h will not check that.
 * All data stored to output files will be aligned to 4 bytes and padded to 4 bytes. Zero bytes will be added if necessary.
-* When processing **multiple input images** they **will be stored in a single .h / .c file**. Thus they must have the same width / height / bit depth.
+* When processing **multiple input images** they **will be stored in a single .h / .c file**. Thus they must have the same width, height and bit depth.
 * When processing multiple paletted input images, their palettes will be padded with black colors / zero bytes to the size of the biggest palette.
-* Data with a palette <= 16 colors will be stored as nibbles. An 8x8 tile will use 4 bytes. Data with a palette > 16 colors will be stored as bytes. An 8x8 tile will use 8 bytes.
+* Data with a palette <= 16 colors will be stored as nibbles, thus an 8x8 tile will use 4 bytes. Data with a palette > 16 colors will be stored as bytes, thus an 8x8 tile will use 8 bytes.
+* Truecolor data will be converted to RGB555.
 
 ## img2h options
 
 ### Reordering palette colors
 
-Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / interpolation / jittering with paletted colors. Uses the a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).  
+Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / interpolation / jittering with paletted colors. Uses a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).  
 ![reordered colors](reorderedcolors.png)
 
 ### Adding a color to index #0 in the palette
 
-Some conversions leave you with the correct color palette, but no transparent color at index #0. You can use the option ```--addcolor0``` to add a specific color at index #0 in the palette:
+On GBA the color at palette index #0 is always transparent. Some conversions leave you with the correct color palette, but no transparent color at index #0. You can use the option ```--addcolor0``` to add a specific color at index #0 in the palette:
 
-```img2h --addcolor0 COLORVALUE INFILE(s) OUTNAME```
+```img2h --addcolor0=COLORVALUE INFILE(s) OUTNAME```
 
 COLORVALUE is a hex color value, e.g. "AA2345" or "123def". This only works if the input palette has less than 256 colors.
 
 ### Moving a color to index #0 in the palette
 
-On GBA the color at palette index #0 is always transparent. When using ImageMagick for color mapping / conversion the correct color might not end up being the first in the color palette. You can use the option ```--movecolor0``` to move a color to index #0 in the palette:
+When using ImageMagick for color mapping / conversion the correct color might not end up being the first in the color palette. You can use the option ```--movecolor0``` to move a color to index #0 in the palette:
 
-```img2h --movecolor0 COLORVALUE INFILE(s) OUTNAME```
+```img2h --movecolor0=COLORVALUE INFILE(s) OUTNAME```
 
 COLORVALUE is a hex color value, e.g. "AA2345" or "123def".
 
@@ -142,21 +143,21 @@ To store images as sprites use the option ```--sprites=W,H```. This will cut the
 * Image must be paletted
 * Image width must be a multiple of W and of 8 (for tile-conversion)
 * Image height must be a multiple of H and of 8 (for tile-conversion)
-* It makes sense that W and H are in [8, 16, 32, 64], but this isn't enforced
+* It makes sense that W and H are in [8, 16, 32, 64] (allowed GBA sprite sizes), but this isn't enforced
 
 The data will be stored in ["1D mapping"](http://problemkaputt.de/gbatek.htm#gbalcdvideocontroller). You can simply memcpy it over to VRAM, but don't forget to set the "OBJ Character VRAM Mapping" flag.
 
 ### Interleaving data
 
-If you have data you always read in combination, e.g. 8-bit colormap pixel and 8-bit heightmap value, use ```--interleavedata``` to interleave data of multiple images into one data "stream". This can help save wait cycles on the GBA by combining reads:
+If you have data you always read in combination, e.g. 8-bit colormap pixel and 8-bit heightmap value, use ```--interleavedata``` to interleave data of multiple images into one data "stream". This can help you save wait cycles on the GBA by combining reads:
 
 ```img2h --interleavedata INFILE0 INFILE1 OUTNAME```
 
-This will put image data 0 of file 0 and image data 0 of file 1 next to each other: I0D0, I1D0, I0D1, I1D1... Palettes will be stored in regular order. All images need to have the same number of pixels and bit depth.
+This will put image data 0 of file 0 and image data 0 of file 1 next to each other: I0D0, I1D0, I0D1, I1D1... Palettes will be stored in regular, uninterleaved order.
 
 ### Compressing data
 
-You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible) and ```--lz11``` (LZ77 ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions)). To be able to safely decompress data to VRAM, add the option ```--vram```. Compression needs the devKitPro tool [gbalzss](https://github.com/devkitPro/gba-tools) which it will try to find through the %DEVKITPRO% environment variable.
+You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible) and ```--lz11``` (LZ77 ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions)). To be able to safely decompress data to VRAM, add the option ```--vram```. Compression needs the [devKitPro](https://devkitpro.org) tool [gbalzss](https://github.com/devkitPro/gba-tools) which it will try to find through the %DEVKITPRO% environment variable.
 
 ## TODO
 
