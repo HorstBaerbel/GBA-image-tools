@@ -112,7 +112,7 @@ bool readArguments(int argc, const char *argv[])
         }
         catch (const Exception &ex)
         {
-            std::cerr << m_addColor0String << " is not a valid color. Format must be e.g. \"--addcolor0 abc012\". Aborting. " << std::endl;
+            std::cerr << m_addColor0String << " is not a valid color. Format must be e.g. \"--addcolor0=abc012\". Aborting. " << std::endl;
             return false;
         }
     }
@@ -129,7 +129,7 @@ bool readArguments(int argc, const char *argv[])
         }
         catch (const Exception &ex)
         {
-            std::cerr << m_moveColor0String << " is not a valid color. Format must be e.g. \"--movecolor0 abc012\". Aborting. " << std::endl;
+            std::cerr << m_moveColor0String << " is not a valid color. Format must be e.g. \"--movecolor0=abc012\". Aborting. " << std::endl;
             return false;
         }
     }
@@ -165,27 +165,26 @@ void printUsage()
     std::cout << "will be converted to RGB555 directly." << std::endl;
     std::cout << "You might want to use ImageMagicks \"convert +remap\" before." << std::endl;
     std::cout << "Usage: img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME" << std::endl;
-    std::cout << "CONVERSION options:" << std::endl;
-    std::cout << "--reordercolors=: Optional: Reorder palette colors to minimize preceived" << std::endl;
-    std::cout << "color distance (only for paletted images)." << std::endl;
-    std::cout << "--addcolor0 COLOR: Optional. Add COLOR at palette index #0 and increase all" << std::endl;
-    std::cout << "other color indices by 1. Only usable for paletted images. Format \"abcd012\"" << std::endl;
-    std::cout << "--movecolor0=COLOR: Optional. Move COLOR to palette index #0 and move all" << std::endl;
-    std::cout << "other colors accordingly. Only usable for paletted images. Format \"abcd012\"" << std::endl;
-    std::cout << "--tiles: Optional. Cut data into 8x8 tiles and store data tile-wise. The image" << std::endl;
-    std::cout << "needs to be paletted and its width and height must be a multiple of 8 pixels." << std::endl;
-    std::cout << "--sprites=W,H: Optional. Cut data into sprites of size W x H and store data" << std::endl;
-    std::cout << "sprite- and 8x8-tile-wise. The image needs to be paletted and its width and" << std::endl;
-    std::cout << "height must be a multiple of W and H and also a multiple of 8 pixels." << std::endl;
-    std::cout << "Sprite data is stored in \"1D mapping\" order and can be read with memcpy." << std::endl;
-    std::cout << "--interleavedata=: Optional. Interleave image data into one big array." << std::endl;
-    std::cout << "Interleaving is done like this (image/value): I0V0,I1V0,I2V0,I0V1,I1V1,I2V1..." << std::endl;
-    std::cout << "All images need to have the SAME number of pixels and bit depth!" << std::endl;
-    std::cout << "COMPRESSION options:" << std::endl;
-    std::cout << "--lz10: Optional: Use LZ compression variant 10 (default: no compression)." << std::endl;
-    std::cout << "--lz11: Optional: Use LZ compression variant 11 (default: no compression)." << std::endl;
-    std::cout << "--vram: Optional: Make compression GBA VRAM-safe." << std::endl;
-    std::cout << "Valid combinations are e.g. \"--lz10 --vram\" or \"--lz11 --vram\"." << std::endl;
+    std::cout << "CONVERSION options (all optional):" << std::endl;
+    std::cout << "--reordercolors: Reorder palette colors to minimize preceived color distance." << std::endl;
+    std::cout << "  Only usable for paletted images." << std::endl;
+    std::cout << "--addcolor0=COLOR: Add COLOR at palette index #0 and increase all other" << std::endl;
+    std::cout << "  color indices by 1. Only usable for paletted images. Format \"abcd012\"" << std::endl;
+    std::cout << "--movecolor0=COLOR: Move COLOR to palette index #0 and move all other" << std::endl;
+    std::cout << "  colors accordingly. Only usable for paletted images. Format \"abcd012\"" << std::endl;
+    std::cout << "--tiles: Cut data into 8x8 tiles and store data tile-wise. The image needs to" << std::endl;
+    std::cout << "  be paletted and its width and height must be a multiple of 8 pixels." << std::endl;
+    std::cout << "--sprites=W,H: Cut data into sprites of size W x H and store data sprite-" << std::endl;
+    std::cout << "  and 8x8-tile-wise. The image needs to be paletted and its width and" << std::endl;
+    std::cout << "  height must be a multiple of W and H and also a multiple of 8 pixels." << std::endl;
+    std::cout << "  Sprite data is stored in \"1D mapping\" order and can be read with memcpy." << std::endl;
+    std::cout << "--interleavedata: Interleave image data into one big array. Interleaving is" << std::endl;
+    std::cout << "  done like this (image/value): I0V0,I1V0,I2V0,I0V1,I1V1,I2V1..." << std::endl;
+    std::cout << "COMPRESSION options (all optional):" << std::endl;
+    std::cout << "--lz10: Use LZ compression variant 10 (default: no compression)." << std::endl;
+    std::cout << "--lz11: Use LZ compression variant 11 (default: no compression)." << std::endl;
+    std::cout << "--vram: Make compression GBA VRAM-safe." << std::endl;
+    std::cout << "  Valid combinations are e.g. \"--lz10 --vram\" or \"--lz11 --vram\"." << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: can be a file list and/or can have * as a wildcard. Multiple input " << std::endl;
     std::cout << "images MUST have the same type (palette / true color) and resolution!" << std::endl;
@@ -323,7 +322,8 @@ template <typename T>
 std::vector<T> divideBy(const std::vector<T> &data, T divideBy = 1)
 {
     std::vector<T> result;
-    std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [divideBy](auto t) { return t / divideBy; });
+    std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [divideBy](auto t)
+                   { return t / divideBy; });
     return result;
 }
 
@@ -371,6 +371,14 @@ int main(int argc, const char *argv[])
         std::cerr << "Sprite width and height must be a multiple of 8. Aborting." << std::endl;
         return 1;
     }
+    if (m_asSprites && (m_spriteWidth != 8 && m_spriteWidth != 16 && m_spriteWidth != 32 && m_spriteWidth != 64))
+    {
+        std::cerr << "Warning: Sprite width not in [8, 16, 32, 64]!" << std::endl;
+    }
+    if (m_asSprites && (m_spriteHeight != 8 && m_spriteHeight != 16 && m_spriteHeight != 32 && m_spriteHeight != 64))
+    {
+        std::cerr << "Warning: Sprite height not in [8, 16, 32, 64]!" << std::endl;
+    }
     // fire up ImageMagick
     InitializeMagick(*argv);
     // store info about images
@@ -401,7 +409,7 @@ int main(int argc, const char *argv[])
             std::cerr << "unsupported format. Aborting" << std::endl;
             return 1;
         }
-        // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width
+        // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
         if ((m_asSprites || m_asTiles) && (imgType != ImageType::PaletteType || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
         {
             std::cerr << "Image must be paletted and width / height must be a multiple of 8. Aborting" << std::endl;
@@ -571,7 +579,8 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // padd all color maps to max color count
-        std::for_each(colorMaps.begin(), colorMaps.end(), [maxColorMapColors](auto &cm) { fillUpToMultipleOf(cm, maxColorMapColors); });
+        std::for_each(colorMaps.begin(), colorMaps.end(), [maxColorMapColors](auto &cm)
+                      { fillUpToMultipleOf(cm, maxColorMapColors); });
         std::cerr << "Saving " << (allColorMapsSame ? 1 : colorMaps.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
     }
     // we have the data. pad to multiple of 4 and compress
@@ -652,7 +661,8 @@ int main(int argc, const char *argv[])
         {
             std::string baseName = getBaseNameFromFilePath(m_outFile);
             std::string varName = baseName;
-            std::transform(varName.begin(), varName.end(), varName.begin(), [](char c) { return std::toupper(c, std::locale()); });
+            std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
+                           { return std::toupper(c, std::locale()); });
             // output header
             hFile << "// Converted with img2h" << std::endl;
             if (mustCompress())
