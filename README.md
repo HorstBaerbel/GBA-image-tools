@@ -23,7 +23,7 @@ All of this is under the [MIT License](LICENSE). Uses the wonderful [cxxopts](ht
 
   ```apt install imagemagick```
 
-* For compressing data with LZ77 you need to have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) or the [gbalzss](https://github.com/devkitPro/gba-tools) tool in your PATH.
+* For compressing data with LZ77 you need to have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) and the environment variable ```$DEVKITPRO``` set, or the [gbalzss](https://github.com/devkitPro/gba-tools) tool in your ```$PATH```.
 
 ## Building
 
@@ -157,7 +157,7 @@ This will put image data 0 of file 0 and image data 0 of file 1 next to each oth
 
 ### Compressing data
 
-You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible) and ```--lz11``` (LZ77 ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions)). To be able to safely decompress data to VRAM, add the option ```--vram```. Compression needs the [devKitPro](https://devkitpro.org) tool [gbalzss](https://github.com/devkitPro/gba-tools) which it will try to find through the %DEVKITPRO% environment variable.
+You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible) and ```--lz11``` (LZ77 ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions)). To be able to safely decompress data to VRAM, add the option ```--vram```. Compression needs the [devKitPro](https://devkitpro.org) tool [gbalzss](https://github.com/devkitPro/gba-tools) which it will try to find through the ```$DEVKITPRO``` environment variable or in ```$PATH```.
 
 ## TODO
 
