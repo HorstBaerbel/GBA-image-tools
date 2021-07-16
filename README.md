@@ -145,7 +145,7 @@ To store images as sprites use the option ```--sprites=W,H```. This will cut the
 * Image height must be a multiple of H and of 8 (for tile-conversion)
 * It makes sense that W and H are in [8, 16, 32, 64] (allowed GBA sprite sizes), but this isn't enforced
 
-The data will be stored in ["1D mapping"](http://problemkaputt.de/gbatek.htm#gbalcdvideocontroller). You can simply memcpy it over to VRAM, but don't forget to set the "OBJ Character VRAM Mapping" flag.
+The data will be stored in ["1D mapping"](http://problemkaputt.de/gbatek.htm#lcdobjvramcharactertilemapping). You can simply memcpy it over to VRAM, but don't forget to set the "OBJ Character VRAM Mapping" flag.
 
 ### Interleaving data
 
