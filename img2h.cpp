@@ -708,18 +708,20 @@ int main(int argc, const char *argv[])
             // convert image data to uint32_ts and palette to BGR555 uint16_ts
             auto imageData32 = combineTo<uint32_t>(processedData);
             auto paletteData16 = allColorMapsSame ? convertToBGR555(colorMaps.front()) : combineTo<uint16_t>(convertToBGR555(colorMaps));
-            writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+            auto imageOrSpriteStartIndices = divideBy<uint32_t>(getStartIndices(processedData), 4);
+            auto colorMapsStartIndices = getStartIndices(colorMaps);
+            writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, imageOrSpriteStartIndices.size(), storeTileOrSpriteWise);
             if (imgType == ImageType::PaletteType)
             {
-                writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame, storeTileOrSpriteWise);
+                writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
             }
             hFile << std::endl;
             hFile.close();
             // output image and palette data
-            writeImageDataToC(cFile, varName, baseName, imageData32, divideBy<uint32_t>(getStartIndices(processedData), 4), storeTileOrSpriteWise);
+            writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
             if (imgType == ImageType::PaletteType)
             {
-                writePaletteDataToC(cFile, varName, paletteData16, getStartIndices(colorMaps), storeTileOrSpriteWise);
+                writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
             }
             cFile.close();
         }

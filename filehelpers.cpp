@@ -81,7 +81,7 @@ void writeImageDataToC(std::ofstream &cFile, const std::string &varName, const s
     cFile << "#include \"" << hFileBaseName << ".h\"" << std::endl
           << std::endl;
     // write data start indices if passed
-    if (!startIndices.empty())
+    if (startIndices.size() > 1)
     {
         cFile << "const _Alignas(4) uint32_t " << varName << "_DATA_START[" << varName << (asTiles ? "_NR_OF_TILES] = { " : "_NR_OF_IMAGES] = { ") << std::endl;
         writeValues(cFile, startIndices);
@@ -98,7 +98,7 @@ void writeImageDataToC(std::ofstream &cFile, const std::string &varName, const s
 void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &data, const std::vector<uint32_t> &startIndices, bool asTiles)
 {
     // write palette start indices if more than one palette
-    if (!startIndices.empty())
+    if (startIndices.size() > 1)
     {
         cFile << "const _Alignas(4) uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES] = { " : "_NR_OF_IMAGES] = { ") << std::endl;
         writeValues(cFile, startIndices);
