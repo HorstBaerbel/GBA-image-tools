@@ -57,6 +57,20 @@ bool mustCompress()
     return m_vramCompatible || m_lz10Compression || m_lz11Compression;
 }
 
+std::string getCommandLine(int argc, const char *argv[])
+{
+    std::string result;
+    for (int i = 1; i < argc; i++)
+    {
+        result += std::string(argv[i]);
+        if (i < (argc - 1))
+        {
+            result += " ";
+        }
+    }
+    return result;
+}
+
 bool readArguments(int argc, const char *argv[])
 {
     cxxopts::Options options("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
@@ -675,7 +689,7 @@ int main(int argc, const char *argv[])
             std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
                            { return std::toupper(c, std::locale()); });
             // output header
-            hFile << "// Converted with img2h" << std::endl;
+            hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
             if (mustCompress())
             {
                 hFile << "// Compression type LZSS, variant " << (m_lz11Compression ? "11" : "10") << (m_vramCompatible ? ", VRAM-safe" : "") << std::endl;
