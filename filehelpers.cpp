@@ -41,14 +41,14 @@ void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const s
         hFile << "#define " << varName << "_WIDTH " << width << " // width of sprites/tiles in pixels" << std::endl;
         hFile << "#define " << varName << "_HEIGHT " << height << " // height of sprites/tiles in pixels" << std::endl;
         hFile << "#define " << varName << "_BYTES_PER_TILE " << bytesPerImage << " // bytes for one complete sprite/tile" << std::endl;
-        hFile << "#define " << varName << "_DATA_SIZE " << data.size() << " // size of sprite/tile data in DWORDs" << std::endl;
+        hFile << "#define " << varName << "_DATA_SIZE " << data.size() << " // size of sprite/tile data in 4 byte units" << std::endl;
     }
     else
     {
         hFile << "#define " << varName << "_WIDTH " << width << " // width of image in pixels" << std::endl;
         hFile << "#define " << varName << "_HEIGHT " << height << " // height of image in pixels" << std::endl;
         hFile << "#define " << varName << "_BYTES_PER_IMAGE " << bytesPerImage << " // bytes for one complete image" << std::endl;
-        hFile << "#define " << varName << "_DATA_SIZE " << data.size() << " // size of image data in DWORDs" << std::endl;
+        hFile << "#define " << varName << "_DATA_SIZE " << data.size() << " // size of image data in 4 byte units" << std::endl;
     }
     if (nrOfImages > 1)
     {
@@ -59,7 +59,7 @@ void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const s
         else
         {
             hFile << "#define " << varName << "_NR_OF_IMAGES " << nrOfImages << " // # of images in data" << std::endl;
-            hFile << "extern const uint32_t " << varName << "_DATA_START[" << varName << "_NR_OF_IMAGES]; // index where the data for an image starts" << std::endl;
+            hFile << "extern const uint32_t " << varName << "_DATA_START[" << varName << "_NR_OF_IMAGES]; // index where data for an image starts (in 4 byte units)" << std::endl;
         }
     }
     hFile << "extern const uint32_t " << varName << "_DATA[" << varName << "_DATA_SIZE];" << std::endl;
@@ -68,10 +68,10 @@ void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const s
 void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<uint16_t> &data, uint32_t nrOfColors, bool singleColorMap, bool asTiles)
 {
     hFile << "#define " << varName << "_PALETTE_LENGTH " << nrOfColors << " // # of palette entries per palette" << std::endl;
-    hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data in WORDs" << std::endl;
+    hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data in 2 byte units" << std::endl;
     if (!singleColorMap)
     {
-        hFile << "extern const uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES]; // index where a palette for a sprite/tile starts" : "_NR_OF_IMAGES]; // index where a palette for an image starts") << std::endl;
+        hFile << "extern const uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES]; // index where a palette for a sprite/tile starts (in 2 byte units)" : "_NR_OF_IMAGES]; // index where a palette for an image starts (in 2 byte units)") << std::endl;
     }
     hFile << "extern const uint16_t " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE];" << std::endl;
 }
