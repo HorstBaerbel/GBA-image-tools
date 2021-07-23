@@ -161,6 +161,7 @@ You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkapu
 
 ## TODO
 
+* Syntax to apply options to single file only?
 * Sort colors by hue and lightness before reordering
 * Resolve wildcards on Windows
 * Compress with LZSS directly
