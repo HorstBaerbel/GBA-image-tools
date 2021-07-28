@@ -167,6 +167,7 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Sprite height must be in [8,64] and a multiple of 8. Aborting." << std::endl;
             return false;
         }
+        m_asSprites = true;
     }
     return true;
 }
