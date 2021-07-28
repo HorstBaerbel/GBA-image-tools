@@ -70,9 +70,13 @@ To make sure your files are correctly ordered for further processing steps add "
 
 This will generate the file names "foo_00.png", "foo_01.png" and so on.
 
-If you have images with larger flat areas of color and they come out all garbled due to the dithering, try the "[-posterize](https://www.imagemagick.org/script/command-line-options.php?#posterize)" option instead:
+If you have images with larger flat areas of color or want to reduce images to a low number of colors results might look all garbled. This can be due to dithering. Try the "[-posterize](https://www.imagemagick.org/script/command-line-options.php?#posterize)" option:
 
 ```convert INFILE -posterize 6 -remap colormap555.png OUTFILE```
+
+or change / turn off dithering using "[-dither](https://www.imagemagick.org/script/command-line-options.php?#dither)" option instead:
+
+```convert INFILE -dither none -colors 15 -remap colormap555.png OUTFILE```
 
 ## img2h general usage
 
