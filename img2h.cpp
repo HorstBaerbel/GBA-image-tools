@@ -723,9 +723,13 @@ int main(int argc, const char *argv[])
             // convert image data to uint32_ts and palette to BGR555 uint16_ts
             auto imageData32 = combineTo<uint32_t>(processedData);
             auto paletteData16 = allColorMapsSame ? convertToBGR555(colorMaps.front()) : combineTo<uint16_t>(convertToBGR555(colorMaps));
+            // get start indices for image data and palettes
             auto imageOrSpriteStartIndices = divideBy<uint32_t>(getStartIndices(processedData), 4);
             auto colorMapsStartIndices = getStartIndices(colorMaps);
-            writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, imageOrSpriteStartIndices.size(), storeTileOrSpriteWise);
+            // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
+            nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
+            // output header
+            writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
             if (imgType == ImageType::PaletteType)
             {
                 writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
