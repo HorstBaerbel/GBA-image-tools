@@ -1,6 +1,6 @@
-cmake_minimum_required (VERSION 3.1.0)
+cmake_minimum_required (VERSION 3.2.0)
  
-project(ImageTools)
+project(GBA-image-tools)
 
 find_package(ImageMagick REQUIRED COMPONENTS Magick++)
 
@@ -51,3 +51,27 @@ add_executable(hex2gba hex2gba.cpp)
 target_link_libraries(hex2gba ${ImageMagick_LIBRARIES})
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
 target_link_libraries(img2h ${ImageMagick_LIBRARIES} stdc++fs pthread)
+
+#-------------------------------------------------------------------------------
+#define install files for CPack
+
+install(FILES
+    "colormap555"
+    "gimppalette555"
+    "hex2gba"
+    "img2h"
+    "colormap555.png"
+    "GBA.gpl"
+    "README.md"
+    "LICENSE"
+    DESTINATION .
+)
+
+# Tell CPack to create a zip file with our project name
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}")
+# Tell CPack not to put everything inside an enclosing directory.
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+# Apparently this should be always on but isn't for backwards compatibility.
+set(CPACK_VERBATIM_VARIABLES YES)
+include(CPack)

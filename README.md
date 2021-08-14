@@ -37,6 +37,12 @@ cmake ..
 make
 ```
 
+To build a release package, call:
+
+```sh
+make package
+```
+
 ### From Visual Studio Code
 
 * **Must**: Install the "C/C++ extension" by Microsoft.
