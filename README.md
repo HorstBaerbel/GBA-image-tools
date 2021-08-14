@@ -78,6 +78,10 @@ or change / turn off dithering using "[-dither](https://www.imagemagick.org/scri
 
 ```convert INFILE -dither none -colors 15 -remap colormap555.png OUTFILE```
 
+If this still does not give you the desired output (too many colors, bad quality), try swapping the ```-colors``` option to the back:
+
+```convert INFILE -remap colormap555.png -colors NROFCOLORS OUTFILE```
+
 ## img2h general usage
 
 Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME```
