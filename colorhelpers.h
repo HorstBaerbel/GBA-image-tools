@@ -3,26 +3,30 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 #include <Magick++.h>
 
 using namespace Magick;
 
-/// @brief Get color map from ImageMagick Image.
+/// @brief Get color map from ImageMagick Image
 std::vector<Color> getColorMap(const Image &img);
 
-/// @brief set color map in an ImageMagick Image.
+/// @brief set color map in an ImageMagick Image
 void setColorMap(Image &img, const std::vector<Color> &colorMap);
+
+/// @brief Convert ImageMagick color to string
+std::string asHex(const Color &color);
 
 /// @brief Add color to color map and shift all other colors to the back by one
 std::vector<Color> addColorAtIndex0(const std::vector<Color> &colorMap, const Color &color0);
 
-/// @brief Convert ImageMagick Colors to BGR555 colors for GBA.
+/// @brief Convert ImageMagick Colors to BGR555 colors for GBA
 std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Color>> &colors);
 
-/// @brief Convert ImageMagick Colors to BGR555 colors for GBA.
+/// @brief Convert ImageMagick Colors to BGR555 colors for GBA
 std::vector<uint16_t> convertToBGR555(const std::vector<Color> &colors);
 
-/// @brief Convert a ImageMagick Color to a BGR555 color for GBA.
+/// @brief Convert a ImageMagick Color to a BGR555 color for GBA
 uint16_t colorToBGR555(const Color &color);
 
 /// @brief Interleave all palette colors: P0C0, P1C0, P0C1, P1C1...

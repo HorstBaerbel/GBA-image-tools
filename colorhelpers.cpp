@@ -6,6 +6,7 @@
 #include <cmath>
 #include <future>
 #include <iostream>
+#include <sstream>
 
 std::vector<Color> getColorMap(const Image &img)
 {
@@ -23,6 +24,16 @@ void setColorMap(Image &img, const std::vector<Color> &colorMap)
     {
         img.colorMap(i, colorMap.at(i));
     }
+}
+
+std::string asHex(const Color &color)
+{
+    std::stringstream ss;
+    ss << "0x";
+    ss << std::hex << static_cast<uint32_t>(color.redQuantum()) / static_cast<uint32_t>(QuantumRange);
+    ss << std::hex << static_cast<uint32_t>(color.greenQuantum()) / static_cast<uint32_t>(QuantumRange);
+    ss << std::hex << static_cast<uint32_t>(color.blueQuantum()) / static_cast<uint32_t>(QuantumRange);
+    return ss.str();
 }
 
 std::vector<Color> addColorAtIndex0(const std::vector<Color> &colorMap, const Color &color0)

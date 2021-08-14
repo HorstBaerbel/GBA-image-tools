@@ -11,21 +11,7 @@ std::vector<uint8_t> getImageData(const Image &img)
         const auto nrOfIndices = img.columns() * img.rows();
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getIndices to work...
         auto indices = img.getConstIndexes();
-        if (nrOfColors <= 16)
-        {
-            // size must be a multiple of 2
-            if (nrOfIndices & 1)
-            {
-                throw std::runtime_error("Number of indices must be even!");
-            }
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 2)
-            {
-                uint8_t v = (((indices[i + 1]) & 0x0F) << 4);
-                v |= ((indices[i]) & 0x0F);
-                data.push_back(v);
-            }
-        }
-        else if (nrOfColors <= 256)
+        if (nrOfColors <= 256)
         {
             for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
             {
@@ -60,10 +46,33 @@ std::vector<uint8_t> getImageData(const Image &img)
     return data;
 }
 
+std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices)
+{
+    std::vector<uint8_t> data;
+    // size must be a multiple of 2
+    const auto nrOfIndices = indices.size();
+    if (nrOfIndices & 1)
+    {
+        throw std::runtime_error("Number of indices must be even!");
+    }
+    for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 2)
+    {
+        if (indices[i] > 15 || indices[i + 1] > 15)
+        {
+            throw std::runtime_error("Index values must be < 16!");
+        }
+        uint8_t v = (((indices[i + 1]) & 0x0F) << 4);
+        v |= ((indices[i]) & 0x0F);
+        data.push_back(v);
+    }
+    return data;
+}
+
 std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData)
 {
     auto tempData = imageData;
-    std::for_each(tempData.begin(), tempData.end(), [](auto &index) { index++; });
+    std::for_each(tempData.begin(), tempData.end(), [](auto &index)
+                  { index++; });
     return tempData;
 }
 
@@ -92,6 +101,7 @@ std::vector<uint8_t> swapIndices(std::vector<uint8_t> &imageData, const std::vec
         reverseIndices[newIndices[i]] = i;
     }
     auto tempData = imageData;
-    std::for_each(tempData.begin(), tempData.end(), [&reverseIndices](auto &i) { i = reverseIndices[i]; });
+    std::for_each(tempData.begin(), tempData.end(), [&reverseIndices](auto &i)
+                  { i = reverseIndices[i]; });
     return tempData;
 }

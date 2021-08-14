@@ -8,8 +8,10 @@
 using namespace Magick;
 
 /// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes.
-/// If the palette has < 16 entries, two (nibble-sized) indices will be combined into a byte.
 std::vector<uint8_t> getImageData(const Image &img);
+
+/// @brief Convert image index data to nibble-sized values
+std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices);
 
 /// @brief Increase all image indices by 1
 std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData);

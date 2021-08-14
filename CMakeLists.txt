@@ -21,7 +21,7 @@ endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     #set up compiler flags for GCC
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14") #support C++14
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") #support C++17
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11") #support C11
 endif()
 

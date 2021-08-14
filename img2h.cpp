@@ -47,6 +47,9 @@ Color m_addColor0;
 bool m_doMoveColor0 = false;
 std::string m_moveColor0String;
 Color m_moveColor0;
+bool m_doShiftIndices = false;
+std::string m_shiftIndicesString;
+uint32_t m_shiftIndicesBy = 0;
 bool m_reorderColors = false;
 std::vector<std::string> m_inFile;
 std::string m_outFile;
@@ -75,7 +78,7 @@ bool readArguments(int argc, const char *argv[])
 {
     cxxopts::Options options("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
     options.allow_unrecognised_options();
-    options.add_options()("h,help", "Print help")("a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String))("i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>())("o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>())("v,vram", "Optional: Make compression VRAM-safe", cxxopts::value<bool>(m_vramCompatible))("0,lz10", "Optional: Use LZ compression variant 10 (default: no compression)", cxxopts::value<bool>(m_lz10Compression))("1,lz11", "Optional: Use LZ compression variant 11 (default: no compression)", cxxopts::value<bool>(m_lz11Compression))("t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles))("s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes))("m,movecolor0", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String))("d,interleavedata", "Optional: Interleave all image data into one array", cxxopts::value<bool>(m_interleaveData))("r,reordercolors", "Optional: Reorder palette colors to minimize preceived color distance", cxxopts::value<bool>(m_reorderColors))("positional", "", cxxopts::value<std::vector<std::string>>());
+    options.add_options()("h,help", "Print help")("p,shift", "Optional. Increase image index values by N, keeping index #0 at 0. N must be in [1, 255] and resulting indices will be clamped to [0, 255]. Only usable for paletted images.", cxxopts::value<std::string>(m_shiftIndicesString))("a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String))("i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>())("o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>())("v,vram", "Optional: Make compression VRAM-safe", cxxopts::value<bool>(m_vramCompatible))("0,lz10", "Optional: Use LZ compression variant 10 (default: no compression)", cxxopts::value<bool>(m_lz10Compression))("1,lz11", "Optional: Use LZ compression variant 11 (default: no compression)", cxxopts::value<bool>(m_lz11Compression))("t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles))("s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes))("m,movecolor0", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String))("d,interleavedata", "Optional: Interleave all image data into one array", cxxopts::value<bool>(m_interleaveData))("r,reordercolors", "Optional: Reorder palette colors to minimize preceived color distance", cxxopts::value<bool>(m_reorderColors))("positional", "", cxxopts::value<std::vector<std::string>>());
     options.parse_positional({"infile", "outname", "positional"});
     auto result = options.parse(argc, argv);
     // check if help was requested
@@ -147,6 +150,27 @@ bool readArguments(int argc, const char *argv[])
             return false;
         }
     }
+    // check index increase
+    if (result.count("shift"))
+    {
+        // try converting argument to a number
+        try
+        {
+            auto value = std::atoi(m_shiftIndicesString.c_str());
+            if (value < 1 || value > 255)
+            {
+                std::cerr << "Shift value must be in [1, 255]. Aborting. " << std::endl;
+                return false;
+            }
+            m_doShiftIndices = true;
+            m_shiftIndicesBy = value;
+        }
+        catch (const Exception &ex)
+        {
+            std::cerr << m_shiftIndicesString << " is not a valid number. Aborting. " << std::endl;
+            return false;
+        }
+    }
     // check sprites sizes
     if (result.count("sprites"))
     {
@@ -187,6 +211,9 @@ void printUsage()
     std::cout << "  color indices by 1. Only usable for paletted images. Format \"abcd012\"" << std::endl;
     std::cout << "--movecolor0=COLOR: Move COLOR to palette index #0 and move all other" << std::endl;
     std::cout << "  colors accordingly. Only usable for paletted images. Format \"abcd012\"" << std::endl;
+    std::cout << "--shift=N: Increase image index values by N, keeping index #0 at 0." << std::endl;
+    std::cout << "  N must be in [1, 255] and resulting indices will be clamped to [0, 255]." << std::endl;
+    std::cout << "  Only usable for paletted images." << std::endl;
     std::cout << "--tiles: Cut data into 8x8 tiles and store data tile-wise. The image needs to" << std::endl;
     std::cout << "  be paletted and its width and height must be a multiple of 8 pixels." << std::endl;
     std::cout << "--sprites=W,H: Cut data into sprites of size W x H and store data sprite-" << std::endl;
@@ -207,8 +234,8 @@ void printUsage()
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
-    std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, tiles, sprites, " << std::endl;
-    std::cout << "compress, interleavedata, output" << std::endl;
+    std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, tiles, " << std::endl;
+    std::cout << "sprites, compress, interleavedata, output" << std::endl;
 }
 
 std::string getEnv(const std::string &var)
@@ -353,6 +380,234 @@ std::vector<T> divideBy(const std::vector<T> &data, T divideBy = 1)
     return result;
 }
 
+std::tuple<bool, ImageType, Geometry, std::vector<std::vector<Color>>, std::vector<std::vector<uint8_t>>> readImages(const std::vector<std::string> &fileNames, bool asSprites, bool asTiles, uint32_t spriteWidth, uint32_t spriteHeight)
+{
+    ImageType imgType = ImageType::UndefinedType;
+    Geometry imgSize;
+    std::vector<std::vector<Color>> colorMaps;
+    std::vector<std::vector<uint8_t>> imgData;
+    // open first image and store type
+    auto ifIt = fileNames.cbegin();
+    std::cout << "Reading " << *ifIt;
+    try
+    {
+        Image img;
+        img.read(*ifIt);
+        imgType = img.type();
+        imgSize = img.size();
+        std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
+        if (img.classType() == PseudoClass && imgType == PaletteType)
+        {
+            std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
+        }
+        else if (imgType == TrueColorType)
+        {
+            std::cout << "true color" << std::endl;
+        }
+        else
+        {
+            std::cerr << "unsupported format. Aborting" << std::endl;
+            return {false, ImageType::UndefinedType, {}, {}, {}};
+        }
+        // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
+        if ((asSprites || asTiles) && (imgType != ImageType::PaletteType || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
+        {
+            std::cerr << "Image must be paletted and width / height must be a multiple of 8. Aborting" << std::endl;
+            return {false, ImageType::UndefinedType, {}, {}, {}};
+        }
+        if (asSprites && (imgSize.width() % spriteWidth != 0 || imgSize.height() % spriteHeight != 0))
+        {
+            std::cerr << "Image width / height must be a multiple of sprite width / height. Aborting" << std::endl;
+            return {false, ImageType::UndefinedType, {}, {}, {}};
+        }
+        if (img.classType() == PseudoClass && imgType == ImageType::PaletteType)
+        {
+            colorMaps.push_back(getColorMap(*ifIt));
+        }
+        imgData.push_back(getImageData(*ifIt));
+        ifIt++;
+    }
+    catch (const Exception &ex)
+    {
+        std::cerr << ". Failed to read " << *ifIt << ": " << ex.what() << std::endl;
+        return {false, ImageType::UndefinedType, {}, {}, {}};
+    }
+    // read rest of images
+    while (ifIt != fileNames.cend())
+    {
+        std::cout << "Reading " << *ifIt;
+        Image img;
+        try
+        {
+            img.read(*ifIt);
+        }
+        catch (const Exception &ex)
+        {
+            std::cerr << " failed: " << ex.what() << std::endl;
+            return {false, ImageType::UndefinedType, {}, {}, {}};
+        }
+        std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
+        if (img.classType() == PseudoClass && imgType == PaletteType)
+        {
+            std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
+        }
+        else if (imgType == TrueColorType)
+        {
+            std::cout << "true color" << std::endl;
+        }
+        else
+        {
+            std::cerr << "unsupported format. Aborting" << std::endl;
+            return {false, ImageType::UndefinedType, {}, {}, {}};
+        }
+        // check type and size
+        if (img.type() != imgType)
+        {
+            std::cerr << "Image types do not match: " << *ifIt << std::endl;
+            return {false, ImageType::UndefinedType, {}, {}, {}};
+        }
+        if (img.size() != imgSize)
+        {
+            std::cerr << "Image sizes do not match: " << *ifIt << std::endl;
+            return {false, ImageType::UndefinedType, {}, {}, {}};
+        }
+        if (img.classType() == PseudoClass && imgType == ImageType::PaletteType)
+        {
+            colorMaps.push_back(getColorMap(*ifIt));
+        }
+        imgData.push_back(getImageData(*ifIt));
+        ifIt++;
+    }
+    return {true, imgType, imgSize, colorMaps, imgData};
+}
+
+bool reorderColors(ImageType imgType, std::vector<std::vector<Color>> &colorMaps,
+                   std::vector<std::vector<uint8_t>> &imgData)
+{
+    if (imgType != ImageType::PaletteType)
+    {
+        std::cerr << "Reordering colors can only be done for paletted images. Aborting." << std::endl;
+        return false;
+    }
+    for (size_t i = 0; i < colorMaps.size(); ++i)
+    {
+        const auto newOrder = minimizeColorDistance(colorMaps[i]);
+        colorMaps[i] = swapColors(colorMaps[i], newOrder);
+        imgData[i] = swapIndices(imgData[i], newOrder);
+    }
+    return true;
+}
+
+bool addColor0(ImageType imgType, std::vector<std::vector<Color>> &colorMaps,
+               std::vector<std::vector<uint8_t>> &imgData, Color addColor0)
+{
+    if (imgType != ImageType::PaletteType)
+    {
+        std::cerr << "Adding color #0 can only be done for paletted images. Aborting." << std::endl;
+        return false;
+    }
+    for (size_t i = 0; i < colorMaps.size(); ++i)
+    {
+        auto &cm = colorMaps[i];
+        // check if the color map has one free entry
+        if (cm.size() > 255)
+        {
+            std::cerr << "No space in color map (image has " << cm.size() << " colors). Aborting." << std::endl;
+            return false;
+        }
+        // add color at front of color map
+        cm = addColorAtIndex0(cm, addColor0);
+        imgData[i] = incImageIndicesBy1(imgData[i]);
+    }
+    std::cout << "Added " << asHex(addColor0) << " as color #0." << std::endl;
+    return true;
+}
+
+bool moveColor0(ImageType imgType, std::vector<std::vector<Color>> &colorMaps,
+                std::vector<std::vector<uint8_t>> &imgData, Color moveColor0)
+{
+    if (imgType != ImageType::PaletteType)
+    {
+        std::cerr << "Moving colors can only be done for paletted images. Aborting." << std::endl;
+        return false;
+    }
+    for (size_t i = 0; i < colorMaps.size(); ++i)
+    {
+        auto &cm = colorMaps[i];
+        // try to find color in palette
+        auto oldColorIt = std::find(cm.begin(), cm.end(), moveColor0);
+        if (oldColorIt == cm.end())
+        {
+            std::cerr << "Color " << asHex(moveColor0) << " not found in image color map. Aborting." << std::endl;
+            return false;
+        }
+        const size_t oldIndex = std::distance(cm.begin(), oldColorIt);
+        // check if index needs to move
+        if (oldIndex != 0)
+        {
+            // move index in color map and image data
+            std::swap(cm[oldIndex], cm[0]);
+            imgData[i] = swapIndexToIndex0(imgData[i], oldIndex);
+        }
+    }
+    std::cout << "Moved color " << asHex(moveColor0) << " to index #0." << std::endl;
+    return true;
+}
+
+bool shiftIndices(ImageType imgType, std::vector<std::vector<uint8_t>> &imgData, uint32_t shiftBy)
+{
+    if (imgType != ImageType::PaletteType)
+    {
+        std::cerr << "Shifting index values can only be done for paletted images. Aborting." << std::endl;
+        return false;
+    }
+    for (size_t i = 0; i < imgData.size(); ++i)
+    {
+        auto &id = imgData[i];
+        auto maxIndex = *std::max_element(id.cbegin(), id.cend());
+        if (maxIndex + shiftBy > 255)
+        {
+            std::cerr << "Warning: Max. index value in image #" << i << " is " << maxIndex << ", shift is " << shiftBy << "! Resulting index values will be clamped to [0, 255]!" << std::endl;
+        }
+        std::for_each(id.begin(), id.end(), [shiftBy](auto &index)
+                      { index = (index == 0) ? 0 : (((index + shiftBy) > 255) ? 255 : (index + shiftBy)); });
+    }
+    std::cout << "Increased index values by " << shiftBy << std::endl;
+    return true;
+}
+
+std::tuple<bool, bool, uint32_t> areAllColorMapsSame(ImageType imgType, const std::vector<std::vector<Color>> &colorMaps)
+{
+    bool allColorMapsSame = true;
+    bool allColorMapsSameSize = true;
+    uint32_t maxColorMapColors = 0;
+    if (imgType == PaletteType && !colorMaps.empty())
+    {
+        const auto &refColorMap = colorMaps.front();
+        maxColorMapColors = refColorMap.size();
+        for (const auto &cm : colorMaps)
+        {
+            if (allColorMapsSameSize)
+            {
+                if (cm.size() != refColorMap.size())
+                {
+                    allColorMapsSameSize = false;
+                    allColorMapsSame = false;
+                }
+                if (allColorMapsSame && cm != refColorMap)
+                {
+                    allColorMapsSame = false;
+                }
+            }
+            if (cm.size() > maxColorMapColors)
+            {
+                maxColorMapColors = cm.size();
+            }
+        }
+    }
+    return {allColorMapsSame, allColorMapsSameSize, maxColorMapColors};
+}
+
 int main(int argc, const char *argv[])
 {
     // check arguments
@@ -407,197 +662,36 @@ int main(int argc, const char *argv[])
     }
     // fire up ImageMagick
     InitializeMagick(*argv);
-    // store info about images
-    auto ifIt = m_inFile.cbegin();
-    ImageType imgType = ImageType::UndefinedType;
-    Geometry imgSize;
-    std::vector<std::vector<Color>> colorMaps;
-    std::vector<std::vector<uint8_t>> imageData;
-    // open first image and store type
-    std::cout << "Reading " << *ifIt;
-    try
+    // read image from disk
+    auto [readSuccess, imgType, imgSize, colorMaps, imgData] = readImages(m_inFile, m_asSprites, m_asTiles, m_spriteWidth, m_spriteHeight);
+    if (!readSuccess)
     {
-        Image img;
-        img.read(*ifIt);
-        imgType = img.type();
-        imgSize = img.size();
-        std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        if (img.classType() == PseudoClass && imgType == PaletteType)
-        {
-            std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
-        }
-        else if (imgType == TrueColorType)
-        {
-            std::cout << "true color" << std::endl;
-        }
-        else
-        {
-            std::cerr << "unsupported format. Aborting" << std::endl;
-            return 1;
-        }
-        // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
-        if ((m_asSprites || m_asTiles) && (imgType != ImageType::PaletteType || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
-        {
-            std::cerr << "Image must be paletted and width / height must be a multiple of 8. Aborting" << std::endl;
-            return 1;
-        }
-        if (m_asSprites && (imgSize.width() % m_spriteWidth != 0 || imgSize.height() % m_spriteHeight != 0))
-        {
-            std::cerr << "Image width / height must be a multiple of sprite width / height. Aborting" << std::endl;
-            return 1;
-        }
-        if (img.classType() == PseudoClass && imgType == ImageType::PaletteType)
-        {
-            colorMaps.push_back(getColorMap(*ifIt));
-        }
-        imageData.push_back(getImageData(*ifIt));
-        ifIt++;
-    }
-    catch (const Exception &ex)
-    {
-        std::cerr << ". Failed to read " << *ifIt << ": " << ex.what() << std::endl;
         return 1;
     }
-    // read rest of images
-    while (ifIt != m_inFile.cend())
-    {
-        std::cout << "Reading " << *ifIt;
-        Image img;
-        try
-        {
-            img.read(*ifIt);
-        }
-        catch (const Exception &ex)
-        {
-            std::cerr << " failed: " << ex.what() << std::endl;
-            return 1;
-        }
-        std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        if (img.classType() == PseudoClass && imgType == PaletteType)
-        {
-            std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
-        }
-        else if (imgType == TrueColorType)
-        {
-            std::cout << "true color" << std::endl;
-        }
-        else
-        {
-            std::cerr << "unsupported format. Aborting" << std::endl;
-            return 1;
-        }
-        // check type and size
-        if (img.type() != imgType)
-        {
-            std::cerr << "Image types do not match: " << *ifIt << std::endl;
-            return 1;
-        }
-        if (img.size() != imgSize)
-        {
-            std::cerr << "Image sizes do not match: " << *ifIt << std::endl;
-            return 1;
-        }
-        if (img.classType() == PseudoClass && imgType == ImageType::PaletteType)
-        {
-            colorMaps.push_back(getColorMap(*ifIt));
-        }
-        imageData.push_back(getImageData(*ifIt));
-        ifIt++;
-    }
     // reorder palette colors
-    if (m_reorderColors)
+    if (m_reorderColors && !reorderColors(imgType, colorMaps, imgData))
     {
-        if (imgType != ImageType::PaletteType)
-        {
-            std::cerr << "Reordering colors can only be done for paletted images. Aborting." << std::endl;
-            return 1;
-        }
-        for (size_t i = 0; i < colorMaps.size(); ++i)
-        {
-            const auto newOrder = minimizeColorDistance(colorMaps[i]);
-            colorMaps[i] = swapColors(colorMaps[i], newOrder);
-            imageData[i] = swapIndices(imageData[i], newOrder);
-        }
+        return 1;
     }
     // add extra color #0 if wanted
-    if (m_doAddColor0)
+    if (m_doAddColor0 && !addColor0(imgType, colorMaps, imgData, m_addColor0))
     {
-        if (imgType != ImageType::PaletteType)
-        {
-            std::cerr << "Adding color #0 can only be done for paletted images. Aborting." << std::endl;
-            return 1;
-        }
-        for (size_t i = 0; i < colorMaps.size(); ++i)
-        {
-            auto &cm = colorMaps[i];
-            // check if the color map has one free entry
-            if (cm.size() > 255)
-            {
-                std::cerr << "No space in color map (image has " << cm.size() << " colors). Aborting." << std::endl;
-                return 1;
-            }
-            // add color at front of color map
-            cm = addColorAtIndex0(cm, m_addColor0);
-            imageData[i] = incImageIndicesBy1(imageData[i]);
-        }
-        std::cout << "Added " << m_addColor0String << " as color #0." << std::endl;
+        return 1;
     }
     // move color to index #0 if wanted
-    if (m_doMoveColor0)
+    if (m_doMoveColor0 && !moveColor0(imgType, colorMaps, imgData, m_moveColor0))
     {
-        if (imgType != ImageType::PaletteType)
-        {
-            std::cerr << "Moving colors can only be done for paletted images. Aborting." << std::endl;
-            return 1;
-        }
-        for (size_t i = 0; i < colorMaps.size(); ++i)
-        {
-            auto &cm = colorMaps[i];
-            // try to find color in palette
-            auto oldColorIt = std::find(cm.begin(), cm.end(), m_moveColor0);
-            if (oldColorIt == cm.end())
-            {
-                std::cerr << "Color " << m_moveColor0String << " not found in image color map. Aborting." << std::endl;
-                return 1;
-            }
-            const size_t oldIndex = std::distance(cm.begin(), oldColorIt);
-            // check if index needs to move
-            if (oldIndex != 0)
-            {
-                // move index in color map and image data
-                std::swap(cm[oldIndex], cm[0]);
-                imageData[i] = swapIndexToIndex0(imageData[i], oldIndex);
-            }
-        }
-        std::cout << "Moved color " << m_moveColor0String << " to index #0." << std::endl;
+        return 1;
+    }
+    // shift indices if wanted
+    if (m_doShiftIndices && !shiftIndices(imgType, imgData, m_shiftIndicesBy))
+    {
+        return 1;
     }
     // check if color maps have same size
-    bool allColorMapsSame = true;
-    bool allColorMapsSameSize = true;
-    uint32_t maxColorMapColors = 0;
+    auto [allColorMapsSame, allColorMapsSameSize, maxColorMapColors] = areAllColorMapsSame(imgType, colorMaps);
     if (imgType == PaletteType && !colorMaps.empty())
     {
-        const auto &refColorMap = colorMaps.front();
-        maxColorMapColors = refColorMap.size();
-        for (const auto &cm : colorMaps)
-        {
-            if (allColorMapsSameSize)
-            {
-                if (cm.size() != refColorMap.size())
-                {
-                    allColorMapsSameSize = false;
-                    allColorMapsSame = false;
-                }
-                if (allColorMapsSame && cm != refColorMap)
-                {
-                    allColorMapsSame = false;
-                }
-            }
-            if (cm.size() > maxColorMapColors)
-            {
-                maxColorMapColors = cm.size();
-            }
-        }
         // check if reasonable color count
         if (maxColorMapColors > 256)
         {
@@ -609,10 +703,35 @@ int main(int argc, const char *argv[])
                       { fillUpToMultipleOf(cm, maxColorMapColors); });
         std::cerr << "Saving " << (allColorMapsSame ? 1 : colorMaps.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
     }
+    const auto nrOfBitsPerPixel = imgType == ImageType::PaletteType ? (maxColorMapColors <= 16 ? 4 : 8) : 16;
+    // check if we can convert image index data to a smaller format
+    if (imgType == PaletteType && maxColorMapColors < 16)
+    {
+        uint8_t maxIndex = 0;
+        for (size_t i = 0; i < imgData.size(); ++i)
+        {
+            auto &id = imgData[i];
+            maxIndex = std::max(*std::max_element(id.cbegin(), id.cend()), maxIndex);
+        }
+        if (maxIndex < 16)
+        {
+            std::cout << "Max. index value is " << maxIndex << ". Converting image data to 4 bit" << std::flush;
+            std::for_each(imgData.begin(), imgData.end(), [](auto &id)
+                          { id = convertDataToNibbles(id); });
+        }
+    }
     // we have the data. pad to multiple of 4 and compress
-    std::cout << (mustCompress() ? "Compressing" : "Converting") << std::flush;
+    std::cout << "Converting";
+    if (m_asSprites || m_asTiles || mustCompress())
+    {
+        std::cout << "(";
+        std::cout << (m_asSprites ? "sprites " : "");
+        std::cout << (m_asTiles ? "tiles " : "");
+        std::cout << (mustCompress() ? "compress" : "");
+        std::cout << ")" << std::flush;
+    }
     std::vector<std::vector<uint8_t>> processedData;
-    for (auto &data : imageData)
+    for (auto &data : imgData)
     {
         std::cout << "." << std::flush;
         if (data.empty())
@@ -623,17 +742,17 @@ int main(int argc, const char *argv[])
         }
         if (m_asTiles)
         {
-            data = convertToTiles(data, imgSize.width(), imgSize.height(), maxColorMapColors <= 16 ? 4 : 8);
+            data = convertToTiles(data, imgSize.width(), imgSize.height(), nrOfBitsPerPixel);
         }
         else if (m_asSprites)
         {
             auto dataSize = imgSize;
             if (dataSize.width() != m_spriteWidth)
             {
-                data = convertToWidth(data, dataSize.width(), dataSize.height(), maxColorMapColors <= 16 ? 4 : 8, m_spriteWidth);
+                data = convertToWidth(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel, m_spriteWidth);
                 dataSize = Magick::Geometry(m_spriteWidth, (dataSize.width() * dataSize.height()) / m_spriteWidth);
             }
-            data = convertToTiles(data, dataSize.width(), dataSize.height(), maxColorMapColors <= 16 ? 4 : 8);
+            data = convertToTiles(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel);
         }
         if (mustCompress())
         {
@@ -665,7 +784,6 @@ int main(int argc, const char *argv[])
     {
         try
         {
-            auto nrOfBitsPerPixel = imgType == ImageType::PaletteType ? (maxColorMapColors <= 16 ? 4 : 8) : 16;
             auto tempData = interleave(processedData, nrOfBitsPerPixel);
             processedData.clear();
             processedData.push_back(tempData);
@@ -698,9 +816,9 @@ int main(int argc, const char *argv[])
             hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
                   << std::endl;
             // output image and palette info
-            const bool storeTileOrSpriteWise = (imageData.size() == 1) && (m_asTiles || m_asSprites);
+            const bool storeTileOrSpriteWise = (imgData.size() == 1) && (m_asTiles || m_asSprites);
             uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
-            uint32_t nrOfImagesOrSprites = imageData.size();
+            uint32_t nrOfImagesOrSprites = imgData.size();
             if (nrOfImagesOrSprites == 1)
             {
                 // if we have a single input image, store data per tile or sprite

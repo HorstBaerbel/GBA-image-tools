@@ -86,6 +86,7 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
   * [```--reordercolors```](#reordering-palette-colors) - Reorder palette colors to minimize preceived color distance.
   * [```--addcolor0=COLOR```](#adding-a-color-to-index--0-in-the-palette) - Add COLOR at palette index #0 and increase all other color indices by 1.
   * [```--movecolor0=COLOR```](#moving-a-color-to-index--0-in-the-palette) - Move COLOR to palette index #0 and move all other colors accordingly.
+  * [```--shift=N```](#shifting-index-values) - Increase image index values by N, keeping index #0 at 0.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
   * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise.
   * [```--interleavedata```](#interleaving-data) - Interleave image data from multiple images into one big array.
@@ -121,7 +122,7 @@ On GBA the color at palette index #0 is always transparent. Some conversions lea
 
 ```img2h --addcolor0=COLORVALUE INFILE(s) OUTNAME```
 
-COLORVALUE is a hex color value, e.g. "AA2345" or "123def". This only works if the input palette has less than 256 colors.
+COLORVALUE is an RGB hex color value, e.g. "AA2345" or "123def". This only works if the input palette has less than 256 colors.
 
 ### Moving a color to index #0 in the palette
 
@@ -129,7 +130,15 @@ When using ImageMagick for color mapping / conversion the correct color might no
 
 ```img2h --movecolor0=COLORVALUE INFILE(s) OUTNAME```
 
-COLORVALUE is a hex color value, e.g. "AA2345" or "123def".
+COLORVALUE is an RGB hex color value, e.g. "AA2345" or "123def".
+
+### Shifting index values
+
+When multiple images, tiled backgrounds or sprites share a palette (e.g. sprite #1 uses colors 0-63, sprite #2 colors 64-127 etc.) index values need to be adjusted when copying. You can use the option ```--shift``` to shift index values by an amount N in the conversion process so they can be copied straight to memory:
+
+```img2h --shift=N INFILE(s) OUTNAME```
+
+N must be a number in [1, 255]. The resulting index values will be clamped to [0, 255]. Index 0 will not be increased and STAY index #0. The color map will NOT be adjusted either!
 
 ### Generating 8x8 tiles for tilemaps
 
