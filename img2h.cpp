@@ -253,8 +253,8 @@ void printUsage()
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
-    std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, tiles, " << std::endl;
-    std::cout << "sprites, diff8 / diff16, lz10 / lz11, interleavedata, output" << std::endl;
+    std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, sprites, " << std::endl;
+    std::cout << "tiles, diff8 / diff16, lz10 / lz11, interleavedata, output" << std::endl;
 }
 
 std::string getEnv(const std::string &var)

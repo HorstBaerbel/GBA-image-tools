@@ -110,7 +110,7 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here (in Linux, not working in Windows).
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
-The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ tiles / sprites ➜ compress ➜ interleavedata ➜ Write output
+The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ sprites ➜ tiles ➜ diff8 / diff16 ➜ lz10 / lz11 ➜ interleavedata ➜ Write output
 
 Some general information:
 
