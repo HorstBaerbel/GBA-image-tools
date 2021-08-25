@@ -33,9 +33,11 @@
 using namespace Magick;
 
 bool m_interleaveData = false;
-bool m_vramCompatible = false;
+bool m_deltaEncoding8 = false;
+bool m_deltaEncoding16 = false;
 bool m_lz10Compression = false;
 bool m_lz11Compression = false;
+bool m_vramCompatible = false;
 bool m_asTiles = false;
 bool m_asSprites = false;
 uint32_t m_spriteWidth = 0;
@@ -57,7 +59,7 @@ std::string m_gbalzssPath;
 
 bool mustCompress()
 {
-    return m_vramCompatible || m_lz10Compression || m_lz11Compression;
+    return m_deltaEncoding8 || m_deltaEncoding16 || m_lz10Compression || m_lz11Compression || m_vramCompatible;
 }
 
 std::string getCommandLine(int argc, const char *argv[])
@@ -78,7 +80,22 @@ bool readArguments(int argc, const char *argv[])
 {
     cxxopts::Options options("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
     options.allow_unrecognised_options();
-    options.add_options()("h,help", "Print help")("p,shift", "Optional. Increase image index values by N, keeping index #0 at 0. N must be in [1, 255] and resulting indices will be clamped to [0, 255]. Only usable for paletted images.", cxxopts::value<std::string>(m_shiftIndicesString))("a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String))("i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>())("o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>())("v,vram", "Optional: Make compression VRAM-safe", cxxopts::value<bool>(m_vramCompatible))("0,lz10", "Optional: Use LZ compression variant 10 (default: no compression)", cxxopts::value<bool>(m_lz10Compression))("1,lz11", "Optional: Use LZ compression variant 11 (default: no compression)", cxxopts::value<bool>(m_lz11Compression))("t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles))("s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes))("m,movecolor0", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String))("d,interleavedata", "Optional: Interleave all image data into one array", cxxopts::value<bool>(m_interleaveData))("r,reordercolors", "Optional: Reorder palette colors to minimize preceived color distance", cxxopts::value<bool>(m_reorderColors))("positional", "", cxxopts::value<std::vector<std::string>>());
+    options.add_option("", {"h,help", "Print help"});
+    options.add_option("", {"p,shift", "Optional. Increase image index values by N, keeping index #0 at 0. N must be in [1, 255] and resulting indices will be clamped to [0, 255]. Only usable for paletted images.", cxxopts::value<std::string>(m_shiftIndicesString)});
+    options.add_option("", {"a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String)});
+    options.add_option("", {"i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
+    options.add_option("", {"o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
+    options.add_option("", {"8,diff8", "Optional: 8-bit delta encoding", cxxopts::value<bool>(m_deltaEncoding8)});
+    options.add_option("", {"6,diff16", "Optional: 16-bit delta encoding", cxxopts::value<bool>(m_deltaEncoding16)});
+    options.add_option("", {"0,lz10", "Optional: Use LZ compression variant 10", cxxopts::value<bool>(m_lz10Compression)});
+    options.add_option("", {"1,lz11", "Optional: Use LZ compression variant 11", cxxopts::value<bool>(m_lz11Compression)});
+    options.add_option("", {"v,vram", "Optional: Make LZ-compression VRAM-safe", cxxopts::value<bool>(m_vramCompatible)});
+    options.add_option("", {"t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles)});
+    options.add_option("", {"s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes)});
+    options.add_option("", {"m,movecolor0", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String)});
+    options.add_option("", {"d,interleavedata", "Optional: Interleave all image data into one array", cxxopts::value<bool>(m_interleaveData)});
+    options.add_option("", {"r,reordercolors", "Optional: Reorder palette colors to minimize preceived color distance", cxxopts::value<bool>(m_reorderColors)});
+    options.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
     options.parse_positional({"infile", "outname", "positional"});
     auto result = options.parse(argc, argv);
     // check if help was requested
@@ -223,10 +240,12 @@ void printUsage()
     std::cout << "--interleavedata: Interleave image data into one big array. Interleaving is" << std::endl;
     std::cout << "  done like this (image/value): I0V0,I1V0,I2V0,I0V1,I1V1,I2V1..." << std::endl;
     std::cout << "COMPRESSION options (all optional):" << std::endl;
+    std::cout << "--diff8: 8-bit delta encoding." << std::endl;
+    std::cout << "--diff16: 16-bit delta encoding." << std::endl;
     std::cout << "--lz10: Use LZ compression variant 10 (default: no compression)." << std::endl;
     std::cout << "--lz11: Use LZ compression variant 11 (default: no compression)." << std::endl;
-    std::cout << "--vram: Make compression GBA VRAM-safe." << std::endl;
-    std::cout << "  Valid combinations are e.g. \"--lz10 --vram\" or \"--lz11 --vram\"." << std::endl;
+    std::cout << "--vram: Make LZ compression GBA VRAM-safe." << std::endl;
+    std::cout << "  Valid combinations are e.g. \"--diff8 --lz10\" or \"--lz11 --vram\"." << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: can be a file list and/or can have * as a wildcard. Multiple input " << std::endl;
     std::cout << "images MUST have the same type (palette / true color) and resolution!" << std::endl;
@@ -235,7 +254,7 @@ void printUsage()
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, tiles, " << std::endl;
-    std::cout << "sprites, compress, interleavedata, output" << std::endl;
+    std::cout << "sprites, diff8 / diff16, lz10 / lz11, interleavedata, output" << std::endl;
 }
 
 std::string getEnv(const std::string &var)
@@ -721,19 +740,12 @@ int main(int argc, const char *argv[])
         }
     }
     // we have the data. pad to multiple of 4 and compress
-    std::cout << "Converting";
-    if (m_asSprites || m_asTiles || mustCompress())
-    {
-        std::cout << "(";
-        std::cout << (m_asSprites ? "sprites " : "");
-        std::cout << (m_asTiles ? "tiles " : "");
-        std::cout << (mustCompress() ? "compress" : "");
-        std::cout << ")" << std::flush;
-    }
+    std::cout << "Converting" << std::endl;
     std::vector<std::vector<uint8_t>> processedData;
+    uint32_t imageNr = 0;
     for (auto &data : imgData)
     {
-        std::cout << "." << std::flush;
+        std::cout << "Image #" << imageNr++;
         if (data.empty())
         {
             std::cerr << std::endl
@@ -742,21 +754,49 @@ int main(int argc, const char *argv[])
         }
         if (m_asTiles)
         {
+            std::cout << " tiles";
             data = convertToTiles(data, imgSize.width(), imgSize.height(), nrOfBitsPerPixel);
         }
         else if (m_asSprites)
         {
+            std::cout << " sprites";
             auto dataSize = imgSize;
             if (dataSize.width() != m_spriteWidth)
             {
                 data = convertToWidth(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel, m_spriteWidth);
                 dataSize = Magick::Geometry(m_spriteWidth, (dataSize.width() * dataSize.height()) / m_spriteWidth);
             }
+            std::cout << " tiles";
             data = convertToTiles(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel);
         }
         if (mustCompress())
         {
-            data = compressLzss(data, m_vramCompatible, m_lz11Compression);
+            if (m_deltaEncoding8)
+            {
+                std::cout << " delta-8";
+                data = deltaEncode(data);
+            }
+            else if (m_deltaEncoding16)
+            {
+                std::cout << " delta-16";
+                if (data.size() & 1)
+                {
+                    std::cerr << std::endl
+                              << "Image data size must be a multiple of 2 for 16-bit delta-encoding" << std::endl;
+                    return 1;
+                }
+                data = convertTo<uint8_t>(deltaEncode(convertTo<uint16_t>(data)));
+            }
+            if (m_lz10Compression)
+            {
+                std::cout << " LZ10";
+                data = compressLzss(data, m_vramCompatible, false);
+            }
+            else if (m_lz11Compression)
+            {
+                std::cout << " LZ11";
+                data = compressLzss(data, m_vramCompatible, true);
+            }
             /*std::ofstream of("compressed.hex", std::ios::binary | std::ios::out);
             of.write(reinterpret_cast<const char *>(compressed.data()), compressed.size());
             of.close();*/
@@ -768,8 +808,8 @@ int main(int argc, const char *argv[])
             }
         }
         processedData.push_back(fillUpToMultipleOf(data, 4));
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
     // adjust image size when using sprites as we've converted them to m_spriteWidth now...
     if (m_asTiles && imgSize.width() != 8)
     {
@@ -811,7 +851,16 @@ int main(int argc, const char *argv[])
             hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
             if (mustCompress())
             {
-                hFile << "// Compression type LZSS, variant " << (m_lz11Compression ? "11" : "10") << (m_vramCompatible ? ", VRAM-safe" : "") << std::endl;
+                hFile << "// Compression type";
+                if (m_deltaEncoding8 || m_deltaEncoding16)
+                {
+                    hFile << " Diff" << (m_deltaEncoding8 ? "8" : "16");
+                }
+                if (m_lz10Compression || m_lz11Compression)
+                {
+                    hFile << " LZSS variant " << (m_lz11Compression ? "11" : "10");
+                }
+                hFile << (m_vramCompatible ? ", VRAM-safe" : "") << std::endl;
             }
             hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
                   << std::endl;

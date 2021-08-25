@@ -101,10 +101,12 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
   * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise.
   * [```--interleavedata```](#interleaving-data) - Interleave image data from multiple images into one big array.
 * ```COMPRESSION``` is optional and means the type of compression to apply:
+  * [```--diff8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--diff16```](#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--lz10```](#compressing-data) - Use LZ77 compression ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--lz11```](#compressing-data) - Use LZ77 compression ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions).
-  * [```--vram```](#compressing-data) - Structure compressed data safe to decompress directly to VRAM.  
-  Valid combinations are e.g. ```--lz10 --vram```.
+  * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
+  Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here (in Linux, not working in Windows).
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
@@ -123,7 +125,7 @@ Some general information:
 
 ### Reordering palette colors
 
-Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / interpolation / jittering with paletted colors. Uses a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).  
+Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / interpolation / jittering or video compression with paletted colors. Uses a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).  
 ![reordered colors](reorderedcolors.png)
 
 ### Adding a color to index #0 in the palette
@@ -180,7 +182,8 @@ This will put image data 0 of file 0 and image data 0 of file 1 next to each oth
 
 ### Compressing data
 
-You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible) and ```--lz11``` (LZ77 ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions)). To be able to safely decompress data to VRAM, add the option ```--vram```. Compression needs the [devKitPro](https://devkitpro.org) tool [gbalzss](https://github.com/devkitPro/gba-tools) which it will try to find through the ```$DEVKITPRO``` environment variable or in ```$PATH```.
+You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible) and ```--lz11``` (LZ77 ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions)). To be able to safely decompress LZ-compressed data to VRAM, add the option ```--vram```. LZ-compression needs the [devKitPro](https://devkitpro.org) tool [gbalzss](https://github.com/devkitPro/gba-tools) which it will try to find through the ```$DEVKITPRO``` environment variable or in ```$PATH```.  
+To improve compression you can apply diff- / delta-encoding using ```--diff8``` or ```--diff16``` which will store the difference of consecutive 8- or 16-bit values instead of the actual data (See ["Diff8"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions)).
 
 ## TODO
 

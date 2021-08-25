@@ -1,6 +1,7 @@
 // some data conversion utility functions used by the tools
 #pragma once
 
+#include <numeric>
 #include <cstdint>
 #include <string>
 #include <cstring>
@@ -65,3 +66,12 @@ std::vector<R> convertTo(const std::vector<T> &data)
 
 /// @brief Interleave all pixel data: D0P0, D1P0, D0P1, D1P1...
 std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, uint32_t bitsPerPixel);
+
+/// @brief Delta-encode data. First value is stored verbatim. All other values are stored as difference to previous value
+template <typename T>
+std::vector<T> deltaEncode(const std::vector<T> &data)
+{
+    std::vector<T> result;
+    std::adjacent_difference(data.cbegin(), data.cend(), std::back_inserter(result));
+    return result;
+}
