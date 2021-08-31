@@ -1,6 +1,7 @@
 // some data conversion utility functions used by the tools
 #pragma once
 
+#include <algorithm>
 #include <numeric>
 #include <cstdint>
 #include <string>
@@ -10,18 +11,19 @@
 
 /// @brief Fill up the vector with values until its size is a multiple of multipleOf.
 template <typename T>
-std::vector<T> &fillUpToMultipleOf(std::vector<T> &data, uint32_t multipleOf, T value = T())
+std::vector<T> fillUpToMultipleOf(const std::vector<T> &data, uint32_t multipleOf, T value = T())
 {
-    const auto size = data.size();
+    std::vector<T> result = data;
+    const auto size = result.size();
     if (size < multipleOf)
     {
-        data.resize(multipleOf, value);
+        result.resize(multipleOf, value);
     }
     else if (size % multipleOf != 0)
     {
-        data.resize(size + (size % multipleOf), value);
+        result.resize(size + (size % multipleOf), value);
     }
-    return data;
+    return result;
 }
 
 /// @brief Concat all arrays and convert data from type T to type R by raw copy.
@@ -61,6 +63,30 @@ std::vector<R> convertTo(const std::vector<T> &data)
     }
     std::vector<R> result((data.size() * sizeof(T)) / sizeof(R));
     std::memcpy(result.data(), data.data(), data.size() * sizeof(T));
+    return result;
+}
+
+/// @brief Return the start index of each sub-vector in the outer vector as if all vectors were concatenated.
+template <typename T>
+std::vector<uint32_t> getStartIndices(const std::vector<std::vector<T>> &data)
+{
+    size_t currentIndex = 0;
+    std::vector<uint32_t> result;
+    for (const auto &current : data)
+    {
+        result.push_back(currentIndex);
+        currentIndex += current.size();
+    }
+    return result;
+}
+
+/// @brief Divide every element in the vector by a certain value.
+template <typename T>
+std::vector<T> divideBy(const std::vector<T> &data, T divideBy = 1)
+{
+    std::vector<T> result;
+    std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [divideBy](auto t)
+                   { return t / divideBy; });
     return result;
 }
 

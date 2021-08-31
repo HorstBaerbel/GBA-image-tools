@@ -18,7 +18,11 @@
 #include "datahelpers.h"
 #include "filehelpers.h"
 #include "imagehelpers.h"
+#include "imageprocessing.h"
+#include "processingoptions.h"
+#include "lzsshelpers.h"
 #include "spritehelpers.h"
+#include "exception.h"
 
 #include <iostream>
 #include <fstream>
@@ -30,37 +34,9 @@
 #include "cxxopts/include/cxxopts.hpp"
 #include <Magick++.h>
 
-using namespace Magick;
-
-bool m_interleaveData = false;
-bool m_deltaEncoding8 = false;
-bool m_deltaEncoding16 = false;
-bool m_lz10Compression = false;
-bool m_lz11Compression = false;
-bool m_vramCompatible = false;
-bool m_asTiles = false;
-bool m_asSprites = false;
-uint32_t m_spriteWidth = 0;
-uint32_t m_spriteHeight = 0;
-std::vector<uint8_t> m_spriteSizes;
-bool m_doAddColor0 = false;
-std::string m_addColor0String;
-Color m_addColor0;
-bool m_doMoveColor0 = false;
-std::string m_moveColor0String;
-Color m_moveColor0;
-bool m_doShiftIndices = false;
-std::string m_shiftIndicesString;
-uint32_t m_shiftIndicesBy = 0;
-bool m_reorderColors = false;
 std::vector<std::string> m_inFile;
 std::string m_outFile;
-std::string m_gbalzssPath;
-
-bool mustCompress()
-{
-    return m_deltaEncoding8 || m_deltaEncoding16 || m_lz10Compression || m_lz11Compression || m_vramCompatible;
-}
+ProcessingOptions options;
 
 std::string getCommandLine(int argc, const char *argv[])
 {
@@ -78,26 +54,27 @@ std::string getCommandLine(int argc, const char *argv[])
 
 bool readArguments(int argc, const char *argv[])
 {
-    cxxopts::Options options("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
-    options.allow_unrecognised_options();
-    options.add_option("", {"h,help", "Print help"});
-    options.add_option("", {"p,shift", "Optional. Increase image index values by N, keeping index #0 at 0. N must be in [1, 255] and resulting indices will be clamped to [0, 255]. Only usable for paletted images.", cxxopts::value<std::string>(m_shiftIndicesString)});
-    options.add_option("", {"a,addcolor0", "Optional. Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_addColor0String)});
-    options.add_option("", {"i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
-    options.add_option("", {"o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
-    options.add_option("", {"8,diff8", "Optional: 8-bit delta encoding", cxxopts::value<bool>(m_deltaEncoding8)});
-    options.add_option("", {"6,diff16", "Optional: 16-bit delta encoding", cxxopts::value<bool>(m_deltaEncoding16)});
-    options.add_option("", {"0,lz10", "Optional: Use LZ compression variant 10", cxxopts::value<bool>(m_lz10Compression)});
-    options.add_option("", {"1,lz11", "Optional: Use LZ compression variant 11", cxxopts::value<bool>(m_lz11Compression)});
-    options.add_option("", {"v,vram", "Optional: Make LZ-compression VRAM-safe", cxxopts::value<bool>(m_vramCompatible)});
-    options.add_option("", {"t,tiles", "Optional. Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels", cxxopts::value<bool>(m_asTiles)});
-    options.add_option("", {"s,sprites", "Optional. Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise. The image needs to be paletted and its width and height must be a multiple of W and H and also a multiple of 8 pixels. Sprite data is stored in \"1D mapping\" order and can be read with memcpy", cxxopts::value<std::vector<uint8_t>>(m_spriteSizes)});
-    options.add_option("", {"m,movecolor0", "Optional. Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\"", cxxopts::value<std::string>(m_moveColor0String)});
-    options.add_option("", {"d,interleavedata", "Optional: Interleave all image data into one array", cxxopts::value<bool>(m_interleaveData)});
-    options.add_option("", {"r,reordercolors", "Optional: Reorder palette colors to minimize preceived color distance", cxxopts::value<bool>(m_reorderColors)});
-    options.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
-    options.parse_positional({"infile", "outname", "positional"});
-    auto result = options.parse(argc, argv);
+    cxxopts::Options opts("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
+    opts.allow_unrecognised_options();
+    opts.add_option("", {"h,help", "Print help"});
+    opts.add_option("", {"i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
+    opts.add_option("", {"o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
+    opts.add_option("", options.reorderColors.cxxOption);
+    opts.add_option("", options.addColor0.cxxOption);
+    opts.add_option("", options.moveColor0.cxxOption);
+    opts.add_option("", options.shiftIndices.cxxOption);
+    opts.add_option("", options.pruneIndices.cxxOption);
+    opts.add_option("", options.sprites.cxxOption);
+    opts.add_option("", options.tiles.cxxOption);
+    opts.add_option("", options.delta8.cxxOption);
+    opts.add_option("", options.delta16.cxxOption);
+    opts.add_option("", options.lz10.cxxOption);
+    opts.add_option("", options.lz11.cxxOption);
+    opts.add_option("", options.vram.cxxOption);
+    opts.add_option("", options.interleaveData.cxxOption);
+    opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
+    opts.parse_positional({"infile", "outname", "positional"});
+    auto result = opts.parse(argc, argv);
     // check if help was requested
     if (result.count("h"))
     {
@@ -133,84 +110,8 @@ bool readArguments(int argc, const char *argv[])
         std::cout << "No input file passed!" << std::endl;
         return false;
     }
-    // add color #0
-    if (result.count("addcolor0"))
-    {
-        // try converting argument to a color
-        std::string colorArg = m_addColor0String;
-        colorArg = std::string("#") + colorArg;
-        try
-        {
-            m_addColor0 = Color(colorArg);
-            m_doAddColor0 = true;
-        }
-        catch (const Exception &ex)
-        {
-            std::cerr << m_addColor0String << " is not a valid color. Format must be e.g. \"--addcolor0=abc012\". Aborting. " << std::endl;
-            return false;
-        }
-    }
-    // check color moving
-    if (result.count("movecolor0"))
-    {
-        // try converting argument to a color
-        std::string colorArg = m_moveColor0String;
-        colorArg = std::string("#") + colorArg;
-        try
-        {
-            m_moveColor0 = Color(colorArg);
-            m_doMoveColor0 = true;
-        }
-        catch (const Exception &ex)
-        {
-            std::cerr << m_moveColor0String << " is not a valid color. Format must be e.g. \"--movecolor0=abc012\". Aborting. " << std::endl;
-            return false;
-        }
-    }
-    // check index increase
-    if (result.count("shift"))
-    {
-        // try converting argument to a number
-        try
-        {
-            auto value = std::atoi(m_shiftIndicesString.c_str());
-            if (value < 1 || value > 255)
-            {
-                std::cerr << "Shift value must be in [1, 255]. Aborting. " << std::endl;
-                return false;
-            }
-            m_doShiftIndices = true;
-            m_shiftIndicesBy = value;
-        }
-        catch (const Exception &ex)
-        {
-            std::cerr << m_shiftIndicesString << " is not a valid number. Aborting. " << std::endl;
-            return false;
-        }
-    }
-    // check sprites sizes
-    if (result.count("sprites"))
-    {
-        if (m_spriteSizes.size() != 2)
-        {
-            std::cerr << "Sprite size format must be \"W,H\", e.g. \"--sprites=32,16\". Aborting. " << std::endl;
-            return false;
-        }
-        m_spriteWidth = m_spriteSizes.at(0);
-        if (m_spriteWidth < 8 || m_spriteWidth > 64 || m_spriteWidth % 8 != 0)
-        {
-            std::cerr << "Sprite width must be in [8,64] and a multiple of 8. Aborting." << std::endl;
-            return false;
-        }
-        m_spriteHeight = m_spriteSizes.at(1);
-        if (m_spriteHeight < 8 || m_spriteHeight > 64 || m_spriteHeight % 8 != 0)
-        {
-            std::cerr << "Sprite height must be in [8,64] and a multiple of 8. Aborting." << std::endl;
-            return false;
-        }
-        m_asSprites = true;
-    }
-    return true;
+    return options.addColor0.parse(result) && options.moveColor0.parse(result) &&
+           options.shiftIndices.parse(result) && options.sprites.parse(result);
 }
 
 void printUsage()
@@ -222,30 +123,21 @@ void printUsage()
     std::cout << "You might want to use ImageMagicks \"convert +remap\" before." << std::endl;
     std::cout << "Usage: img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME" << std::endl;
     std::cout << "CONVERSION options (all optional):" << std::endl;
-    std::cout << "--reordercolors: Reorder palette colors to minimize preceived color distance." << std::endl;
-    std::cout << "  Only usable for paletted images." << std::endl;
-    std::cout << "--addcolor0=COLOR: Add COLOR at palette index #0 and increase all other" << std::endl;
-    std::cout << "  color indices by 1. Only usable for paletted images. Format \"abcd012\"" << std::endl;
-    std::cout << "--movecolor0=COLOR: Move COLOR to palette index #0 and move all other" << std::endl;
-    std::cout << "  colors accordingly. Only usable for paletted images. Format \"abcd012\"" << std::endl;
-    std::cout << "--shift=N: Increase image index values by N, keeping index #0 at 0." << std::endl;
-    std::cout << "  N must be in [1, 255] and resulting indices will be clamped to [0, 255]." << std::endl;
-    std::cout << "  Only usable for paletted images." << std::endl;
-    std::cout << "--tiles: Cut data into 8x8 tiles and store data tile-wise. The image needs to" << std::endl;
-    std::cout << "  be paletted and its width and height must be a multiple of 8 pixels." << std::endl;
-    std::cout << "--sprites=W,H: Cut data into sprites of size W x H and store data sprite-" << std::endl;
-    std::cout << "  and 8x8-tile-wise. The image needs to be paletted and its width and" << std::endl;
-    std::cout << "  height must be a multiple of W and H and also a multiple of 8 pixels." << std::endl;
-    std::cout << "  Sprite data is stored in \"1D mapping\" order and can be read with memcpy." << std::endl;
-    std::cout << "--interleavedata: Interleave image data into one big array. Interleaving is" << std::endl;
-    std::cout << "  done like this (image/value): I0V0,I1V0,I2V0,I0V1,I1V1,I2V1..." << std::endl;
+    std::cout << options.reorderColors.helpString() << std::endl;
+    std::cout << options.addColor0.helpString() << std::endl;
+    std::cout << options.moveColor0.helpString() << std::endl;
+    std::cout << options.shiftIndices.helpString() << std::endl;
+    std::cout << options.pruneIndices.helpString() << std::endl;
+    std::cout << options.tiles.helpString() << std::endl;
+    std::cout << options.sprites.helpString() << std::endl;
+    std::cout << options.delta8.helpString() << std::endl;
+    std::cout << options.delta16.helpString() << std::endl;
+    std::cout << options.interleaveData.helpString() << std::endl;
     std::cout << "COMPRESSION options (all optional):" << std::endl;
-    std::cout << "--diff8: 8-bit delta encoding." << std::endl;
-    std::cout << "--diff16: 16-bit delta encoding." << std::endl;
-    std::cout << "--lz10: Use LZ compression variant 10 (default: no compression)." << std::endl;
-    std::cout << "--lz11: Use LZ compression variant 11 (default: no compression)." << std::endl;
-    std::cout << "--vram: Make LZ compression GBA VRAM-safe." << std::endl;
-    std::cout << "  Valid combinations are e.g. \"--diff8 --lz10\" or \"--lz11 --vram\"." << std::endl;
+    std::cout << options.lz10.helpString() << std::endl;
+    std::cout << options.lz11.helpString() << std::endl;
+    std::cout << options.vram.helpString() << std::endl;
+    std::cout << "Valid combinations are e.g. \"--diff8 --lz10\" or \"--lz11 --vram\"." << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: can be a file list and/or can have * as a wildcard. Multiple input " << std::endl;
     std::cout << "images MUST have the same type (palette / true color) and resolution!" << std::endl;
@@ -253,205 +145,17 @@ void printUsage()
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
-    std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, sprites, " << std::endl;
-    std::cout << "tiles, diff8 / diff16, lz10 / lz11, interleavedata, output" << std::endl;
+    std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, prune," << std::endl;
+    std::cout << "sprites, tiles, diff8 / diff16, lz10 / lz11, interleavedata, output" << std::endl;
 }
 
-std::string getEnv(const std::string &var)
+std::tuple<ImageType, Geometry, std::vector<ImageProcessing::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
-    const char *value = std::getenv(var.c_str());
-    return value != nullptr ? value : "";
-}
-
-bool findGbalzss()
-{
-    std::string cmdLine;
-    auto dkpPath = getEnv("DEVKITPRO");
-    if (!dkpPath.empty())
-    {
-        // DevkitPro found. We assume the gbalzss executable is there...
-#ifdef WIN32
-        m_gbalzssPath = dkpPath + "\\tools\\bin\\gbalzss.exe";
-        cmdLine = m_gbalzssPath;
-#else
-        m_gbalzssPath = dkpPath + "/tools/bin/gbalzss";
-        cmdLine = m_gbalzssPath + " 2> /dev/null";
-#endif
-        // try to execute gbalzss and see if it works
-        return WEXITSTATUS(system(cmdLine.c_str())) == 1;
-    }
-    else
-    {
-        // DevkitPro not found. See if we can call gbalzss anyway
-#ifdef WIN32
-        m_gbalzssPath = "gbalzss.exe";
-        cmdLine = m_gbalzssPath;
-#else
-        m_gbalzssPath = "gbalzss";
-        cmdLine = m_gbalzssPath + " 2> /dev/null";
-#endif
-        // try to execute gbalzss and see if it works
-        return WEXITSTATUS(system(cmdLine.c_str())) == 1;
-    }
-}
-
-// TODO: On Windows we might need to resolve wildcards in input files
-std::pair<bool, std::vector<std::string>> resolveInputFiles(const std::vector<std::string> &files)
-{
-    std::pair<bool, std::vector<std::string>> result;
-    result.first = true;
-    for (const auto &file : files)
-    {
-        /*if (std::find(file.cbegin(), file.cend(), '*'))
-        {
-            // wildcard * found, resolve files
-            std::string regexString = file;
-            std::replace(regexString.begin(), regexString.end(), '*', ".*");
-            try
-            {
-                std::regex regex(regexString, std::regex::basic);
-                stdfs::
-            }
-            catch (const std::regex_error& ex)
-            {
-                std::cerr << "Bad input file " << file << ". Aborting. " << std::endl;
-                return std::vector<std::string>();
-            }
-        }*/
-        // check if file exists
-        if (stdfs::exists(file))
-        {
-            result.second.push_back(file);
-        }
-        else
-        {
-            result.first = false;
-        }
-    }
-    return result;
-}
-
-std::vector<uint8_t> compressLzss(const std::vector<uint8_t> &data, bool vramCompatible, bool lz11Compression)
-{
-    std::vector<uint8_t> result;
-    // write temporary file
-    const std::string tempFileName = stdfs::temp_directory_path().generic_string() + "/compress.tmp";
-    std::ofstream outFile(tempFileName, std::ios::binary | std::ios::out);
-    if (outFile.is_open())
-    {
-        outFile.write(reinterpret_cast<const char *>(data.data()), data.size());
-        outFile.close();
-        // run compressor
-        const std::string cmdLine = m_gbalzssPath + (vramCompatible ? " --vram" : "") + (lz11Compression ? " --lz11" : "") + " e " + tempFileName + " " + tempFileName;
-        if (WEXITSTATUS(std::system(cmdLine.c_str())) == 0)
-        {
-            // read temporary file
-            std::ifstream inFile(tempFileName, std::ios::binary | std::ios::in);
-            if (inFile.is_open())
-            {
-                // find file size
-                inFile.seekg(0, std::ios::end);
-                size_t fileSize = inFile.tellg();
-                inFile.seekg(0, std::ios::beg);
-                // read data
-                result.resize(fileSize);
-                inFile.read(reinterpret_cast<char *>(result.data()), fileSize);
-                inFile.close();
-            }
-            else
-            {
-                std::cout << "Failed to read temporary file." << std::endl;
-            }
-        }
-        else
-        {
-            std::cout << "Failed to run compressor." << std::endl;
-        }
-    }
-    else
-    {
-        std::cout << "Failed to write temporary file." << std::endl;
-    }
-    return result;
-}
-
-// Return the start index of each sub-vector in the outer vector as if all vectors were concatenated.
-template <typename T>
-std::vector<uint32_t> getStartIndices(const std::vector<std::vector<T>> &data)
-{
-    size_t currentIndex = 0;
-    std::vector<uint32_t> result;
-    for (const auto &current : data)
-    {
-        result.push_back(currentIndex);
-        currentIndex += current.size();
-    }
-    return result;
-}
-
-// Divide every element by a certain value.
-template <typename T>
-std::vector<T> divideBy(const std::vector<T> &data, T divideBy = 1)
-{
-    std::vector<T> result;
-    std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [divideBy](auto t)
-                   { return t / divideBy; });
-    return result;
-}
-
-std::tuple<bool, ImageType, Geometry, std::vector<std::vector<Color>>, std::vector<std::vector<uint8_t>>> readImages(const std::vector<std::string> &fileNames, bool asSprites, bool asTiles, uint32_t spriteWidth, uint32_t spriteHeight)
-{
-    ImageType imgType = ImageType::UndefinedType;
+    ImageType imgType = Magick::ImageType::UndefinedType;
     Geometry imgSize;
-    std::vector<std::vector<Color>> colorMaps;
-    std::vector<std::vector<uint8_t>> imgData;
+    std::vector<ImageProcessing::Data> images;
     // open first image and store type
     auto ifIt = fileNames.cbegin();
-    std::cout << "Reading " << *ifIt;
-    try
-    {
-        Image img;
-        img.read(*ifIt);
-        imgType = img.type();
-        imgSize = img.size();
-        std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        if (img.classType() == PseudoClass && imgType == PaletteType)
-        {
-            std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
-        }
-        else if (imgType == TrueColorType)
-        {
-            std::cout << "true color" << std::endl;
-        }
-        else
-        {
-            std::cerr << "unsupported format. Aborting" << std::endl;
-            return {false, ImageType::UndefinedType, {}, {}, {}};
-        }
-        // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
-        if ((asSprites || asTiles) && (imgType != ImageType::PaletteType || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
-        {
-            std::cerr << "Image must be paletted and width / height must be a multiple of 8. Aborting" << std::endl;
-            return {false, ImageType::UndefinedType, {}, {}, {}};
-        }
-        if (asSprites && (imgSize.width() % spriteWidth != 0 || imgSize.height() % spriteHeight != 0))
-        {
-            std::cerr << "Image width / height must be a multiple of sprite width / height. Aborting" << std::endl;
-            return {false, ImageType::UndefinedType, {}, {}, {}};
-        }
-        if (img.classType() == PseudoClass && imgType == ImageType::PaletteType)
-        {
-            colorMaps.push_back(getColorMap(*ifIt));
-        }
-        imgData.push_back(getImageData(*ifIt));
-        ifIt++;
-    }
-    catch (const Exception &ex)
-    {
-        std::cerr << ". Failed to read " << *ifIt << ": " << ex.what() << std::endl;
-        return {false, ImageType::UndefinedType, {}, {}, {}};
-    }
-    // read rest of images
     while (ifIt != fileNames.cend())
     {
         std::cout << "Reading " << *ifIt;
@@ -462,169 +166,45 @@ std::tuple<bool, ImageType, Geometry, std::vector<std::vector<Color>>, std::vect
         }
         catch (const Exception &ex)
         {
-            std::cerr << " failed: " << ex.what() << std::endl;
-            return {false, ImageType::UndefinedType, {}, {}, {}};
+            THROW(std::runtime_error, "Failed to read image: " << ex.what());
         }
+        imgSize = img.size();
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        if (img.classType() == PseudoClass && imgType == PaletteType)
+        imgType = img.type();
+        const bool isPaletted = img.classType() == ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
+        if (isPaletted)
         {
             std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
         }
-        else if (imgType == TrueColorType)
+        else if (imgType == Magick::ImageType::TrueColorType)
         {
             std::cout << "true color" << std::endl;
         }
         else
         {
-            std::cerr << "unsupported format. Aborting" << std::endl;
-            return {false, ImageType::UndefinedType, {}, {}, {}};
+            THROW(std::runtime_error, "Unsupported image format");
         }
-        // check type and size
-        if (img.type() != imgType)
+        // compare size and type to first image to make sure all images have the same format
+        if (images.size() > 0)
         {
-            std::cerr << "Image types do not match: " << *ifIt << std::endl;
-            return {false, ImageType::UndefinedType, {}, {}, {}};
+            // check type and size
+            REQUIRE(images.front().type == imgType, std::runtime_error, "Image types do not match");
+            REQUIRE(images.front().size == imgSize, std::runtime_error, "Image sizes do not match");
         }
-        if (img.size() != imgSize)
+        // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
+        if ((options.sprites || options.tiles) && (!isPaletted || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
         {
-            std::cerr << "Image sizes do not match: " << *ifIt << std::endl;
-            return {false, ImageType::UndefinedType, {}, {}, {}};
+            THROW(std::runtime_error, "Image must be paletted and width / height must be a multiple of 8");
         }
-        if (img.classType() == PseudoClass && imgType == ImageType::PaletteType)
+        if (options.sprites && (imgSize.width() % options.sprites.value.front() != 0 || imgSize.height() % options.sprites.value.back() != 0))
         {
-            colorMaps.push_back(getColorMap(*ifIt));
+            THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        imgData.push_back(getImageData(*ifIt));
+        ImageProcessing::Data entry{*ifIt, imgType, imgSize, (isPaletted ? 8U : 16U), getImageData(img), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
+        images.push_back(entry);
         ifIt++;
     }
-    return {true, imgType, imgSize, colorMaps, imgData};
-}
-
-bool reorderColors(ImageType imgType, std::vector<std::vector<Color>> &colorMaps,
-                   std::vector<std::vector<uint8_t>> &imgData)
-{
-    if (imgType != ImageType::PaletteType)
-    {
-        std::cerr << "Reordering colors can only be done for paletted images. Aborting." << std::endl;
-        return false;
-    }
-    for (size_t i = 0; i < colorMaps.size(); ++i)
-    {
-        const auto newOrder = minimizeColorDistance(colorMaps[i]);
-        colorMaps[i] = swapColors(colorMaps[i], newOrder);
-        imgData[i] = swapIndices(imgData[i], newOrder);
-    }
-    return true;
-}
-
-bool addColor0(ImageType imgType, std::vector<std::vector<Color>> &colorMaps,
-               std::vector<std::vector<uint8_t>> &imgData, Color addColor0)
-{
-    if (imgType != ImageType::PaletteType)
-    {
-        std::cerr << "Adding color #0 can only be done for paletted images. Aborting." << std::endl;
-        return false;
-    }
-    for (size_t i = 0; i < colorMaps.size(); ++i)
-    {
-        auto &cm = colorMaps[i];
-        // check if the color map has one free entry
-        if (cm.size() > 255)
-        {
-            std::cerr << "No space in color map (image has " << cm.size() << " colors). Aborting." << std::endl;
-            return false;
-        }
-        // add color at front of color map
-        cm = addColorAtIndex0(cm, addColor0);
-        imgData[i] = incImageIndicesBy1(imgData[i]);
-    }
-    std::cout << "Added " << asHex(addColor0) << " as color #0." << std::endl;
-    return true;
-}
-
-bool moveColor0(ImageType imgType, std::vector<std::vector<Color>> &colorMaps,
-                std::vector<std::vector<uint8_t>> &imgData, Color moveColor0)
-{
-    if (imgType != ImageType::PaletteType)
-    {
-        std::cerr << "Moving colors can only be done for paletted images. Aborting." << std::endl;
-        return false;
-    }
-    for (size_t i = 0; i < colorMaps.size(); ++i)
-    {
-        auto &cm = colorMaps[i];
-        // try to find color in palette
-        auto oldColorIt = std::find(cm.begin(), cm.end(), moveColor0);
-        if (oldColorIt == cm.end())
-        {
-            std::cerr << "Color " << asHex(moveColor0) << " not found in image color map. Aborting." << std::endl;
-            return false;
-        }
-        const size_t oldIndex = std::distance(cm.begin(), oldColorIt);
-        // check if index needs to move
-        if (oldIndex != 0)
-        {
-            // move index in color map and image data
-            std::swap(cm[oldIndex], cm[0]);
-            imgData[i] = swapIndexToIndex0(imgData[i], oldIndex);
-        }
-    }
-    std::cout << "Moved color " << asHex(moveColor0) << " to index #0." << std::endl;
-    return true;
-}
-
-bool shiftIndices(ImageType imgType, std::vector<std::vector<uint8_t>> &imgData, uint32_t shiftBy)
-{
-    if (imgType != ImageType::PaletteType)
-    {
-        std::cerr << "Shifting index values can only be done for paletted images. Aborting." << std::endl;
-        return false;
-    }
-    for (size_t i = 0; i < imgData.size(); ++i)
-    {
-        auto &id = imgData[i];
-        auto maxIndex = *std::max_element(id.cbegin(), id.cend());
-        if (maxIndex + shiftBy > 255)
-        {
-            std::cerr << "Warning: Max. index value in image #" << i << " is " << maxIndex << ", shift is " << shiftBy << "! Resulting index values will be clamped to [0, 255]!" << std::endl;
-        }
-        std::for_each(id.begin(), id.end(), [shiftBy](auto &index)
-                      { index = (index == 0) ? 0 : (((index + shiftBy) > 255) ? 255 : (index + shiftBy)); });
-    }
-    std::cout << "Increased index values by " << shiftBy << std::endl;
-    return true;
-}
-
-std::tuple<bool, bool, uint32_t> areAllColorMapsSame(ImageType imgType, const std::vector<std::vector<Color>> &colorMaps)
-{
-    bool allColorMapsSame = true;
-    bool allColorMapsSameSize = true;
-    uint32_t maxColorMapColors = 0;
-    if (imgType == PaletteType && !colorMaps.empty())
-    {
-        const auto &refColorMap = colorMaps.front();
-        maxColorMapColors = refColorMap.size();
-        for (const auto &cm : colorMaps)
-        {
-            if (allColorMapsSameSize)
-            {
-                if (cm.size() != refColorMap.size())
-                {
-                    allColorMapsSameSize = false;
-                    allColorMapsSame = false;
-                }
-                if (allColorMapsSame && cm != refColorMap)
-                {
-                    allColorMapsSame = false;
-                }
-            }
-            if (cm.size() > maxColorMapColors)
-            {
-                maxColorMapColors = cm.size();
-            }
-        }
-    }
-    return {allColorMapsSame, allColorMapsSameSize, maxColorMapColors};
+    return {imgType, imgSize, images};
 }
 
 int main(int argc, const char *argv[])
@@ -634,17 +214,6 @@ int main(int argc, const char *argv[])
     {
         printUsage();
         return 2;
-    }
-    // try finding gbalzss if needed
-    if (mustCompress() && !findGbalzss())
-    {
-        std::cerr << "Necessary gbalzss executable not found. Aborting. " << std::endl;
-        return 1;
-    }
-    if (mustCompress() && m_interleaveData)
-    {
-        std::cerr << "Compression and interleaving data does not work together. Aborting. " << std::endl;
-        return 1;
     }
     // check input and output
     if (m_inFile.empty())
@@ -658,274 +227,174 @@ int main(int argc, const char *argv[])
         return 1;
     }
     // resolve wildcards in input files and check if all input files exist
-    /*auto result = resolveInputFiles(m_inFile);
+    /*auto result = resolveFilePaths(m_inFile);
     if (!result.first || result.second.empty())
     {
         std::cerr << "Failed to find input files. Aborting. " << std::endl;
         return -4;
     }
     m_inFile = result.second;*/
-    // check sprites option
-    if (m_asSprites && m_spriteWidth % 8 != 0 && m_spriteHeight % 8 != 0)
+    try
     {
-        std::cerr << "Sprite width and height must be a multiple of 8. Aborting." << std::endl;
-        return 1;
-    }
-    if (m_asSprites && (m_spriteWidth != 8 && m_spriteWidth != 16 && m_spriteWidth != 32 && m_spriteWidth != 64))
-    {
-        std::cerr << "Warning: Sprite width not in [8, 16, 32, 64]!" << std::endl;
-    }
-    if (m_asSprites && (m_spriteHeight != 8 && m_spriteHeight != 16 && m_spriteHeight != 32 && m_spriteHeight != 64))
-    {
-        std::cerr << "Warning: Sprite height not in [8, 16, 32, 64]!" << std::endl;
-    }
-    // fire up ImageMagick
-    InitializeMagick(*argv);
-    // read image from disk
-    auto [readSuccess, imgType, imgSize, colorMaps, imgData] = readImages(m_inFile, m_asSprites, m_asTiles, m_spriteWidth, m_spriteHeight);
-    if (!readSuccess)
-    {
-        return 1;
-    }
-    // reorder palette colors
-    if (m_reorderColors && !reorderColors(imgType, colorMaps, imgData))
-    {
-        return 1;
-    }
-    // add extra color #0 if wanted
-    if (m_doAddColor0 && !addColor0(imgType, colorMaps, imgData, m_addColor0))
-    {
-        return 1;
-    }
-    // move color to index #0 if wanted
-    if (m_doMoveColor0 && !moveColor0(imgType, colorMaps, imgData, m_moveColor0))
-    {
-        return 1;
-    }
-    // shift indices if wanted
-    if (m_doShiftIndices && !shiftIndices(imgType, imgData, m_shiftIndicesBy))
-    {
-        return 1;
-    }
-    // check if color maps have same size
-    auto [allColorMapsSame, allColorMapsSameSize, maxColorMapColors] = areAllColorMapsSame(imgType, colorMaps);
-    if (imgType == PaletteType && !colorMaps.empty())
-    {
-        // check if reasonable color count
-        if (maxColorMapColors > 256)
+        // fire up ImageMagick
+        InitializeMagick(*argv);
+        // read image(s) from disk
+        auto [imgType, imgSize, images] = readImages(m_inFile, options);
+        // build processing pipeline
+        ImageProcessing processing;
+        if (options.reorderColors)
         {
-            std::cerr << "Image color map has more than 256 colors. Aborting" << std::endl;
-            return 1;
+            processing.addStep(ImageProcessing::Type::ReorderColors);
         }
-        // padd all color maps to max color count
-        std::for_each(colorMaps.begin(), colorMaps.end(), [maxColorMapColors](auto &cm)
-                      { fillUpToMultipleOf(cm, maxColorMapColors); });
-        std::cerr << "Saving " << (allColorMapsSame ? 1 : colorMaps.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
-    }
-    const auto nrOfBitsPerPixel = imgType == ImageType::PaletteType ? (maxColorMapColors <= 16 ? 4 : 8) : 16;
-    // check if we can convert image index data to a smaller format
-    if (imgType == PaletteType && maxColorMapColors < 16)
-    {
-        uint8_t maxIndex = 0;
-        for (size_t i = 0; i < imgData.size(); ++i)
+        if (options.addColor0)
         {
-            auto &id = imgData[i];
-            maxIndex = std::max(*std::max_element(id.cbegin(), id.cend()), maxIndex);
+            processing.addStep(ImageProcessing::Type::AddColor0, ImageProcessing::Parameter(options.addColor0.value));
         }
-        if (maxIndex < 16)
+        if (options.moveColor0)
         {
-            std::cout << "Max. index value is " << maxIndex << ". Converting image data to 4 bit" << std::flush;
-            std::for_each(imgData.begin(), imgData.end(), [](auto &id)
-                          { id = convertDataToNibbles(id); });
+            processing.addStep(ImageProcessing::Type::MoveColor0, ImageProcessing::Parameter(options.moveColor0.value));
         }
-    }
-    // we have the data. pad to multiple of 4 and compress
-    std::cout << "Converting" << std::endl;
-    std::vector<std::vector<uint8_t>> processedData;
-    uint32_t imageNr = 0;
-    for (auto &data : imgData)
-    {
-        std::cout << "Image #" << imageNr++;
-        if (data.empty())
+        if (options.shiftIndices)
         {
-            std::cerr << std::endl
-                      << "Empty image data" << std::endl;
-            return 1;
+            processing.addStep(ImageProcessing::Type::ShiftIndices, ImageProcessing::Parameter(options.shiftIndices.value));
         }
-        if (m_asTiles)
+        if (imgType == Magick::ImageType::PaletteType)
         {
-            std::cout << " tiles";
-            data = convertToTiles(data, imgSize.width(), imgSize.height(), nrOfBitsPerPixel);
+            processing.addStep(ImageProcessing::Type::EqualizeColorMaps);
         }
-        else if (m_asSprites)
+        if (options.pruneIndices)
         {
-            std::cout << " sprites";
-            auto dataSize = imgSize;
-            if (dataSize.width() != m_spriteWidth)
+            processing.addStep(ImageProcessing::Type::PruneIndices);
+        }
+        if (options.sprites)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertSprites, ImageProcessing::Parameter(options.sprites.value.front()));
+        }
+        if (options.tiles)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertTiles);
+        }
+        if (options.delta8)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertDelta8);
+        }
+        if (options.delta16)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertDelta16);
+        }
+        if (options.lz10)
+        {
+            processing.addStep(ImageProcessing::Type::CompressLz10, ImageProcessing::Parameter(options.vram.isSet));
+        }
+        if (options.lz11)
+        {
+            processing.addStep(ImageProcessing::Type::CompressLz11, ImageProcessing::Parameter(options.vram.isSet));
+        }
+        processing.addStep(ImageProcessing::Type::PadImageData, ImageProcessing::Parameter(uint32_t(4)));
+        // apply image processing pipeline
+        const auto processingDescription = processing.getProcessingDescription();
+        std::cout << "Applying processing: " << processingDescription << (options.interleaveData ? ", interleave image data" : "") << std::endl;
+        images = processing.process(images);
+        // check if all color maps are the same
+        bool allColorMapsSame = true;
+        uint32_t maxColorMapColors = 0;
+        if (imgType == Magick::ImageType::PaletteType)
+        {
+            if (images.size() == 1)
             {
-                data = convertToWidth(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel, m_spriteWidth);
-                dataSize = Magick::Geometry(m_spriteWidth, (dataSize.width() * dataSize.height()) / m_spriteWidth);
+                maxColorMapColors = images.front().colorMap.size();
             }
-            std::cout << " tiles";
-            data = convertToTiles(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel);
-        }
-        if (mustCompress())
-        {
-            if (m_deltaEncoding8)
+            else
             {
-                std::cout << " delta-8";
-                data = deltaEncode(data);
+                allColorMapsSame = std::find_if_not(images.cbegin(), images.cend(), [&refColorMap = images.front().colorMap](const auto &img)
+                                                    { return img.colorMap == refColorMap; }) == images.cend();
+                maxColorMapColors = std::max_element(images.cbegin(), images.cend(), [](const auto &imgA, const auto &imgB)
+                                                     { return imgA.colorMap.size() < imgB.colorMap.size(); })
+                                        ->colorMap.size();
             }
-            else if (m_deltaEncoding16)
+            std::cout << "Saving " << (allColorMapsSame ? 1 : images.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
+        }
+        // open output files
+        std::ofstream hFile(m_outFile + ".h", std::ios::out);
+        std::ofstream cFile(m_outFile + ".c", std::ios::out);
+        if (hFile.is_open() && cFile.is_open())
+        {
+            std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
+            try
             {
-                std::cout << " delta-16";
-                if (data.size() & 1)
+                // build output file / variable name
+                std::string baseName = getBaseNameFromFilePath(m_outFile);
+                std::string varName = baseName;
+                std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
+                               { return std::toupper(c, std::locale()); });
+                // output header
+                hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
+                hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
+                      << std::endl;
+                // output image and palette info
+                const bool storeTileOrSpriteWise = (images.size() == 1) && (options.tiles || options.sprites);
+                uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
+                uint32_t nrOfImagesOrSprites = images.size();
+                if (nrOfImagesOrSprites == 1)
                 {
-                    std::cerr << std::endl
-                              << "Image data size must be a multiple of 2 for 16-bit delta-encoding" << std::endl;
-                    return 1;
+                    // if we have a single input image, store data per tile or sprite
+                    if (options.sprites)
+                    {
+                        // calculate number of w*h sprites
+                        auto spriteWidth = options.sprites.value.front();
+                        auto spriteHeight = options.sprites.value.back();
+                        nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (spriteWidth * spriteHeight);
+                        nrOfBytesPerImageOrSprite = spriteWidth * spriteHeight;
+                        imgSize = Magick::Geometry(spriteWidth, spriteHeight);
+                    }
+                    else if (options.tiles)
+                    {
+                        // calculate number of 8*8 pixel tiles
+                        nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
+                        nrOfBytesPerImageOrSprite = 64;
+                        imgSize = Magick::Geometry(8, 8);
+                    }
                 }
-                data = convertTo<uint8_t>(deltaEncode(convertTo<uint16_t>(data)));
+                nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
+                // convert image data to uint32_ts and palette to BGR555 uint16_ts
+                auto [imageData32, imageOrSpriteStartIndices] = ImageProcessing::combineImageData<uint32_t>(images, options.interleaveData);
+                // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
+                nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
+                // output image and palette data
+                writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
+                if (imgType == Magick::ImageType::PaletteType)
+                {
+                    auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : ImageProcessing::combineColorMaps<uint16_t>(images, [](auto cm)
+                                                                                                                                                                                                                      { return convertToBGR555(cm); }));
+                    writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
+                    writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
+                }
+                hFile << std::endl;
+                hFile.close();
+                cFile.close();
             }
-            if (m_lz10Compression)
+            catch (const std::runtime_error &e)
             {
-                std::cout << " LZ10";
-                data = compressLzss(data, m_vramCompatible, false);
-            }
-            else if (m_lz11Compression)
-            {
-                std::cout << " LZ11";
-                data = compressLzss(data, m_vramCompatible, true);
-            }
-            /*std::ofstream of("compressed.hex", std::ios::binary | std::ios::out);
-            of.write(reinterpret_cast<const char *>(compressed.data()), compressed.size());
-            of.close();*/
-            if (data.empty())
-            {
-                std::cerr << std::endl
-                          << "Compressing image data failed" << std::endl;
+                hFile.close();
+                cFile.close();
+                std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
                 return 1;
             }
         }
-        processedData.push_back(fillUpToMultipleOf(data, 4));
-        std::cout << std::endl;
-    }
-    // adjust image size when using sprites as we've converted them to m_spriteWidth now...
-    if (m_asTiles && imgSize.width() != 8)
-    {
-        imgSize = Magick::Geometry(8, (imgSize.width() * imgSize.height()) / 8);
-    }
-    else if (m_asSprites && imgSize.width() != m_spriteWidth)
-    {
-        imgSize = Magick::Geometry(m_spriteWidth, (imgSize.width() * imgSize.height()) / m_spriteWidth);
-    }
-    // do data and palette interleaving
-    if (m_interleaveData)
-    {
-        try
-        {
-            auto tempData = interleave(processedData, nrOfBitsPerPixel);
-            processedData.clear();
-            processedData.push_back(tempData);
-            std::cout << "Interleaved image data" << std::endl;
-        }
-        catch (std::runtime_error e)
-        {
-            std::cerr << "Failed to interleave image data: " << e.what() << std::endl;
-            return 1;
-        }
-    }
-    // open output files
-    std::ofstream hFile(m_outFile + ".h", std::ios::out);
-    std::ofstream cFile(m_outFile + ".c", std::ios::out);
-    if (hFile.is_open() && cFile.is_open())
-    {
-        std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
-        try
-        {
-            std::string baseName = getBaseNameFromFilePath(m_outFile);
-            std::string varName = baseName;
-            std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
-                           { return std::toupper(c, std::locale()); });
-            // output header
-            hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
-            if (mustCompress())
-            {
-                hFile << "// Compression type";
-                if (m_deltaEncoding8 || m_deltaEncoding16)
-                {
-                    hFile << " Diff" << (m_deltaEncoding8 ? "8" : "16");
-                }
-                if (m_lz10Compression || m_lz11Compression)
-                {
-                    hFile << " LZSS variant " << (m_lz11Compression ? "11" : "10");
-                }
-                hFile << (m_vramCompatible ? ", VRAM-safe" : "") << std::endl;
-            }
-            hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
-                  << std::endl;
-            // output image and palette info
-            const bool storeTileOrSpriteWise = (imgData.size() == 1) && (m_asTiles || m_asSprites);
-            uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
-            uint32_t nrOfImagesOrSprites = imgData.size();
-            if (nrOfImagesOrSprites == 1)
-            {
-                // if we have a single input image, store data per tile or sprite
-                if (m_asTiles)
-                {
-                    // calculate number of 8*8 pixel tiles
-                    nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
-                    nrOfBytesPerImageOrSprite = 64;
-                    imgSize = Magick::Geometry(8, 8);
-                }
-                else if (m_asSprites)
-                {
-                    // calculate number of w*h sprites
-                    nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (m_spriteWidth * m_spriteHeight);
-                    nrOfBytesPerImageOrSprite = m_spriteWidth * m_spriteHeight;
-                    imgSize = Magick::Geometry(m_spriteWidth, m_spriteHeight);
-                }
-            }
-            nrOfBytesPerImageOrSprite = imgType == ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
-            // convert image data to uint32_ts and palette to BGR555 uint16_ts
-            auto imageData32 = combineTo<uint32_t>(processedData);
-            auto paletteData16 = allColorMapsSame ? convertToBGR555(colorMaps.front()) : combineTo<uint16_t>(convertToBGR555(colorMaps));
-            // get start indices for image data and palettes
-            auto imageOrSpriteStartIndices = divideBy<uint32_t>(getStartIndices(processedData), 4);
-            auto colorMapsStartIndices = getStartIndices(colorMaps);
-            // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
-            nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
-            // output header
-            writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-            if (imgType == ImageType::PaletteType)
-            {
-                writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
-            }
-            hFile << std::endl;
-            hFile.close();
-            // output image and palette data
-            writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
-            if (imgType == ImageType::PaletteType)
-            {
-                writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
-            }
-            cFile.close();
-        }
-        catch (std::runtime_error e)
+        else
         {
             hFile.close();
             cFile.close();
-            std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
+            std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
             return 1;
         }
+        std::cout << "Done" << std::endl;
     }
-    else
+    catch (const std::runtime_error &e)
     {
-        hFile.close();
-        cFile.close();
-        std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
+        std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
-    std::cout << "Done" << std::endl;
     return 0;
 }

@@ -1,8 +1,16 @@
-cmake_minimum_required (VERSION 3.2.0)
+cmake_minimum_required(VERSION 3.16)
  
 project(GBA-image-tools)
 
-find_package(ImageMagick REQUIRED COMPONENTS Magick++)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBMAGICK REQUIRED IMPORTED_TARGET
+    Magick++
+)
+pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
+    libavcodec
+    libavformat
+    libswscale
+)
 
 #-------------------------------------------------------------------------------
 #set up compiler flags and executable names
@@ -40,17 +48,22 @@ set(HELPERS_SRC
     datahelpers.cpp
     filehelpers.cpp
     imagehelpers.cpp
+    imageprocessing.cpp
+    processingoptions.cpp
+    lzsshelpers.cpp
     spritehelpers.cpp
 )
 
 include_directories(${ImageMagick_INCLUDE_DIRS})
-add_executable(colormap555 colormap555.cpp ${HELPERS_SRC})
-target_link_libraries(colormap555 ${ImageMagick_LIBRARIES})
+add_executable(colormap555 colormap555.cpp colorhelpers.cpp)
+target_link_libraries(colormap555 PkgConfig::LIBMAGICK)
 add_executable(gimppalette555 gimppalette555.cpp)
 add_executable(hex2gba hex2gba.cpp)
-target_link_libraries(hex2gba ${ImageMagick_LIBRARIES})
+target_link_libraries(hex2gba PkgConfig::LIBMAGICK)
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
-target_link_libraries(img2h ${ImageMagick_LIBRARIES} stdc++fs pthread)
+target_link_libraries(img2h PkgConfig::LIBMAGICK stdc++fs pthread)
+add_executable(vid2h vid2h.cpp ${HELPERS_SRC} videoreader.cpp)
+target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV stdc++fs pthread)
 
 #-------------------------------------------------------------------------------
 #define install files for CPack
@@ -60,6 +73,7 @@ install(FILES
     "gimppalette555"
     "hex2gba"
     "img2h"
+    "vid2h"
     "colormap555.png"
     "GBA.gpl"
     "README.md"

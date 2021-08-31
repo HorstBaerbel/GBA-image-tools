@@ -1,6 +1,8 @@
 #include "imagehelpers.h"
 
-#include <stdexcept>
+#include "colorhelpers.h"
+#include "datahelpers.h"
+#include "exception.h"
 
 std::vector<uint8_t> getImageData(const Image &img)
 {
@@ -51,16 +53,10 @@ std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices)
     std::vector<uint8_t> data;
     // size must be a multiple of 2
     const auto nrOfIndices = indices.size();
-    if (nrOfIndices & 1)
-    {
-        throw std::runtime_error("Number of indices must be even!");
-    }
+    REQUIRE((nrOfIndices & 1) == 0, std::runtime_error, "Number of indices must be even");
     for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 2)
     {
-        if (indices[i] > 15 || indices[i + 1] > 15)
-        {
-            throw std::runtime_error("Index values must be < 16!");
-        }
+        REQUIRE(indices[i] <= 15 || indices[i + 1] <= 15, std::runtime_error, "Index values must be < 16");
         uint8_t v = (((indices[i + 1]) & 0x0F) << 4);
         v |= ((indices[i]) & 0x0F);
         data.push_back(v);
@@ -76,7 +72,7 @@ std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData)
     return tempData;
 }
 
-std::vector<uint8_t> swapIndexToIndex0(std::vector<uint8_t> &imageData, uint8_t oldIndex)
+std::vector<uint8_t> swapIndexToIndex0(const std::vector<uint8_t> &imageData, uint8_t oldIndex)
 {
     auto tempData = imageData;
     for (size_t i = 0; i < tempData.size(); ++i)
@@ -93,7 +89,7 @@ std::vector<uint8_t> swapIndexToIndex0(std::vector<uint8_t> &imageData, uint8_t 
     return tempData;
 }
 
-std::vector<uint8_t> swapIndices(std::vector<uint8_t> &imageData, const std::vector<uint8_t> &newIndices)
+std::vector<uint8_t> swapIndices(const std::vector<uint8_t> &imageData, const std::vector<uint8_t> &newIndices)
 {
     std::vector<uint8_t> reverseIndices(newIndices.size(), 0);
     for (uint32_t i = 0; i < newIndices.size(); i++)
@@ -104,4 +100,28 @@ std::vector<uint8_t> swapIndices(std::vector<uint8_t> &imageData, const std::vec
     std::for_each(tempData.begin(), tempData.end(), [&reverseIndices](auto &i)
                   { i = reverseIndices[i]; });
     return tempData;
+}
+
+uint32_t getMaxNrOfColors(ImageType imgType, const std::vector<std::vector<Color>> &colorMaps)
+{
+    REQUIRE(imgType == ImageType::PaletteType, std::runtime_error, "Paletted images required");
+    REQUIRE(!colorMaps.empty(), std::runtime_error, "No color maps passed");
+    const auto &refColorMap = colorMaps.front();
+    uint32_t maxColorMapColors = refColorMap.size();
+    for (const auto &cm : colorMaps)
+    {
+        if (cm.size() > maxColorMapColors)
+        {
+            maxColorMapColors = cm.size();
+        }
+    }
+    return maxColorMapColors;
+}
+
+std::vector<Color> padColorMap(const std::vector<Color> &colorMap, uint32_t nrOfColors)
+{
+    REQUIRE(!colorMap.empty(), std::runtime_error, "Empty color map passed");
+    REQUIRE(nrOfColors <= 256, std::runtime_error, "Can't padd color map to more than 256 colors");
+    // padd all color maps to max color count
+    return fillUpToMultipleOf(colorMap, nrOfColors);
 }

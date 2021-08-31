@@ -5,7 +5,6 @@
 #include <numeric>
 #include <cmath>
 #include <future>
-#include <iostream>
 #include <sstream>
 
 std::vector<Color> getColorMap(const Image &img)
@@ -63,6 +62,26 @@ uint16_t colorToBGR555(const Color &color)
     uint16_t g = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.greenQuantum())) / static_cast<uint32_t>(QuantumRange));
     uint16_t r = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.redQuantum())) / static_cast<uint32_t>(QuantumRange));
     return (b << 10 | g << 5 | r);
+}
+
+Image buildColorMapRGB555()
+{
+    std::vector<uint8_t> pixels;
+    for (uint8_t r = 0; r < 32; ++r)
+    {
+        for (uint8_t g = 0; g < 32; ++g)
+        {
+            for (uint8_t b = 0; b < 32; ++b)
+            {
+                pixels.push_back((255 * r) / 31);
+                pixels.push_back((255 * g) / 31);
+                pixels.push_back((255 * b) / 31);
+            }
+        }
+    }
+    Image image(256, 128, "RGB", Magick::StorageType::CharPixel, pixels.data());
+    image.type(Magick::ImageType::TrueColorType);
+    return image;
 }
 
 std::vector<Color> interleave(const std::vector<std::vector<Color>> &palettes)
@@ -133,7 +152,6 @@ std::vector<uint8_t> insertIndexOptimal(const std::vector<uint8_t> &indices, con
 std::vector<uint8_t> minimizeColorDistance(const std::vector<Color> &colors)
 {
     // build map with color distance for all possible combinations from palette
-    std::cout << "Building color distance map..." << std::endl;
     std::map<uint8_t, std::vector<float>> distancesSqrMap;
     for (uint32_t i = 0; i < colors.size(); i++)
     {
@@ -146,12 +164,27 @@ std::vector<uint8_t> minimizeColorDistance(const std::vector<Color> &colors)
         }
         distancesSqrMap[i] = distancesSqr;
     }
+    // sort color indices by hue and lightness first
+    std::vector<uint8_t> sortedIndices;
+    std::generate_n(std::back_inserter(sortedIndices), colors.size(), [i = 0]() mutable
+                    { return i++; });
+    constexpr double epsilon = 0.1;
+    std::sort(sortedIndices.begin(), sortedIndices.end(), [colors](auto ia, auto ib)
+              {
+                  auto ca = ColorHSL(colors.at(ia));
+                  auto cb = ColorHSL(colors.at(ib));
+                  auto distH = cb.hue() - ca.hue();
+                  auto distI = cb.intensity() - ca.intensity();
+                  auto distL = cb.luminosity() - ca.luminosity();
+                  return (distH > epsilon && distI > epsilon && distL > epsilon) ||
+                         (std::abs(distH) < epsilon && distI > epsilon && distL > epsilon) ||
+                         (std::abs(distH) < epsilon && std::abs(distI) < epsilon && distL > epsilon);
+              });
     // insert colors / indices successively at optimal positions
-    std::cout << "Finding optimal palette..." << std::endl;
-    std::vector<uint8_t> currentIndices(1, 0);
-    for (uint32_t i = 1; i < colors.size(); i++)
+    std::vector<uint8_t> currentIndices(1, sortedIndices.front());
+    for (uint32_t i = 1; i < sortedIndices.size(); i++)
     {
-        currentIndices = insertIndexOptimal(currentIndices, distancesSqrMap, i);
+        currentIndices = insertIndexOptimal(currentIndices, distancesSqrMap, sortedIndices.at(i));
     }
     return currentIndices;
 }

@@ -22,7 +22,7 @@ std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, u
             uint32_t shift = ((pi & 1) == 0) ? 0 : 4;
             for (uint32_t di = 0; di < data.size(); di += 2)
             {
-                uint8_t v = ((data[di][pi] >> shift) && 0x0F) | (((data[di + 1][pi] >> shift) && 0x0F) >> 4);
+                uint8_t v = ((data[di][pi] >> shift) & 0x0F) | (((data[di + 1][pi] >> shift) & 0x0F) >> 4);
                 result.push_back(v);
             }
         }

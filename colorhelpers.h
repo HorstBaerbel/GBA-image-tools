@@ -29,6 +29,9 @@ std::vector<uint16_t> convertToBGR555(const std::vector<Color> &colors);
 /// @brief Convert a ImageMagick Color to a BGR555 color for GBA
 uint16_t colorToBGR555(const Color &color);
 
+/// @brief Build an image with the RGB555 color map the GBA uses
+Image buildColorMapRGB555();
+
 /// @brief Interleave all palette colors: P0C0, P1C0, P0C1, P1C1...
 std::vector<Color> interleave(const std::vector<std::vector<Color>> &palettes);
 

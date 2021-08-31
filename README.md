@@ -6,6 +6,7 @@ This folder contains some tools to convert / compress images and videos to GBA a
 * [gimppalette555](gimppalette555.cpp) - Generate the file [GBA.gpl](GBA.gpl) for using / editing / painting with GBA colors in Gimp.
 * [hex2gba](hex2gba.cpp) - Convert a RGB888 color to GBA RGB555 / BGR555 high-color format.
 * [img2h](img2h.cpp) - Convert / compress a (list of) image(s) that can be read with [ImageMagick](https://imagemagick.org/index.php) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compress them with LZ77. Suitable to compress small image sequences too.
+* [vid2h](vid2h.cpp) - Convert / compress a a video that can be read with [FFmpeg](https://www.ffmpeg.org/) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compresses them using intra-frame techniques and LZ77.
 
 If you find a bug or make an improvement your pull requests are appreciated.
 
@@ -97,8 +98,9 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
   * [```--addcolor0=COLOR```](#adding-a-color-to-index--0-in-the-palette) - Add COLOR at palette index #0 and increase all other color indices by 1.
   * [```--movecolor0=COLOR```](#moving-a-color-to-index--0-in-the-palette) - Move COLOR to palette index #0 and move all other colors accordingly.
   * [```--shift=N```](#shifting-index-values) - Increase image index values by N, keeping index #0 at 0.
+  * [```--prune```] (#pruning-index-values) - Reduce depth of image index values to 4 bit.
+  * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
-  * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store data sprite- and 8x8-tile-wise.
   * [```--interleavedata```](#interleaving-data) - Interleave image data from multiple images into one big array.
 * ```COMPRESSION``` is optional and means the type of compression to apply:
   * [```--diff8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
@@ -110,7 +112,7 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here (in Linux, not working in Windows).
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
-The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ sprites ➜ tiles ➜ diff8 / diff16 ➜ lz10 / lz11 ➜ interleavedata ➜ Write output
+The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ diff8 / diff16 ➜ lz10 / lz11 ➜ interleavedata ➜ Write output
 
 Some general information:
 
@@ -125,7 +127,7 @@ Some general information:
 
 ### Reordering palette colors
 
-Use ```--reordercolors``` to move "visually closer" colors next to each other in the palette. This can help if you try to do filtering / interpolation / jittering or video compression with paletted colors. Uses a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).  
+Use ```--reordercolors``` to move "perceptually closer" colors next to each other in the palette. This can help if you try to do filtering / interpolation / jittering or video compression with paletted colors. Uses a [simple metric](https://www.compuphase.com/cmetric.htm) to compute color distance with highly subjective results. For improvements see this [stackoverflow entry](https://stackoverflow.com/a/40950076).  
 ![reordered colors](reorderedcolors.png)
 
 ### Adding a color to index #0 in the palette
@@ -144,6 +146,10 @@ When using ImageMagick for color mapping / conversion the correct color might no
 
 COLORVALUE is an RGB hex color value, e.g. "AA2345" or "123def".
 
+### Pruning index values
+
+There's no way to store regular paletted images with 4-bit indices only, but 4-bit data is needed for 16-color tiles or -sprites. When a 256-color paletted image contains only 16 or less colors you can reduce index data to 4-bit values by passing the option ```--prune```.
+
 ### Shifting index values
 
 When multiple images, tiled backgrounds or sprites share a palette (e.g. sprite #1 uses colors 0-63, sprite #2 colors 64-127 etc.) index values need to be adjusted when copying. You can use the option ```--shift``` to shift index values by an amount N in the conversion process so they can be copied straight to memory:
@@ -151,6 +157,17 @@ When multiple images, tiled backgrounds or sprites share a palette (e.g. sprite 
 ```img2h --shift=N INFILE(s) OUTNAME```
 
 N must be a number in [1, 255]. The resulting index values will be clamped to [0, 255]. Index 0 will not be increased and STAY index #0. The color map will NOT be adjusted either!
+
+### Generating sprites for sprite OBJs
+
+To store images as sprites use the option ```--sprites=W,H```. This will cut the image into WxH-sized sprites going horizontally first. Those sprites will NOT be automatically converted to tiles (hint: use the ```--tiles``` option). Prequisites:
+
+* Image must be paletted
+* Image width must be a multiple of W and of 8 (for tile-conversion)
+* Image height must be a multiple of H and of 8 (for tile-conversion)
+* It makes sense that W and H are in [8, 16, 32, 64] (allowed GBA sprite sizes), but this isn't enforced
+
+The data will be stored in ["1D mapping"](http://problemkaputt.de/gbatek.htm#lcdobjvramcharactertilemapping). You can simply memcpy it over to VRAM, but don't forget to set the "OBJ Character VRAM Mapping" flag.
 
 ### Generating 8x8 tiles for tilemaps
 
@@ -160,17 +177,6 @@ To store images as tiles use the option ```--tiles```. This will cut the image i
 * Image width and height must be a multiple of 8
 
 The data will be stored so that you can simply memcpy it over to VRAM.
-
-### Generating sprites for sprite OBJs
-
-To store images as sprites use the option ```--sprites=W,H```. This will cut the image into WxH-sized sprites going horizontally first. Those sprites will then be converted to 8x8 tiles. Prequisites:
-
-* Image must be paletted
-* Image width must be a multiple of W and of 8 (for tile-conversion)
-* Image height must be a multiple of H and of 8 (for tile-conversion)
-* It makes sense that W and H are in [8, 16, 32, 64] (allowed GBA sprite sizes), but this isn't enforced
-
-The data will be stored in ["1D mapping"](http://problemkaputt.de/gbatek.htm#lcdobjvramcharactertilemapping). You can simply memcpy it over to VRAM, but don't forget to set the "OBJ Character VRAM Mapping" flag.
 
 ### Interleaving data
 
@@ -187,7 +193,7 @@ To improve compression you can apply diff- / delta-encoding using ```--diff8``` 
 
 ## TODO
 
+* Add builtin -remap and +remap option from ImageMagick
 * Syntax to apply options to single file only?
-* Sort colors by hue and lightness before reordering
 * Resolve wildcards on Windows
 * Compress with LZSS directly

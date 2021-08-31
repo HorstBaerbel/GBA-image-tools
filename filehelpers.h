@@ -23,5 +23,13 @@ void writeImageDataToC(std::ofstream &cFile, const std::string &varName, const s
 /// @brief Write palette data to a .c file. Use after write writeImageDataToC.
 void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false);
 
-/// @brief Get base name from filepath.
+/// @brief Get base name from file path.
 std::string getBaseNameFromFilePath(const std::string &filePath);
+
+/// @brief Tries to resolve wildcards and check if all files exists.
+/// @return [true, resolved_absolute_paths_to_files] if all files are found, [false, something] if not.
+/// @todo On Windows we might need to resolve wildcards in input files.
+std::pair<bool, std::vector<std::string>> resolveFilePaths(const std::vector<std::string> &files);
+
+/// @brief Get environment variable from system.
+std::string getEnv(const std::string &var);
