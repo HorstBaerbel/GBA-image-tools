@@ -140,8 +140,8 @@ ProcessingOptions::Option ProcessingOptions::lz11{
 
 ProcessingOptions::Option ProcessingOptions::vram{
     false,
-    {"v,vram", "Make LZ-compression VRAM-safe", cxxopts::value<bool>(vram.isSet)}};
+    {"v,vram", "Make compression VRAM-safe", cxxopts::value<bool>(vram.isSet)}};
 
-ProcessingOptions::Option ProcessingOptions::interleaveData{
+ProcessingOptions::Option ProcessingOptions::interleavePixels{
     false,
-    {"d,interleavedata", "Interleave all image data into one array. Combine colormap data into one array", cxxopts::value<bool>(interleaveData.isSet)}};
+    {"d,interleavepixels", "Interleave pixels from different images into one array", cxxopts::value<bool>(interleavePixels.isSet)}};

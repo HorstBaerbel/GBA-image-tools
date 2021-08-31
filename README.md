@@ -101,7 +101,7 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
   * [```--prune```] (#pruning-index-values) - Reduce depth of image index values to 4 bit.
   * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
-  * [```--interleavedata```](#interleaving-data) - Interleave image data from multiple images into one big array.
+  * [```--interleavepixels```](#interleaving-pixels) - Interleave pixels from multiple images into one big array.
 * ```COMPRESSION``` is optional and means the type of compression to apply:
   * [```--diff8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--diff16```](#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
@@ -112,7 +112,7 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here (in Linux, not working in Windows).
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
-The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ diff8 / diff16 ➜ lz10 / lz11 ➜ interleavedata ➜ Write output
+The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ diff8 / diff16 ➜ lz10 / lz11 ➜ interleavepixels ➜ Write output
 
 Some general information:
 
@@ -178,13 +178,13 @@ To store images as tiles use the option ```--tiles```. This will cut the image i
 
 The data will be stored so that you can simply memcpy it over to VRAM.
 
-### Interleaving data
+### Interleaving pixels
 
-If you have data you always read in combination, e.g. 8-bit colormap pixel and 8-bit heightmap value, use ```--interleavedata``` to interleave data of multiple images into one data "stream". This can help you save wait cycles on the GBA by combining reads:
+If you have data you always read in combination, e.g. an 8-bit colormap pixel and 8-bit heightmap pixel, use ```--interleavepixels``` to interleave pixels of multiple images into one data "stream". This can help you save wait cycles on the GBA by combining reads:
 
-```img2h --interleavedata INFILE0 INFILE1 OUTNAME```
+```img2h --interleavepixels INFILE0 INFILE1 OUTNAME```
 
-This will put image data 0 of file 0 and image data 0 of file 1 next to each other: I0D0, I1D0, I0D1, I1D1... Palettes will be stored in regular, uninterleaved order.
+This will put image pixel 0 of file 0 and image pixel 0 of file 1 next to each other: I0P0, I1P0, I0P1, I1P1... This will honor bpp and interleave in 8 or 16 bit intervals. Images need to be the same size. Palettes will be stored in regular, uninterleaved order.
 
 ### Compressing data
 

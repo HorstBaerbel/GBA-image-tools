@@ -71,7 +71,7 @@ bool readArguments(int argc, const char *argv[])
     opts.add_option("", options.lz10.cxxOption);
     opts.add_option("", options.lz11.cxxOption);
     opts.add_option("", options.vram.cxxOption);
-    opts.add_option("", options.interleaveData.cxxOption);
+    opts.add_option("", options.interleavePixels.cxxOption);
     opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
     opts.parse_positional({"infile", "outname", "positional"});
     auto result = opts.parse(argc, argv);
@@ -132,7 +132,7 @@ void printUsage()
     std::cout << options.sprites.helpString() << std::endl;
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
-    std::cout << options.interleaveData.helpString() << std::endl;
+    std::cout << options.interleavePixels.helpString() << std::endl;
     std::cout << "COMPRESSION options (all optional):" << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << options.lz11.helpString() << std::endl;
@@ -146,7 +146,7 @@ void printUsage()
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, prune," << std::endl;
-    std::cout << "sprites, tiles, diff8 / diff16, lz10 / lz11, interleavedata, output" << std::endl;
+    std::cout << "sprites, tiles, diff8 / diff16, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
 std::tuple<ImageType, Geometry, std::vector<ImageProcessing::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
@@ -293,7 +293,7 @@ int main(int argc, const char *argv[])
         processing.addStep(ImageProcessing::Type::PadImageData, ImageProcessing::Parameter(uint32_t(4)));
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
-        std::cout << "Applying processing: " << processingDescription << (options.interleaveData ? ", interleave image data" : "") << std::endl;
+        std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;
         images = processing.process(images);
         // check if all color maps are the same
         bool allColorMapsSame = true;
@@ -357,7 +357,7 @@ int main(int argc, const char *argv[])
                 }
                 nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
                 // convert image data to uint32_ts and palette to BGR555 uint16_ts
-                auto [imageData32, imageOrSpriteStartIndices] = ImageProcessing::combineImageData<uint32_t>(images, options.interleaveData);
+                auto [imageData32, imageOrSpriteStartIndices] = ImageProcessing::combineImageData<uint32_t>(images, options.interleavePixels);
                 // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
                 nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
                 // output image and palette data

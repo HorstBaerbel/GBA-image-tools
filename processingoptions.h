@@ -41,5 +41,5 @@ public:
     static Option lz10;
     static Option lz11;
     static Option vram;
-    static Option interleaveData;
+    static Option interleavePixels;
 };

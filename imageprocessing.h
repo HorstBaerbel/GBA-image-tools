@@ -124,12 +124,12 @@ public:
     /// @brief Combine image data of all images and return the data and the start indices into that data.
     /// Indices are return in DATA_TYPE units
     template <typename DATA_TYPE>
-    static std::pair<std::vector<DATA_TYPE>, std::vector<uint32_t>> combineImageData(const std::vector<Data> &images, bool interleaveData = false)
+    static std::pair<std::vector<DATA_TYPE>, std::vector<uint32_t>> combineImageData(const std::vector<Data> &images, bool interleavePixels = false)
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
                        { return img.data; });
-        if (interleaveData)
+        if (interleavePixels)
         {
             const auto allDataSameSize = std::find_if_not(images.cbegin(), images.cend(), [refSize = images.front().data.size()](const auto &img)
                                                           { return img.data.size() == refSize; }) == images.cend();
