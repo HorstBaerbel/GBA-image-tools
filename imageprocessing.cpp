@@ -108,7 +108,7 @@ ImageProcessing::Data ImageProcessing::shiftIndices(const Data &image, const std
 ImageProcessing::Data ImageProcessing::pruneIndices(const Data &image, const std::vector<Parameter> &parameters)
 {
     REQUIRE(image.type == Magick::ImageType::PaletteType, std::runtime_error, "Index pruning only possible paletted images");
-    REQUIRE(image.colorMap.size() < 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
+    REQUIRE(image.colorMap.size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
     uint8_t maxIndex = std::max(*std::max_element(image.data.cbegin(), image.data.cend()), maxIndex);
     REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
     Data result = {image.fileName, image.type, image.size, 4, {}, image.colorMap};
