@@ -222,10 +222,6 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<ImageProcessing::Dat
 
 int main(int argc, const char *argv[])
 {
-    for (int i = 0; i < argc; i++)
-    {
-        std::cout << i << ": " << argv[i] << std::endl;
-    }
     // check arguments
     if (argc < 3 || !readArguments(argc, argv))
     {
