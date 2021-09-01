@@ -93,6 +93,7 @@ namespace Lzss
             {
                 THROW(std::runtime_error, "Failed to run compressor");
             }
+            stdfs::remove(tempFileName);
         }
         else
         {
