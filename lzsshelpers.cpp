@@ -3,6 +3,12 @@
 #include "exception.h"
 #include "filehelpers.h"
 
+#ifdef _MSC_VER
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace Lzss
 {
 
@@ -48,8 +54,14 @@ namespace Lzss
         }
         REQUIRE(!GbaLzssPath.empty(), std::runtime_error, "No gbalzss executable found");
         std::vector<uint8_t> result;
+// get process id
+#ifdef _MSC_VER
+        auto processId = _getpid();
+#else
+        auto processId = getpid();
+#endif
         // write temporary file
-        const std::string tempFileName = stdfs::temp_directory_path().generic_string() + "/compress.tmp";
+        const std::string tempFileName = stdfs::temp_directory_path().generic_string() + "/compress_" + std::to_string(processId) + ".tmp";
         std::ofstream outFile(tempFileName, std::ios::binary | std::ios::out);
         if (outFile.is_open())
         {
