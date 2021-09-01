@@ -9,9 +9,7 @@
 #include "cxxopts/include/cxxopts.hpp"
 #include <Magick++.h>
 
-using namespace Magick;
-
-Color m_color;
+Magick::Color m_color;
 
 bool readArguments(int argc, const char *argv[])
 {
@@ -33,9 +31,9 @@ bool readArguments(int argc, const char *argv[])
         auto colorString = colorArg.front() == '#' ? colorArg : (std::string("#") + colorArg);
         try
         {
-            m_color = Color(colorString);
+            m_color = Magick::Color(colorString);
         }
-        catch (const Exception &ex)
+        catch (const Magick::Exception &ex)
         {
             std::cerr << colorArg << " is not a valid color. Format must be \"abc012\" or \"#abc012\". Aborting. " << std::endl;
             return false;
@@ -60,9 +58,9 @@ int main(int argc, const char *argv[])
         return 2;
     }
     // convert color
-    uint16_t r = static_cast<uint16_t>((31 * static_cast<uint32_t>(m_color.redQuantum())) / static_cast<uint32_t>(QuantumRange));
-    uint16_t g = static_cast<uint16_t>((31 * static_cast<uint32_t>(m_color.greenQuantum())) / static_cast<uint32_t>(QuantumRange));
-    uint16_t b = static_cast<uint16_t>((31 * static_cast<uint32_t>(m_color.blueQuantum())) / static_cast<uint32_t>(QuantumRange));
+    auto b = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.blueQuantum())));
+    auto g = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.greenQuantum())));
+    auto r = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.redQuantum())));
     uint16_t rgb = (r << 10 | g << 5 | b);
     std::cout << "RGB555 = #" << std::hex << std::setfill('0') << std::setw(4) << rgb << ", ";
     std::cout << std::hex << std::setfill('0') << std::setw(4) << rgb << "h, ";

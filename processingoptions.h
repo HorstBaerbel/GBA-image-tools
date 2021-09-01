@@ -25,10 +25,12 @@ public:
     {
         T value;
         std::string valueString;
-        std::string longOption;
         std::function<bool(const cxxopts::ParseResult &)> parse;
     };
 
+    static OptionT<uint32_t> binary;
+    static OptionT<uint32_t> palette;
+    static OptionT<uint32_t> truecolor;
     static Option reorderColors;
     static OptionT<Magick::Color> addColor0;
     static OptionT<Magick::Color> moveColor0;

@@ -3,9 +3,6 @@
 
 #include <cstdint>
 #include <vector>
-#include <Magick++.h>
-
-using namespace Magick;
 
 /// @brief Cut data to tileWidth * height pixel wide tiles. Width and height and tileWidth MUST be a multiple of 8!
 std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &data, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t tileWidth);

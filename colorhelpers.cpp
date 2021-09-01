@@ -6,10 +6,11 @@
 #include <cmath>
 #include <future>
 #include <sstream>
+#include <iomanip>
 
-std::vector<Color> getColorMap(const Image &img)
+std::vector<Magick::Color> getColorMap(const Magick::Image &img)
 {
-    std::vector<Color> colorMap(img.colorMapSize());
+    std::vector<Magick::Color> colorMap(img.colorMapSize());
     for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
     {
         colorMap[i] = img.colorMap(i);
@@ -17,7 +18,7 @@ std::vector<Color> getColorMap(const Image &img)
     return colorMap;
 }
 
-void setColorMap(Image &img, const std::vector<Color> &colorMap)
+void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap)
 {
     for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
     {
@@ -25,46 +26,46 @@ void setColorMap(Image &img, const std::vector<Color> &colorMap)
     }
 }
 
-std::string asHex(const Color &color)
+std::string asHex(const Magick::Color &color)
 {
     std::stringstream ss;
     ss << "0x";
-    ss << std::hex << static_cast<uint32_t>(color.redQuantum()) / static_cast<uint32_t>(QuantumRange);
-    ss << std::hex << static_cast<uint32_t>(color.greenQuantum()) / static_cast<uint32_t>(QuantumRange);
-    ss << std::hex << static_cast<uint32_t>(color.blueQuantum()) / static_cast<uint32_t>(QuantumRange);
+    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum())));
+    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum())));
+    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum())));
     return ss.str();
 }
 
-std::vector<Color> addColorAtIndex0(const std::vector<Color> &colorMap, const Color &color0)
+std::vector<Magick::Color> addColorAtIndex0(const std::vector<Magick::Color> &colorMap, const Magick::Color &color0)
 {
-    std::vector<Color> tempMap(colorMap.size() + 1, color0);
+    std::vector<Magick::Color> tempMap(colorMap.size() + 1, color0);
     std::copy(colorMap.cbegin(), colorMap.cend(), std::next(tempMap.begin()));
     return tempMap;
 }
 
-std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Color>> &colors)
+std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Magick::Color>> &colors)
 {
     std::vector<std::vector<uint16_t>> result;
-    std::transform(colors.cbegin(), colors.cend(), std::back_inserter(result), ((std::vector<uint16_t>(*)(const std::vector<Color> &))convertToBGR555));
+    std::transform(colors.cbegin(), colors.cend(), std::back_inserter(result), ((std::vector<uint16_t>(*)(const std::vector<Magick::Color> &))convertToBGR555));
     return result;
 }
 
-std::vector<uint16_t> convertToBGR555(const std::vector<Color> &colors)
+std::vector<uint16_t> convertToBGR555(const std::vector<Magick::Color> &colors)
 {
     std::vector<uint16_t> result;
     std::transform(colors.cbegin(), colors.cend(), std::back_inserter(result), colorToBGR555);
     return result;
 }
 
-uint16_t colorToBGR555(const Color &color)
+uint16_t colorToBGR555(const Magick::Color &color)
 {
-    uint16_t b = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.blueQuantum())) / static_cast<uint32_t>(QuantumRange));
-    uint16_t g = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.greenQuantum())) / static_cast<uint32_t>(QuantumRange));
-    uint16_t r = static_cast<uint16_t>((31 * static_cast<uint32_t>(color.redQuantum())) / static_cast<uint32_t>(QuantumRange));
+    auto b = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum())));
+    auto g = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum())));
+    auto r = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum())));
     return (b << 10 | g << 5 | r);
 }
 
-Image buildColorMapRGB555()
+Magick::Image buildColorMapRGB555()
 {
     std::vector<uint8_t> pixels;
     for (uint8_t r = 0; r < 32; ++r)
@@ -79,12 +80,12 @@ Image buildColorMapRGB555()
             }
         }
     }
-    Image image(256, 128, "RGB", Magick::StorageType::CharPixel, pixels.data());
+    Magick::Image image(256, 128, "RGB", Magick::StorageType::CharPixel, pixels.data());
     image.type(Magick::ImageType::TrueColorType);
     return image;
 }
 
-std::vector<Color> interleave(const std::vector<std::vector<Color>> &palettes)
+std::vector<Magick::Color> interleave(const std::vector<std::vector<Magick::Color>> &palettes)
 {
     // make sure all vectors have the same sizes
     for (const auto &p : palettes)
@@ -94,7 +95,7 @@ std::vector<Color> interleave(const std::vector<std::vector<Color>> &palettes)
             throw std::runtime_error("All palettes must have the same number of colors!");
         }
     }
-    std::vector<Color> result;
+    std::vector<Magick::Color> result;
     for (uint32_t ci = 0; ci < palettes.front().size(); ci++)
     {
         for (const auto &p : palettes)
@@ -105,19 +106,19 @@ std::vector<Color> interleave(const std::vector<std::vector<Color>> &palettes)
     return result;
 }
 
-float distance(const Color &a, const Color &b)
+float distance(const Magick::Color &a, const Magick::Color &b)
 {
     if (a == b)
     {
         return 0.0F;
     }
-    float ra = (float)a.redQuantum() / (float)QuantumRange;
-    float rb = (float)b.redQuantum() / (float)QuantumRange;
-    float r = 0.5F * (ra + rb);
-    float dR = ra - rb;
-    float dG = ((float)a.greenQuantum() / (float)QuantumRange) - ((float)b.greenQuantum() / (float)QuantumRange);
-    float dB = ((float)a.blueQuantum() / (float)QuantumRange) - ((float)b.blueQuantum() / (float)QuantumRange);
-    return sqrt((2.0F + r) * dR * dR + 4.0F * dG * dG + (3.0F - r) * dB * dB);
+    auto ra = Magick::Color::scaleQuantumToDouble(a.redQuantum());
+    auto rb = Magick::Color::scaleQuantumToDouble(b.redQuantum());
+    auto r = 0.5 * (ra + rb);
+    auto dR = ra - rb;
+    auto dG = Magick::Color::scaleQuantumToDouble(a.greenQuantum()) - Magick::Color::scaleQuantumToDouble(b.greenQuantum());
+    auto dB = Magick::Color::scaleQuantumToDouble(a.blueQuantum()) - Magick::Color::scaleQuantumToDouble(b.blueQuantum());
+    return sqrt((2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB);
 }
 
 float calculateDistanceRMS(const std::vector<uint8_t> &indices, const std::map<uint8_t, std::vector<float>> &distancesSqrMap)
@@ -149,7 +150,7 @@ std::vector<uint8_t> insertIndexOptimal(const std::vector<uint8_t> &indices, con
     return bestOrder;
 }
 
-std::vector<uint8_t> minimizeColorDistance(const std::vector<Color> &colors)
+std::vector<uint8_t> minimizeColorDistance(const std::vector<Magick::Color> &colors)
 {
     // build map with color distance for all possible combinations from palette
     std::map<uint8_t, std::vector<float>> distancesSqrMap;
@@ -171,8 +172,8 @@ std::vector<uint8_t> minimizeColorDistance(const std::vector<Color> &colors)
     constexpr double epsilon = 0.1;
     std::sort(sortedIndices.begin(), sortedIndices.end(), [colors](auto ia, auto ib)
               {
-                  auto ca = ColorHSL(colors.at(ia));
-                  auto cb = ColorHSL(colors.at(ib));
+                  auto ca = Magick::ColorHSL(colors.at(ia));
+                  auto cb = Magick::ColorHSL(colors.at(ib));
                   auto distH = cb.hue() - ca.hue();
                   auto distI = cb.intensity() - ca.intensity();
                   auto distL = cb.luminosity() - ca.luminosity();
@@ -189,9 +190,9 @@ std::vector<uint8_t> minimizeColorDistance(const std::vector<Color> &colors)
     return currentIndices;
 }
 
-std::vector<Color> swapColors(const std::vector<Color> &colors, const std::vector<uint8_t> &newIndices)
+std::vector<Magick::Color> swapColors(const std::vector<Magick::Color> &colors, const std::vector<uint8_t> &newIndices)
 {
-    std::vector<Color> result;
+    std::vector<Magick::Color> result;
     for (uint32_t i = 0; i < colors.size(); i++)
     {
         result.push_back(colors.at(newIndices[i]));

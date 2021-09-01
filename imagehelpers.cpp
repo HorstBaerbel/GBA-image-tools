@@ -4,10 +4,10 @@
 #include "datahelpers.h"
 #include "exception.h"
 
-std::vector<uint8_t> getImageData(const Image &img)
+std::vector<uint8_t> getImageData(const Magick::Image &img)
 {
     std::vector<uint8_t> data;
-    if (img.type() == PaletteType)
+    if (img.type() == Magick::ImageType::PaletteType)
     {
         const auto nrOfColors = img.colorMapSize();
         const auto nrOfIndices = img.columns() * img.rows();
@@ -25,7 +25,7 @@ std::vector<uint8_t> getImageData(const Image &img)
             throw std::runtime_error("Only up to 256 colors supported in color map!");
         }
     }
-    else if (img.type() == TrueColorType)
+    else if (img.type() == Magick::ImageType::TrueColorType)
     {
         // get pixel colors and rescale to RGB555
         const auto nrOfPixels = img.columns() * img.rows();
@@ -33,9 +33,9 @@ std::vector<uint8_t> getImageData(const Image &img)
         for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
         {
             auto pixel = pixels[i];
-            data.push_back((31 * pixel.red) / QuantumRange);
-            data.push_back((31 * pixel.green) / QuantumRange);
-            data.push_back((31 * pixel.blue) / QuantumRange);
+            data.push_back(static_cast<uint8_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(pixel.red))));
+            data.push_back(static_cast<uint8_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(pixel.green))));
+            data.push_back(static_cast<uint8_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))));
         }
     }
     else
@@ -102,9 +102,9 @@ std::vector<uint8_t> swapIndices(const std::vector<uint8_t> &imageData, const st
     return tempData;
 }
 
-uint32_t getMaxNrOfColors(ImageType imgType, const std::vector<std::vector<Color>> &colorMaps)
+uint32_t getMaxNrOfColors(Magick::ImageType imgType, const std::vector<std::vector<Magick::Color>> &colorMaps)
 {
-    REQUIRE(imgType == ImageType::PaletteType, std::runtime_error, "Paletted images required");
+    REQUIRE(imgType == Magick::ImageType::PaletteType, std::runtime_error, "Paletted images required");
     REQUIRE(!colorMaps.empty(), std::runtime_error, "No color maps passed");
     const auto &refColorMap = colorMaps.front();
     uint32_t maxColorMapColors = refColorMap.size();
@@ -118,7 +118,7 @@ uint32_t getMaxNrOfColors(ImageType imgType, const std::vector<std::vector<Color
     return maxColorMapColors;
 }
 
-std::vector<Color> padColorMap(const std::vector<Color> &colorMap, uint32_t nrOfColors)
+std::vector<Magick::Color> padColorMap(const std::vector<Magick::Color> &colorMap, uint32_t nrOfColors)
 {
     REQUIRE(!colorMap.empty(), std::runtime_error, "Empty color map passed");
     REQUIRE(nrOfColors <= 256, std::runtime_error, "Can't padd color map to more than 256 colors");

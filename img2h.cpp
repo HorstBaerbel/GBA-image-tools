@@ -32,6 +32,7 @@
 #include <cstdlib>
 
 #include "cxxopts/include/cxxopts.hpp"
+#include "glob/single_include/glob/glob.hpp"
 #include <Magick++.h>
 
 std::vector<std::string> m_inFile;
@@ -57,8 +58,8 @@ bool readArguments(int argc, const char *argv[])
     cxxopts::Options opts("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
     opts.allow_unrecognised_options();
     opts.add_option("", {"h,help", "Print help"});
-    opts.add_option("", {"i,infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
-    opts.add_option("", {"o,outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
+    opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
+    opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
     opts.add_option("", options.reorderColors.cxxOption);
     opts.add_option("", options.addColor0.cxxOption);
     opts.add_option("", options.moveColor0.cxxOption);
@@ -95,6 +96,11 @@ bool readArguments(int argc, const char *argv[])
             m_outFile = m_inFile.back();
             m_inFile.resize(m_inFile.size() - 1);
         }
+        // resolve wildcards in input files
+        auto filePaths = glob::glob(m_inFile);
+        m_inFile.clear();
+        std::transform(filePaths.cbegin(), filePaths.cend(), std::back_inserter(m_inFile), [](const auto &p)
+                       { return p.string(); });
         // make sure all input files exist
         for (const auto &fileName : m_inFile)
         {
@@ -108,6 +114,12 @@ bool readArguments(int argc, const char *argv[])
     else
     {
         std::cout << "No input file passed!" << std::endl;
+        return false;
+    }
+    // check if exclusive options set
+    if (options.lz10 && options.lz11)
+    {
+        std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
         return false;
     }
     return options.addColor0.parse(result) && options.moveColor0.parse(result) &&
@@ -133,9 +145,10 @@ void printUsage()
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << options.interleavePixels.helpString() << std::endl;
-    std::cout << "COMPRESSION options (all optional):" << std::endl;
+    std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << options.lz11.helpString() << std::endl;
+    std::cout << "COMPRESSION modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
     std::cout << "Valid combinations are e.g. \"--diff8 --lz10\" or \"--lz11 --vram\"." << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
@@ -149,29 +162,29 @@ void printUsage()
     std::cout << "sprites, tiles, diff8 / diff16, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
-std::tuple<ImageType, Geometry, std::vector<ImageProcessing::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
+std::tuple<Magick::ImageType, Magick::Geometry, std::vector<ImageProcessing::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
-    ImageType imgType = Magick::ImageType::UndefinedType;
-    Geometry imgSize;
+    Magick::ImageType imgType = Magick::ImageType::UndefinedType;
+    Magick::Geometry imgSize;
     std::vector<ImageProcessing::Data> images;
     // open first image and store type
     auto ifIt = fileNames.cbegin();
     while (ifIt != fileNames.cend())
     {
         std::cout << "Reading " << *ifIt;
-        Image img;
+        Magick::Image img;
         try
         {
             img.read(*ifIt);
         }
-        catch (const Exception &ex)
+        catch (const Magick::Exception &ex)
         {
             THROW(std::runtime_error, "Failed to read image: " << ex.what());
         }
         imgSize = img.size();
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
         imgType = img.type();
-        const bool isPaletted = img.classType() == ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
+        const bool isPaletted = img.classType() == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
         if (isPaletted)
         {
             std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
@@ -209,6 +222,10 @@ std::tuple<ImageType, Geometry, std::vector<ImageProcessing::Data>> readImages(c
 
 int main(int argc, const char *argv[])
 {
+    for (int i = 0; i < argc; i++)
+    {
+        std::cout << i << ": " << argv[i] << std::endl;
+    }
     // check arguments
     if (argc < 3 || !readArguments(argc, argv))
     {
@@ -218,7 +235,7 @@ int main(int argc, const char *argv[])
     // check input and output
     if (m_inFile.empty())
     {
-        std::cerr << "No input file passed. Aborting." << std::endl;
+        std::cerr << "No input file(s) passed. Aborting." << std::endl;
         return 1;
     }
     if (m_outFile.empty())
@@ -226,18 +243,10 @@ int main(int argc, const char *argv[])
         std::cerr << "No output file passed. Aborting." << std::endl;
         return 1;
     }
-    // resolve wildcards in input files and check if all input files exist
-    /*auto result = resolveFilePaths(m_inFile);
-    if (!result.first || result.second.empty())
-    {
-        std::cerr << "Failed to find input files. Aborting. " << std::endl;
-        return -4;
-    }
-    m_inFile = result.second;*/
     try
     {
         // fire up ImageMagick
-        InitializeMagick(*argv);
+        Magick::InitializeMagick(*argv);
         // read image(s) from disk
         auto [imgType, imgSize, images] = readImages(m_inFile, options);
         // build processing pipeline

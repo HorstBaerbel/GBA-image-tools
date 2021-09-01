@@ -120,41 +120,6 @@ std::string getBaseNameFromFilePath(const std::string &filePath)
     return baseName;
 }
 
-std::pair<bool, std::vector<std::string>> resolveFilePaths(const std::vector<std::string> &files)
-{
-    std::pair<bool, std::vector<std::string>> result;
-    result.first = true;
-    for (const auto &file : files)
-    {
-        /*if (std::find(file.cbegin(), file.cend(), '*'))
-        {
-            // wildcard * found, resolve files
-            std::string regexString = file;
-            std::replace(regexString.begin(), regexString.end(), '*', ".*");
-            try
-            {
-                std::regex regex(regexString, std::regex::basic);
-                stdfs::
-            }
-            catch (const std::regex_error& ex)
-            {
-                std::cerr << "Bad input file " << file << ". Aborting. " << std::endl;
-                return std::vector<std::string>();
-            }
-        }*/
-        // check if file exists
-        if (stdfs::exists(file))
-        {
-            result.second.push_back(file);
-        }
-        else
-        {
-            result.first = false;
-        }
-    }
-    return result;
-}
-
 std::string getEnv(const std::string &var)
 {
     const char *value = std::getenv(var.c_str());

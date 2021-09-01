@@ -109,7 +109,7 @@ Call img2h like this: ```img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OU
   * [```--lz11```](#compressing-data) - Use LZ77 compression ["variant 11"](http://problemkaputt.de/gbatek.htm#lzdecompressionfunctions).
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
-* ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here (in Linux, not working in Windows).
+* ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here, e.g. "dir/file\*.png".
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
 The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ diff8 / diff16 ➜ lz10 / lz11 ➜ interleavepixels ➜ Write output
@@ -194,5 +194,4 @@ To improve compression you can apply diff- / delta-encoding using ```--diff8``` 
 
 * Add builtin -remap and +remap option from ImageMagick
 * Syntax to apply options to single file only?
-* Resolve wildcards on Windows
 * Compress with LZSS directly

@@ -5,10 +5,8 @@
 #include <vector>
 #include <Magick++.h>
 
-using namespace Magick;
-
 /// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes.
-std::vector<uint8_t> getImageData(const Image &img);
+std::vector<uint8_t> getImageData(const Magick::Image &img);
 
 /// @brief Convert image index data to nibble-sized values
 std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices);
@@ -23,4 +21,4 @@ std::vector<uint8_t> swapIndexToIndex0(const std::vector<uint8_t> &imageData, ui
 std::vector<uint8_t> swapIndices(const std::vector<uint8_t> &imageData, const std::vector<uint8_t> &newIndices);
 
 /// @brief Padd / fill up color map to nrOfColors
-std::vector<Color> padColorMap(const std::vector<Color> &colorMap, uint32_t nrOfColors);
+std::vector<Magick::Color> padColorMap(const std::vector<Magick::Color> &colorMap, uint32_t nrOfColors);

@@ -32,7 +32,7 @@ public:
     /// @brief Get information about opened video file
     VideoInfo getInfo() const;
 
-    /// @brief Read next frame from video. Will return empty data if EOF
+    /// @brief Read next RGB888 frame from video. Will return empty data if EOF
     std::vector<uint8_t> readFrame() const;
 
     /// @brief Open FFmpeg reader opened with open()
