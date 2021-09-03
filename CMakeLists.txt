@@ -9,6 +9,7 @@ pkg_check_modules(LIBMAGICK REQUIRED IMPORTED_TARGET
 pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libavcodec
     libavformat
+    libavutil
     libswscale
 )
 

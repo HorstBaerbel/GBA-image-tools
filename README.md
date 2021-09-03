@@ -192,6 +192,7 @@ To improve compression you can apply diff- / delta-encoding using ```--diff8``` 
 
 ## TODO
 
+* Do all processing in RGB, store truecolor as BGR in the end
 * Add builtin -remap and +remap option from ImageMagick
 * Syntax to apply options to single file only?
 * Compress with LZSS directly

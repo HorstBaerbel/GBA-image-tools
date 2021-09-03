@@ -34,7 +34,7 @@ enum class ConversionMode
 {
     None,
     Binary,
-    Palette,
+    Paletted,
     Truecolor
 };
 ConversionMode m_conversionMode = ConversionMode::None;
@@ -65,7 +65,7 @@ bool readArguments(int argc, const char *argv[])
     opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
     opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
     opts.add_option("", options.binary.cxxOption);
-    opts.add_option("", options.palette.cxxOption);
+    opts.add_option("", options.paletted.cxxOption);
     opts.add_option("", options.truecolor.cxxOption);
     opts.add_option("", options.addColor0.cxxOption);
     opts.add_option("", options.moveColor0.cxxOption);
@@ -77,6 +77,7 @@ bool readArguments(int argc, const char *argv[])
     opts.add_option("", options.delta16.cxxOption);
     opts.add_option("", options.lz10.cxxOption);
     opts.add_option("", options.lz11.cxxOption);
+    opts.add_option("", options.dryRun.cxxOption);
     opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
     opts.parse_positional({"infile", "outname", "positional"});
     auto result = opts.parse(argc, argv);
@@ -118,12 +119,15 @@ bool readArguments(int argc, const char *argv[])
         }
     }
     // check if exclusive options set
-    if ((options.binary + options.palette + options.truecolor) == 0)
+    options.binary.parse(result);
+    options.paletted.parse(result);
+    options.truecolor.parse(result);
+    if ((options.binary + options.paletted + options.truecolor) == 0)
     {
         std::cerr << "One format option is needed." << std::endl;
         return false;
     }
-    if ((options.binary + options.palette + options.truecolor) > 1)
+    if ((options.binary + options.paletted + options.truecolor) > 1)
     {
         std::cerr << "Only a single format option is allowed." << std::endl;
         return false;
@@ -133,9 +137,11 @@ bool readArguments(int argc, const char *argv[])
         std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
         return false;
     }
-    return options.binary.parse(result) && options.palette.parse(result) && options.truecolor.parse(result) &&
-           options.addColor0.parse(result) && options.moveColor0.parse(result) &&
-           options.shiftIndices.parse(result) && options.sprites.parse(result);
+    options.addColor0.parse(result);
+    options.moveColor0.parse(result);
+    options.shiftIndices.parse(result);
+    options.sprites.parse(result);
+    return true;
 }
 
 void printUsage()
@@ -145,7 +151,7 @@ void printUsage()
     std::cout << "Usage: vid2h FORMAT [CONVERSION] [COMPRESSION] INFILE OUTNAME" << std::endl;
     std::cout << "FORMAT options (mutually exclusive):" << std::endl;
     std::cout << options.binary.helpString() << std::endl;
-    std::cout << options.palette.helpString() << std::endl;
+    std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
     std::cout << "CONVERSION options (all optional):" << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
@@ -165,47 +171,35 @@ void printUsage()
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
+    std::cout << "MISC options (all optional):" << std::endl;
+    std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "EXECUTION ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites," << std::endl;
     std::cout << "tiles, lz10 / lz11, output" << std::endl;
 }
 
 int main(int argc, const char *argv[])
 {
-    // check arguments
-    if (argc < 3 || !readArguments(argc, argv))
-    {
-        printUsage();
-        return 2;
-    }
-    // check input and output
-    if (m_inFile.empty())
-    {
-        std::cerr << "No input file passed. Aborting." << std::endl;
-        return 1;
-    }
-    if (m_outFile.empty())
-    {
-        std::cerr << "No output file passed. Aborting." << std::endl;
-        return 1;
-    }
-    if (m_conversionMode == ConversionMode::None)
-    {
-        std::cerr << "No conversion mode passed. Aborting." << std::endl;
-        return 1;
-    }
-    // resolve wildcards in input files and check if all input files exist
-    /*auto result = resolveFilePaths(m_inFile);
-    if (!result.first || result.second.empty())
-    {
-        std::cerr << "Failed to find input files. Aborting. " << std::endl;
-        return -4;
-    }
-    m_inFile = result.second;*/
     try
     {
-        // fire up ImageMagick and build GBA reference color map
+        // check arguments
+        if (argc < 3 || !readArguments(argc, argv))
+        {
+            printUsage();
+            return 2;
+        }
+        // check input and output
+        if (m_inFile.empty())
+        {
+            std::cerr << "No input file passed. Aborting." << std::endl;
+            return 1;
+        }
+        if (m_outFile.empty())
+        {
+            std::cerr << "No output file passed. Aborting." << std::endl;
+            return 1;
+        }
+        // fire up ImageMagick
         Magick::InitializeMagick(*argv);
-        const auto ColorMapRGB555 = buildColorMapRGB555();
         // fire up video reader and open video file
         VideoReader videoReader;
         VideoReader::VideoInfo videoInfo;
@@ -214,14 +208,88 @@ int main(int argc, const char *argv[])
             std::cout << "Opening " << m_inFile << "..." << std::endl;
             videoReader.open(m_inFile);
             videoInfo = videoReader.getInfo();
-            std::cout << "Video stream #" << videoInfo.videoStreamIndex << ": " << videoInfo.codecName << ", " << videoInfo.width << "x" << videoInfo.height << "@" << videoInfo.fps << std::endl;
+            std::cout << "Video stream #" << videoInfo.videoStreamIndex << ": " << videoInfo.codecName << ", " << videoInfo.width << "x" << videoInfo.height << "@" << videoInfo.fps;
+            std::cout << ", duration " << videoInfo.durationS << "s, " << videoInfo.nrOfFrames << " frames" << std::endl;
         }
         catch (const std::runtime_error &e)
         {
             std::cerr << "Failed to open video file: " << e.what() << std::endl;
             return 1;
         }
+        // build processing pipeline - input
+        ImageProcessing processing;
+        if (options.binary)
+        {
+            processing.addStep(ImageProcessing::Type::InputBinary, {options.binary.value});
+        }
+        else if (options.paletted)
+        {
+            // add palette conversion using GBA RGB555 reference color map
+            processing.addStep(ImageProcessing::Type::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
+        }
+        else if (options.truecolor)
+        {
+            processing.addStep(ImageProcessing::Type::InputTruecolor, {options.truecolor.value});
+        }
+        // build processing pipeline - conversion
+        if (options.paletted)
+        {
+            processing.addStep(ImageProcessing::Type::ReorderColors);
+            if (options.addColor0)
+            {
+                processing.addStep(ImageProcessing::Type::AddColor0, {options.addColor0.value});
+            }
+            if (options.moveColor0)
+            {
+                processing.addStep(ImageProcessing::Type::MoveColor0, {options.moveColor0.value});
+            }
+            if (options.shiftIndices)
+            {
+                processing.addStep(ImageProcessing::Type::ShiftIndices, {options.shiftIndices.value});
+            }
+            if (options.pruneIndices)
+            {
+                processing.addStep(ImageProcessing::Type::PruneIndices);
+                processing.addStep(ImageProcessing::Type::PadColorMap, {uint32_t(16)});
+            }
+            else
+            {
+                processing.addStep(ImageProcessing::Type::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
+            }
+        }
+        if (options.sprites)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertSprites, {options.sprites.value.front()});
+        }
+        if (options.tiles)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertTiles);
+        }
+        //processing.addStep(ImageProcessing::Type::ImageDiff);
+        if (options.delta8)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertDelta8);
+        }
+        if (options.delta16)
+        {
+            processing.addStep(ImageProcessing::Type::ConvertDelta16);
+        }
+        if (options.lz10)
+        {
+            processing.addStep(ImageProcessing::Type::CompressLz10, {options.vram.isSet});
+        }
+        if (options.lz11)
+        {
+            processing.addStep(ImageProcessing::Type::CompressLz11, {options.vram.isSet});
+        }
+        processing.addStep(ImageProcessing::Type::PadImageData, {uint32_t(4)});
+        // apply image processing pipeline
+        const auto processingDescription = processing.getProcessingDescription();
+        std::cout << "Applying processing: " << processingDescription << std::endl;
         // start reading frames from video
+        uint32_t lastProgress = 0;
+        auto startTime = std::chrono::steady_clock::now();
+        std::vector<ImageProcessing::Data> images;
         do
         {
             auto frame = videoReader.readFrame();
@@ -229,233 +297,112 @@ int main(int argc, const char *argv[])
             {
                 break;
             }
-            Image image(videoInfo.width, videoInfo.height, "RGB", StorageType::CharPixel, frame.data());
-            // convert frame image to color mode
-            if (m_conversionMode == ConversionMode::Binary)
+            // build image from frame and apply processing
+            images.push_back(processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data())));
+            uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
+            if (lastProgress != newProgress)
             {
-                // TODO
-                std::cout << "Currently not supported" << std::endl;
-                return 1;
-            }
-            else if (m_conversionMode == ConversionMode::Palette)
-            {
-                // map image to GBA color map, no dithering
-                image.map(ColorMapRGB555);
-                // convert image to paletted
-                image.quantizeDither(true);
-                image.quantizeDitherMethod(DitherMethod::RiemersmaDitherMethod);
-                image.quantizeColors(options.palette.value);
-                // get image data and color map
-                auto data = getImageData(image);
-                auto colorMap = getColorMap(image);
-                // reorder palette colors
-                reorderColors(colorMap, data);
-                // add extra color #0 if wanted
-                if (m_doAddColor0)
-                {
-                    addColor0(colorMap, data, m_addColor0);
-                }
-                // shift indices if wanted
-                if (m_doShiftIndices)
-                {
-                    shiftIndices(data, m_shiftIndicesBy);
-                }
-            }
-            else if (m_conversionMode == ConversionMode::Truecolor)
-            {
-                // TODO
-                std::cout << "Currently not supported" << std::endl;
-                return 1;
-                // map image to GBA color map with dithering
-                //image.map(ColorMapRGB555, true);
+                lastProgress = newProgress;
+                auto newTime = std::chrono::steady_clock::now();
+                auto timePassedMs = std::chrono::duration<double>(newTime - startTime);
+                auto fps = static_cast<double>(images.size()) / timePassedMs.count();
+                auto restS = (videoInfo.nrOfFrames - images.size()) / fps;
+                std::cout << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
             }
         } while (true);
-        // we have the data. pad to multiple of 4 and compress
-        std::cout << "Converting" << std::endl;
-        std::vector<std::vector<uint8_t>> processedData;
-        uint32_t imageNr = 0;
-        for (auto &data : imgData)
+        // set up some image info
+        const auto imgType = images.front().type;
+        auto imgSize = images.front().size;
+        const bool allColorMapsSame = false;
+        const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
+        // check if we want to write output files
+        if (options.dryRun)
         {
-            std::cout << "Image #" << imageNr++;
-            if (data.empty())
-            {
-                std::cerr << std::endl
-                          << "Empty image data" << std::endl;
-                return 1;
-            }
-            if (m_asTiles)
-            {
-                std::cout << " tiles";
-                data = convertToTiles(data, imgSize.width(), imgSize.height(), nrOfBitsPerPixel);
-            }
-            else if (m_asSprites)
-            {
-                std::cout << " sprites";
-                auto dataSize = imgSize;
-                if (dataSize.width() != m_spriteWidth)
-                {
-                    data = convertToWidth(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel, m_spriteWidth);
-                    dataSize = Magick::Geometry(m_spriteWidth, (dataSize.width() * dataSize.height()) / m_spriteWidth);
-                }
-                std::cout << " tiles";
-                data = convertToTiles(data, dataSize.width(), dataSize.height(), nrOfBitsPerPixel);
-            }
-            if (mustCompress())
-            {
-                if (m_deltaEncoding8)
-                {
-                    std::cout << " delta-8";
-                    data = deltaEncode(data);
-                }
-                else if (m_deltaEncoding16)
-                {
-                    std::cout << " delta-16";
-                    if (data.size() & 1)
-                    {
-                        std::cerr << std::endl
-                                  << "Image data size must be a multiple of 2 for 16-bit delta-encoding" << std::endl;
-                        return 1;
-                    }
-                    data = convertTo<uint8_t>(deltaEncode(convertTo<uint16_t>(data)));
-                }
-                if (m_lz10Compression)
-                {
-                    std::cout << " LZ10";
-                    data = compressLzss(data, m_vramCompatible, false);
-                }
-                else if (m_lz11Compression)
-                {
-                    std::cout << " LZ11";
-                    data = compressLzss(data, m_vramCompatible, true);
-                }
-                /*std::ofstream of("compressed.hex", std::ios::binary | std::ios::out);
-            of.write(reinterpret_cast<const char *>(compressed.data()), compressed.size());
-            of.close();*/
-                if (data.empty())
-                {
-                    std::cerr << std::endl
-                              << "Compressing image data failed" << std::endl;
-                    return 1;
-                }
-            }
-            processedData.push_back(fillUpToMultipleOf(data, 4));
-            std::cout << std::endl;
-        }
-        // adjust image size when using sprites as we've converted them to m_spriteWidth now...
-        if (m_asTiles && imgSize.width() != 8)
-        {
-            imgSize = Magick::Geometry(8, (imgSize.width() * imgSize.height()) / 8);
-        }
-        else if (m_asSprites && imgSize.width() != m_spriteWidth)
-        {
-            imgSize = Magick::Geometry(m_spriteWidth, (imgSize.width() * imgSize.height()) / m_spriteWidth);
-        }
-        // do data and palette interleaving
-        if (m_interleaveData)
-        {
-            try
-            {
-                auto tempData = interleave(processedData, nrOfBitsPerPixel);
-                processedData.clear();
-                processedData.push_back(tempData);
-                std::cout << "Interleaved image data" << std::endl;
-            }
-            catch (std::runtime_error e)
-            {
-                std::cerr << "Failed to interleave image data: " << e.what() << std::endl;
-                return 1;
-            }
-        }
-        // open output files
-        std::ofstream hFile(m_outFile + ".h", std::ios::out);
-        std::ofstream cFile(m_outFile + ".c", std::ios::out);
-        if (hFile.is_open() && cFile.is_open())
-        {
-            std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
-            try
-            {
-                std::string baseName = getBaseNameFromFilePath(m_outFile);
-                std::string varName = baseName;
-                std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
-                               { return std::toupper(c, std::locale()); });
-                // output header
-                hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
-                if (mustCompress())
-                {
-                    hFile << "// Compression type";
-                    if (m_deltaEncoding8 || m_deltaEncoding16)
-                    {
-                        hFile << " Diff" << (m_deltaEncoding8 ? "8" : "16");
-                    }
-                    if (m_lz10Compression || m_lz11Compression)
-                    {
-                        hFile << " LZSS variant " << (m_lz11Compression ? "11" : "10");
-                    }
-                    hFile << (m_vramCompatible ? ", VRAM-safe" : "") << std::endl;
-                }
-                hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
-                      << std::endl;
-                // output image and palette info
-                const bool storeTileOrSpriteWise = (imgData.size() == 1) && (m_asTiles || m_asSprites);
-                uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
-                uint32_t nrOfImagesOrSprites = imgData.size();
-                if (nrOfImagesOrSprites == 1)
-                {
-                    // if we have a single input image, store data per tile or sprite
-                    if (m_asTiles)
-                    {
-                        // calculate number of 8*8 pixel tiles
-                        nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
-                        nrOfBytesPerImageOrSprite = 64;
-                        imgSize = Magick::Geometry(8, 8);
-                    }
-                    else if (m_asSprites)
-                    {
-                        // calculate number of w*h sprites
-                        nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (m_spriteWidth * m_spriteHeight);
-                        nrOfBytesPerImageOrSprite = m_spriteWidth * m_spriteHeight;
-                        imgSize = Magick::Geometry(m_spriteWidth, m_spriteHeight);
-                    }
-                }
-                nrOfBytesPerImageOrSprite = imgType == ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
-                // convert image data to uint32_ts and palette to BGR555 uint16_ts
-                auto imageData32 = combineTo<uint32_t>(processedData);
-                auto paletteData16 = allColorMapsSame ? convertToBGR555(colorMaps.front()) : combineTo<uint16_t>(convertToBGR555(colorMaps));
-                // get start indices for image data and palettes
-                auto imageOrSpriteStartIndices = divideBy<uint32_t>(getStartIndices(processedData), 4);
-                auto colorMapsStartIndices = getStartIndices(colorMaps);
-                // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
-                nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
-                // output header
-                writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                if (imgType == ImageType::PaletteType)
-                {
-                    writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
-                }
-                hFile << std::endl;
-                hFile.close();
-                // output image and palette data
-                writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
-                if (imgType == ImageType::PaletteType)
-                {
-                    writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
-                }
-                cFile.close();
-            }
-            catch (std::runtime_error e)
-            {
-                hFile.close();
-                cFile.close();
-                std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
-                return 1;
-            }
+            // output some info about data
+            auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
+            std::cout << "Input size: " << inputSize / (1024 * 1204) << "MB" << std::endl;
+            auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
+                                                  { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
+            std::cout << "Compressed size: " << compressedSize / (1024 * 1204) << "MB" << std::endl;
         }
         else
         {
-            hFile.close();
-            cFile.close();
-            std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
-            return 1;
+            return 0;
+            // open output files
+            std::ofstream hFile(m_outFile + ".h", std::ios::out);
+            std::ofstream cFile(m_outFile + ".c", std::ios::out);
+            if (hFile.is_open() && cFile.is_open())
+            {
+                std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
+                try
+                {
+                    // build output file / variable name
+                    std::string baseName = getBaseNameFromFilePath(m_outFile);
+                    std::string varName = baseName;
+                    std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
+                                   { return std::toupper(c, std::locale()); });
+                    // output header
+                    hFile << "// Converted with vid2h " << getCommandLine(argc, argv) << std::endl;
+                    hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
+                          << std::endl;
+                    // output image and palette info
+                    const bool storeTileOrSpriteWise = (images.size() == 1) && (options.tiles || options.sprites);
+                    uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
+                    uint32_t nrOfImagesOrSprites = images.size();
+                    if (nrOfImagesOrSprites == 1)
+                    {
+                        // if we have a single input image, store data per tile or sprite
+                        if (options.sprites)
+                        {
+                            // calculate number of w*h sprites
+                            auto spriteWidth = options.sprites.value.front();
+                            auto spriteHeight = options.sprites.value.back();
+                            nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (spriteWidth * spriteHeight);
+                            nrOfBytesPerImageOrSprite = spriteWidth * spriteHeight;
+                            imgSize = Magick::Geometry(spriteWidth, spriteHeight);
+                        }
+                        else if (options.tiles)
+                        {
+                            // calculate number of 8*8 pixel tiles
+                            nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
+                            nrOfBytesPerImageOrSprite = 64;
+                            imgSize = Magick::Geometry(8, 8);
+                        }
+                    }
+                    nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
+                    // convert image data to uint32_ts and palette to BGR555 uint16_ts
+                    auto [imageData32, imageOrSpriteStartIndices] = ImageProcessing::combineImageData<uint32_t>(images, options.interleavePixels);
+                    // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
+                    nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
+                    // output image and palette data
+                    writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                    writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
+                    if (imgType == Magick::ImageType::PaletteType)
+                    {
+                        auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : ImageProcessing::combineColorMaps<uint16_t>(images, [](auto cm)
+                                                                                                                                                                                                                          { return convertToBGR555(cm); }));
+                        writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
+                        writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
+                    }
+                    hFile << std::endl;
+                    hFile.close();
+                    cFile.close();
+                }
+                catch (const std::runtime_error &e)
+                {
+                    hFile.close();
+                    cFile.close();
+                    std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
+                    return 1;
+                }
+            }
+            else
+            {
+                hFile.close();
+                cFile.close();
+                std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
+                return 1;
+            }
         }
         std::cout << "Done" << std::endl;
     }

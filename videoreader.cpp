@@ -41,6 +41,8 @@ struct VideoReader::ReaderState
     int height = 0;
     float fps = 0;
     AVRational timeBase{};
+    int64_t nrOfFrames;
+    int64_t duration;
     AVCodecContext *codecContext = nullptr;
     AVFrame *frame = nullptr;
     AVPacket *packet = nullptr;
@@ -69,11 +71,18 @@ void VideoReader::open(const std::string &filePath)
         close();
         THROW(std::runtime_error, "Failed to open video file");
     }
+    // Retrieve stream information
+    if (avformat_find_stream_info(m_state->formatContext, nullptr) < 0)
+    {
+        close();
+        THROW(std::runtime_error, "Failed to find stream info");
+    }
     // Find the first valid video stream inside the file
     m_state->videoStreamIndex = -1;
     for (decltype(m_state->formatContext->nb_streams) i = 0; i < m_state->formatContext->nb_streams; i++)
     {
-        auto codecParams = m_state->formatContext->streams[i]->codecpar;
+        auto stream = m_state->formatContext->streams[i];
+        auto codecParams = stream->codecpar;
         auto codec = avcodec_find_decoder(codecParams->codec_id);
         if (codec != nullptr && codecParams != nullptr && codecParams->codec_type == AVMEDIA_TYPE_VIDEO)
         {
@@ -83,8 +92,10 @@ void VideoReader::open(const std::string &filePath)
             m_state->videoStreamIndex = static_cast<int>(i);
             m_state->width = codecParams->width;
             m_state->height = codecParams->height;
-            m_state->fps = av_q2d(m_state->formatContext->streams[i]->r_frame_rate);
-            m_state->timeBase = m_state->formatContext->streams[i]->time_base;
+            m_state->fps = av_q2d(stream->r_frame_rate);
+            m_state->timeBase = stream->time_base;
+            m_state->nrOfFrames = stream->nb_frames;
+            m_state->duration = stream->duration;
             break;
         }
     }
@@ -110,16 +121,6 @@ void VideoReader::open(const std::string &filePath)
         close();
         THROW(std::runtime_error, "Failed to open codec");
     }
-    // Set up sw scaler for pixel format conversion
-    auto sourcePixelFormat = CorrectDeprecatedPixelFormat(m_state->codecContext->pix_fmt);
-    m_state->swsContext = sws_getContext(m_state->width, m_state->height, sourcePixelFormat,
-                                         m_state->width, m_state->height, AV_PIX_FMT_RGB24,
-                                         SWS_BILINEAR, nullptr, nullptr, nullptr);
-    if (m_state->swsContext == nullptr)
-    {
-        close();
-        THROW(std::runtime_error, "Failed to create sw scaler");
-    }
     // Allocate frame and packet memory
     m_state->frame = av_frame_alloc();
     if (m_state->frame == nullptr)
@@ -138,13 +139,20 @@ void VideoReader::open(const std::string &filePath)
 VideoReader::VideoInfo VideoReader::getInfo() const
 {
     REQUIRE(m_state->formatContext != nullptr, std::runtime_error, "Reader not open. Call open() first");
-    return {m_state->codecName, static_cast<uint32_t>(m_state->videoStreamIndex), static_cast<uint32_t>(m_state->width), static_cast<uint32_t>(m_state->height), m_state->fps};
+    auto duration = static_cast<float>(static_cast<double>(m_state->duration) * static_cast<double>(m_state->timeBase.num) / static_cast<double>(m_state->timeBase.den));
+    return {m_state->codecName, static_cast<uint32_t>(m_state->videoStreamIndex), static_cast<uint32_t>(m_state->width), static_cast<uint32_t>(m_state->height), m_state->fps, static_cast<uint64_t>(m_state->nrOfFrames), duration};
 }
 
 std::vector<uint8_t> VideoReader::readFrame() const
 {
-    while (av_read_frame(m_state->formatContext, m_state->packet) >= 0)
+    while (true)
     {
+        auto readResult = av_read_frame(m_state->formatContext, m_state->packet);
+        if (readResult < 0)
+        {
+            av_packet_unref(m_state->packet);
+            return {};
+        }
         // check if it is the correct stream index
         if (m_state->packet->stream_index != m_state->videoStreamIndex)
         {
@@ -154,27 +162,41 @@ std::vector<uint8_t> VideoReader::readFrame() const
         // send packet to codec
         REQUIRE(avcodec_send_packet(m_state->codecContext, m_state->packet) >= 0, std::runtime_error, "Failed to decode packet");
         // try to decode frame
-        auto result = avcodec_receive_frame(m_state->codecContext, m_state->frame);
-        if (result == AVERROR_EOF)
+        auto receiveResult = avcodec_receive_frame(m_state->codecContext, m_state->frame);
+        if (receiveResult == AVERROR_EOF)
         {
+            avcodec_flush_buffers(m_state->codecContext);
             av_packet_unref(m_state->packet);
             return {};
         }
-        else if (result == AVERROR(EAGAIN))
+        else if (receiveResult == AVERROR(EAGAIN))
         {
             av_packet_unref(m_state->packet);
             continue;
         }
-        else if (result < 0)
+        else if (receiveResult < 0)
         {
             THROW(std::runtime_error, "Failed to decode packet");
         }
+        // here the frame has been successfully decoded
         av_packet_unref(m_state->packet);
         break;
     }
     //auto timeStamp = m_state->frame->pts; // timestamp when the frame should be shown
+    // set up sw scaler for pixel format conversion
+    if (m_state->swsContext == nullptr)
+    {
+        auto sourcePixelFormat = CorrectDeprecatedPixelFormat(m_state->codecContext->pix_fmt);
+        m_state->swsContext = sws_getContext(m_state->width, m_state->height, sourcePixelFormat,
+                                             m_state->width, m_state->height, AV_PIX_FMT_RGB24,
+                                             SWS_BILINEAR, nullptr, nullptr, nullptr);
+        if (m_state->swsContext == nullptr)
+        {
+            THROW(std::runtime_error, "Failed to create sw scaler");
+        }
+    }
     // convert pixel format using sw scaler
-    std::vector<uint8_t> frame(m_state->width, m_state->height * 3);
+    std::vector<uint8_t> frame(m_state->width * m_state->height * 3);
     uint8_t *const dst[4] = {frame.data(), nullptr, nullptr, nullptr};
     int const dstStride[4] = {m_state->width * 3, 0, 0, 0};
     sws_scale(m_state->swsContext, m_state->frame->data, m_state->frame->linesize, 0, m_state->frame->height, dst, dstStride);

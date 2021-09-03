@@ -9,6 +9,9 @@
 
 const std::map<ImageProcessing::Type, ImageProcessing::ProcessingFunc>
     ImageProcessing::ProcessingFunctions = {
+        {Type::InputBinary, {"binary", OperationType::Input, FunctionType(toBinary)}},
+        {Type::InputPaletted, {"paletted", OperationType::Input, FunctionType(toPaletted)}},
+        {Type::InputTruecolor, {"truecolor", OperationType::Input, FunctionType(toTruecolor)}},
         {Type::ConvertTiles, {"tiles", OperationType::Convert, FunctionType(toTiles)}},
         {Type::ConvertSprites, {"sprites", OperationType::Convert, FunctionType(toSprites)}},
         {Type::AddColor0, {"add color #0", OperationType::Convert, FunctionType(addColor0)}},
@@ -22,7 +25,60 @@ const std::map<ImageProcessing::Type, ImageProcessing::ProcessingFunc>
         {Type::CompressLz11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
         {Type::PadImageData, {"pad image data", OperationType::Convert, FunctionType(padImageData)}},
         {Type::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
-        {Type::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}}};
+        {Type::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
+        {Type::ImageDiff, {"image diff", OperationType::ConvertState, FunctionType(imageDiff)}}};
+
+ImageProcessing::Data ImageProcessing::toBinary(const Magick::Image &image, const std::vector<Parameter> &parameters)
+{
+    // get parameter(s)
+    REQUIRE(parameters.size() == 1 && std::holds_alternative<float>(parameters.front()), std::runtime_error, "toBinary expects a single float threshold parameter");
+    auto threshold = std::get<float>(parameters.front());
+    REQUIRE(threshold >= 0 && threshold <= 1, std::runtime_error, "Threshold must be in [0.0, 1.0]");
+    // threshold image
+    Magick::Image temp = image;
+    temp.threshold(Magick::Color::scaleDoubleToQuantum(threshold));
+    temp.quantizeDither(false);
+    temp.quantizeColors(2);
+    temp.type(Magick::ImageType::PaletteType);
+    // get image data and color map
+    return {"", temp.type(), image.size(), 8, getImageData(temp), getColorMap(temp)};
+}
+
+ImageProcessing::Data ImageProcessing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters)
+{
+    // get parameter(s)
+    REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toPaletted expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
+    auto nrOfcolors = std::get<uint32_t>(parameters.back());
+    REQUIRE(nrOfcolors >= 2 && nrOfcolors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
+    auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
+    // map image to GBA color map, no dithering
+    Magick::Image temp = image;
+    temp.map(colorSpaceMap, false);
+    // convert image to paletted
+    temp.quantizeDither(true);
+    temp.quantizeDitherMethod(Magick::DitherMethod::RiemersmaDitherMethod);
+    temp.quantizeColors(nrOfcolors);
+    temp.type(Magick::ImageType::PaletteType);
+    // get image data and color map
+    return {"", temp.type(), image.size(), 8, getImageData(temp), getColorMap(temp)};
+}
+
+ImageProcessing::Data ImageProcessing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters)
+{
+    // get parameter(s)
+    REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "toTruecolor expects a single uint32_t bitsPerColor parameter");
+    auto bitsPerColor = std::get<uint32_t>(parameters.front());
+    REQUIRE(bitsPerColor >= 1 && bitsPerColor <= 5, std::runtime_error, "Bits per color must be in [1, 5]");
+    // map image to GBA color map, no dithering
+    Magick::Image temp = image;
+    auto imageData = getImageData(temp);
+    // convert every color component in image data
+    const double multiplier = ((1 << bitsPerColor) - 1) / 255.0;
+    std::for_each(imageData.begin(), imageData.end(), [multiplier](auto &d)
+                  { d = static_cast<uint8_t>(std::round(static_cast<double>(d) * multiplier)); });
+    // get image data and color map
+    return {"", temp.type(), image.size(), 16, imageData, getColorMap(temp)};
+}
 
 ImageProcessing::Data ImageProcessing::toTiles(const Data &image, const std::vector<Parameter> &parameters)
 {
@@ -192,14 +248,32 @@ std::vector<ImageProcessing::Data> ImageProcessing::equalizeColorMaps(const std:
     return images;
 }
 
+ImageProcessing::Data ImageProcessing::imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state)
+{
+    // check if a usable state was passed
+    if (state.size() == 1 && std::holds_alternative<Data>(state.front()))
+    {
+        // ok. calculate difference
+        auto &prevImage = std::get<Data>(state.front());
+        REQUIRE(image.data.size() == prevImage.data.size(), std::runtime_error, "Images must have the same size");
+        std::vector<uint8_t> diff(image.data.size());
+        for (std::size_t i = 0; i < image.data.size(); i++)
+        {
+            diff[i] = prevImage.data[i] - image.data[i];
+        }
+        // set current image to state
+        std::get<Data>(state.front()) = image;
+        return {image.fileName, image.type, image.size, image.bitsPerPixel, diff, image.colorMap};
+    }
+    // set current image to state
+    state.push_back(image);
+    // no state, return input data
+    return image;
+}
+
 void ImageProcessing::addStep(Type type)
 {
     m_steps.push_back({type, {}});
-}
-
-void ImageProcessing::addStep(Type type, const Parameter &parameter)
-{
-    m_steps.push_back({type, {parameter}});
 }
 
 void ImageProcessing::addStep(Type type, const std::vector<Parameter> &parameters)
@@ -241,47 +315,67 @@ std::string ImageProcessing::getProcessingDescription(const std::string &seperat
     return result;
 }
 
-std::vector<ImageProcessing::Data> ImageProcessing::process(const std::vector<Data> &data)
+std::vector<ImageProcessing::Data> ImageProcessing::processBatch(const std::vector<Data> &data, bool clearState)
 {
     REQUIRE(data.size() > 0, std::runtime_error, "Empty data passed to processing");
     std::vector<Data> processed = data;
-    for (const auto &step : m_steps)
+    for (auto &step : m_steps)
     {
-        const auto &stepFunc = ProcessingFunctions.find(step.type)->second;
+        auto &stepFunc = ProcessingFunctions.find(step.type)->second;
+        // we're silently ignoring OperationType::Input operations here
         if (stepFunc.type == OperationType::Convert)
         {
-            auto convertFunc = std::get<ConvertType>(stepFunc.func);
+            auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
             for (auto &img : processed)
             {
                 img = convertFunc(img, step.parameters);
             }
         }
+        else if (stepFunc.type == OperationType::ConvertState)
+        {
+            auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
+            for (auto &img : processed)
+            {
+                img = convertFunc(img, step.parameters, step.state);
+            }
+        }
         else if (stepFunc.type == OperationType::BatchConvert)
         {
-            auto batchFunc = std::get<BatchConvertType>(stepFunc.func);
+            auto batchFunc = std::get<BatchConvertFunc>(stepFunc.func);
             processed = batchFunc(processed, step.parameters);
-        }
-        else if (stepFunc.type == OperationType::Combine)
-        {
-            auto combineFunc = std::get<CombineType>(stepFunc.func);
-            if (processed.size() > 1)
-            {
-                Data previousImg = processed.front();
-                // leave first image verbatim
-                for (std::size_t i = 1; i < processed.size(); i++)
-                {
-                    auto newImg = combineFunc(previousImg, processed[i], step.parameters);
-                    // save current image as we're overwriting it now
-                    previousImg = processed[i];
-                    processed[i] = newImg;
-                }
-            }
         }
         else if (stepFunc.type == OperationType::Reduce)
         {
-            auto reduceFunc = std::get<ReduceType>(stepFunc.func);
+            auto reduceFunc = std::get<ReduceFunc>(stepFunc.func);
             processed = {reduceFunc(processed, step.parameters)};
         }
+    }
+    return processed;
+}
+
+ImageProcessing::Data ImageProcessing::processStream(const Magick::Image &image, bool clearState)
+{
+    REQUIRE(ProcessingFunctions.find(m_steps.front().type)->second.type == OperationType::Input, std::runtime_error, "First step must be an input step");
+    Data processed;
+    for (auto &step : m_steps)
+    {
+        auto &stepFunc = ProcessingFunctions.find(step.type)->second;
+        if (stepFunc.type == OperationType::Input)
+        {
+            auto inputFunc = std::get<InputFunc>(stepFunc.func);
+            processed = inputFunc(image, step.parameters);
+        }
+        else if (stepFunc.type == OperationType::Convert)
+        {
+            auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
+            processed = convertFunc(processed, step.parameters);
+        }
+        else if (stepFunc.type == OperationType::ConvertState)
+        {
+            auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
+            processed = convertFunc(processed, step.parameters, step.state);
+        }
+        // we're silently ignoring OperationType::BatchConvert and ::Reduce operations here
     }
     return processed;
 }

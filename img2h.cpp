@@ -122,8 +122,11 @@ bool readArguments(int argc, const char *argv[])
         std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
         return false;
     }
-    return options.addColor0.parse(result) && options.moveColor0.parse(result) &&
-           options.shiftIndices.parse(result) && options.sprites.parse(result);
+    options.addColor0.parse(result);
+    options.moveColor0.parse(result);
+    options.shiftIndices.parse(result);
+    options.sprites.parse(result);
+    return true;
 }
 
 void printUsage()
@@ -222,25 +225,25 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<ImageProcessing::Dat
 
 int main(int argc, const char *argv[])
 {
-    // check arguments
-    if (argc < 3 || !readArguments(argc, argv))
-    {
-        printUsage();
-        return 2;
-    }
-    // check input and output
-    if (m_inFile.empty())
-    {
-        std::cerr << "No input file(s) passed. Aborting." << std::endl;
-        return 1;
-    }
-    if (m_outFile.empty())
-    {
-        std::cerr << "No output file passed. Aborting." << std::endl;
-        return 1;
-    }
     try
     {
+        // check arguments
+        if (argc < 3 || !readArguments(argc, argv))
+        {
+            printUsage();
+            return 2;
+        }
+        // check input and output
+        if (m_inFile.empty())
+        {
+            std::cerr << "No input file(s) passed. Aborting." << std::endl;
+            return 1;
+        }
+        if (m_outFile.empty())
+        {
+            std::cerr << "No output file passed. Aborting." << std::endl;
+            return 1;
+        }
         // fire up ImageMagick
         Magick::InitializeMagick(*argv);
         // read image(s) from disk
@@ -253,15 +256,15 @@ int main(int argc, const char *argv[])
         }
         if (options.addColor0)
         {
-            processing.addStep(ImageProcessing::Type::AddColor0, ImageProcessing::Parameter(options.addColor0.value));
+            processing.addStep(ImageProcessing::Type::AddColor0, {options.addColor0.value});
         }
         if (options.moveColor0)
         {
-            processing.addStep(ImageProcessing::Type::MoveColor0, ImageProcessing::Parameter(options.moveColor0.value));
+            processing.addStep(ImageProcessing::Type::MoveColor0, {options.moveColor0.value});
         }
         if (options.shiftIndices)
         {
-            processing.addStep(ImageProcessing::Type::ShiftIndices, ImageProcessing::Parameter(options.shiftIndices.value));
+            processing.addStep(ImageProcessing::Type::ShiftIndices, {options.shiftIndices.value});
         }
         if (imgType == Magick::ImageType::PaletteType)
         {
@@ -273,7 +276,7 @@ int main(int argc, const char *argv[])
         }
         if (options.sprites)
         {
-            processing.addStep(ImageProcessing::Type::ConvertSprites, ImageProcessing::Parameter(options.sprites.value.front()));
+            processing.addStep(ImageProcessing::Type::ConvertSprites, {options.sprites.value.front()});
         }
         if (options.tiles)
         {
@@ -289,17 +292,17 @@ int main(int argc, const char *argv[])
         }
         if (options.lz10)
         {
-            processing.addStep(ImageProcessing::Type::CompressLz10, ImageProcessing::Parameter(options.vram.isSet));
+            processing.addStep(ImageProcessing::Type::CompressLz10, {options.vram.isSet});
         }
         if (options.lz11)
         {
-            processing.addStep(ImageProcessing::Type::CompressLz11, ImageProcessing::Parameter(options.vram.isSet));
+            processing.addStep(ImageProcessing::Type::CompressLz11, {options.vram.isSet});
         }
-        processing.addStep(ImageProcessing::Type::PadImageData, ImageProcessing::Parameter(uint32_t(4)));
+        processing.addStep(ImageProcessing::Type::PadImageData, {uint32_t(4)});
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;
-        images = processing.process(images);
+        images = processing.processBatch(images);
         // check if all color maps are the same
         bool allColorMapsSame = true;
         uint32_t maxColorMapColors = 0;

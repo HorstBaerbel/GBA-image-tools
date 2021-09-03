@@ -25,11 +25,11 @@ public:
     {
         T value;
         std::string valueString;
-        std::function<bool(const cxxopts::ParseResult &)> parse;
+        std::function<void(const cxxopts::ParseResult &)> parse;
     };
 
-    static OptionT<uint32_t> binary;
-    static OptionT<uint32_t> palette;
+    static OptionT<float> binary;
+    static OptionT<uint32_t> paletted;
     static OptionT<uint32_t> truecolor;
     static Option reorderColors;
     static OptionT<Magick::Color> addColor0;
@@ -44,4 +44,5 @@ public:
     static Option lz11;
     static Option vram;
     static Option interleavePixels;
+    static Option dryRun;
 };
