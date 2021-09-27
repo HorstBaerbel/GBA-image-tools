@@ -30,7 +30,7 @@ public:
 
     static OptionT<float> binary;
     static OptionT<uint32_t> paletted;
-    static OptionT<uint32_t> truecolor;
+    static OptionT<std::string> truecolor;
     static Option reorderColors;
     static OptionT<Magick::Color> addColor0;
     static OptionT<Magick::Color> moveColor0;
@@ -38,11 +38,14 @@ public:
     static Option pruneIndices;
     static OptionT<std::vector<uint32_t>> sprites;
     static Option tiles;
+    static Option deltaImage;
     static Option delta8;
     static Option delta16;
     static Option lz10;
     static Option lz11;
+    static Option rle;
     static Option vram;
+    static Option dxt1;
     static Option interleavePixels;
     static Option dryRun;
 };

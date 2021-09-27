@@ -16,9 +16,9 @@ public:
         uint32_t videoStreamIndex = 0;
         uint32_t width = 0;
         uint32_t height = 0;
-        float fps = 0;
+        double fps = 0;
         uint64_t nrOfFrames = 0;
-        float durationS = 0;
+        double durationS = 0;
     };
 
     /// @brief Constructor

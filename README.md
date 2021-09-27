@@ -24,6 +24,14 @@ All of this is under the [MIT License](LICENSE). Uses the wonderful [cxxopts](ht
 
   ```apt install imagemagick```
 
+* You **must** have the Threaded Building Blocks / [TBB](https://github.com/oneapi-src/oneTBB) installed for compiling. Install it with:
+
+  ```apt install libtbb-dev```
+
+* You **must** have [FFmpeg](https://www.ffmpeg.org/) installed for compiling vid2h. Install it with:
+
+  ```apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev```
+
 * For compressing data with LZ77 you need to have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) and the environment variable ```$DEVKITPRO``` set, or the [gbalzss](https://github.com/devkitPro/gba-tools) tool in your ```$PATH```.
 
 ## Building

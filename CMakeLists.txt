@@ -12,6 +12,9 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libavutil
     libswscale
 )
+pkg_check_modules(TBB REQUIRED IMPORTED_TARGET
+    tbb
+)
 
 #-------------------------------------------------------------------------------
 #set up compiler flags and executable names
@@ -46,25 +49,25 @@ set(LIBRARY_OUTPUT_PATH ${dir} CACHE PATH "Build directory" FORCE)
 
 set(HELPERS_SRC
     colorhelpers.cpp
+    compresshelpers.cpp
     datahelpers.cpp
     filehelpers.cpp
     imagehelpers.cpp
     imageprocessing.cpp
     processingoptions.cpp
-    lzsshelpers.cpp
     spritehelpers.cpp
 )
 
 include_directories(${ImageMagick_INCLUDE_DIRS})
 add_executable(colormap555 colormap555.cpp colorhelpers.cpp)
-target_link_libraries(colormap555 PkgConfig::LIBMAGICK)
+target_link_libraries(colormap555 PkgConfig::LIBMAGICK PkgConfig::TBB)
 add_executable(gimppalette555 gimppalette555.cpp)
 add_executable(hex2gba hex2gba.cpp)
 target_link_libraries(hex2gba PkgConfig::LIBMAGICK)
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
-target_link_libraries(img2h PkgConfig::LIBMAGICK stdc++fs pthread)
+target_link_libraries(img2h PkgConfig::LIBMAGICK PkgConfig::TBB stdc++fs pthread)
 add_executable(vid2h vid2h.cpp ${HELPERS_SRC} videoreader.cpp)
-target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV stdc++fs pthread)
+target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV PkgConfig::TBB stdc++fs pthread)
 
 #-------------------------------------------------------------------------------
 #define install files for CPack

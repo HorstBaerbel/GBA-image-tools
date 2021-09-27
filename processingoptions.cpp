@@ -40,16 +40,16 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::paletted{
         }
     }};
 
-ProcessingOptions::OptionT<uint32_t> ProcessingOptions::truecolor{
+ProcessingOptions::OptionT<std::string> ProcessingOptions::truecolor{
     false,
-    {"truecolor", "Convert images to RGB true-color with N bits per color. N must be in [2, 5].", cxxopts::value(truecolor.value)},
+    {"truecolor", "Convert images to RGB888, RGB565 or RGB555 true-color", cxxopts::value(truecolor.value)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
     {
         if (r.count(truecolor.cxxOption.opts_))
         {
-            REQUIRE(truecolor.value >= 2 && truecolor.value <= 5, std::runtime_error, "Bits per color must be in [2, 5]");
+            REQUIRE(truecolor.value == "RGB888" || truecolor.value == "RGB565" || truecolor.value == "RGB555", std::runtime_error, "Format must be RGB888, RGB565 or RGB555");
             truecolor.isSet = true;
         }
     }};
@@ -140,6 +140,10 @@ ProcessingOptions::Option ProcessingOptions::tiles{
     false,
     {"tiles", "Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels.", cxxopts::value(tiles.isSet)}};
 
+ProcessingOptions::Option ProcessingOptions::deltaImage{
+    false,
+    {"deltaimage", "Delta encoding between succesive images.", cxxopts::value(deltaImage.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::delta8{
     false,
     {"delta8", "8-bit delta encoding.", cxxopts::value(delta8.isSet)}};
@@ -156,9 +160,17 @@ ProcessingOptions::Option ProcessingOptions::lz11{
     false,
     {"lz11", "Use LZ compression variant 11.", cxxopts::value(lz11.isSet)}};
 
+ProcessingOptions::Option ProcessingOptions::rle{
+    false,
+    {"rle", "Use RLE compression.", cxxopts::value(rle.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::vram{
     false,
     {"vram", "Make compression VRAM-safe.", cxxopts::value(vram.isSet)}};
+
+ProcessingOptions::Option ProcessingOptions::dxt1{
+    false,
+    {"dxt1", "Use DXT1 RGB565 compression.", cxxopts::value(dxt1.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::interleavePixels{
     false,

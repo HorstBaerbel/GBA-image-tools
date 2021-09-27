@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-namespace Lzss
+namespace Compression
 {
 
     /// @brief Find path to gbalzss executable
@@ -12,5 +12,8 @@ namespace Lzss
 
     /// @brief Compress input data using lzss variant 10 or 11 and return the data
     std::vector<uint8_t> compressLzss(const std::vector<uint8_t> &data, bool vramCompatible, bool lz11Compression);
+
+    /// @brief Compress input data using RLE and return the data
+    std::vector<uint8_t> compressRLE(const std::vector<uint8_t> &data, bool vramCompatible);
 
 }

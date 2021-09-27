@@ -17,7 +17,7 @@
 #include "imagehelpers.h"
 #include "imageprocessing.h"
 #include "processingoptions.h"
-#include "lzsshelpers.h"
+#include "compresshelpers.h"
 #include "spritehelpers.h"
 
 #include <iostream>
@@ -73,10 +73,14 @@ bool readArguments(int argc, const char *argv[])
     opts.add_option("", options.pruneIndices.cxxOption);
     opts.add_option("", options.sprites.cxxOption);
     opts.add_option("", options.tiles.cxxOption);
+    opts.add_option("", options.deltaImage.cxxOption);
     opts.add_option("", options.delta8.cxxOption);
     opts.add_option("", options.delta16.cxxOption);
+    opts.add_option("", options.dxt1.cxxOption);
+    opts.add_option("", options.rle.cxxOption);
     opts.add_option("", options.lz10.cxxOption);
     opts.add_option("", options.lz11.cxxOption);
+    opts.add_option("", options.vram.cxxOption);
     opts.add_option("", options.dryRun.cxxOption);
     opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
     opts.parse_positional({"infile", "outname", "positional"});
@@ -148,7 +152,7 @@ void printUsage()
 {
     std::cout << "Converts an compresses a video file to a .c and .h file to compile it into a" << std::endl;
     std::cout << "GBA executable." << std::endl;
-    std::cout << "Usage: vid2h FORMAT [CONVERSION] [COMPRESSION] INFILE OUTNAME" << std::endl;
+    std::cout << "Usage: vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [COMPRESSION] INFILE OUTNAME" << std::endl;
     std::cout << "FORMAT options (mutually exclusive):" << std::endl;
     std::cout << options.binary.helpString() << std::endl;
     std::cout << options.paletted.helpString() << std::endl;
@@ -160,11 +164,17 @@ void printUsage()
     std::cout << options.pruneIndices.helpString() << std::endl;
     std::cout << options.tiles.helpString() << std::endl;
     std::cout << options.sprites.helpString() << std::endl;
+    std::cout << options.deltaImage.helpString() << std::endl;
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
+    std::cout << "IMAGE COMPRESSION options (mutually exclusive):" << std::endl;
+    std::cout << options.dxt1.helpString() << std::endl;
     std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
+    std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << options.lz11.helpString() << std::endl;
+    std::cout << "COMPRESSION modifiers (optional):" << std::endl;
+    std::cout << options.vram.helpString() << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: Input video file to convert, e.g. \"foo.avi\"" << std::endl;
     std::cout << "OUTNAME: is determined from the first non-existant file path. It can be an " << std::endl;
@@ -174,7 +184,7 @@ void printUsage()
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "EXECUTION ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites," << std::endl;
-    std::cout << "tiles, lz10 / lz11, output" << std::endl;
+    std::cout << "tiles, deltaimage, dxt1, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -265,7 +275,14 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(ImageProcessing::Type::ConvertTiles);
         }
-        //processing.addStep(ImageProcessing::Type::ImageDiff);
+        if (options.deltaImage)
+        {
+            processing.addStep(ImageProcessing::Type::DeltaImage);
+        }
+        if (options.dxt1)
+        {
+            processing.addStep(ImageProcessing::Type::CompressDXT1);
+        }
         if (options.delta8)
         {
             processing.addStep(ImageProcessing::Type::ConvertDelta8);
@@ -273,6 +290,10 @@ int main(int argc, const char *argv[])
         if (options.delta16)
         {
             processing.addStep(ImageProcessing::Type::ConvertDelta16);
+        }
+        if (options.rle)
+        {
+            processing.addStep(ImageProcessing::Type::CompressRLE, {options.vram.isSet});
         }
         if (options.lz10)
         {
@@ -320,10 +341,11 @@ int main(int argc, const char *argv[])
         {
             // output some info about data
             auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
-            std::cout << "Input size: " << inputSize / (1024 * 1204) << "MB" << std::endl;
+            std::cout << "Input size: " << inputSize / (1024 * 1024) << "MB" << std::endl;
             auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
                                                   { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
-            std::cout << "Compressed size: " << compressedSize / (1024 * 1204) << "MB" << std::endl;
+            std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << "MB" << std::endl;
+            std::cout << "Bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << "kB/s" << std::endl;
         }
         else
         {

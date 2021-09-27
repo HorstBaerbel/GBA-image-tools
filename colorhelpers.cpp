@@ -2,29 +2,12 @@
 
 #include <limits>
 #include <algorithm>
+#include <execution>
 #include <numeric>
 #include <cmath>
 #include <future>
 #include <sstream>
 #include <iomanip>
-
-std::vector<Magick::Color> getColorMap(const Magick::Image &img)
-{
-    std::vector<Magick::Color> colorMap(img.colorMapSize());
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
-    {
-        colorMap[i] = img.colorMap(i);
-    }
-    return colorMap;
-}
-
-void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap)
-{
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
-    {
-        img.colorMap(i, colorMap.at(i));
-    }
-}
 
 std::string asHex(const Magick::Color &color)
 {
@@ -85,25 +68,26 @@ Magick::Image buildColorMapRGB555()
     return image;
 }
 
-std::vector<Magick::Color> interleave(const std::vector<std::vector<Magick::Color>> &palettes)
+uint16_t lerpRGB565(uint16_t c0, uint16_t c1, double t)
 {
-    // make sure all vectors have the same sizes
-    for (const auto &p : palettes)
+    if (t <= 0.0)
     {
-        if (p.size() != palettes.front().size())
-        {
-            throw std::runtime_error("All palettes must have the same number of colors!");
-        }
+        return c0;
     }
-    std::vector<Magick::Color> result;
-    for (uint32_t ci = 0; ci < palettes.front().size(); ci++)
+    else if (t >= 1.0)
     {
-        for (const auto &p : palettes)
-        {
-            result.push_back(p[ci]);
-        }
+        return c1;
     }
-    return result;
+    double r0 = (c0 & 0xF800) >> 11;
+    double g0 = (c0 & 0x7E0) >> 5;
+    double b0 = c0 & 0x1F;
+    double r1 = (c1 & 0xF800) >> 11;
+    double g1 = (c1 & 0x7E0) >> 5;
+    double b1 = c1 & 0x1F;
+    uint16_t r = std::trunc(r0 + t * (r1 - r0));
+    uint16_t g = std::trunc(g0 + t * (g1 - g0));
+    uint16_t b = std::trunc(b0 + t * (b1 - b0));
+    return (r << 11) | (g << 5) | b;
 }
 
 float distance(const Magick::Color &a, const Magick::Color &b)
@@ -119,7 +103,22 @@ float distance(const Magick::Color &a, const Magick::Color &b)
     auto dG = Magick::Color::scaleQuantumToDouble(a.greenQuantum()) - Magick::Color::scaleQuantumToDouble(b.greenQuantum());
     auto dB = Magick::Color::scaleQuantumToDouble(a.blueQuantum()) - Magick::Color::scaleQuantumToDouble(b.blueQuantum());
     return sqrt((2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB);
-}
+} // max:  sqrt((2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1) = sqrt(2.5 + 4 + 2.5) = ~2.83
+
+float distanceSqr(const Magick::Color &a, const Magick::Color &b)
+{
+    if (a == b)
+    {
+        return 0.0F;
+    }
+    auto ra = Magick::Color::scaleQuantumToDouble(a.redQuantum());
+    auto rb = Magick::Color::scaleQuantumToDouble(b.redQuantum());
+    auto r = 0.5 * (ra + rb);
+    auto dR = ra - rb;
+    auto dG = Magick::Color::scaleQuantumToDouble(a.greenQuantum()) - Magick::Color::scaleQuantumToDouble(b.greenQuantum());
+    auto dB = Magick::Color::scaleQuantumToDouble(a.blueQuantum()) - Magick::Color::scaleQuantumToDouble(b.blueQuantum());
+    return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
+} // max:  (2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1 = 2.5 + 4 + 2.5 = 8
 
 float calculateDistanceRMS(const std::vector<uint8_t> &indices, const std::map<uint8_t, std::vector<float>> &distancesSqrMap)
 {
@@ -160,8 +159,7 @@ std::vector<uint8_t> minimizeColorDistance(const std::vector<Magick::Color> &col
         std::vector<float> distancesSqr;
         for (const auto &b : colors)
         {
-            auto distAB = distance(a, b);
-            distancesSqr.push_back(distAB * distAB);
+            distancesSqr.push_back(distanceSqr(a, b));
         }
         distancesSqrMap[i] = distancesSqr;
     }
@@ -198,4 +196,53 @@ std::vector<Magick::Color> swapColors(const std::vector<Magick::Color> &colors, 
         result.push_back(colors.at(newIndices[i]));
     }
     return result;
+}
+
+std::vector<std::vector<uint8_t>> RGB565DistanceSqrTable()
+{
+    // build list of colors
+    std::vector<Magick::Color> colors;
+    for (uint16_t r = 0; r < 32; ++r)
+    {
+        auto rq = Magick::Color::scaleDoubleToQuantum(r / 31.0);
+        for (uint16_t g = 0; g < 64; ++g)
+        {
+            auto gq = Magick::Color::scaleDoubleToQuantum(g / 63.0);
+            for (uint16_t b = 0; b < 32; ++b)
+            {
+                auto bq = Magick::Color::scaleDoubleToQuantum(b / 31.0);
+                colors.push_back(Magick::Color(rq, gq, bq));
+            }
+        }
+    }
+    // buld color indices for parallel for
+    std::vector<uint16_t> indices(1 << 16);
+    std::iota(indices.begin(), indices.end(), 0);
+    // calculate distance for colors
+    std::vector<std::vector<uint8_t>> result(1 << 16);
+    std::for_each(std::execution::par_unseq, indices.cbegin(), indices.cend(), [&](uint16_t ci0)
+                  {
+                      const auto c0 = colors[ci0];
+                      std::vector<uint8_t> distances(1 << 16);
+                      for (uint32_t ci1 = 0; ci1 < colors.size(); ci1++)
+                      {
+                          if (ci0 == ci1)
+                          {
+                              // same color, no distance
+                              distances[ci1] = 0;
+                          }
+                          /*else if (ci1 < ci0)
+                          {
+                              // color combination already in table, copy
+                              distances[ci1] = result[ci1][ci0];
+                          }*/
+                          else
+                          {
+                              // new color combination, calculate distance
+                              distances[ci1] = std::min(std::round(distanceSqr(c0, colors[ci1]) * 31.875), 255.0);
+                          }
+                      }
+                      result[ci0] = std::move(distances);
+                  });
+    return std::move(result);
 }

@@ -5,8 +5,21 @@
 #include <vector>
 #include <Magick++.h>
 
-/// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes.
+/// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes
+/// The format returned are Palette8 for paletted images and RGB888 for truecolor images
 std::vector<uint8_t> getImageData(const Magick::Image &img);
+
+/// @brief Get color map from ImageMagick Image
+std::vector<Magick::Color> getColorMap(const Magick::Image &img);
+
+/// @brief set color map in an ImageMagick Image
+void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap);
+
+/// @brief Convert RGB888 to RGB555
+std::vector<uint8_t> toRGB555(const std::vector<uint8_t> &imageData);
+
+/// @brief Convert RGB888 to RGB565
+std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData);
 
 /// @brief Convert image index data to nibble-sized values
 std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices);

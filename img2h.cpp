@@ -20,7 +20,7 @@
 #include "imagehelpers.h"
 #include "imageprocessing.h"
 #include "processingoptions.h"
-#include "lzsshelpers.h"
+#include "compresshelpers.h"
 #include "spritehelpers.h"
 #include "exception.h"
 
@@ -149,11 +149,12 @@ void printUsage()
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << options.interleavePixels.helpString() << std::endl;
     std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
+    std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << options.lz11.helpString() << std::endl;
     std::cout << "COMPRESSION modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
-    std::cout << "Valid combinations are e.g. \"--diff8 --lz10\" or \"--lz11 --vram\"." << std::endl;
+    std::cout << "Valid combinations are e.g. \"--rle --lz10\" or \"--lz11 --vram\"." << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: can be a file list and/or can have * as a wildcard. Multiple input " << std::endl;
     std::cout << "images MUST have the same type (palette / true color) and resolution!" << std::endl;
@@ -216,7 +217,7 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<ImageProcessing::Dat
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        ImageProcessing::Data entry{*ifIt, imgType, imgSize, (isPaletted ? 8U : 16U), getImageData(img), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
+        ImageProcessing::Data entry{*ifIt, imgType, imgSize, (isPaletted ? ImageProcessing::ColorFormat::Paletted8 : ImageProcessing::ColorFormat::RGB555), (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
         images.push_back(entry);
         ifIt++;
     }

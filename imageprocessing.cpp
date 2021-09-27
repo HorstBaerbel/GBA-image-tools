@@ -4,8 +4,10 @@
 #include "imagehelpers.h"
 #include "colorhelpers.h"
 #include "datahelpers.h"
-#include "lzsshelpers.h"
+#include "compresshelpers.h"
 #include "spritehelpers.h"
+
+#include <execution>
 
 const std::map<ImageProcessing::Type, ImageProcessing::ProcessingFunc>
     ImageProcessing::ProcessingFunctions = {
@@ -23,10 +25,32 @@ const std::map<ImageProcessing::Type, ImageProcessing::ProcessingFunc>
         {Type::ConvertDelta16, {"delta-16", OperationType::Convert, FunctionType(toDelta16)}},
         {Type::CompressLz10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
         {Type::CompressLz11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
+        {Type::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
+        {Type::CompressDXT1, {"compress DXT1", OperationType::Convert, FunctionType(compressDXT1)}},
         {Type::PadImageData, {"pad image data", OperationType::Convert, FunctionType(padImageData)}},
         {Type::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
         {Type::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
-        {Type::ImageDiff, {"image diff", OperationType::ConvertState, FunctionType(imageDiff)}}};
+        {Type::DeltaImage, {"image diff", OperationType::ConvertState, FunctionType(imageDiff)}}};
+
+std::vector<std::vector<uint8_t>> ImageProcessing::RGB565DistanceSqrCache;
+
+uint32_t ImageProcessing::bitsPerPixelForFormat(ColorFormat format)
+{
+    switch (format)
+    {
+    case ColorFormat::Paletted4:
+        return 4;
+    case ColorFormat::Paletted8:
+        return 8;
+    case ColorFormat::RGB555:
+    case ColorFormat::RGB565:
+        return 16;
+    case ColorFormat::RGB888:
+        return 24;
+    default:
+        throw std::runtime_error("Bad color format");
+    }
+}
 
 ImageProcessing::Data ImageProcessing::toBinary(const Magick::Image &image, const std::vector<Parameter> &parameters)
 {
@@ -41,7 +65,7 @@ ImageProcessing::Data ImageProcessing::toBinary(const Magick::Image &image, cons
     temp.quantizeColors(2);
     temp.type(Magick::ImageType::PaletteType);
     // get image data and color map
-    return {"", temp.type(), image.size(), 8, getImageData(temp), getColorMap(temp)};
+    return {"", temp.type(), image.size(), ColorFormat::Paletted8, getImageData(temp), getColorMap(temp)};
 }
 
 ImageProcessing::Data ImageProcessing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters)
@@ -60,30 +84,49 @@ ImageProcessing::Data ImageProcessing::toPaletted(const Magick::Image &image, co
     temp.quantizeColors(nrOfcolors);
     temp.type(Magick::ImageType::PaletteType);
     // get image data and color map
-    return {"", temp.type(), image.size(), 8, getImageData(temp), getColorMap(temp)};
+    return {"", temp.type(), image.size(), ColorFormat::Paletted8, getImageData(temp), getColorMap(temp)};
 }
 
 ImageProcessing::Data ImageProcessing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters)
 {
     // get parameter(s)
-    REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "toTruecolor expects a single uint32_t bitsPerColor parameter");
-    auto bitsPerColor = std::get<uint32_t>(parameters.front());
-    REQUIRE(bitsPerColor >= 1 && bitsPerColor <= 5, std::runtime_error, "Bits per color must be in [1, 5]");
-    // map image to GBA color map, no dithering
+    REQUIRE(parameters.size() == 1 && std::holds_alternative<std::string>(parameters.front()), std::runtime_error, "toTruecolor expects a single std::string parameter");
+    auto formatString = std::get<std::string>(parameters.front());
+    ColorFormat format = ColorFormat::Unknown;
+    if (formatString == "RGB888")
+    {
+        format = ColorFormat::RGB888;
+    }
+    else if (formatString == "RGB565")
+    {
+        format = ColorFormat::RGB565;
+    }
+    else if (formatString == "RGB555")
+    {
+        format = ColorFormat::RGB555;
+    }
+    REQUIRE(format == ColorFormat::RGB555 || format == ColorFormat::RGB565 || format == ColorFormat::RGB888, std::runtime_error, "Color format must be in [RGB555, RGB565, RGB888]");
+    // get image data
     Magick::Image temp = image;
     auto imageData = getImageData(temp);
-    // convert every color component in image data
-    const double multiplier = ((1 << bitsPerColor) - 1) / 255.0;
-    std::for_each(imageData.begin(), imageData.end(), [multiplier](auto &d)
-                  { d = static_cast<uint8_t>(std::round(static_cast<double>(d) * multiplier)); });
-    // get image data and color map
-    return {"", temp.type(), image.size(), 16, imageData, getColorMap(temp)};
+    // convert colors if needed
+    if (format == ColorFormat::RGB555)
+    {
+        imageData = toRGB555(imageData);
+    }
+    else if (format == ColorFormat::RGB565)
+    {
+        imageData = toRGB565(imageData);
+    }
+    return {"", temp.type(), image.size(), format, imageData, {}};
 }
+
+// ----------------------------------------------------------------------------
 
 ImageProcessing::Data ImageProcessing::toTiles(const Data &image, const std::vector<Parameter> &parameters)
 {
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
-    result.data = convertToTiles(image.data, image.size.width(), image.size.height(), image.bitsPerPixel);
+    Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+    result.data = convertToTiles(image.data, image.size.width(), image.size.height(), bitsPerPixelForFormat(image.format));
     return result;
 }
 
@@ -95,8 +138,8 @@ ImageProcessing::Data ImageProcessing::toSprites(const Data &image, const std::v
     // convert image to sprites
     if (image.size.width() != spriteWidth)
     {
-        Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
-        result.data = convertToWidth(image.data, result.size.width(), result.size.height(), result.bitsPerPixel, spriteWidth);
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        result.data = convertToWidth(image.data, result.size.width(), result.size.height(), bitsPerPixelForFormat(result.format), spriteWidth);
         result.size = Magick::Geometry(spriteWidth, (result.size.width() * result.size.height()) / spriteWidth);
         return result;
     }
@@ -105,13 +148,14 @@ ImageProcessing::Data ImageProcessing::toSprites(const Data &image, const std::v
 
 ImageProcessing::Data ImageProcessing::addColor0(const Data &image, const std::vector<Parameter> &parameters)
 {
+    REQUIRE(image.format == ColorFormat::Paletted8, std::runtime_error, "Adding a color can only be done for paletted images");
     // get parameter(s)
     REQUIRE(parameters.size() == 1 && std::holds_alternative<Magick::Color>(parameters.front()), std::runtime_error, "addColor0 expects a single Color parameter");
     auto color0 = std::get<Magick::Color>(parameters.front());
     // checkl of space in color map
     REQUIRE(image.colorMap.size() <= 255, std::runtime_error, "No space in color map (image has " << image.colorMap.size() << " colors)");
     // add color at front of color map
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, {}};
+    Data result = {image.fileName, image.type, image.size, image.format, {}, {}};
     result.colorMap = addColorAtIndex0(image.colorMap, color0);
     result.data = incImageIndicesBy1(image.data);
     return result;
@@ -119,6 +163,7 @@ ImageProcessing::Data ImageProcessing::addColor0(const Data &image, const std::v
 
 ImageProcessing::Data ImageProcessing::moveColor0(const Data &image, const std::vector<Parameter> &parameters)
 {
+    REQUIRE(image.format == ColorFormat::Paletted8, std::runtime_error, "Moving a color can only be done for paletted images");
     // get parameter(s)
     REQUIRE(parameters.size() == 1 && std::holds_alternative<Magick::Color>(parameters.front()), std::runtime_error, "moveColor0 expects a single Color parameter");
     auto color0 = std::get<Magick::Color>(parameters.front());
@@ -129,7 +174,7 @@ ImageProcessing::Data ImageProcessing::moveColor0(const Data &image, const std::
     // check if index needs to move
     if (oldIndex != 0)
     {
-        Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
         // move index in color map and image data
         std::swap(result.colorMap[oldIndex], result.colorMap[0]);
         result.data = swapIndexToIndex0(image.data, oldIndex);
@@ -140,8 +185,8 @@ ImageProcessing::Data ImageProcessing::moveColor0(const Data &image, const std::
 
 ImageProcessing::Data ImageProcessing::reorderColors(const Data &image, const std::vector<Parameter> &parameters)
 {
-    REQUIRE(image.type == Magick::ImageType::PaletteType, std::runtime_error, "Reordering colors can only be done for paletted images");
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, {}};
+    REQUIRE(image.format == ColorFormat::Paletted4 || image.format == ColorFormat::Paletted8, std::runtime_error, "Reordering colors can only be done for paletted images");
+    Data result = {image.fileName, image.type, image.size, image.format, {}, {}};
     const auto newOrder = minimizeColorDistance(image.colorMap);
     result.colorMap = swapColors(image.colorMap, newOrder);
     result.data = swapIndices(image.data, newOrder);
@@ -163,28 +208,30 @@ ImageProcessing::Data ImageProcessing::shiftIndices(const Data &image, const std
 
 ImageProcessing::Data ImageProcessing::pruneIndices(const Data &image, const std::vector<Parameter> &parameters)
 {
-    REQUIRE(image.type == Magick::ImageType::PaletteType, std::runtime_error, "Index pruning only possible paletted images");
+    REQUIRE(image.format == ColorFormat::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
     REQUIRE(image.colorMap.size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
     uint8_t maxIndex = std::max(*std::max_element(image.data.cbegin(), image.data.cend()), maxIndex);
     REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
-    Data result = {image.fileName, image.type, image.size, 4, {}, image.colorMap};
+    Data result = {image.fileName, image.type, image.size, ColorFormat::Paletted4, {}, image.colorMap};
     result.data = convertDataToNibbles(image.data);
     return result;
 }
 
 ImageProcessing::Data ImageProcessing::toDelta8(const Data &image, const std::vector<Parameter> &parameters)
 {
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
+    Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
     result.data = deltaEncode(image.data);
     return result;
 }
 
 ImageProcessing::Data ImageProcessing::toDelta16(const Data &image, const std::vector<Parameter> &parameters)
 {
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
+    Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
     result.data = convertTo<uint8_t>(deltaEncode(convertTo<uint16_t>(image.data)));
     return result;
 }
+
+// ----------------------------------------------------------------------------
 
 ImageProcessing::Data ImageProcessing::compressLZ10(const Data &image, const std::vector<Parameter> &parameters)
 {
@@ -192,8 +239,8 @@ ImageProcessing::Data ImageProcessing::compressLZ10(const Data &image, const std
     REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ10 expects a single bool VRAMcompatible parameter");
     auto vramCompatible = std::get<bool>(parameters.front());
     // compress data
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
-    result.data = Lzss::compressLzss(image.data, vramCompatible, false);
+    Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+    result.data = Compression::compressLzss(image.data, vramCompatible, false);
     return result;
 }
 
@@ -203,10 +250,137 @@ ImageProcessing::Data ImageProcessing::compressLZ11(const Data &image, const std
     REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ11 expects a single bool VRAMcompatible parameter");
     auto vramCompatible = std::get<bool>(parameters.front());
     // compress data
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
-    result.data = Lzss::compressLzss(image.data, vramCompatible, true);
+    Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+    result.data = Compression::compressLzss(image.data, vramCompatible, true);
     return result;
 }
+
+ImageProcessing::Data ImageProcessing::compressRLE(const Data &image, const std::vector<Parameter> &parameters)
+{
+    // get parameter(s)
+    REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressRLE expects a single bool VRAMcompatible parameter");
+    auto vramCompatible = std::get<bool>(parameters.front());
+    // compress data
+    Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+    result.data = Compression::compressRLE(image.data, vramCompatible);
+    return result;
+}
+
+std::vector<uint8_t> ImageProcessing::encodeBlockDXT1(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap)
+{
+    REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
+    // get block colors for all 16 pixels
+    std::vector<uint16_t> colors(16);
+    auto c16It = colors.begin();
+    auto pixel = start;
+    for (int y = 0; y < 4; y++)
+    {
+        *c16It++ = *pixel++;
+        *c16It++ = *pixel++;
+        *c16It++ = *pixel++;
+        *c16It++ = *pixel++;
+        pixel += pixelsPerScanline - 4;
+    }
+    // calculate minimum color distance for each combination of block endpoints
+    uint32_t bestDistance = std::numeric_limits<uint32_t>::max();
+    uint16_t bestC0 = colors.front();
+    uint16_t bestC1 = colors.front();
+    std::vector<uint16_t> bestIndices(16, 0);
+    std::vector<uint16_t> iterationIndices(16);
+    for (auto c0It = colors.cbegin(); c0It != colors.cend(); c0It++)
+    {
+        uint16_t endpoints[4] = {*c0It, 0, 0, 0};
+        for (auto c1It = colors.cbegin(); c1It != colors.cend(); c1It++)
+        {
+            endpoints[1] = *c1It;
+            // calculate intermediate colors c2 and c3
+            endpoints[2] = lerpRGB565(*c0It, *c1It, 1.0 / 3.0);
+            endpoints[3] = lerpRGB565(*c0It, *c1It, 2.0 / 3.0);
+            // calculate minimum distance for all colors to endpoints
+            uint32_t iterationDistance = 0;
+            std::fill(iterationIndices.begin(), iterationIndices.end(), 0);
+            for (uint32_t ci = 0; ci < 16; ci++)
+            {
+                // calculate minimum distance for each index for this color
+                uint8_t colorDistance = std::numeric_limits<uint8_t>::max();
+                for (uint16_t ei = 0; ei < 4; ei++)
+                {
+                    auto indexDistance = distanceSqrMap[ci][endpoints[ei]];
+                    // check if result improved
+                    if (indexDistance < colorDistance)
+                    {
+                        colorDistance = indexDistance;
+                        iterationIndices[ci] = ei;
+                    }
+                }
+                iterationDistance += colorDistance;
+            }
+            // check if result improved
+            if (iterationDistance < bestDistance)
+            {
+                bestDistance = iterationDistance;
+                bestC0 = *c0It;
+                bestC1 = *c1It;
+                bestIndices = iterationIndices;
+            }
+        }
+    }
+    // build result data
+    std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
+    // add color endpoints c0 and c1
+    auto data16 = reinterpret_cast<uint16_t *>(result.data());
+    *data16++ = bestC0;
+    *data16++ = bestC1;
+    // add index data
+    uint32_t indices = 0;
+    for (auto iIt = bestIndices.cbegin(); iIt != bestIndices.cend(); iIt++)
+    {
+        indices = (indices << 2) | *iIt;
+    }
+    *(reinterpret_cast<uint32_t *>(data16)) = indices;
+    return result;
+}
+
+ImageProcessing::Data ImageProcessing::compressDXT1(const Data &image, const std::vector<Parameter> &parameters)
+{
+    REQUIRE(image.format == ColorFormat::RGB888 || image.format == ColorFormat::RGB565, std::runtime_error, "DXT compression is only possible for RGB888 and RGB565 truecolor images");
+    REQUIRE(image.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
+    REQUIRE(image.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
+    // check if squared distance map has been allocated
+    if (RGB565DistanceSqrCache.empty())
+    {
+        RGB565DistanceSqrCache = std::move(RGB565DistanceSqrTable());
+    }
+    // convert RGB888 to RGB565
+    auto data = image.data;
+    if (image.format == ColorFormat::RGB888)
+    {
+        data = toRGB565(data);
+    }
+    // convert data to uint16_t values
+    const auto data16 = convertTo<uint16_t>(data);
+    // build y-position table for parallel for
+    std::vector<uint32_t> ys(image.size.height() / 4);
+    std::generate(ys.begin(), ys.end(), [y = 0]() mutable
+                  {
+                      y += 4;
+                      return y - 4;
+                  });
+    // compress to DXT1. we get 8 bytes per 4x4 block / 16 pixels
+    const auto yStride = image.size.width() * 8 / 16;
+    std::vector<uint8_t> resultData(image.size.width() * image.size.height() * 8 / 16);
+    std::for_each(std::execution::par_unseq, ys.cbegin(), ys.cend(), [&](uint32_t y)
+                  {
+                      for (uint32_t x = 0; x < image.size.width(); x += 4)
+                      {
+                          auto block = encodeBlockDXT1(data16.data() + y * image.size.width() + x, image.size.width(), RGB565DistanceSqrCache);
+                          std::copy(block.cbegin(), block.cend(), std::next(resultData.begin(), y * yStride + x * 8 / 4));
+                      }
+                  });
+    return {image.fileName, image.type, image.size, ColorFormat::RGB565, resultData, {}};
+}
+
+// ----------------------------------------------------------------------------
 
 ImageProcessing::Data ImageProcessing::padImageData(const Data &image, const std::vector<Parameter> &parameters)
 {
@@ -214,7 +388,7 @@ ImageProcessing::Data ImageProcessing::padImageData(const Data &image, const std
     REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padImageData expects a single uint32_t pad modulo parameter");
     auto multipleOf = std::get<uint32_t>(parameters.front());
     // pad data
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, {}, image.colorMap};
+    Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
     result.data = fillUpToMultipleOf(image.data, multipleOf);
     return result;
 }
@@ -225,7 +399,7 @@ ImageProcessing::Data ImageProcessing::padColorMap(const Data &image, const std:
     REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMap expects a single uint32_t pad modulo parameter");
     auto multipleOf = std::get<uint32_t>(parameters.front());
     // pad data
-    Data result = {image.fileName, image.type, image.size, image.bitsPerPixel, image.data, {}};
+    Data result = {image.fileName, image.type, image.size, image.format, image.data, {}};
     result.colorMap = fillUpToMultipleOf(image.colorMap, multipleOf);
     return result;
 }
@@ -263,7 +437,7 @@ ImageProcessing::Data ImageProcessing::imageDiff(const Data &image, const std::v
         }
         // set current image to state
         std::get<Data>(state.front()) = image;
-        return {image.fileName, image.type, image.size, image.bitsPerPixel, diff, image.colorMap};
+        return {image.fileName, image.type, image.size, image.format, diff, image.colorMap};
     }
     // set current image to state
     state.push_back(image);
@@ -308,6 +482,7 @@ std::string ImageProcessing::getProcessingDescription(const std::string &seperat
             result += std::holds_alternative<uint32_t>(p) ? std::to_string(std::get<uint32_t>(p)) : "";
             result += std::holds_alternative<float>(p) ? std::to_string(std::get<float>(p)) : "";
             result += std::holds_alternative<Magick::Color>(p) ? asHex(std::get<Magick::Color>(p)) : "";
+            result += std::holds_alternative<std::string>(p) ? std::get<std::string>(p) : "";
             result += (pi < (step.parameters.size() - 1) ? " " : "");
         }
         result += (si < (m_steps.size() - 1) ? seperator : "");

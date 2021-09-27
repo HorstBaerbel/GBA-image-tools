@@ -27,15 +27,15 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
     }
     else if (img.type() == Magick::ImageType::TrueColorType)
     {
-        // get pixel colors and rescale to RGB555
+        // get pixel colors aas RGB888
         const auto nrOfPixels = img.columns() * img.rows();
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
         for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
         {
             auto pixel = pixels[i];
-            data.push_back(static_cast<uint8_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(pixel.red))));
-            data.push_back(static_cast<uint8_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(pixel.green))));
-            data.push_back(static_cast<uint8_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))));
+            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red))));
+            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green))));
+            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))));
         }
     }
     else
@@ -48,9 +48,59 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
     return data;
 }
 
+std::vector<Magick::Color> getColorMap(const Magick::Image &img)
+{
+    std::vector<Magick::Color> colorMap(img.colorMapSize());
+    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
+    {
+        colorMap[i] = img.colorMap(i);
+    }
+    return colorMap;
+}
+
+void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap)
+{
+    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
+    {
+        img.colorMap(i, colorMap.at(i));
+    }
+}
+
+std::vector<uint8_t> toRGB555(const std::vector<uint8_t> &imageData)
+{
+    std::vector<uint16_t> result;
+    // size must be a multiple of 3 for RGB888
+    const auto nrOfComponents = imageData.size();
+    REQUIRE((nrOfComponents % 3) == 0, std::runtime_error, "Number of components must a multiple of 3");
+    for (std::remove_const<decltype(nrOfComponents)>::type i = 0; i < nrOfComponents; i += 3)
+    {
+        uint16_t r = imageData[i] >> 3;
+        uint16_t g = imageData[i + 1] >> 3;
+        uint16_t b = imageData[i + 2] >> 3;
+        result.push_back((r << 10) | (g << 5) | b);
+    }
+    return convertTo<uint8_t>(result);
+}
+
+std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData)
+{
+    std::vector<uint16_t> result;
+    // size must be a multiple of 3 for RGB888
+    const auto nrOfComponents = imageData.size();
+    REQUIRE((nrOfComponents % 3) == 0, std::runtime_error, "Number of components must a multiple of 3");
+    for (std::remove_const<decltype(nrOfComponents)>::type i = 0; i < nrOfComponents; i += 3)
+    {
+        uint16_t r = imageData[i] >> 3;
+        uint16_t g = imageData[i + 1] >> 2;
+        uint16_t b = imageData[i + 2] >> 3;
+        result.push_back((r << 11) | (g << 5) | b);
+    }
+    return convertTo<uint8_t>(result);
+}
+
 std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices)
 {
-    std::vector<uint8_t> data;
+    std::vector<uint8_t> result;
     // size must be a multiple of 2
     const auto nrOfIndices = indices.size();
     REQUIRE((nrOfIndices & 1) == 0, std::runtime_error, "Number of indices must be even");
@@ -59,9 +109,9 @@ std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices)
         REQUIRE(indices[i] <= 15 || indices[i + 1] <= 15, std::runtime_error, "Index values must be < 16");
         uint8_t v = (((indices[i + 1]) & 0x0F) << 4);
         v |= ((indices[i]) & 0x0F);
-        data.push_back(v);
+        result.push_back(v);
     }
-    return data;
+    return result;
 }
 
 std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData)
