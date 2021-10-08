@@ -142,7 +142,7 @@ ProcessingOptions::Option ProcessingOptions::tiles{
 
 ProcessingOptions::Option ProcessingOptions::deltaImage{
     false,
-    {"deltaimage", "Delta encoding between succesive images.", cxxopts::value(deltaImage.isSet)}};
+    {"deltaimage", "Pixel-wise delta encoding between successive images.", cxxopts::value(deltaImage.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::delta8{
     false,

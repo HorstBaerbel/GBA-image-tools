@@ -69,6 +69,7 @@ bool readArguments(int argc, const char *argv[])
     opts.add_option("", options.tiles.cxxOption);
     opts.add_option("", options.delta8.cxxOption);
     opts.add_option("", options.delta16.cxxOption);
+    opts.add_option("", options.rle.cxxOption);
     opts.add_option("", options.lz10.cxxOption);
     opts.add_option("", options.lz11.cxxOption);
     opts.add_option("", options.vram.cxxOption);
@@ -163,7 +164,7 @@ void printUsage()
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, prune," << std::endl;
-    std::cout << "sprites, tiles, diff8 / diff16, lz10 / lz11, interleavepixels, output" << std::endl;
+    std::cout << "sprites, tiles, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
 std::tuple<Magick::ImageType, Magick::Geometry, std::vector<ImageProcessing::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
@@ -290,6 +291,10 @@ int main(int argc, const char *argv[])
         if (options.delta16)
         {
             processing.addStep(ImageProcessing::Type::ConvertDelta16, {});
+        }
+        if (options.rle)
+        {
+            processing.addStep(ImageProcessing::Type::CompressRLE, {});
         }
         if (options.lz10)
         {
