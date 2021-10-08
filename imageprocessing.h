@@ -40,36 +40,36 @@ public:
     /// @brief Type of processing to be done
     enum class Type
     {
-        InputBinary,       // Input image and convert to 2-color paletted image
-        InputPaletted,     // Input image and convert to paletted image
-        InputTruecolor,    // Input image and convert to RGB888 truecolor
-        ConvertTiles,      // Convert data to 8 x 8 pixel tiles
-        ConvertSprites,    // Convert data to w x h pixel sprites
-        AddColor0,         // Add a color at index #0
-        MoveColor0,        // Move a color to index #0
-        ReorderColors,     // Reorder colors to be perceptually closer to each other
-        ShiftIndices,      // Shift indices by N
-        PruneIndices,      // Convert index data to 4-bit
-        ConvertDelta8,     // Convert image data to 8-bit deltas
-        ConvertDelta16,    // Convert image data to 16-bit deltas
-        CompressLz10,      // Compress image data using LZ77 variant 10
-        CompressLz11,      // Compress image data using LZ77 variant 11
-        CompressRLE,       // Compress image data using run-length-encoding
-        CompressDXT1,      // Compress image data using DXT1
-        PadImageData,      // Fill up image data with 0s to a multiple of N
-        PadColorMap,       // Fill up color map with 0s to a multiple of N
-        EqualizeColorMaps, // Fill up all color maps with 0s to the size of the biggest color map
-        DeltaImage         // Calculate signed pixel difference between successive images
+        InputBinary = 10,      // Input image and convert to 2-color paletted image
+        InputPaletted = 11,    // Input image and convert to paletted image
+        InputTruecolor = 12,   // Input image and convert to RGB888 truecolor
+        ConvertTiles = 20,     // Convert data to 8 x 8 pixel tiles
+        ConvertSprites = 21,   // Convert data to w x h pixel sprites
+        AddColor0 = 30,        // Add a color at index #0
+        MoveColor0 = 31,       // Move a color to index #0
+        ReorderColors = 32,    // Reorder colors to be perceptually closer to each other
+        ShiftIndices = 40,     // Shift indices by N
+        PruneIndices = 41,     // Convert index data to 4-bit
+        ConvertDelta8 = 50,    // Convert image data to 8-bit deltas
+        ConvertDelta16 = 51,   // Convert image data to 16-bit deltas
+        DeltaImage = 53,       // Calculate signed pixel difference between successive images
+        CompressLz10 = 60,     // Compress image data using LZ77 variant 10
+        CompressLz11 = 61,     // Compress image data using LZ77 variant 11
+        CompressRLE = 62,      // Compress image data using run-length-encoding
+        CompressDXT1 = 63,     // Compress image data using DXT1
+        PadImageData = 80,     // Fill up image data with 0s to a multiple of N
+        PadColorMap = 90,      // Fill up color map with 0s to a multiple of N
+        EqualizeColorMaps = 91 // Fill up all color maps with 0s to the size of the biggest color map
     };
 
     /// @brief Variable parameters for processing step
     using Parameter = std::variant<bool, int32_t, uint32_t, float, Magick::Color, Magick::Image, Data, std::string>;
 
-    /// @brief Add a processing step without parameters
-    void addStep(Type type);
-
     /// @brief Add a processing step and its parameters
-    void addStep(Type type, const std::vector<Parameter> &parameters);
+    /// @param type Processing type
+    /// @param parameters Parameters to pass to processing
+    /// @param prependProcessing If true the input data size and processing type will be prepended to the result
+    void addStep(Type type, const std::vector<Parameter> &parameters, bool prependProcessing = false);
 
     /// @brief Get current # of steps in processing pipeline
     std::size_t size() const;
@@ -86,7 +86,7 @@ public:
     /// @note Will silently ignore OperationType::Input operations
     std::vector<Data> processBatch(const std::vector<Data> &images, bool clearState = true);
 
-    /// @brief Run processing steps in pipeline on single image. Used for processing a stream of images
+    /// @brief Run processing steps in pipeline on single image. Used for processing a stream of images / video frames
     /// @param image Input image
     /// @param clearState Clear internal state for all operations
     /// @note Will silently ignore OperationType::BatchConvert and ::Reduce operations
@@ -153,18 +153,22 @@ public:
     // --- compression functions -------------------------------------------------------------
 
     /// @brief Compress image data using LZ77 variant 10
-    /// @param parameters Flag for VRAM-compatible compression as bool. Pass true to turn on
+    /// @param parameters:
+    /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
     static Data compressLZ10(const Data &image, const std::vector<Parameter> &parameters);
 
     /// @brief Compress image data using LZ77 variant 11
-    /// @param parameters Flag for VRAM-compatible compression as bool. Pass true to turn on
+    /// @param parameters:
+    /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
     static Data compressLZ11(const Data &image, const std::vector<Parameter> &parameters);
 
     /// @brief Compress image data using RLE
-    /// @param parameters Flag for VRAM-compatible compression as bool. Pass true to turn on
+    /// @param parameters:
+    /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
     static Data compressRLE(const Data &image, const std::vector<Parameter> &parameters);
 
     /// @brief Encode a truecolor RGB888 or RGB565 image as DXT1 with RGB565 pixels
+    /// @param parameters:
     static Data compressDXT1(const Data &image, const std::vector<Parameter> &parameters);
 
     // --- misc conversion functions ------------------------------------------------------------------------
@@ -222,6 +226,7 @@ private:
     {
         Type type;
         std::vector<Parameter> parameters;
+        bool prependProcessing = false;
         std::vector<Parameter> state;
     };
     std::vector<ProcessingStep> m_steps;

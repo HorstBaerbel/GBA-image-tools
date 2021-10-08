@@ -253,7 +253,7 @@ int main(int argc, const char *argv[])
         ImageProcessing processing;
         if (options.reorderColors)
         {
-            processing.addStep(ImageProcessing::Type::ReorderColors);
+            processing.addStep(ImageProcessing::Type::ReorderColors, {});
         }
         if (options.addColor0)
         {
@@ -269,11 +269,11 @@ int main(int argc, const char *argv[])
         }
         if (imgType == Magick::ImageType::PaletteType)
         {
-            processing.addStep(ImageProcessing::Type::EqualizeColorMaps);
+            processing.addStep(ImageProcessing::Type::EqualizeColorMaps, {});
         }
         if (options.pruneIndices)
         {
-            processing.addStep(ImageProcessing::Type::PruneIndices);
+            processing.addStep(ImageProcessing::Type::PruneIndices, {});
         }
         if (options.sprites)
         {
@@ -281,15 +281,15 @@ int main(int argc, const char *argv[])
         }
         if (options.tiles)
         {
-            processing.addStep(ImageProcessing::Type::ConvertTiles);
+            processing.addStep(ImageProcessing::Type::ConvertTiles, {});
         }
         if (options.delta8)
         {
-            processing.addStep(ImageProcessing::Type::ConvertDelta8);
+            processing.addStep(ImageProcessing::Type::ConvertDelta8, {});
         }
         if (options.delta16)
         {
-            processing.addStep(ImageProcessing::Type::ConvertDelta16);
+            processing.addStep(ImageProcessing::Type::ConvertDelta16, {});
         }
         if (options.lz10)
         {
@@ -299,7 +299,7 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(ImageProcessing::Type::CompressLz11, {options.vram.isSet});
         }
-        processing.addStep(ImageProcessing::Type::PadImageData, {uint32_t(4)});
+        processing.addStep(ImageProcessing::Type::PadImageData, {uint32_t(4)}, {});
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;

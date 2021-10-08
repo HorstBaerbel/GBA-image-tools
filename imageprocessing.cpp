@@ -211,7 +211,7 @@ ImageProcessing::Data ImageProcessing::pruneIndices(const Data &image, const std
     REQUIRE(image.format == ColorFormat::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
     REQUIRE(image.colorMap.size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
     uint8_t maxIndex = std::max(*std::max_element(image.data.cbegin(), image.data.cend()), maxIndex);
-    REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
+    REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning only possible with index data <= 15");
     Data result = {image.fileName, image.type, image.size, ColorFormat::Paletted4, {}, image.colorMap};
     result.data = convertDataToNibbles(image.data);
     return result;
@@ -237,7 +237,7 @@ ImageProcessing::Data ImageProcessing::compressLZ10(const Data &image, const std
 {
     // get parameter(s)
     REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ10 expects a single bool VRAMcompatible parameter");
-    auto vramCompatible = std::get<bool>(parameters.front());
+    const auto vramCompatible = std::get<bool>(parameters.front());
     // compress data
     Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
     result.data = Compression::compressLzss(image.data, vramCompatible, false);
@@ -248,7 +248,7 @@ ImageProcessing::Data ImageProcessing::compressLZ11(const Data &image, const std
 {
     // get parameter(s)
     REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ11 expects a single bool VRAMcompatible parameter");
-    auto vramCompatible = std::get<bool>(parameters.front());
+    const auto vramCompatible = std::get<bool>(parameters.front());
     // compress data
     Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
     result.data = Compression::compressLzss(image.data, vramCompatible, true);
@@ -259,7 +259,7 @@ ImageProcessing::Data ImageProcessing::compressRLE(const Data &image, const std:
 {
     // get parameter(s)
     REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressRLE expects a single bool VRAMcompatible parameter");
-    auto vramCompatible = std::get<bool>(parameters.front());
+    const auto vramCompatible = std::get<bool>(parameters.front());
     // compress data
     Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
     result.data = Compression::compressRLE(image.data, vramCompatible);
@@ -445,14 +445,9 @@ ImageProcessing::Data ImageProcessing::imageDiff(const Data &image, const std::v
     return image;
 }
 
-void ImageProcessing::addStep(Type type)
+void ImageProcessing::addStep(Type type, const std::vector<Parameter> &parameters, bool prependProcessing)
 {
-    m_steps.push_back({type, {}});
-}
-
-void ImageProcessing::addStep(Type type, const std::vector<Parameter> &parameters)
-{
-    m_steps.push_back({type, parameters});
+    m_steps.push_back({type, parameters, prependProcessing});
 }
 
 std::size_t ImageProcessing::size() const
@@ -490,6 +485,14 @@ std::string ImageProcessing::getProcessingDescription(const std::string &seperat
     return result;
 }
 
+ImageProcessing::Data prependProcessing(const ImageProcessing::Data &img, uint32_t size, ImageProcessing::Type type)
+{
+    REQUIRE(img.data.size() < (1 << 24), std::runtime_error, "Data size stored must be < 16MB");
+    REQUIRE(static_cast<uint32_t>(type) <= 255, std::runtime_error, "Type value must be <= 255");
+    const uint32_t sizeAndType = ((size & 0xFFFFFF) << 24) & (static_cast<uint32_t>(type) & 0xFF);
+    return {img.fileName, img.type, img.size, img.format, prependValue(img.data, size), img.colorMap};
+}
+
 std::vector<ImageProcessing::Data> ImageProcessing::processBatch(const std::vector<Data> &data, bool clearState)
 {
     REQUIRE(data.size() > 0, std::runtime_error, "Empty data passed to processing");
@@ -503,7 +506,12 @@ std::vector<ImageProcessing::Data> ImageProcessing::processBatch(const std::vect
             auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
             for (auto &img : processed)
             {
+                const uint32_t inputSize = img.data.size();
                 img = convertFunc(img, step.parameters);
+                if (step.prependProcessing)
+                {
+                    img = prependProcessing(img, static_cast<uint32_t>(inputSize), step.type);
+                }
             }
         }
         else if (stepFunc.type == OperationType::ConvertState)
@@ -511,13 +519,27 @@ std::vector<ImageProcessing::Data> ImageProcessing::processBatch(const std::vect
             auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
             for (auto &img : processed)
             {
+                const uint32_t inputSize = img.data.size();
                 img = convertFunc(img, step.parameters, step.state);
+                if (step.prependProcessing)
+                {
+                    img = prependProcessing(img, static_cast<uint32_t>(inputSize), step.type);
+                }
             }
         }
         else if (stepFunc.type == OperationType::BatchConvert)
         {
+            // get all input sizes
+            std::vector<uint32_t> inputSizes = {};
+            std::transform(processed.cbegin(), processed.cend(), std::back_inserter(inputSizes), [](const auto &d)
+                           { return d.data.size(); });
             auto batchFunc = std::get<BatchConvertFunc>(stepFunc.func);
             processed = batchFunc(processed, step.parameters);
+            for (auto pIt = processed.begin(); pIt != processed.end(); pIt++)
+            {
+                const uint32_t inputSize = inputSizes.at(std::distance(processed.begin(), pIt));
+                *pIt = prependProcessing(*pIt, static_cast<uint32_t>(inputSize), step.type);
+            }
         }
         else if (stepFunc.type == OperationType::Reduce)
         {
@@ -534,6 +556,7 @@ ImageProcessing::Data ImageProcessing::processStream(const Magick::Image &image,
     Data processed;
     for (auto &step : m_steps)
     {
+        const uint32_t inputSize = processed.data.size();
         auto &stepFunc = ProcessingFunctions.find(step.type)->second;
         if (stepFunc.type == OperationType::Input)
         {
@@ -551,6 +574,10 @@ ImageProcessing::Data ImageProcessing::processStream(const Magick::Image &image,
             processed = convertFunc(processed, step.parameters, step.state);
         }
         // we're silently ignoring OperationType::BatchConvert and ::Reduce operations here
+        if (step.prependProcessing)
+        {
+            processed = prependProcessing(processed, static_cast<uint32_t>(inputSize), step.type);
+        }
     }
     return processed;
 }

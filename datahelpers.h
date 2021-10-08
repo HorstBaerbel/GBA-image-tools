@@ -101,3 +101,13 @@ std::vector<T> deltaEncode(const std::vector<T> &data)
     std::adjacent_difference(data.cbegin(), data.cend(), std::back_inserter(result));
     return result;
 }
+
+/// @brief Prepend value to array
+template <typename T>
+std::vector<uint8_t> prependValue(const std::vector<uint8_t> &data, T value)
+{
+    std::vector<uint8_t> result(data.size() + sizeof(T));
+    *reinterpret_cast<T *>(result.data()) = value;
+    std::copy(data.cbegin(), data.cend(), std::next(result.begin(), sizeof(T)));
+    return result;
+}
