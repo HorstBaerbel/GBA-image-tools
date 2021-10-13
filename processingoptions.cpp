@@ -12,17 +12,17 @@ std::string ProcessingOptions::Option::helpString() const
     return cxxOption.opts_ + ": " + cxxOption.desc_;
 }
 
-ProcessingOptions::OptionT<float> ProcessingOptions::binary{
+ProcessingOptions::OptionT<float> ProcessingOptions::blackWhite{
     false,
-    {"binary", "Convert images to binary image with intensity threshold at N. N must be in [0.0, 1.0].", cxxopts::value(binary.value)},
+    {"blackwhite", "Convert images to b/w image with intensity threshold at N. N must be in [0.0, 1.0].", cxxopts::value(blackWhite.value)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
     {
-        if (r.count(binary.cxxOption.opts_))
+        if (r.count(blackWhite.cxxOption.opts_))
         {
-            REQUIRE(binary.value >= 0.0 && binary.value <= 1.0, std::runtime_error, "Binarization threshold value must be in [0.0, 1.0]");
-            binary.isSet = true;
+            REQUIRE(blackWhite.value >= 0.0 && blackWhite.value <= 1.0, std::runtime_error, "Intensity threshold value must be in [0.0, 1.0]");
+            blackWhite.isSet = true;
         }
     }};
 
@@ -114,9 +114,19 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::shiftIndices{
         }
     }};
 
-ProcessingOptions::Option ProcessingOptions::pruneIndices{
+ProcessingOptions::OptionT<uint32_t> ProcessingOptions::pruneIndices{
     false,
-    {"prune", "Reduce bit depth of palette indices to 4 bit.", cxxopts::value(pruneIndices.isSet)}};
+    {"prune", "Reduce bit depth of palette indices to 1, 2 or 4 bit.", cxxopts::value(pruneIndices.value)},
+    4,
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(pruneIndices.cxxOption.opts_))
+        {
+            REQUIRE(pruneIndices.value == 1 || pruneIndices.value == 2 || pruneIndices.value == 4, std::runtime_error, "Bit depth must be 1, 2 or 4");
+            pruneIndices.isSet = true;
+        }
+    }};
 
 ProcessingOptions::OptionT<std::vector<uint32_t>> ProcessingOptions::sprites{
     false,
@@ -178,4 +188,8 @@ ProcessingOptions::Option ProcessingOptions::interleavePixels{
 
 ProcessingOptions::Option ProcessingOptions::dryRun{
     false,
-    {"dryrun", "Test processing, but do not write output files.", cxxopts::value(dryRun.isSet)}};
+    {"dryrun", "Process data, but do not write output files.", cxxopts::value(dryRun.isSet)}};
+
+ProcessingOptions::Option ProcessingOptions::binary{
+    false,
+    {"binary", "Output data as binary blob .bin file instead of .h / .c files.", cxxopts::value(binary.isSet)}};

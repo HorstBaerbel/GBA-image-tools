@@ -98,7 +98,47 @@ std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData)
     return convertTo<uint8_t>(result);
 }
 
-std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices)
+std::vector<uint8_t> convertDataTo1Bit(const std::vector<uint8_t> &indices)
+{
+    std::vector<uint8_t> result;
+    // size must be a multiple of 8
+    const auto nrOfIndices = indices.size();
+    REQUIRE((nrOfIndices & 7) == 0, std::runtime_error, "Number of indices must be divisible by 8");
+    for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 8)
+    {
+        REQUIRE(indices[i] <= 1 || indices[i + 1] <= 1 || indices[i + 2] <= 1 || indices[i + 3] <= 1 || indices[i + 4] <= 1 || indices[i + 5] <= 1 || indices[i + 6] <= 1 || indices[i + 7] <= 1, std::runtime_error, "Index values must be < 4");
+        uint8_t v = (((indices[i + 7]) & 0x01) << 7);
+        v |= (((indices[i + 6]) & 0x01) << 6);
+        v |= (((indices[i + 5]) & 0x01) << 5);
+        v |= (((indices[i + 4]) & 0x01) << 4);
+        v |= (((indices[i + 3]) & 0x01) << 3);
+        v |= (((indices[i + 2]) & 0x01) << 2);
+        v |= (((indices[i + 1]) & 0x01) << 1);
+        v |= ((indices[i]) & 0x01);
+        result.push_back(v);
+    }
+    return result;
+}
+
+std::vector<uint8_t> convertDataTo2Bit(const std::vector<uint8_t> &indices)
+{
+    std::vector<uint8_t> result;
+    // size must be a multiple of 4
+    const auto nrOfIndices = indices.size();
+    REQUIRE((nrOfIndices & 3) == 0, std::runtime_error, "Number of indices must be divisible by 4");
+    for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 4)
+    {
+        REQUIRE(indices[i] <= 3 || indices[i + 1] <= 3 || indices[i + 2] <= 3 || indices[i + 3] <= 3, std::runtime_error, "Index values must be < 4");
+        uint8_t v = (((indices[i + 3]) & 0x03) << 6);
+        v |= (((indices[i + 2]) & 0x03) << 4);
+        v |= (((indices[i + 1]) & 0x03) << 2);
+        v |= ((indices[i]) & 0x03);
+        result.push_back(v);
+    }
+    return result;
+}
+
+std::vector<uint8_t> convertDataTo4Bit(const std::vector<uint8_t> &indices)
 {
     std::vector<uint8_t> result;
     // size must be a multiple of 2

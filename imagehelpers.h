@@ -21,8 +21,14 @@ std::vector<uint8_t> toRGB555(const std::vector<uint8_t> &imageData);
 /// @brief Convert RGB888 to RGB565
 std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData);
 
-/// @brief Convert image index data to nibble-sized values
-std::vector<uint8_t> convertDataToNibbles(const std::vector<uint8_t> &indices);
+/// @brief Convert image index data to 1-bit-sized values. Data must be divisible by 8
+std::vector<uint8_t> convertDataTo1Bit(const std::vector<uint8_t> &indices);
+
+/// @brief Convert image index data to 2-bit-sized values. Data must be divisible by 4
+std::vector<uint8_t> convertDataTo2Bit(const std::vector<uint8_t> &indices);
+
+/// @brief Convert image index data to nibble-sized values. Data must be divisible by 2
+std::vector<uint8_t> convertDataTo4Bit(const std::vector<uint8_t> &indices);
 
 /// @brief Increase all image indices by 1
 std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData);

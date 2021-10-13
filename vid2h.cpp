@@ -33,7 +33,7 @@
 enum class ConversionMode
 {
     None,
-    Binary,
+    BlackWhite,
     Paletted,
     Truecolor
 };
@@ -42,7 +42,6 @@ ConversionMode m_conversionMode = ConversionMode::None;
 std::string m_inFile;
 std::string m_outFile;
 ProcessingOptions options;
-bool m_asBinary = false;
 
 std::string getCommandLine(int argc, const char *argv[])
 {
@@ -65,7 +64,7 @@ bool readArguments(int argc, const char *argv[])
     opts.add_option("", {"h,help", "Print help"});
     opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
     opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
-    opts.add_option("", options.binary.cxxOption);
+    opts.add_option("", options.blackWhite.cxxOption);
     opts.add_option("", options.paletted.cxxOption);
     opts.add_option("", options.truecolor.cxxOption);
     opts.add_option("", options.addColor0.cxxOption);
@@ -83,7 +82,6 @@ bool readArguments(int argc, const char *argv[])
     opts.add_option("", options.lz11.cxxOption);
     opts.add_option("", options.vram.cxxOption);
     opts.add_option("", options.dryRun.cxxOption);
-    opts.add_option("", {"bin", "Write binary files instead of .h / .c", cxxopts::value<bool>(m_asBinary)});
     opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
     opts.parse_positional({"infile", "outname", "positional"});
     auto result = opts.parse(argc, argv);
@@ -125,15 +123,15 @@ bool readArguments(int argc, const char *argv[])
         }
     }
     // check if exclusive options set
-    options.binary.parse(result);
+    options.blackWhite.parse(result);
     options.paletted.parse(result);
     options.truecolor.parse(result);
-    if ((options.binary + options.paletted + options.truecolor) == 0)
+    if ((options.blackWhite + options.paletted + options.truecolor) == 0)
     {
         std::cerr << "One format option is needed." << std::endl;
         return false;
     }
-    if ((options.binary + options.paletted + options.truecolor) > 1)
+    if ((options.blackWhite + options.paletted + options.truecolor) > 1)
     {
         std::cerr << "Only a single format option is allowed." << std::endl;
         return false;
@@ -146,6 +144,7 @@ bool readArguments(int argc, const char *argv[])
     options.addColor0.parse(result);
     options.moveColor0.parse(result);
     options.shiftIndices.parse(result);
+    options.pruneIndices.parse(result);
     options.sprites.parse(result);
     return true;
 }
@@ -156,7 +155,7 @@ void printUsage()
     std::cout << "GBA executable." << std::endl;
     std::cout << "Usage: vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [COMPRESSION] INFILE OUTNAME" << std::endl;
     std::cout << "FORMAT options (mutually exclusive):" << std::endl;
-    std::cout << options.binary.helpString() << std::endl;
+    std::cout << options.blackWhite.helpString() << std::endl;
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
     std::cout << "CONVERSION options (all optional):" << std::endl;
@@ -229,90 +228,90 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // build processing pipeline - input
-        ImageProcessing processing;
-        if (options.binary)
+        Image::Processing processing;
+        if (options.blackWhite)
         {
-            processing.addStep(ImageProcessing::Type::InputBinary, {options.binary.value});
+            processing.addStep(Image::Processing::Type::InputBlackWhite, {options.blackWhite.value});
         }
         else if (options.paletted)
         {
             // add palette conversion using GBA RGB555 reference color map
-            processing.addStep(ImageProcessing::Type::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
+            processing.addStep(Image::Processing::Type::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
         }
         else if (options.truecolor)
         {
-            processing.addStep(ImageProcessing::Type::InputTruecolor, {options.truecolor.value});
+            processing.addStep(Image::Processing::Type::InputTruecolor, {options.truecolor.value});
         }
         // build processing pipeline - conversion
         if (options.paletted)
         {
-            processing.addStep(ImageProcessing::Type::ReorderColors, {});
+            processing.addStep(Image::Processing::Type::ReorderColors, {});
             if (options.addColor0)
             {
-                processing.addStep(ImageProcessing::Type::AddColor0, {options.addColor0.value});
+                processing.addStep(Image::Processing::Type::AddColor0, {options.addColor0.value});
             }
             if (options.moveColor0)
             {
-                processing.addStep(ImageProcessing::Type::MoveColor0, {options.moveColor0.value});
+                processing.addStep(Image::Processing::Type::MoveColor0, {options.moveColor0.value});
             }
             if (options.shiftIndices)
             {
-                processing.addStep(ImageProcessing::Type::ShiftIndices, {options.shiftIndices.value});
+                processing.addStep(Image::Processing::Type::ShiftIndices, {options.shiftIndices.value});
             }
             if (options.pruneIndices)
             {
-                processing.addStep(ImageProcessing::Type::PruneIndices, {});
-                processing.addStep(ImageProcessing::Type::PadColorMap, {uint32_t(16)});
+                processing.addStep(Image::Processing::Type::PruneIndices, {});
+                processing.addStep(Image::Processing::Type::PadColorMap, {uint32_t(16)});
             }
             else
             {
-                processing.addStep(ImageProcessing::Type::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
+                processing.addStep(Image::Processing::Type::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
         }
         if (options.sprites)
         {
-            processing.addStep(ImageProcessing::Type::ConvertSprites, {options.sprites.value.front()});
+            processing.addStep(Image::Processing::Type::ConvertSprites, {options.sprites.value.front()});
         }
         if (options.tiles)
         {
-            processing.addStep(ImageProcessing::Type::ConvertTiles, {});
+            processing.addStep(Image::Processing::Type::ConvertTiles, {});
         }
         if (options.deltaImage)
         {
-            processing.addStep(ImageProcessing::Type::DeltaImage, {});
+            processing.addStep(Image::Processing::Type::DeltaImage, {});
         }
         if (options.dxt1)
         {
-            processing.addStep(ImageProcessing::Type::CompressDXT1, {}, true);
+            processing.addStep(Image::Processing::Type::CompressDXT1, {}, true);
         }
         if (options.delta8)
         {
-            processing.addStep(ImageProcessing::Type::ConvertDelta8, {});
+            processing.addStep(Image::Processing::Type::ConvertDelta8, {});
         }
         if (options.delta16)
         {
-            processing.addStep(ImageProcessing::Type::ConvertDelta16, {});
+            processing.addStep(Image::Processing::Type::ConvertDelta16, {});
         }
         if (options.rle)
         {
-            processing.addStep(ImageProcessing::Type::CompressRLE, {options.vram.isSet}, true);
+            processing.addStep(Image::Processing::Type::CompressRLE, {options.vram.isSet}, true);
         }
         if (options.lz10)
         {
-            processing.addStep(ImageProcessing::Type::CompressLz10, {options.vram.isSet}, true);
+            processing.addStep(Image::Processing::Type::CompressLz10, {options.vram.isSet}, true);
         }
         if (options.lz11)
         {
-            processing.addStep(ImageProcessing::Type::CompressLz11, {options.vram.isSet}, true);
+            processing.addStep(Image::Processing::Type::CompressLz11, {options.vram.isSet}, true);
         }
-        processing.addStep(ImageProcessing::Type::PadImageData, {uint32_t(4)});
+        processing.addStep(Image::Processing::Type::PadImageData, {uint32_t(4)});
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;
         // start reading frames from video
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
-        std::vector<ImageProcessing::Data> images;
+        std::vector<Image::Data> images;
         do
         {
             auto frame = videoReader.readFrame();
@@ -338,101 +337,37 @@ int main(int argc, const char *argv[])
         auto imgSize = images.front().size;
         const bool allColorMapsSame = false;
         const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
+        // output some info about data
+        auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
+        std::cout << "Input size: " << inputSize / (1024 * 1024) << "MB" << std::endl;
+        auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
+                                              { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
+        std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << "MB" << std::endl;
+        std::cout << "Bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << "kB/s" << std::endl;
         // check if we want to write output files
-        if (options.dryRun)
+        if (!options.dryRun)
         {
-            // output some info about data
-            auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
-            std::cout << "Input size: " << inputSize / (1024 * 1024) << "MB" << std::endl;
-            auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
-                                                  { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
-            std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << "MB" << std::endl;
-            std::cout << "Bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << "kB/s" << std::endl;
-        }
-        else
-        {
-            return 0;
-            if (m_asBinary)
+            // open output file
+            std::ofstream binFile(m_outFile + ".bin", std::ios::out | std::ios::binary);
+            if (binFile.is_open())
             {
-                //TODO
+                std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
+                try
+                {
+                    // TODO
+                    //binFile.write();
+                }
+                catch (const std::runtime_error &e)
+                {
+                    binFile.close();
+                    std::cerr << "Failed to write data to output file: " << e.what() << std::endl;
+                    return 1;
+                }
             }
             else
             {
-                // open output files
-                std::ofstream hFile(m_outFile + ".h", std::ios::out);
-                std::ofstream cFile(m_outFile + ".c", std::ios::out);
-                if (hFile.is_open() && cFile.is_open())
-                {
-                    std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
-                    try
-                    {
-                        // build output file / variable name
-                        std::string baseName = getBaseNameFromFilePath(m_outFile);
-                        std::string varName = baseName;
-                        std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
-                                       { return std::toupper(c, std::locale()); });
-                        // output header
-                        hFile << "// Converted with vid2h " << getCommandLine(argc, argv) << std::endl;
-                        hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
-                              << std::endl;
-                        // output image and palette info
-                        const bool storeTileOrSpriteWise = (images.size() == 1) && (options.tiles || options.sprites);
-                        uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
-                        uint32_t nrOfImagesOrSprites = images.size();
-                        if (nrOfImagesOrSprites == 1)
-                        {
-                            // if we have a single input image, store data per tile or sprite
-                            if (options.sprites)
-                            {
-                                // calculate number of w*h sprites
-                                auto spriteWidth = options.sprites.value.front();
-                                auto spriteHeight = options.sprites.value.back();
-                                nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (spriteWidth * spriteHeight);
-                                nrOfBytesPerImageOrSprite = spriteWidth * spriteHeight;
-                                imgSize = Magick::Geometry(spriteWidth, spriteHeight);
-                            }
-                            else if (options.tiles)
-                            {
-                                // calculate number of 8*8 pixel tiles
-                                nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
-                                nrOfBytesPerImageOrSprite = 64;
-                                imgSize = Magick::Geometry(8, 8);
-                            }
-                        }
-                        nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
-                        // convert image data to uint32_ts and palette to BGR555 uint16_ts
-                        auto [imageData32, imageOrSpriteStartIndices] = ImageProcessing::combineImageData<uint32_t>(images, options.interleavePixels);
-                        // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
-                        nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
-                        // output image and palette data
-                        writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                        writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
-                        if (imgType == Magick::ImageType::PaletteType)
-                        {
-                            auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : ImageProcessing::combineColorMaps<uint16_t>(images, [](auto cm)
-                                                                                                                                                                                                                              { return convertToBGR555(cm); }));
-                            writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
-                            writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
-                        }
-                        hFile << std::endl;
-                        hFile.close();
-                        cFile.close();
-                    }
-                    catch (const std::runtime_error &e)
-                    {
-                        hFile.close();
-                        cFile.close();
-                        std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
-                        return 1;
-                    }
-                }
-                else
-                {
-                    hFile.close();
-                    cFile.close();
-                    std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
-                    return 1;
-                }
+                std::cerr << "Failed to open " << m_outFile << ".bin for writing" << std::endl;
+                return 1;
             }
         }
         std::cout << "Done" << std::endl;

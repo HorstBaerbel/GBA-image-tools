@@ -126,6 +126,7 @@ bool readArguments(int argc, const char *argv[])
     options.addColor0.parse(result);
     options.moveColor0.parse(result);
     options.shiftIndices.parse(result);
+    options.pruneIndices.parse(result);
     options.sprites.parse(result);
     return true;
 }
@@ -167,11 +168,11 @@ void printUsage()
     std::cout << "sprites, tiles, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
-std::tuple<Magick::ImageType, Magick::Geometry, std::vector<ImageProcessing::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
+std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
     Magick::ImageType imgType = Magick::ImageType::UndefinedType;
     Magick::Geometry imgSize;
-    std::vector<ImageProcessing::Data> images;
+    std::vector<Image::Data> images;
     // open first image and store type
     auto ifIt = fileNames.cbegin();
     while (ifIt != fileNames.cend())
@@ -218,7 +219,7 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<ImageProcessing::Dat
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        ImageProcessing::Data entry{*ifIt, imgType, imgSize, (isPaletted ? ImageProcessing::ColorFormat::Paletted8 : ImageProcessing::ColorFormat::RGB555), (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
+        Image::Data entry{*ifIt, imgType, imgSize, (isPaletted ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
         images.push_back(entry);
         ifIt++;
     }
@@ -251,60 +252,60 @@ int main(int argc, const char *argv[])
         // read image(s) from disk
         auto [imgType, imgSize, images] = readImages(m_inFile, options);
         // build processing pipeline
-        ImageProcessing processing;
+        Image::Processing processing;
         if (options.reorderColors)
         {
-            processing.addStep(ImageProcessing::Type::ReorderColors, {});
+            processing.addStep(Image::Processing::Type::ReorderColors, {});
         }
         if (options.addColor0)
         {
-            processing.addStep(ImageProcessing::Type::AddColor0, {options.addColor0.value});
+            processing.addStep(Image::Processing::Type::AddColor0, {options.addColor0.value});
         }
         if (options.moveColor0)
         {
-            processing.addStep(ImageProcessing::Type::MoveColor0, {options.moveColor0.value});
+            processing.addStep(Image::Processing::Type::MoveColor0, {options.moveColor0.value});
         }
         if (options.shiftIndices)
         {
-            processing.addStep(ImageProcessing::Type::ShiftIndices, {options.shiftIndices.value});
+            processing.addStep(Image::Processing::Type::ShiftIndices, {options.shiftIndices.value});
         }
         if (imgType == Magick::ImageType::PaletteType)
         {
-            processing.addStep(ImageProcessing::Type::EqualizeColorMaps, {});
+            processing.addStep(Image::Processing::Type::EqualizeColorMaps, {});
         }
         if (options.pruneIndices)
         {
-            processing.addStep(ImageProcessing::Type::PruneIndices, {});
+            processing.addStep(Image::Processing::Type::PruneIndices, {});
         }
         if (options.sprites)
         {
-            processing.addStep(ImageProcessing::Type::ConvertSprites, {options.sprites.value.front()});
+            processing.addStep(Image::Processing::Type::ConvertSprites, {options.sprites.value.front()});
         }
         if (options.tiles)
         {
-            processing.addStep(ImageProcessing::Type::ConvertTiles, {});
+            processing.addStep(Image::Processing::Type::ConvertTiles, {});
         }
         if (options.delta8)
         {
-            processing.addStep(ImageProcessing::Type::ConvertDelta8, {});
+            processing.addStep(Image::Processing::Type::ConvertDelta8, {});
         }
         if (options.delta16)
         {
-            processing.addStep(ImageProcessing::Type::ConvertDelta16, {});
+            processing.addStep(Image::Processing::Type::ConvertDelta16, {});
         }
         if (options.rle)
         {
-            processing.addStep(ImageProcessing::Type::CompressRLE, {});
+            processing.addStep(Image::Processing::Type::CompressRLE, {});
         }
         if (options.lz10)
         {
-            processing.addStep(ImageProcessing::Type::CompressLz10, {options.vram.isSet});
+            processing.addStep(Image::Processing::Type::CompressLz10, {options.vram.isSet});
         }
         if (options.lz11)
         {
-            processing.addStep(ImageProcessing::Type::CompressLz11, {options.vram.isSet});
+            processing.addStep(Image::Processing::Type::CompressLz11, {options.vram.isSet});
         }
-        processing.addStep(ImageProcessing::Type::PadImageData, {uint32_t(4)}, {});
+        processing.addStep(Image::Processing::Type::PadImageData, {uint32_t(4)}, {});
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;
@@ -371,7 +372,7 @@ int main(int argc, const char *argv[])
                 }
                 nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
                 // convert image data to uint32_ts and palette to BGR555 uint16_ts
-                auto [imageData32, imageOrSpriteStartIndices] = ImageProcessing::combineImageData<uint32_t>(images, options.interleavePixels);
+                auto [imageData32, imageOrSpriteStartIndices] = Image::Processing::combineImageData<uint32_t>(images, options.interleavePixels);
                 // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
                 nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
                 // output image and palette data
@@ -379,8 +380,8 @@ int main(int argc, const char *argv[])
                 writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
                 if (imgType == Magick::ImageType::PaletteType)
                 {
-                    auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : ImageProcessing::combineColorMaps<uint16_t>(images, [](auto cm)
-                                                                                                                                                                                                                      { return convertToBGR555(cm); }));
+                    auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(images, [](auto cm)
+                                                                                                                                                                                                                        { return convertToBGR555(cm); }));
                     writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
                     writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
                 }

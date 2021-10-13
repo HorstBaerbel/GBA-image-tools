@@ -28,14 +28,14 @@ public:
         std::function<void(const cxxopts::ParseResult &)> parse;
     };
 
-    static OptionT<float> binary;
+    static OptionT<float> blackWhite;
     static OptionT<uint32_t> paletted;
     static OptionT<std::string> truecolor;
     static Option reorderColors;
     static OptionT<Magick::Color> addColor0;
     static OptionT<Magick::Color> moveColor0;
     static OptionT<uint32_t> shiftIndices;
-    static Option pruneIndices;
+    static OptionT<uint32_t> pruneIndices;
     static OptionT<std::vector<uint32_t>> sprites;
     static Option tiles;
     static Option deltaImage;
@@ -48,4 +48,5 @@ public:
     static Option dxt1;
     static Option interleavePixels;
     static Option dryRun;
+    static Option binary;
 };
