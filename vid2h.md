@@ -2,17 +2,17 @@
 
 ## General usage
 
-Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COMPRESSION] INFILE OUTNAME```
+Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COMPRESSION] [OPTIONS] INFILE OUTNAME```
 
 * ```FORMAT``` is mandatory and means the color format to convert the input frame to:
-  * ```--binary``` - Convert frame to black / white paletted image with two colors according to a brightness threshold.
+  * ```--blackwhite``` - Convert frame to b/w paletted image with two colors according to a brightness threshold.
   * ```--paletted``` - Convert frame to paletted image with specified number of colors.
   * ```--truecolor``` - Convert frame to RGB555 / RGB565 / RGB888 true-color image.
 * ```CONVERSION``` is optional and means the type of conversion to be done:
   * [```--addcolor0=COLOR```](#adding-a-color-to-index--0-in-the-palette) - Add COLOR at palette index #0 and increase all other color indices by 1.
   * [```--movecolor0=COLOR```](#moving-a-color-to-index--0-in-the-palette) - Move COLOR to palette index #0 and move all other colors accordingly.
   * [```--shift=N```](#shifting-index-values) - Increase image index values by N, keeping index #0 at 0.
-  * [```--prune```](#pruning-index-values) - Reduce depth of image index values to 4 bit.
+  * [```--prune=N```](#pruning-index-values) - Reduce depth of image index values to 1,2 or 4 bit, depending on N.
   * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
   * ```--deltaimage``` - Pixel-wise delta encoding between successive images.
@@ -26,12 +26,37 @@ Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COM
   * [```--lz11```](#compressing-data) - Use LZ77 compression ["variant 11"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
+* ```OPTIONS``` are optional:
+  * ```--dryrun``` - Process data, but do not write output files.
 * ```INFILE``` specifies the input video file. Must be readable with FFmpeg.
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_". Binary output will be written as "abc.bin".
 
-The order of the operations performed is: Read all input files ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxt1 ➜ diff8 / diff16 ➜ rle ➜ lz10 / lz11 ➜ Write output
+The order of the operations performed is: Read input file ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxt1 ➜ diff8 / diff16 ➜ rle ➜ lz10 / lz11 ➜ Write output
 
 Some general information:
 
 * Some combinations of options make no sense, but vid2h will not check that.
 * All data stored to output files will be aligned to 4 bytes and padded to 4 bytes. Zero bytes will be added if necessary.
+
+## Binary file storage format
+
+vid2h will store binary file header fields and frame header fields:
+
+| Field                         | Size     |                                            |
+| ----------------------------- | -------- | ------------------------------------------ |
+| Compressed file size          | 4 bytes  |
+| Number of frames in file      | 3 bytes  | Enough for ~77 hours at 60 frames/s        |
+| Frames / s                    | 1 byte   | No fractions allowed here                  |
+| Frame width in pixels         | 2 bytes  |
+| Frame height in pixels        | 2 bytes  |
+| Image data bits / pixel       | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24              |
+| Color table data bits / color | 1 byte   | Can be 0 (no color tables), 15, 16, 24     |
+| *Frame #0*                    |
+| Compressed frame size N       | 3 bytes  |
+| Color table size M            | 1 byte   | Color table stored if M > 0                |
+| Uncompressed frame size       | 3 bytes  |
+| Processing type               | 1 byte   | See [imageprocessing.h](imageprocessing.h) |
+| Data                          | N bytes  |
+| Color table                   | M colors | Only if M > 0                              |
+| *Frame #1*                    |
+| ...                           |

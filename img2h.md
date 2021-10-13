@@ -9,7 +9,7 @@ Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn..
   * [```--addcolor0=COLOR```](#adding-a-color-to-index--0-in-the-palette) - Add COLOR at palette index #0 and increase all other color indices by 1.
   * [```--movecolor0=COLOR```](#moving-a-color-to-index--0-in-the-palette) - Move COLOR to palette index #0 and move all other colors accordingly.
   * [```--shift=N```](#shifting-index-values) - Increase image index values by N, keeping index #0 at 0.
-  * [```--prune```](#pruning-index-values) - Reduce depth of image index values to 4 bit.
+  * [```--prune=N```](#pruning-index-values) - Reduce depth of image index values to 1,2 or 4 bit, depending on N.
   * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
   * [```--interleavepixels```](#interleaving-pixels) - Interleave pixels from multiple images into one big array.
@@ -59,7 +59,7 @@ COLORVALUE is an RGB hex color value, e.g. "AA2345" or "123def".
 
 ### Pruning index values
 
-There's no way to store regular paletted images with 4-bit indices only, but 4-bit data is needed for 16-color tiles or -sprites. When a 256-color paletted image contains only 16 or less colors you can reduce index data to 4-bit values by passing the option ```--prune```. After the conversion an 8x8@4 tile will use 4 bytes, a 8x8@8 tile will use 8 bytes.
+There's no way to store regular paletted images with 4-bit indices only, but 4-bit data is needed for 16-color tiles or -sprites. When a 256-color paletted image contains only 16 or less colors you can reduce index data to 4-bit values by passing the option ```--prune=4```. After the conversion an 8x8@4 tile will use 4 bytes, a 8x8@8 tile will use 8 bytes. ```N``` can also be set to 1 or 2 for storing masks or saving ROM space.
 
 ### Shifting index values
 
