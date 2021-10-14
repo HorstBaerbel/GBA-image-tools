@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/src/**",
+                "${env:DEVKITPRO}/libgba/include/**",
+                "${env:DEVKITARM}/arm-none-eabi/include/**"
+            ],
+            "defines": [],
+            "compilerPath": "${env:DEVKITARM}/bin/arm-none-eabi-g++",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-arm",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

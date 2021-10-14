@@ -11,6 +11,8 @@ img2h
 vid2h
 hex2gba
 
+gba/build/*
+
 # Prerequisites
 *.d
 
