@@ -29,7 +29,7 @@ The order of the operations performed is: Read all input files ➜ reordercolors
 Some general information:
 
 * Some combinations of options make no sense, but img2h will not check that.
-* All data stored to output files will be aligned to 4 bytes and padded to 4 bytes. Zero bytes will be added if necessary.
+* All image and color map data stored to output files will be aligned to 4 bytes and padded to 4 bytes. Zero bytes will be added if necessary.
 * When processing **multiple input images** they **will be stored in a single .h / .c file**. Thus they must have the same width, height and bit depth.
 * When processing multiple paletted input images, their palettes will be padded with black colors / zero bytes to the size of the biggest palette.
 * Truecolor data will be converted to RGB555.
@@ -109,11 +109,12 @@ To improve compression you can apply run-length-encoding using ```--rle``` (See 
 
 ### Convert an image to GBA RGB555 format with a restricted number of colors
 
-```convert INFILE -colors NROFCOLORS -remap colormap555.png OUTFILE```
-
 If you convert an image for GBA and use regular dithering it will be converted to RGB888 first, dithered and then later converted to RGB555 trying to match colors, which can give bad results. This option will use the GBAs RGB555 color map [colormap555.png](colormap555.png)  
 ![colormap555.png](colormap555.png)  
-to restrict output colors to the GBA color "palette" of possible RGB555 colors while dithering, which gives much better results.  
+to restrict output colors to the GBA color "palette" of possible RGB555 colors while dithering, which gives much better results.
+
+```convert INFILE -colors NROFCOLORS -remap colormap555.png OUTFILE```
+
 If you use wildcards for a list of images, you can also a create common palette for all images using "[+remap](https://www.imagemagick.org/script/command-line-options.php?#remap)" instead:
 
 ```convert INFILE -colors 255 +remap colormap555.png png8:OUTFILE```
@@ -139,6 +140,8 @@ If this still does not give you the desired output (too many colors, bad quality
 
 ## TODO
 
+* TESTS!
+* More modern C++ constructs
 * Do all processing in RGB, store truecolor as BGR in the end
 * Add builtin -remap and +remap option from ImageMagick
 * Syntax to apply options to single file only?

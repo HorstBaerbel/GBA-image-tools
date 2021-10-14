@@ -36,27 +36,28 @@ The order of the operations performed is: Read input file ➜ addcolor0 ➜ move
 Some general information:
 
 * Some combinations of options make no sense, but vid2h will not check that.
-* All data stored to output files will be aligned to 4 bytes and padded to 4 bytes. Zero bytes will be added if necessary.
+* All image and color map data stored to output files will be aligned to 4 bytes and padded to 4 bytes. Zero bytes will be added if necessary.
 
 ## Binary file storage format
 
 vid2h will store binary file header fields and frame header fields:
 
-| Field                         | Size     |                                            |
-| ----------------------------- | -------- | ------------------------------------------ |
-| Compressed file size          | 4 bytes  |
-| Number of frames in file      | 3 bytes  | Enough for ~77 hours at 60 frames/s        |
-| Frames / s                    | 1 byte   | No fractions allowed here                  |
-| Frame width in pixels         | 2 bytes  |
-| Frame height in pixels        | 2 bytes  |
-| Image data bits / pixel       | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24              |
-| Color table data bits / color | 1 byte   | Can be 0 (no color tables), 15, 16, 24     |
-| *Frame #0*                    |
-| Compressed frame size N       | 3 bytes  |
-| Color table size M            | 1 byte   | Color table stored if M > 0                |
-| Uncompressed frame size       | 3 bytes  |
-| Processing type               | 1 byte   | See [imageprocessing.h](imageprocessing.h) |
-| Data                          | N bytes  |
-| Color table                   | M colors | Only if M > 0                              |
-| *Frame #1*                    |
-| ...                           |
+| Field                        | Size     |                                            |
+| ---------------------------- | -------- | ------------------------------------------ |
+| Compressed file size         | 4 bytes  |
+| Number of frames in file     | 4 bytes  |
+| Frames / s                   | 1 byte   | No fractions allowed here                  |
+| Frame width in pixels        | 2 bytes  |
+| Frame height in pixels       | 2 bytes  |
+| Image data bits / pixel      | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24              |
+| Color map data bits / color  | 1 byte   | Can be 0 (no color map), 15, 16, 24        |
+| Color map entries M          | 1 byte   | Color map stored if M > 0                  |
+| *Frame #0*                   |
+| Compressed frame data size N | 4 bytes  |
+| *Data chunk 0*               |
+| Uncompressed frame data size | 3 bytes  |
+| Processing type              | 1 byte   | See [imageprocessing.h](imageprocessing.h) |
+| Frame data                   | N bytes  |
+| Color map data               | M colors | Only if M > 0                              |
+| *Frame #1*                   |
+| ...                          |
