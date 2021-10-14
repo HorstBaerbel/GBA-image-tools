@@ -1,19 +1,3 @@
-// Converts and (optionally) compresses image files using
-// a GBA-compatible LZSS/LZ77/LZ10 one by one.
-// The type and size of the first file MUST match all following files.
-// Only paletted and true color images are allowed. The alpha channel is ignored.
-// Then all compressed files are converted to arrays in a .c file and
-// a proper .h is generated. The palette is also extracted
-// from the images in the sequence and added to the .h and .c
-// files as an array. If all palettes in the sequence are the same
-// only one palette will be stored.
-// You can compile / link the resulting files to your program like
-// normal .c files. All images are stored as 32-bit hex strings
-// and padded to a multiple of 4 bytes as needed.
-// Note that this only works for small video sequences, otherwise
-// your compiler might barf at you.
-// You'll need libmagick++-dev installed!
-
 #include "colorhelpers.h"
 #include "datahelpers.h"
 #include "filehelpers.h"
@@ -272,6 +256,8 @@ int main(int argc, const char *argv[])
         if (imgType == Magick::ImageType::PaletteType)
         {
             processing.addStep(Image::Processing::Type::EqualizeColorMaps, {});
+            processing.addStep(Image::Processing::Type::ConvertColorMap, {Image::ColorFormat::RGB555});
+            processing.addStep(Image::Processing::Type::PadColorMapData, {uint32_t(4)});
         }
         if (options.pruneIndices)
         {

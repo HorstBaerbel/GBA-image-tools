@@ -48,6 +48,34 @@ uint16_t colorToBGR555(const Magick::Color &color)
     return (b << 10 | g << 5 | r);
 }
 
+std::vector<uint16_t> convertToBGR565(const std::vector<Magick::Color> &colors)
+{
+    std::vector<uint16_t> result;
+    std::transform(colors.cbegin(), colors.cend(), std::back_inserter(result), colorToBGR565);
+    return result;
+}
+
+uint16_t colorToBGR565(const Magick::Color &color)
+{
+    auto b = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum())));
+    auto g = static_cast<uint16_t>(std::round(63.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum())));
+    auto r = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum())));
+    return (b << 11 | g << 5 | r);
+}
+
+std::vector<uint8_t> convertToBGR888(const std::vector<Magick::Color> &colors)
+{
+    std::vector<uint8_t> result;
+    for (decltype(colors.size()) i = 0; i < colors.size(); i++)
+    {
+        const auto &color = colors.at(i);
+        result.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum()))));
+        result.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum()))));
+        result.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum()))));
+    }
+    return result;
+}
+
 Magick::Image buildColorMapRGB555()
 {
     std::vector<uint8_t> pixels;

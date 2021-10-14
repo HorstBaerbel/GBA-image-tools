@@ -32,6 +32,8 @@ namespace Image
             {Type::CompressDXT1, {"compress DXT1", OperationType::Convert, FunctionType(compressDXT1)}},
             {Type::PadImageData, {"pad image data", OperationType::Convert, FunctionType(padImageData)}},
             {Type::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
+            {Type::ConvertColorMap, {"convert color map", OperationType::Convert, FunctionType(convertColorMap)}},
+            {Type::PadColorMapData, {"pad color map data", OperationType::Convert, FunctionType(padColorMapData)}},
             {Type::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
             {Type::DeltaImage, {"image diff", OperationType::ConvertState, FunctionType(imageDiff)}}};
 
@@ -50,7 +52,7 @@ namespace Image
         temp.quantizeColors(2);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {"", temp.type(), image.size(), ColorFormat::Paletted8, getImageData(temp), getColorMap(temp)};
+        return {"", temp.type(), image.size(), ColorFormat::Paletted8, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
     Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters)
@@ -69,7 +71,7 @@ namespace Image
         temp.quantizeColors(nrOfcolors);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {"", temp.type(), image.size(), ColorFormat::Paletted8, getImageData(temp), getColorMap(temp)};
+        return {"", temp.type(), image.size(), ColorFormat::Paletted8, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
     Data Processing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters)
@@ -103,14 +105,14 @@ namespace Image
         {
             imageData = toRGB565(imageData);
         }
-        return {"", temp.type(), image.size(), format, imageData, {}};
+        return {"", temp.type(), image.size(), format, imageData, {}, ColorFormat::Unknown, {}};
     }
 
     // ----------------------------------------------------------------------------
 
     Data Processing::toTiles(const Data &image, const std::vector<Parameter> &parameters)
     {
-        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
         result.data = convertToTiles(image.data, image.size.width(), image.size.height(), bitsPerPixelForFormat(image.format));
         return result;
     }
@@ -123,7 +125,7 @@ namespace Image
         // convert image to sprites
         if (image.size.width() != spriteWidth)
         {
-            Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+            Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
             result.data = convertToWidth(image.data, result.size.width(), result.size.height(), bitsPerPixelForFormat(result.format), spriteWidth);
             result.size = Magick::Geometry(spriteWidth, (result.size.width() * result.size.height()) / spriteWidth);
             return result;
@@ -140,7 +142,7 @@ namespace Image
         // checkl of space in color map
         REQUIRE(image.colorMap.size() <= 255, std::runtime_error, "No space in color map (image has " << image.colorMap.size() << " colors)");
         // add color at front of color map
-        Data result = {image.fileName, image.type, image.size, image.format, {}, {}};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, {}, ColorFormat::Unknown, {}};
         result.colorMap = addColorAtIndex0(image.colorMap, color0);
         result.data = incImageIndicesBy1(image.data);
         return result;
@@ -159,7 +161,7 @@ namespace Image
         // check if index needs to move
         if (oldIndex != 0)
         {
-            Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+            Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, ColorFormat::Unknown, {}};
             // move index in color map and image data
             std::swap(result.colorMap[oldIndex], result.colorMap[0]);
             result.data = swapIndexToIndex0(image.data, oldIndex);
@@ -171,7 +173,7 @@ namespace Image
     Data Processing::reorderColors(const Data &image, const std::vector<Parameter> &parameters)
     {
         REQUIRE(image.format == ColorFormat::Paletted4 || image.format == ColorFormat::Paletted8, std::runtime_error, "Reordering colors can only be done for paletted images");
-        Data result = {image.fileName, image.type, image.size, image.format, {}, {}};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, {}, ColorFormat::Unknown, {}};
         const auto newOrder = minimizeColorDistance(image.colorMap);
         result.colorMap = swapColors(image.colorMap, newOrder);
         result.data = swapIndices(image.data, newOrder);
@@ -199,28 +201,28 @@ namespace Image
         REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning only possible with index data <= 15");
         if (maxIndex <= 1)
         {
-            return {image.fileName, image.type, image.size, ColorFormat::Paletted1, convertDataTo1Bit(image.data), image.colorMap};
+            return {image.fileName, image.type, image.size, ColorFormat::Paletted1, convertDataTo1Bit(image.data), image.colorMap, image.colorMapFormat, image.colorMapData};
         }
         if (maxIndex > 1 && maxIndex <= 3)
         {
-            return {image.fileName, image.type, image.size, ColorFormat::Paletted1, convertDataTo2Bit(image.data), image.colorMap};
+            return {image.fileName, image.type, image.size, ColorFormat::Paletted1, convertDataTo2Bit(image.data), image.colorMap, image.colorMapFormat, image.colorMapData};
         }
         else
         {
-            return {image.fileName, image.type, image.size, ColorFormat::Paletted4, convertDataTo4Bit(image.data), image.colorMap};
+            return {image.fileName, image.type, image.size, ColorFormat::Paletted4, convertDataTo4Bit(image.data), image.colorMap, image.colorMapFormat, image.colorMapData};
         }
     }
 
     Data Processing::toDelta8(const Data &image, const std::vector<Parameter> &parameters)
     {
-        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
         result.data = deltaEncode(image.data);
         return result;
     }
 
     Data Processing::toDelta16(const Data &image, const std::vector<Parameter> &parameters)
     {
-        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
         result.data = convertTo<uint8_t>(deltaEncode(convertTo<uint16_t>(image.data)));
         return result;
     }
@@ -233,7 +235,7 @@ namespace Image
         REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ10 expects a single bool VRAMcompatible parameter");
         const auto vramCompatible = std::get<bool>(parameters.front());
         // compress data
-        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
         result.data = Compression::compressLzss(image.data, vramCompatible, false);
         return result;
     }
@@ -244,7 +246,7 @@ namespace Image
         REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ11 expects a single bool VRAMcompatible parameter");
         const auto vramCompatible = std::get<bool>(parameters.front());
         // compress data
-        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
         result.data = Compression::compressLzss(image.data, vramCompatible, true);
         return result;
     }
@@ -255,7 +257,7 @@ namespace Image
         REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressRLE expects a single bool VRAMcompatible parameter");
         const auto vramCompatible = std::get<bool>(parameters.front());
         // compress data
-        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
         result.data = Compression::compressRLE(image.data, vramCompatible);
         return result;
     }
@@ -371,7 +373,7 @@ namespace Image
                               std::copy(block.cbegin(), block.cend(), std::next(resultData.begin(), y * yStride + x * 8 / 4));
                           }
                       });
-        return {image.fileName, image.type, image.size, ColorFormat::RGB565, resultData, {}};
+        return {image.fileName, image.type, image.size, ColorFormat::RGB565, resultData, {}, ColorFormat::Unknown, {}};
     }
 
     // ----------------------------------------------------------------------------
@@ -382,7 +384,7 @@ namespace Image
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padImageData expects a single uint32_t pad modulo parameter");
         auto multipleOf = std::get<uint32_t>(parameters.front());
         // pad data
-        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap};
+        Data result = {image.fileName, image.type, image.size, image.format, {}, image.colorMap, image.colorMapFormat, image.colorMapData};
         result.data = fillUpToMultipleOf(image.data, multipleOf);
         return result;
     }
@@ -393,8 +395,44 @@ namespace Image
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMap expects a single uint32_t pad modulo parameter");
         auto multipleOf = std::get<uint32_t>(parameters.front());
         // pad data
-        Data result = {image.fileName, image.type, image.size, image.format, image.data, {}};
+        Data result = {image.fileName, image.type, image.size, image.format, image.data, {}, ColorFormat::Unknown, {}};
         result.colorMap = fillUpToMultipleOf(image.colorMap, multipleOf);
+        return result;
+    }
+
+    Data Processing::convertColorMap(const Data &image, const std::vector<Parameter> &parameters)
+    {
+        // get parameter(s)
+        REQUIRE(parameters.size() == 1 && std::holds_alternative<ColorFormat>(parameters.front()), std::runtime_error, "convertColorMap expects a single ColorFormat parameter");
+        auto format = std::get<ColorFormat>(parameters.front());
+        REQUIRE(format == ColorFormat::RGB555 || format == ColorFormat::RGB565 || format == ColorFormat::RGB888, std::runtime_error, "convertColorMap expects 15, 16 or 24 bit color formats");
+        // convert colormap
+        Data result = {image.fileName, image.type, image.size, image.format, image.data, image.colorMap, format, {}};
+        switch (format)
+        {
+        case ColorFormat::RGB555:
+            result.colorMapData = convertTo<uint8_t>(convertToBGR555(image.colorMap));
+            break;
+        case ColorFormat::RGB565:
+            result.colorMapData = convertTo<uint8_t>(convertToBGR565(image.colorMap));
+            break;
+        case ColorFormat::RGB888:
+            result.colorMapData = convertToBGR888(image.colorMap);
+            break;
+        default:
+            THROW(std::runtime_error, "Bad target color map format");
+        }
+        return result;
+    }
+
+    Data Processing::padColorMapData(const Data &image, const std::vector<Parameter> &parameters)
+    {
+        // get parameter(s)
+        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMapData expects a single uint32_t pad modulo parameter");
+        auto multipleOf = std::get<uint32_t>(parameters.front());
+        // pad raw color map data
+        Data result = {image.fileName, image.type, image.size, image.format, image.data, image.colorMap, image.colorMapFormat, {}};
+        result.colorMapData = fillUpToMultipleOf(image.colorMapData, multipleOf);
         return result;
     }
 
@@ -431,7 +469,7 @@ namespace Image
             }
             // set current image to state
             std::get<Data>(state.front()) = image;
-            return {image.fileName, image.type, image.size, image.format, diff, image.colorMap};
+            return {image.fileName, image.type, image.size, image.format, diff, image.colorMap, image.colorMapFormat, image.colorMapData};
         }
         // set current image to state
         state.push_back(image);

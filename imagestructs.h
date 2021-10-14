@@ -25,7 +25,6 @@ namespace Image
     };
 
     /// @brief Return bits per pixel for input color format
-    /// @note Note that RGB555 and RGB565 both return 16!
     uint32_t bitsPerPixelForFormat(ColorFormat format);
 
     /// @brief Stores data for an image
@@ -35,8 +34,10 @@ namespace Image
         Magick::ImageType type;              // input image type
         Magick::Geometry size;               // image size
         ColorFormat format;                  // image data format
-        std::vector<uint8_t> data;           // image data
+        std::vector<uint8_t> data;           // raw image data
         std::vector<Magick::Color> colorMap; // image color map if paletted
+        ColorFormat colorMapFormat;          // raw color map data format
+        std::vector<uint8_t> colorMapData;   // raw color map data
     };
 
 }

@@ -53,6 +53,7 @@ set(HELPERS_SRC
     datahelpers.cpp
     filehelpers.cpp
     imagehelpers.cpp
+    imageio.cpp
     imagestructs.cpp
     imageprocessing.cpp
     processingoptions.cpp

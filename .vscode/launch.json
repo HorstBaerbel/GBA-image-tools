@@ -15,9 +15,8 @@
                 "--rle",
                 "--lz10",
                 "--vram",
-                "--dryrun",
-                "${workspaceFolder}/test_data/videos/bbb_120x80_24fps.mp4",
-                "bla"
+                "${workspaceFolder}/test_data/videos/bbb_120x80_24fps_part.mp4",
+                "video"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

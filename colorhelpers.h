@@ -21,6 +21,15 @@ std::vector<uint16_t> convertToBGR555(const std::vector<Magick::Color> &colors);
 /// @brief Convert a ImageMagick Color to a BGR555 color for GBA
 uint16_t colorToBGR555(const Magick::Color &color);
 
+/// @brief Convert ImageMagick Colors to BGR565 colors
+std::vector<uint16_t> convertToBGR565(const std::vector<Magick::Color> &colors);
+
+/// @brief Convert a ImageMagick Color to a BGR565 color
+uint16_t colorToBGR565(const Magick::Color &color);
+
+/// @brief Convert ImageMagick Colors to BGR888 colors
+std::vector<uint8_t> convertToBGR888(const std::vector<Magick::Color> &colors);
+
 /// @brief Build an image with the RGB555 color map the GBA uses
 Magick::Image buildColorMapRGB555();
 

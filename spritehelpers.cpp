@@ -6,7 +6,8 @@
 
 std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t tileWidth)
 {
-    REQUIRE(bitsPerPixel == 4 || bitsPerPixel == 8 || bitsPerPixel == 16, std::runtime_error, "Bits per pixel must be in [4, 8, 16]");
+    bitsPerPixel = bitsPerPixel == 15 ? 16 : bitsPerPixel;
+    REQUIRE(bitsPerPixel == 4 || bitsPerPixel == 8 || bitsPerPixel == 16, std::runtime_error, "Bits per pixel must be in [4, 8, 15, 16]");
     REQUIRE(tileWidth % 8 == 0, std::runtime_error, "Tile width must be divisible by 8");
     REQUIRE(width % 8 == 0 && height % 8 == 0, std::runtime_error, "Width and height must be divisible by 8");
     std::vector<uint8_t> dst(src.size());
@@ -28,7 +29,8 @@ std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &src, uint32_t wi
 
 std::vector<uint8_t> convertToTiles(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t tileWidth, uint32_t tileHeight)
 {
-    REQUIRE(bitsPerPixel == 4 || bitsPerPixel == 8 || bitsPerPixel == 16, std::runtime_error, "Bits per pixel must be in [4, 8, 16]");
+    bitsPerPixel = bitsPerPixel == 15 ? 16 : bitsPerPixel;
+    REQUIRE(bitsPerPixel == 4 || bitsPerPixel == 8 || bitsPerPixel == 16, std::runtime_error, "Bits per pixel must be in [4, 8, 15, 16]");
     REQUIRE(tileWidth % 8 == 0 && tileHeight % 8 == 0, std::runtime_error, "Tile width and height must be divisible by 8");
     REQUIRE(width % 8 == 0 && height % 8 == 0, std::runtime_error, "Width and height must be divisible by 8");
     std::vector<uint8_t> dst(src.size());
@@ -54,7 +56,8 @@ std::vector<uint8_t> convertToTiles(const std::vector<uint8_t> &src, uint32_t wi
 
 std::vector<uint8_t> convertToSprites(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t spriteWidth, uint32_t spriteHeight)
 {
-    REQUIRE(bitsPerPixel == 4 || bitsPerPixel == 8 || bitsPerPixel == 16, std::runtime_error, "Bits per pixel must be in [4, 8, 16]");
+    bitsPerPixel = bitsPerPixel == 15 ? 16 : bitsPerPixel;
+    REQUIRE(bitsPerPixel == 4 || bitsPerPixel == 8 || bitsPerPixel == 16, std::runtime_error, "Bits per pixel must be in [4, 8, 15, 16]");
     REQUIRE(spriteWidth % 8 == 0 && spriteHeight % 8 == 0, std::runtime_error, "Sprite width and height must be divisible by 8");
     REQUIRE(width % 8 == 0 && height % 8 == 0, std::runtime_error, "Width and height must be divisible by 8");
     // convert to tiles first

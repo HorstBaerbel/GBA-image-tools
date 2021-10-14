@@ -37,7 +37,7 @@ std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, u
             }
         }
     }
-    else if (bitsPerPixel == 16)
+    else if (bitsPerPixel == 15 || bitsPerPixel == 16)
     {
         if ((data.front().size() & 1) != 0)
         {

@@ -16,6 +16,7 @@ namespace Image
         case ColorFormat::Paletted8:
             return 8;
         case ColorFormat::RGB555:
+            return 15;
         case ColorFormat::RGB565:
             return 16;
         case ColorFormat::RGB888:

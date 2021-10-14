@@ -35,13 +35,15 @@ namespace Image
             CompressLz11 = 61,     // Compress image data using LZ77 variant 11
             CompressRLE = 62,      // Compress image data using run-length-encoding
             CompressDXT1 = 63,     // Compress image data using DXT1
-            PadImageData = 80,     // Fill up image data with 0s to a multiple of N
-            PadColorMap = 90,      // Fill up color map with 0s to a multiple of N
-            EqualizeColorMaps = 91 // Fill up all color maps with 0s to the size of the biggest color map
+            PadImageData = 80,     // Fill up image data with 0s to a multiple of N bytes
+            PadColorMap = 90,      // Fill up color map with 0s to a multiple of N colors
+            ConvertColorMap = 91,  // Convert input color map to raw data
+            PadColorMapData = 92,  // Fill up raw color map data with 0s to a multiple of N bytes
+            EqualizeColorMaps = 93 // Fill up all color maps with 0s to the size of the biggest color map
         };
 
         /// @brief Variable parameters for processing step
-        using Parameter = std::variant<bool, int32_t, uint32_t, float, Magick::Color, Magick::Image, Data, std::string>;
+        using Parameter = std::variant<bool, int32_t, uint32_t, float, Magick::Color, Magick::Image, ColorFormat, Data, std::string>;
 
         /// @brief Add a processing step and its parameters
         /// @param type Processing type
@@ -151,13 +153,21 @@ namespace Image
 
         // --- misc conversion functions ------------------------------------------------------------------------
 
-        /// @brief Fill up image data with 0s to a multiple of N
+        /// @brief Fill up image data with 0s to a multiple of N bytes
         /// @param parameters "Modulo value" as uint32_t. The data will be padded to a multiple of this
         static Data padImageData(const Data &image, const std::vector<Parameter> &parameters);
 
-        /// @brief Fill up color map with 0s to a multiple of N
-        /// @param parameters "Modulo value" as uint32_t. The data will be padded to a multiple of this
+        /// @brief Fill up color map with 0s to a multiple of N colors
+        /// @param parameters "Modulo value" as uint32_t. The color map will be padded to a multiple of this
         static Data padColorMap(const Data &image, const std::vector<Parameter> &parameters);
+
+        /// @brief Convert color map to raw data
+        /// @param parameters ColorFormat to convert color map to. Only 15, 16, 24 bit format allowed
+        static Data convertColorMap(const Data &image, const std::vector<Parameter> &parameters);
+
+        /// @brief Fill up color map raw data with 0s to a multiple of N bytes
+        /// @param parameters "Modulo value" as uint32_t. The raw color map data will be padded to a multiple of this
+        static Data padColorMapData(const Data &image, const std::vector<Parameter> &parameters);
 
         /// @brief Fill up all color maps with 0s to the size of the biggest color map
         static std::vector<Data> equalizeColorMaps(const std::vector<Data> &images, const std::vector<Parameter> &parameters);

@@ -1,20 +1,9 @@
-// Converts and (optionally) compresses image files using
-// intra-frame-funkystuff-LZ77 compression to a GBA-compatible format.
-// Only paletted and true color images are allowed. The alpha channel is ignored.
-// The compressed file is converted to arrays in a .c file and
-// a proper .h is generated.
-// You can compile / link the resulting files to your program like
-// normal .c files. All images are stored as 32-bit hex strings
-// and padded to a multiple of 4 bytes as needed.
-
-// You'll need ffmpeg installed
-// You'll need libmagick++-dev installed!
-
 #include "colorhelpers.h"
 #include "datahelpers.h"
 #include "filehelpers.h"
 #include "videoreader.h"
 #include "imagehelpers.h"
+#include "imageio.h"
 #include "imageprocessing.h"
 #include "processingoptions.h"
 #include "compresshelpers.h"
@@ -261,12 +250,15 @@ int main(int argc, const char *argv[])
             if (options.pruneIndices)
             {
                 processing.addStep(Image::Processing::Type::PruneIndices, {});
+                // TODO store 1, 2 ,4 bits
                 processing.addStep(Image::Processing::Type::PadColorMap, {uint32_t(16)});
             }
             else
             {
                 processing.addStep(Image::Processing::Type::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
+            processing.addStep(Image::Processing::Type::ConvertColorMap, {Image::ColorFormat::RGB555});
+            processing.addStep(Image::Processing::Type::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)
         {
@@ -339,11 +331,18 @@ int main(int argc, const char *argv[])
         const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
         // output some info about data
         auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
-        std::cout << "Input size: " << inputSize / (1024 * 1024) << "MB" << std::endl;
+        std::cout << "Input size: " << inputSize / (1024 * 1024) << " MB" << std::endl;
         auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
                                               { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
-        std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << "MB" << std::endl;
-        std::cout << "Bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << "kB/s" << std::endl;
+        std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
+        std::cout << "Bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
+        if (videoInfo.fps > 255 || (videoInfo.fps - std::trunc(videoInfo.fps)) != 0)
+        {
+            std::cout << "Frame rate of " << videoInfo.fps << " will be set to ";
+            videoInfo.fps = std::round(videoInfo.fps);
+            videoInfo.fps = videoInfo.fps > 255 ? 255 : videoInfo.fps;
+            std::cout << videoInfo.fps << std::endl;
+        }
         // check if we want to write output files
         if (!options.dryRun)
         {
@@ -354,8 +353,8 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    // TODO
-                    //binFile.write();
+                    Image::IO::writeFileHeader(binFile, images, static_cast<uint8_t>(videoInfo.fps));
+                    Image::IO::writeFrames(binFile, images);
                 }
                 catch (const std::runtime_error &e)
                 {
