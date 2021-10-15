@@ -22,6 +22,9 @@ LIST(APPEND TARGET_SOURCE_FILES
 	memcpy.s
 	memory.cpp
 	memset.s
+	videoreader.cpp
+	tui.cpp
+	data/font_8x8.c
 	data/data.s
 )
 
