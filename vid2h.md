@@ -44,7 +44,6 @@ vid2h will store binary file header fields and frame header fields:
 
 | Field                        | Size     |                                            |
 | ---------------------------- | -------- | ------------------------------------------ |
-| Compressed file size         | 4 bytes  |
 | Number of frames in file     | 4 bytes  |
 | Frames / s                   | 1 byte   | No fractions allowed here                  |
 | Frame width in pixels        | 2 bytes  |

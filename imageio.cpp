@@ -67,23 +67,17 @@ namespace Image
     auto IO::writeFileHeader(std::ostream &os, const std::vector<Data> &frames, uint8_t fps) -> std::ostream &
     {
         REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
-        // check if we're using a color map and calculate color map size
+        // check if we're using a color map
         const bool frameHasColorMap = hasColorMap(frames.front());
-        const auto colorMapEntries = frameHasColorMap ? frames.front().colorMap.size() : 0;
-        const auto colorMapSize = bytesPerColorMapEntry(frames.front()) * colorMapEntries;
-        // calculate compressed frame data size
-        const auto dataSize = std::accumulate(frames.cbegin(), frames.cend(), 0U, [](const auto &v, const auto &f)
-                                              { return v + f.data.size(); });
         // generate file header and store it
         FileHeader fileHeader;
-        fileHeader.fileSize = sizeof(FileHeader) + sizeof(uint32_t) * frames.size() + dataSize + colorMapSize * frames.size();
         fileHeader.nrOfFrames = frames.size();
         fileHeader.fps = fps;
         fileHeader.width = frames.front().size.width();
         fileHeader.height = frames.front().size.height();
         fileHeader.bitsPerPixel = bitsPerPixelForFormat(frames.front().format);
         fileHeader.bitsPerColor = frameHasColorMap ? bitsPerPixelForFormat(frames.front().colorMapFormat) : 0;
-        fileHeader.colorMapEntries = colorMapEntries;
+        fileHeader.colorMapEntries = frameHasColorMap ? frames.front().colorMap.size() : 0;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(fileHeader));
         return os;
     }

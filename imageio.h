@@ -16,7 +16,6 @@ namespace Image
     public:
         struct FileHeader
         {
-            uint32_t fileSize = 0;       // size of whole file data
             uint32_t nrOfFrames = 0;     // Number of frames in file
             uint8_t fps = 0;             // Frames / s. no fractions allowed
             uint16_t width = 0;          // Width in pixels
