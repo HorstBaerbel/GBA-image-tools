@@ -14,6 +14,7 @@ namespace Image
 
     const std::map<Processing::Type, Processing::ProcessingFunc>
         Processing::ProcessingFunctions = {
+            {Type::Uncompressed, {"verbatim copy", OperationType::Convert, FunctionType(verbatimCopy)}},
             {Type::InputBlackWhite, {"binary", OperationType::Input, FunctionType(toBlackWhite)}},
             {Type::InputPaletted, {"paletted", OperationType::Input, FunctionType(toPaletted)}},
             {Type::InputTruecolor, {"truecolor", OperationType::Input, FunctionType(toTruecolor)}},
@@ -109,6 +110,11 @@ namespace Image
     }
 
     // ----------------------------------------------------------------------------
+
+    Data Processing::verbatimCopy(const Data &image, const std::vector<Parameter> &parameters)
+    {
+        return image;
+    }
 
     Data Processing::toTiles(const Data &image, const std::vector<Parameter> &parameters)
     {
@@ -521,7 +527,7 @@ namespace Image
     {
         REQUIRE(img.data.size() < (1 << 24), std::runtime_error, "Data size stored must be < 16MB");
         REQUIRE(static_cast<uint32_t>(type) <= 255, std::runtime_error, "Type value must be <= 255");
-        const uint32_t sizeAndType = ((size & 0xFFFFFF) << 24) & (static_cast<uint32_t>(type) & 0xFF);
+        const uint32_t sizeAndType = ((size & 0xFFFFFF) << 8) & (static_cast<uint32_t>(type) & 0xFF);
         return {img.fileName, img.type, img.size, img.format, prependValue(img.data, size), img.colorMap};
     }
 

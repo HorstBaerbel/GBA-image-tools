@@ -250,7 +250,7 @@ int main(int argc, const char *argv[])
             if (options.pruneIndices)
             {
                 processing.addStep(Image::Processing::Type::PruneIndices, {});
-                // TODO store 1, 2 ,4 bits
+                // TODO store 1, 2, 4 bits
                 processing.addStep(Image::Processing::Type::PadColorMap, {uint32_t(16)});
             }
             else
@@ -268,6 +268,7 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::Processing::Type::ConvertTiles, {});
         }
+        processing.addStep(Image::Processing::Type::Uncompressed, {}, true);
         if (options.deltaImage)
         {
             processing.addStep(Image::Processing::Type::DeltaImage, {});

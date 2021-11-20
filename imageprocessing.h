@@ -18,6 +18,7 @@ namespace Image
         /// @brief Type of processing to be done
         enum class Type
         {
+            Uncompressed = 0,      // Verbatim data copy
             InputBlackWhite = 10,  // Input image and convert to 2-color paletted image
             InputPaletted = 11,    // Input image and convert to paletted image
             InputTruecolor = 12,   // Input image and convert to RGB888 truecolor
@@ -90,6 +91,9 @@ namespace Image
         static Data toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters);
 
         // --- data conversion functions ------------------------------------
+
+        /// @brief Verbatim data copy. only used to add final compression header
+        static Data verbatimCopy(const Data &image, const std::vector<Parameter> &parameters);
 
         /// @brief Cut data to 8 x 8 pixel wide tiles and store per tile instead of per scanline.
         /// Width and height of image MUST be a multiple of 8!
