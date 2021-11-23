@@ -52,13 +52,14 @@ vid2h will store binary file header fields and frame header fields:
 | Image data bits / pixel      | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                  |
 | Color map data bits / color  | 1 byte   | Can be 0 (no color map), 15, 16, 24                            |
 | Color map entries M          | 1 byte   | Color map stored if M > 0                                      |
+| Color map data size          | 2 bytes  | Padded size of color map data stored if M > 0                  |
 | *Frame #0*                   |
-| Compressed frame data size N | 4 bytes  | Size of frame data in following chunk                          |
+| Compressed frame data size N | 4 bytes  | Padded size of frame data in following chunk                   |
 | *Data chunk #0*              |
 | Uncompressed frame data size | 3 bytes  |
 | Processing type              | 1 byte   | See following table and [imageprocessing.h](imageprocessing.h) |
-| Frame data                   | N bytes  |
-| Color map data               | M colors | Only if M > 0                                                  |
+| Frame data                   | N bytes  | Padded to multiple of 4                                        |
+| Color map data               | M colors | Only if M > 0. Padded to multiple of 4                         |
 | *Frame #1*                   |
 | ...                          |
 

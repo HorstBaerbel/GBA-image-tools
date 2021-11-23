@@ -1,20 +1,20 @@
 #include "colorhelpers.h"
+#include "compresshelpers.h"
 #include "datahelpers.h"
 #include "filehelpers.h"
-#include "videoreader.h"
 #include "imagehelpers.h"
 #include "imageio.h"
 #include "imageprocessing.h"
 #include "processingoptions.h"
-#include "compresshelpers.h"
 #include "spritehelpers.h"
+#include "videoreader.h"
 
-#include <iostream>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <string>
-#include <cstring>
-#include <cstdlib>
 
 #include "cxxopts/include/cxxopts.hpp"
 #include <Magick++.h>
@@ -48,93 +48,101 @@ std::string getCommandLine(int argc, const char *argv[])
 
 bool readArguments(int argc, const char *argv[])
 {
-    cxxopts::Options opts("vid2h", "Convert and compress a video file to .h / .c files or a binary file");
-    opts.allow_unrecognised_options();
-    opts.add_option("", {"h,help", "Print help"});
-    opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
-    opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
-    opts.add_option("", options.blackWhite.cxxOption);
-    opts.add_option("", options.paletted.cxxOption);
-    opts.add_option("", options.truecolor.cxxOption);
-    opts.add_option("", options.addColor0.cxxOption);
-    opts.add_option("", options.moveColor0.cxxOption);
-    opts.add_option("", options.shiftIndices.cxxOption);
-    opts.add_option("", options.pruneIndices.cxxOption);
-    opts.add_option("", options.sprites.cxxOption);
-    opts.add_option("", options.tiles.cxxOption);
-    opts.add_option("", options.deltaImage.cxxOption);
-    opts.add_option("", options.delta8.cxxOption);
-    opts.add_option("", options.delta16.cxxOption);
-    opts.add_option("", options.dxt1.cxxOption);
-    opts.add_option("", options.rle.cxxOption);
-    opts.add_option("", options.lz10.cxxOption);
-    opts.add_option("", options.lz11.cxxOption);
-    opts.add_option("", options.vram.cxxOption);
-    opts.add_option("", options.dryRun.cxxOption);
-    opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
-    opts.parse_positional({"infile", "outname", "positional"});
-    auto result = opts.parse(argc, argv);
-    // check if help was requested
-    if (result.count("h"))
+    try
     {
-        return false;
-    }
-    // get output file / name
-    if (result.count("outname"))
-    {
-        m_outFile = result["outname"].as<std::string>();
-    }
-    // get input file
-    if (result.count("infile"))
-    {
-        m_inFile = result["infile"].as<std::string>();
-        if (!stdfs::exists(m_inFile))
+        cxxopts::Options opts("vid2h", "Convert and compress a video file to .h / .c files or a binary file");
+        opts.allow_unrecognised_options();
+        opts.add_option("", {"h,help", "Print help"});
+        opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
+        opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
+        opts.add_option("", options.blackWhite.cxxOption);
+        opts.add_option("", options.paletted.cxxOption);
+        opts.add_option("", options.truecolor.cxxOption);
+        opts.add_option("", options.addColor0.cxxOption);
+        opts.add_option("", options.moveColor0.cxxOption);
+        opts.add_option("", options.shiftIndices.cxxOption);
+        opts.add_option("", options.pruneIndices.cxxOption);
+        opts.add_option("", options.sprites.cxxOption);
+        opts.add_option("", options.tiles.cxxOption);
+        opts.add_option("", options.deltaImage.cxxOption);
+        opts.add_option("", options.delta8.cxxOption);
+        opts.add_option("", options.delta16.cxxOption);
+        opts.add_option("", options.dxt1.cxxOption);
+        opts.add_option("", options.rle.cxxOption);
+        opts.add_option("", options.lz10.cxxOption);
+        opts.add_option("", options.lz11.cxxOption);
+        opts.add_option("", options.vram.cxxOption);
+        opts.add_option("", options.dryRun.cxxOption);
+        opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
+        opts.parse_positional({"infile", "outname", "positional"});
+        auto result = opts.parse(argc, argv);
+        // check if help was requested
+        if (result.count("h"))
         {
-            std::cout << "Input file \"" << m_inFile << "\" does not exist!" << std::endl;
             return false;
         }
-    }
-    // if input or output are empty, get positional arguments as input first, then output
-    if (result.count("positional"))
-    {
-        auto positional = result["positional"].as<std::vector<std::string>>();
-        auto pIt = positional.cbegin();
-        while (pIt != positional.cend() && (m_inFile.empty() || m_outFile.empty()))
+        // get output file / name
+        if (result.count("outname"))
         {
-            if (m_inFile.empty())
+            m_outFile = result["outname"].as<std::string>();
+        }
+        // get input file
+        if (result.count("infile"))
+        {
+            m_inFile = result["infile"].as<std::string>();
+            if (!stdfs::exists(m_inFile))
             {
-                m_inFile = *pIt++;
-            }
-            if (m_outFile.empty())
-            {
-                m_outFile = *pIt++;
+                std::cout << "Input file \"" << m_inFile << "\" does not exist!" << std::endl;
+                return false;
             }
         }
+        // if input or output are empty, get positional arguments as input first, then output
+        if (result.count("positional"))
+        {
+            auto positional = result["positional"].as<std::vector<std::string>>();
+            auto pIt = positional.cbegin();
+            while (pIt != positional.cend() && (m_inFile.empty() || m_outFile.empty()))
+            {
+                if (m_inFile.empty())
+                {
+                    m_inFile = *pIt++;
+                }
+                if (m_outFile.empty())
+                {
+                    m_outFile = *pIt++;
+                }
+            }
+        }
+        // check if exclusive options set
+        options.blackWhite.parse(result);
+        options.paletted.parse(result);
+        options.truecolor.parse(result);
+        if ((options.blackWhite + options.paletted + options.truecolor) == 0)
+        {
+            std::cerr << "One format option is needed." << std::endl;
+            return false;
+        }
+        if ((options.blackWhite + options.paletted + options.truecolor) > 1)
+        {
+            std::cerr << "Only a single format option is allowed." << std::endl;
+            return false;
+        }
+        if (options.lz10 && options.lz11)
+        {
+            std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
+            return false;
+        }
+        options.addColor0.parse(result);
+        options.moveColor0.parse(result);
+        options.shiftIndices.parse(result);
+        options.pruneIndices.parse(result);
+        options.sprites.parse(result);
     }
-    // check if exclusive options set
-    options.blackWhite.parse(result);
-    options.paletted.parse(result);
-    options.truecolor.parse(result);
-    if ((options.blackWhite + options.paletted + options.truecolor) == 0)
+    catch (const cxxopts::OptionException &e)
     {
-        std::cerr << "One format option is needed." << std::endl;
+        std::cerr << "Argument error: " << e.what() << std::endl;
         return false;
     }
-    if ((options.blackWhite + options.paletted + options.truecolor) > 1)
-    {
-        std::cerr << "Only a single format option is allowed." << std::endl;
-        return false;
-    }
-    if (options.lz10 && options.lz11)
-    {
-        std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
-        return false;
-    }
-    options.addColor0.parse(result);
-    options.moveColor0.parse(result);
-    options.shiftIndices.parse(result);
-    options.pruneIndices.parse(result);
-    options.sprites.parse(result);
     return true;
 }
 

@@ -1,10 +1,10 @@
 #include "imageprocessing.h"
 
+#include "colorhelpers.h"
+#include "compresshelpers.h"
+#include "datahelpers.h"
 #include "exception.h"
 #include "imagehelpers.h"
-#include "colorhelpers.h"
-#include "datahelpers.h"
-#include "compresshelpers.h"
 #include "spritehelpers.h"
 
 #include <execution>
@@ -44,7 +44,7 @@ namespace Image
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<float>(parameters.front()), std::runtime_error, "toBlackWhite expects a single float threshold parameter");
-        auto threshold = std::get<float>(parameters.front());
+        const auto threshold = std::get<float>(parameters.front());
         REQUIRE(threshold >= 0 && threshold <= 1, std::runtime_error, "Threshold must be in [0.0, 1.0]");
         // threshold image
         Magick::Image temp = image;
@@ -60,9 +60,9 @@ namespace Image
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toPaletted expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
-        auto nrOfcolors = std::get<uint32_t>(parameters.back());
+        const auto nrOfcolors = std::get<uint32_t>(parameters.back());
         REQUIRE(nrOfcolors >= 2 && nrOfcolors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
-        auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
+        const auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
         // map image to GBA color map, no dithering
         Magick::Image temp = image;
         temp.map(colorSpaceMap, false);
@@ -79,7 +79,7 @@ namespace Image
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<std::string>(parameters.front()), std::runtime_error, "toTruecolor expects a single std::string parameter");
-        auto formatString = std::get<std::string>(parameters.front());
+        const auto formatString = std::get<std::string>(parameters.front());
         ColorFormat format = ColorFormat::Unknown;
         if (formatString == "RGB888")
         {
@@ -127,7 +127,7 @@ namespace Image
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "toSprites expects a single uint32_t sprite width parameter");
-        auto spriteWidth = std::get<uint32_t>(parameters.front());
+        const auto spriteWidth = std::get<uint32_t>(parameters.front());
         // convert image to sprites
         if (image.size.width() != spriteWidth)
         {
@@ -144,7 +144,7 @@ namespace Image
         REQUIRE(image.format == ColorFormat::Paletted8, std::runtime_error, "Adding a color can only be done for paletted images");
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<Magick::Color>(parameters.front()), std::runtime_error, "addColor0 expects a single Color parameter");
-        auto color0 = std::get<Magick::Color>(parameters.front());
+        const auto color0 = std::get<Magick::Color>(parameters.front());
         // checkl of space in color map
         REQUIRE(image.colorMap.size() <= 255, std::runtime_error, "No space in color map (image has " << image.colorMap.size() << " colors)");
         // add color at front of color map
@@ -159,7 +159,7 @@ namespace Image
         REQUIRE(image.format == ColorFormat::Paletted8, std::runtime_error, "Moving a color can only be done for paletted images");
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<Magick::Color>(parameters.front()), std::runtime_error, "moveColor0 expects a single Color parameter");
-        auto color0 = std::get<Magick::Color>(parameters.front());
+        const auto color0 = std::get<Magick::Color>(parameters.front());
         // try to find color in palette
         auto oldColorIt = std::find(image.colorMap.begin(), image.colorMap.end(), color0);
         REQUIRE(oldColorIt != image.colorMap.end(), std::runtime_error, "Color " << asHex(color0) << " not found in image color map");
@@ -190,7 +190,7 @@ namespace Image
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "shiftIndices expects a single uint32_t shift parameter");
-        auto shiftBy = std::get<uint32_t>(parameters.front());
+        const auto shiftBy = std::get<uint32_t>(parameters.front());
         auto maxIndex = *std::max_element(image.data.cbegin(), image.data.cend());
         REQUIRE(maxIndex + shiftBy <= 255, std::runtime_error, "Max. index value in image is " << maxIndex << ", shift is " << shiftBy << "! Resulting index values would be > 255");
         Data result = image;
@@ -201,20 +201,26 @@ namespace Image
 
     Data Processing::pruneIndices(const Data &image, const std::vector<Parameter> &parameters)
     {
+        // get parameter(s)
+        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "pruneIndices expects a single uint32_t bit depth parameter");
+        const auto bitDepth = std::get<uint32_t>(parameters.front());
+        REQUIRE(bitDepth == 1 || bitDepth == 2 || bitDepth == 4, std::runtime_error, "Bit depth must be in [1, 2, 4]");
         REQUIRE(image.format == ColorFormat::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
         REQUIRE(image.colorMap.size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
         uint8_t maxIndex = std::max(*std::max_element(image.data.cbegin(), image.data.cend()), maxIndex);
-        REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning only possible with index data <= 15");
-        if (maxIndex <= 1)
+        if (bitDepth == 1)
         {
+            REQUIRE(maxIndex == 1, std::runtime_error, "Index pruning to 1 bit only possible with index data <= 1");
             return {image.fileName, image.type, image.size, ColorFormat::Paletted1, convertDataTo1Bit(image.data), image.colorMap, image.colorMapFormat, image.colorMapData};
         }
-        if (maxIndex > 1 && maxIndex <= 3)
+        else if (bitDepth == 2)
         {
-            return {image.fileName, image.type, image.size, ColorFormat::Paletted1, convertDataTo2Bit(image.data), image.colorMap, image.colorMapFormat, image.colorMapData};
+            REQUIRE(maxIndex < 4, std::runtime_error, "Index pruning to 2 bit only possible with index data <= 3");
+            return {image.fileName, image.type, image.size, ColorFormat::Paletted2, convertDataTo2Bit(image.data), image.colorMap, image.colorMapFormat, image.colorMapData};
         }
         else
         {
+            REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning to 4 bit only possible with index data <= 15");
             return {image.fileName, image.type, image.size, ColorFormat::Paletted4, convertDataTo4Bit(image.data), image.colorMap, image.colorMapFormat, image.colorMapData};
         }
     }

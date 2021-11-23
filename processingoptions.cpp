@@ -116,7 +116,7 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::shiftIndices{
 
 ProcessingOptions::OptionT<uint32_t> ProcessingOptions::pruneIndices{
     false,
-    {"prune", "Reduce bit depth of palette indices to 1, 2 or 4 bit.", cxxopts::value(pruneIndices.value)},
+    {"prune", "Reduce bit depth of palette indices to N bits, where N is 1, 2 or 4.", cxxopts::value(pruneIndices.value)},
     4,
     {},
     [](const cxxopts::ParseResult &r)

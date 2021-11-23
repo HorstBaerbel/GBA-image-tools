@@ -1,19 +1,19 @@
 #include "colorhelpers.h"
+#include "compresshelpers.h"
 #include "datahelpers.h"
+#include "exception.h"
 #include "filehelpers.h"
 #include "imagehelpers.h"
 #include "imageprocessing.h"
 #include "processingoptions.h"
-#include "compresshelpers.h"
 #include "spritehelpers.h"
-#include "exception.h"
 
-#include <iostream>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <string>
-#include <cstring>
-#include <cstdlib>
 
 #include "cxxopts/include/cxxopts.hpp"
 #include "glob/single_include/glob/glob.hpp"
@@ -39,79 +39,87 @@ std::string getCommandLine(int argc, const char *argv[])
 
 bool readArguments(int argc, const char *argv[])
 {
-    cxxopts::Options opts("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
-    opts.allow_unrecognised_options();
-    opts.add_option("", {"h,help", "Print help"});
-    opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
-    opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
-    opts.add_option("", options.reorderColors.cxxOption);
-    opts.add_option("", options.addColor0.cxxOption);
-    opts.add_option("", options.moveColor0.cxxOption);
-    opts.add_option("", options.shiftIndices.cxxOption);
-    opts.add_option("", options.pruneIndices.cxxOption);
-    opts.add_option("", options.sprites.cxxOption);
-    opts.add_option("", options.tiles.cxxOption);
-    opts.add_option("", options.delta8.cxxOption);
-    opts.add_option("", options.delta16.cxxOption);
-    opts.add_option("", options.rle.cxxOption);
-    opts.add_option("", options.lz10.cxxOption);
-    opts.add_option("", options.lz11.cxxOption);
-    opts.add_option("", options.vram.cxxOption);
-    opts.add_option("", options.interleavePixels.cxxOption);
-    opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
-    opts.parse_positional({"infile", "outname", "positional"});
-    auto result = opts.parse(argc, argv);
-    // check if help was requested
-    if (result.count("h"))
+    try
     {
-        return false;
-    }
-    // get output file / name
-    if (result.count("outname"))
-    {
-        m_outFile = result["outname"].as<std::string>();
-    }
-    // get input file(s)
-    if (result.count("infile"))
-    {
-        m_inFile = result["infile"].as<std::vector<std::string>>();
-        // get last positional argument as output file / name
-        if (m_outFile.empty())
+        cxxopts::Options opts("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
+        opts.allow_unrecognised_options();
+        opts.add_option("", {"h,help", "Print help"});
+        opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
+        opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
+        opts.add_option("", options.reorderColors.cxxOption);
+        opts.add_option("", options.addColor0.cxxOption);
+        opts.add_option("", options.moveColor0.cxxOption);
+        opts.add_option("", options.shiftIndices.cxxOption);
+        opts.add_option("", options.pruneIndices.cxxOption);
+        opts.add_option("", options.sprites.cxxOption);
+        opts.add_option("", options.tiles.cxxOption);
+        opts.add_option("", options.delta8.cxxOption);
+        opts.add_option("", options.delta16.cxxOption);
+        opts.add_option("", options.rle.cxxOption);
+        opts.add_option("", options.lz10.cxxOption);
+        opts.add_option("", options.lz11.cxxOption);
+        opts.add_option("", options.vram.cxxOption);
+        opts.add_option("", options.interleavePixels.cxxOption);
+        opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
+        opts.parse_positional({"infile", "outname", "positional"});
+        auto result = opts.parse(argc, argv);
+        // check if help was requested
+        if (result.count("h"))
         {
-            m_outFile = m_inFile.back();
-            m_inFile.resize(m_inFile.size() - 1);
+            return false;
         }
-        // resolve wildcards in input files
-        auto filePaths = glob::glob(m_inFile);
-        m_inFile.clear();
-        std::transform(filePaths.cbegin(), filePaths.cend(), std::back_inserter(m_inFile), [](const auto &p)
-                       { return p.string(); });
-        // make sure all input files exist
-        for (const auto &fileName : m_inFile)
+        // get output file / name
+        if (result.count("outname"))
         {
-            if (!stdfs::exists(fileName))
+            m_outFile = result["outname"].as<std::string>();
+        }
+        // get input file(s)
+        if (result.count("infile"))
+        {
+            m_inFile = result["infile"].as<std::vector<std::string>>();
+            // get last positional argument as output file / name
+            if (m_outFile.empty())
             {
-                std::cout << "Input file \"" << fileName << "\" does not exist!" << std::endl;
-                return false;
+                m_outFile = m_inFile.back();
+                m_inFile.resize(m_inFile.size() - 1);
+            }
+            // resolve wildcards in input files
+            auto filePaths = glob::glob(m_inFile);
+            m_inFile.clear();
+            std::transform(filePaths.cbegin(), filePaths.cend(), std::back_inserter(m_inFile), [](const auto &p)
+                           { return p.string(); });
+            // make sure all input files exist
+            for (const auto &fileName : m_inFile)
+            {
+                if (!stdfs::exists(fileName))
+                {
+                    std::cout << "Input file \"" << fileName << "\" does not exist!" << std::endl;
+                    return false;
+                }
             }
         }
+        else
+        {
+            std::cout << "No input file passed!" << std::endl;
+            return false;
+        }
+        // check if exclusive options set
+        if (options.lz10 && options.lz11)
+        {
+            std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
+            return false;
+        }
+        options.addColor0.parse(result);
+        options.moveColor0.parse(result);
+        options.shiftIndices.parse(result);
+        options.pruneIndices.parse(result);
+        options.sprites.parse(result);
     }
-    else
+    catch (const cxxopts::OptionException &e)
     {
-        std::cout << "No input file passed!" << std::endl;
+        std::cerr << "Argument error: " << e.what() << std::endl;
         return false;
     }
-    // check if exclusive options set
-    if (options.lz10 && options.lz11)
-    {
-        std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
-        return false;
-    }
-    options.addColor0.parse(result);
-    options.moveColor0.parse(result);
-    options.shiftIndices.parse(result);
-    options.pruneIndices.parse(result);
-    options.sprites.parse(result);
     return true;
 }
 
@@ -255,13 +263,16 @@ int main(int argc, const char *argv[])
         }
         if (imgType == Magick::ImageType::PaletteType)
         {
-            processing.addStep(Image::Processing::Type::EqualizeColorMaps, {});
+            if (images.size() > 1)
+            {
+                processing.addStep(Image::Processing::Type::EqualizeColorMaps, {});
+            }
             processing.addStep(Image::Processing::Type::ConvertColorMap, {Image::ColorFormat::RGB555});
             processing.addStep(Image::Processing::Type::PadColorMapData, {uint32_t(4)});
         }
         if (options.pruneIndices)
         {
-            processing.addStep(Image::Processing::Type::PruneIndices, {});
+            processing.addStep(Image::Processing::Type::PruneIndices, {options.pruneIndices.value});
         }
         if (options.sprites)
         {
