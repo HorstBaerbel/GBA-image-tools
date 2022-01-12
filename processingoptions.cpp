@@ -139,9 +139,9 @@ ProcessingOptions::OptionT<std::vector<uint32_t>> ProcessingOptions::sprites{
         {
             REQUIRE(sprites.value.size() == 2, std::runtime_error, "Sprite size format must be \"W,H\", e.g. \"--sprites=32,16\"");
             auto width = sprites.value.at(0);
-            REQUIRE(width >= 8 && width <= 64 && width % 8 == 0, std::runtime_error, "Sprite width must be in [8,64] and a multiple of 8");
+            REQUIRE(width >= 8 && width % 8 == 0, std::runtime_error, "Sprite width must be >= 8 and a multiple of 8");
             auto height = sprites.value.at(1);
-            REQUIRE(height >= 8 && height <= 64 && height % 8 == 0, std::runtime_error, "Sprite height must be in [8,64] and a multiple of 8");
+            REQUIRE(height >= 8 && height % 8 == 0, std::runtime_error, "Sprite height must be >= 8 and a multiple of 8");
             sprites.isSet = true;
         }
     }};
