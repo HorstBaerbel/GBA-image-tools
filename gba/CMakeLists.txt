@@ -20,7 +20,6 @@ LIST(APPEND TARGET_SOURCE_FILES
 	decompression.cpp
 	video.cpp
 	memcpy.s
-	memory.cpp
 	memset.s
 	videoreader.cpp
 	tui.cpp

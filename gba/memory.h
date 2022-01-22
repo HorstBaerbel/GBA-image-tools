@@ -1,7 +1,7 @@
 #pragma once
 
-#include <gba_base.h>
 #include <cstdint>
+#include <gba_base.h>
 
 /// @brief Use for default 0 initialized static variables
 #define STATIC_BSS static EWRAM_BSS
@@ -10,12 +10,6 @@
 
 namespace Memory
 {
-
-	// Fixed amount of memory in IWRAM and EWRAM allocated here
-	constexpr uint32_t IWRAM_ALLOC_SIZE = 24 * 1024;
-	constexpr uint32_t EWRAM_ALLOC_SIZE = 240 * 1024;
-	extern uint8_t IWRAM_BLOCK[IWRAM_ALLOC_SIZE] IWRAM_DATA;
-	extern uint8_t EWRAM_BLOCK[EWRAM_ALLOC_SIZE] EWRAM_DATA;
 
 	/// @brief Register for Game Pak SRAM and ROM wait states
 	inline auto &RegWaitCnt{*reinterpret_cast<volatile uint16_t *>(REG_BASE + 0x0204)};
