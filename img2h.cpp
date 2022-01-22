@@ -247,62 +247,62 @@ int main(int argc, const char *argv[])
         Image::Processing processing;
         if (options.reorderColors)
         {
-            processing.addStep(Image::Processing::Type::ReorderColors, {});
+            processing.addStep(Image::ProcessingType::ReorderColors, {});
         }
         if (options.addColor0)
         {
-            processing.addStep(Image::Processing::Type::AddColor0, {options.addColor0.value});
+            processing.addStep(Image::ProcessingType::AddColor0, {options.addColor0.value});
         }
         if (options.moveColor0)
         {
-            processing.addStep(Image::Processing::Type::MoveColor0, {options.moveColor0.value});
+            processing.addStep(Image::ProcessingType::MoveColor0, {options.moveColor0.value});
         }
         if (options.shiftIndices)
         {
-            processing.addStep(Image::Processing::Type::ShiftIndices, {options.shiftIndices.value});
+            processing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
         }
         if (imgType == Magick::ImageType::PaletteType)
         {
             if (images.size() > 1)
             {
-                processing.addStep(Image::Processing::Type::EqualizeColorMaps, {});
+                processing.addStep(Image::ProcessingType::EqualizeColorMaps, {});
             }
-            processing.addStep(Image::Processing::Type::ConvertColorMap, {Image::ColorFormat::RGB555});
-            processing.addStep(Image::Processing::Type::PadColorMapData, {uint32_t(4)});
+            processing.addStep(Image::ProcessingType::ConvertColorMap, {Image::ColorFormat::RGB555});
+            processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.pruneIndices)
         {
-            processing.addStep(Image::Processing::Type::PruneIndices, {options.pruneIndices.value});
+            processing.addStep(Image::ProcessingType::PruneIndices, {options.pruneIndices.value});
         }
         if (options.sprites)
         {
-            processing.addStep(Image::Processing::Type::ConvertSprites, {options.sprites.value.front()});
+            processing.addStep(Image::ProcessingType::ConvertSprites, {options.sprites.value.front()});
         }
         if (options.tiles)
         {
-            processing.addStep(Image::Processing::Type::ConvertTiles, {});
+            processing.addStep(Image::ProcessingType::ConvertTiles, {});
         }
         if (options.delta8)
         {
-            processing.addStep(Image::Processing::Type::ConvertDelta8, {});
+            processing.addStep(Image::ProcessingType::ConvertDelta8, {});
         }
         if (options.delta16)
         {
-            processing.addStep(Image::Processing::Type::ConvertDelta16, {});
+            processing.addStep(Image::ProcessingType::ConvertDelta16, {});
         }
         if (options.rle)
         {
-            processing.addStep(Image::Processing::Type::CompressRLE, {});
+            processing.addStep(Image::ProcessingType::CompressRLE, {});
         }
         if (options.lz10)
         {
-            processing.addStep(Image::Processing::Type::CompressLz10, {options.vram.isSet});
+            processing.addStep(Image::ProcessingType::CompressLz10, {options.vram.isSet});
         }
         if (options.lz11)
         {
-            processing.addStep(Image::Processing::Type::CompressLz11, {options.vram.isSet});
+            processing.addStep(Image::ProcessingType::CompressLz11, {options.vram.isSet});
         }
-        processing.addStep(Image::Processing::Type::PadImageData, {uint32_t(4)}, {});
+        processing.addStep(Image::ProcessingType::PadImageData, {uint32_t(4)}, {});
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;

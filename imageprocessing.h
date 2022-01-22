@@ -1,13 +1,14 @@
 #pragma once
 
-#include "exception.h"
 #include "datahelpers.h"
+#include "exception.h"
 #include "imagestructs.h"
+#include "processingtypes.h"
 
-#include <variant>
-#include <cstdint>
-#include <vector>
 #include <Magick++.h>
+#include <cstdint>
+#include <variant>
+#include <vector>
 
 namespace Image
 {
@@ -15,34 +16,6 @@ namespace Image
     class Processing
     {
     public:
-        /// @brief Type of processing to be done
-        enum class Type
-        {
-            Uncompressed = 0,      // Verbatim data copy
-            InputBlackWhite = 10,  // Input image and convert to 2-color paletted image
-            InputPaletted = 11,    // Input image and convert to paletted image
-            InputTruecolor = 12,   // Input image and convert to RGB888 truecolor
-            ConvertTiles = 20,     // Convert data to 8 x 8 pixel tiles
-            ConvertSprites = 21,   // Convert data to w x h pixel sprites
-            AddColor0 = 30,        // Add a color at index #0
-            MoveColor0 = 31,       // Move a color to index #0
-            ReorderColors = 32,    // Reorder colors to be perceptually closer to each other
-            ShiftIndices = 40,     // Shift indices by N
-            PruneIndices = 41,     // Convert index data to 1-bit, 2-bit or 4-bit
-            ConvertDelta8 = 50,    // Convert image data to 8-bit deltas
-            ConvertDelta16 = 51,   // Convert image data to 16-bit deltas
-            DeltaImage = 53,       // Calculate signed pixel difference between successive images
-            CompressLz10 = 60,     // Compress image data using LZ77 variant 10
-            CompressLz11 = 61,     // Compress image data using LZ77 variant 11
-            CompressRLE = 62,      // Compress image data using run-length-encoding
-            CompressDXT1 = 63,     // Compress image data using DXT1
-            PadImageData = 80,     // Fill up image data with 0s to a multiple of N bytes
-            PadColorMap = 90,      // Fill up color map with 0s to a multiple of N colors
-            ConvertColorMap = 91,  // Convert input color map to raw data
-            PadColorMapData = 92,  // Fill up raw color map data with 0s to a multiple of N bytes
-            EqualizeColorMaps = 93 // Fill up all color maps with 0s to the size of the biggest color map
-        };
-
         /// @brief Variable parameters for processing step
         using Parameter = std::variant<bool, int32_t, uint32_t, float, Magick::Color, Magick::Image, ColorFormat, Data, std::string>;
 
@@ -50,7 +23,7 @@ namespace Image
         /// @param type Processing type
         /// @param parameters Parameters to pass to processing
         /// @param prependProcessing If true the input data size and processing type will be prepended to the result
-        void addStep(Type type, const std::vector<Parameter> &parameters, bool prependProcessing = false);
+        void addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessing = false);
 
         /// @brief Get current # of steps in processing pipeline
         std::size_t size() const;
@@ -216,7 +189,7 @@ namespace Image
     private:
         struct ProcessingStep
         {
-            Type type;
+            ProcessingType type;
             std::vector<Parameter> parameters;
             bool prependProcessing = false;
             std::vector<Parameter> state;
@@ -245,7 +218,7 @@ namespace Image
             OperationType type;
             FunctionType func;
         };
-        static const std::map<Type, ProcessingFunc> ProcessingFunctions;
+        static const std::map<ProcessingType, ProcessingFunc> ProcessingFunctions;
 
         static std::vector<std::vector<uint8_t>> RGB565DistanceSqrCache;
 

@@ -42,24 +42,24 @@ Some general information:
 
 vid2h will store binary file header fields and frame header fields:
 
-| Field                        | Size     |                                                                |
-| ---------------------------- | -------- | -------------------------------------------------------------- |
+| Field                        | Size     |                                                                       |
+| ---------------------------- | -------- | --------------------------------------------------------------------- |
 | *File / Video*               |
 | Number of frames in file     | 4 bytes  |
 | Frame width in pixels        | 2 bytes  |
 | Frame height in pixels       | 2 bytes  |
-| Frames / s                   | 1 byte   | No fractions allowed here                                      |
-| Image data bits / pixel      | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                  |
-| Color map data bits / color  | 1 byte   | Can be 0 (no color map), 15, 16, 24                            |
-| Color map entries M          | 1 byte   | Color map stored if M > 0                                      |
-| Color map data size          | 2 bytes  | Padded size of color map data stored if M > 0                  |
+| Frames / s                   | 1 byte   | No fractions allowed here                                             |
+| Image data bits / pixel      | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                         |
+| Color map data bits / color  | 1 byte   | Can be 0 (no color map), 15, 16, 24                                   |
+| Color map entries M          | 1 byte   | Color map stored if M > 0                                             |
+| Color map data size          | 2 bytes  | Padded size of color map data stored if M > 0                         |
 | *Frame #0*                   |
-| Compressed frame data size N | 4 bytes  | Padded size of frame data in following chunk                   |
+| Compressed frame data size N | 4 bytes  | Padded size of frame data in chunk (ONLY frame data, not whole chunk) |
 | *Data chunk #0*              |
 | Uncompressed frame data size | 3 bytes  |
-| Processing type              | 1 byte   | See following table and [imageprocessing.h](imageprocessing.h) |
-| Frame data                   | N bytes  | Padded to multiple of 4                                        |
-| Color map data               | M colors | Only if M > 0. Padded to multiple of 4                         |
+| Processing type              | 1 byte   | See following table and [imageprocessing.h](imageprocessing.h)        |
+| Frame data                   | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)   |
+| Color map data               | M colors | Only if M > 0. Padded to multiple of 4                                |
 | *Frame #1*                   |
 | ...                          |
 
@@ -67,11 +67,14 @@ Processing type meaning:
 
 | Processing type byte | Meaning                                                         |
 | -------------------- | --------------------------------------------------------------- |
-| 0                    | Verbatim copy (last compression layer)                          |
+| 0                    | Verbatim copy                                                   |
 | 50                   | Image data is 8-bit deltas                                      |
 | 51                   | Image data is 16-bit deltas                                     |
-| 53                   | Image data is signed pixel difference between successive images |
+| 55                   | Image data is signed pixel difference between successive images |
 | 60                   | Image data is compressed using LZ77 variant 10                  |
 | 61                   | Image data is compressed using LZ77 variant 11                  |
-| 62                   | Image data is compressed using run-length-encoding              |
-| 63                   | Image data is compressed using DXT1                             |
+| 65                   | Image data is compressed using run-length-encoding              |
+| 70                   | Image data is compressed using DXT1                             |
+| 128 (ORed with type) | Final compression / processing on data                          |
+
+Thus a processing chain could be `50,65,188` meaning `8-bit deltas, RLE, final LZ77 10`.

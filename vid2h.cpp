@@ -228,84 +228,84 @@ int main(int argc, const char *argv[])
         Image::Processing processing;
         if (options.blackWhite)
         {
-            processing.addStep(Image::Processing::Type::InputBlackWhite, {options.blackWhite.value});
+            processing.addStep(Image::ProcessingType::InputBlackWhite, {options.blackWhite.value});
         }
         else if (options.paletted)
         {
             // add palette conversion using GBA RGB555 reference color map
-            processing.addStep(Image::Processing::Type::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
+            processing.addStep(Image::ProcessingType::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::Processing::Type::InputTruecolor, {options.truecolor.value});
+            processing.addStep(Image::ProcessingType::InputTruecolor, {options.truecolor.value});
         }
         // build processing pipeline - conversion
         if (options.paletted)
         {
-            processing.addStep(Image::Processing::Type::ReorderColors, {});
+            processing.addStep(Image::ProcessingType::ReorderColors, {});
             if (options.addColor0)
             {
-                processing.addStep(Image::Processing::Type::AddColor0, {options.addColor0.value});
+                processing.addStep(Image::ProcessingType::AddColor0, {options.addColor0.value});
             }
             if (options.moveColor0)
             {
-                processing.addStep(Image::Processing::Type::MoveColor0, {options.moveColor0.value});
+                processing.addStep(Image::ProcessingType::MoveColor0, {options.moveColor0.value});
             }
             if (options.shiftIndices)
             {
-                processing.addStep(Image::Processing::Type::ShiftIndices, {options.shiftIndices.value});
+                processing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
             }
             if (options.pruneIndices)
             {
-                processing.addStep(Image::Processing::Type::PruneIndices, {});
+                processing.addStep(Image::ProcessingType::PruneIndices, {});
                 // TODO store 1, 2, 4 bits
-                processing.addStep(Image::Processing::Type::PadColorMap, {uint32_t(16)});
+                processing.addStep(Image::ProcessingType::PadColorMap, {uint32_t(16)});
             }
             else
             {
-                processing.addStep(Image::Processing::Type::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
+                processing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
-            processing.addStep(Image::Processing::Type::ConvertColorMap, {Image::ColorFormat::RGB555});
-            processing.addStep(Image::Processing::Type::PadColorMapData, {uint32_t(4)});
+            processing.addStep(Image::ProcessingType::ConvertColorMap, {Image::ColorFormat::RGB555});
+            processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)
         {
-            processing.addStep(Image::Processing::Type::ConvertSprites, {options.sprites.value.front()});
+            processing.addStep(Image::ProcessingType::ConvertSprites, {options.sprites.value.front()});
         }
         if (options.tiles)
         {
-            processing.addStep(Image::Processing::Type::ConvertTiles, {});
+            processing.addStep(Image::ProcessingType::ConvertTiles, {});
         }
-        processing.addStep(Image::Processing::Type::Uncompressed, {}, true);
+        processing.addStep(Image::ProcessingType::Uncompressed, {}, true);
         if (options.deltaImage)
         {
-            processing.addStep(Image::Processing::Type::DeltaImage, {});
+            processing.addStep(Image::ProcessingType::DeltaImage, {});
         }
         if (options.dxt1)
         {
-            processing.addStep(Image::Processing::Type::CompressDXT1, {}, true);
+            processing.addStep(Image::ProcessingType::CompressDXT1, {}, true);
         }
         if (options.delta8)
         {
-            processing.addStep(Image::Processing::Type::ConvertDelta8, {});
+            processing.addStep(Image::ProcessingType::ConvertDelta8, {});
         }
         if (options.delta16)
         {
-            processing.addStep(Image::Processing::Type::ConvertDelta16, {});
+            processing.addStep(Image::ProcessingType::ConvertDelta16, {});
         }
         if (options.rle)
         {
-            processing.addStep(Image::Processing::Type::CompressRLE, {options.vram.isSet}, true);
+            processing.addStep(Image::ProcessingType::CompressRLE, {options.vram.isSet}, true);
         }
         if (options.lz10)
         {
-            processing.addStep(Image::Processing::Type::CompressLz10, {options.vram.isSet}, true);
+            processing.addStep(Image::ProcessingType::CompressLz10, {options.vram.isSet}, true);
         }
         if (options.lz11)
         {
-            processing.addStep(Image::Processing::Type::CompressLz11, {options.vram.isSet}, true);
+            processing.addStep(Image::ProcessingType::CompressLz11, {options.vram.isSet}, true);
         }
-        processing.addStep(Image::Processing::Type::PadImageData, {uint32_t(4)});
+        processing.addStep(Image::ProcessingType::PadImageData, {uint32_t(4)});
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;
