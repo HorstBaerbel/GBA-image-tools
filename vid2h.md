@@ -78,3 +78,9 @@ Processing type meaning:
 | 128 (ORed with type) | Final compression / processing on data                          |
 
 Thus a processing chain could be `50,65,188` meaning `8-bit deltas, RLE, final LZ77 10`.
+
+## TODO
+
+* TESTS!
+* More modern C++ constructs
+* Improved compression for GBA based on DTX1. Faster decoding and better quality (2-3 bits free per block)
