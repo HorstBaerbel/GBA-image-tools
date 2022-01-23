@@ -18,7 +18,7 @@ namespace Image
             {ProcessingType::InputBlackWhite, {"binary", OperationType::Input, FunctionType(toBlackWhite)}},
             {ProcessingType::InputPaletted, {"paletted", OperationType::Input, FunctionType(toPaletted)}},
             {ProcessingType::InputTruecolor, {"truecolor", OperationType::Input, FunctionType(toTruecolor)}},
-            {ProcessingType::BuildTileMap, {"tilemap", OperationType::Convert, FunctionType(toTileMap)}},
+            {ProcessingType::BuildTileMap, {"tilemap", OperationType::Convert, FunctionType(toUniqueTileMap)}},
             {ProcessingType::ConvertTiles, {"tiles", OperationType::Convert, FunctionType(toTiles)}},
             {ProcessingType::ConvertSprites, {"sprites", OperationType::Convert, FunctionType(toSprites)}},
             {ProcessingType::AddColor0, {"add color #0", OperationType::Convert, FunctionType(addColor0)}},
@@ -117,11 +117,14 @@ namespace Image
         return image;
     }
 
-    Data Processing::toTileMap(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::toUniqueTileMap(const Data &image, const std::vector<Parameter> &parameters)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toTileMap expects bitmaps as input data");
+        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toUniqueTileMap expects bitmaps as input data");
+        // get parameter(s)
+        REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "toUniqueTileMap expects a single bool detect flips parameter");
+        const auto detectFlips = std::get<bool>(parameters.front());
         Data result = image;
-        auto screenAndTileMap = buildUniqueTileMap(image.data, image.size.width(), image.size.height(), bitsPerPixelForFormat(image.colorFormat));
+        auto screenAndTileMap = buildUniqueTileMap(image.data, image.size.width(), image.size.height(), bitsPerPixelForFormat(image.colorFormat), detectFlips);
         result.mapData = screenAndTileMap.first;
         result.data = screenAndTileMap.second;
         result.dataType = DataType::Tilemap;

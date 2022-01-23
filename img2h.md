@@ -12,7 +12,7 @@ Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn..
   * [```--prune=N```](#pruning-index-values) - Reduce depth of image index values to 1,2 or 4 bit, depending on N.
   * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
-  * [```--tilemap```](#generating-a-tile-and-screen-map-for-tiled-backgrounds) - Cut data into 8x8 tiles and output optimized tile and screen map for image. Implies ```--tiles```.
+  * [```--tilemap=DETECT_FLIPS```](#generating-a-tile-and-screen-map-for-tiled-backgrounds) - Output optimized screen and tile map for input image. Implies ```--tiles```. Will detect flipped tiles if ```DETECT_FLIPS``` = ```true```.
   * [```--interleavepixels```](#interleaving-pixels) - Interleave pixels from multiple images into one big array.
 * ```DATA COMPRESSION``` is optional and means the type of compression to apply:
   * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
@@ -92,7 +92,7 @@ The data will be stored so that you can simply memcpy it over to VRAM.
 
 ### Generating a tile and screen map for tiled backgrounds
 
-Generates an optimized tile and screen map from an image. This will map duplicate tiles with the same pixels to the same tile data, and only store them once. It will not detect tiles that are duplicates if horizontally or vertically flipped though atm. This option automatically sets ```--tiles```. The data generated can simply be memcpy'ed over to VRAM.
+Generates an optimized tile and screen map from an image. This will map duplicate tiles with the same pixels to the same tile data, and only store them once. It will detect horizontally / vertically / both flipped duplicate tiles and set the necessary flip flags if you pass ```--tilemap=true```. This option implies / sets ```--tiles```. The data generated can simply be memcpy'ed over to VRAM.
 
 ### Interleaving pixels
 

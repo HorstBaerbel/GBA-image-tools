@@ -68,10 +68,11 @@ namespace Image
         /// @brief Verbatim data copy. only used to add final compression header
         static Data verbatimCopy(const Data &image, const std::vector<Parameter> &parameters);
 
-        /// @brief Store optimized tile and screen map
+        /// @brief Store optimized tile and screen map. Only max. 1024 unique tiles allowed!
         /// Width and height of image MUST be a multiple of 8!
-        /// @param parameters Unused
-        static Data toTileMap(const Data &image, const std::vector<Parameter> &parameters);
+        /// Will detect horizontally, vertically and horizontally+vertically flipped tiles and will set the map index flip flags accordingly (if parameter set)
+        /// @param parameters Pass true to detect flip tiles and set flip flags
+        static Data toUniqueTileMap(const Data &image, const std::vector<Parameter> &parameters);
 
         /// @brief Cut data to 8 x 8 pixel wide tiles and store per tile instead of per scanline.
         /// Width and height of image MUST be a multiple of 8!

@@ -115,6 +115,7 @@ bool readArguments(int argc, const char *argv[])
         options.shiftIndices.parse(result);
         options.pruneIndices.parse(result);
         options.sprites.parse(result);
+        options.tilemap.parse(result);
         // if tilemap is set, also set tiles
         if (options.tilemap)
         {
@@ -291,7 +292,7 @@ int main(int argc, const char *argv[])
         }
         if (options.tilemap)
         {
-            processing.addStep(Image::ProcessingType::BuildTileMap, {});
+            processing.addStep(Image::ProcessingType::BuildTileMap, {options.tilemap.value});
         }
         if (options.delta8)
         {

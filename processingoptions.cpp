@@ -150,9 +150,18 @@ ProcessingOptions::Option ProcessingOptions::tiles{
     false,
     {"tiles", "Cut data into 8x8 tiles and store data tile-wise. The image needs to be paletted and its width and height must be a multiple of 8 pixels.", cxxopts::value(tiles.isSet)}};
 
-ProcessingOptions::Option ProcessingOptions::tilemap{
+ProcessingOptions::OptionT<bool> ProcessingOptions::tilemap{
     false,
-    {"tilemap", "Cut data into 8x8 tiles and output optimized screen and tile map for the image. Implies --tiles. The image needs to be paletted and its width and height must be a multiple of 8 pixels.", cxxopts::value(tilemap.isSet)}};
+    {"tilemap", "Output optimized screen and tile map for the input image. Will detect flipped tiles if --tilemap=true. Implies --tiles. The image needs to be paletted and its width and height must be a multiple of 8 pixels.", cxxopts::value(tilemap.value)},
+    false,
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(tilemap.cxxOption.opts_))
+        {
+            tilemap.isSet = true;
+        }
+    }};
 
 ProcessingOptions::Option ProcessingOptions::deltaImage{
     false,
