@@ -75,7 +75,7 @@ namespace Image
         fileHeader.fps = fps;
         fileHeader.width = frames.front().size.width();
         fileHeader.height = frames.front().size.height();
-        fileHeader.bitsPerPixel = bitsPerPixelForFormat(frames.front().format);
+        fileHeader.bitsPerPixel = bitsPerPixelForFormat(frames.front().colorFormat);
         fileHeader.bitsPerColor = frameHasColorMap ? bitsPerPixelForFormat(frames.front().colorMapFormat) : 0;
         fileHeader.colorMapEntries = frameHasColorMap ? frames.front().colorMap.size() : 0;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(fileHeader));

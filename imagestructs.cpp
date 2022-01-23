@@ -26,4 +26,27 @@ namespace Image
         }
     }
 
+    std::string to_string(ColorFormat format)
+    {
+        switch (format)
+        {
+        case ColorFormat::Paletted1:
+            return "paletted 1-bit";
+        case ColorFormat::Paletted2:
+            return "paletted 2-bit";
+        case ColorFormat::Paletted4:
+            return "paletted 4-bit";
+        case ColorFormat::Paletted8:
+            return "paletted 8-bit";
+        case ColorFormat::RGB555:
+            return "RGB555";
+        case ColorFormat::RGB565:
+            return "RGB565";
+        case ColorFormat::RGB888:
+            return "RGB888";
+        default:
+            throw std::runtime_error("Bad color format");
+        }
+    }
+
 }

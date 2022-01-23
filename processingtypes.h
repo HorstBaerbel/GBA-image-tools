@@ -14,6 +14,7 @@ namespace Image
         InputTruecolor = 12,   // Input image and convert to RGB888 truecolor
         ConvertTiles = 20,     // Convert data to 8 x 8 pixel tiles
         ConvertSprites = 21,   // Convert data to w x h pixel sprites
+        BuildTileMap = 22,     // Convert data to 8 x 8 pixel tiles and build optimized screen and tile map
         AddColor0 = 30,        // Add a color at index #0
         MoveColor0 = 31,       // Move a color to index #0
         ReorderColors = 32,    // Reorder colors to be perceptually closer to each other

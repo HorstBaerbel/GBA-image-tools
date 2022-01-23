@@ -1,17 +1,17 @@
 #pragma once
 
-#include "exception.h"
 #include "datahelpers.h"
+#include "exception.h"
 
-#include <variant>
-#include <cstdint>
-#include <vector>
 #include <Magick++.h>
+#include <cstdint>
+#include <variant>
+#include <vector>
 
 namespace Image
 {
 
-    // Color format info
+    /// @brief Color format info
     enum class ColorFormat
     {
         Unknown,
@@ -27,14 +27,27 @@ namespace Image
     /// @brief Return bits per pixel for input color format
     uint32_t bitsPerPixelForFormat(ColorFormat format);
 
+    /// @brief Return color format as string
+    std::string to_string(ColorFormat format);
+
+    /// @brief Type of data currently stored in image data
+    enum class DataType
+    {
+        Unknown,
+        Bitmap, // image / bitmap data
+        Tilemap // tilemap data
+    };
+
     /// @brief Stores data for an image
     struct Data
     {
         std::string fileName;                // input file name
         Magick::ImageType type;              // input image type
         Magick::Geometry size;               // image size
-        ColorFormat format;                  // image data format
-        std::vector<uint8_t> data;           // raw image data
+        DataType dataType;                   // image data type
+        ColorFormat colorFormat;             // image color format
+        std::vector<uint16_t> mapData;       // raw screen / map data (only if dataType == Tilemap)
+        std::vector<uint8_t> data;           // raw image / bitmap / tile data
         std::vector<Magick::Color> colorMap; // image color map if paletted
         ColorFormat colorMapFormat;          // raw color map data format
         std::vector<uint8_t> colorMapData;   // raw color map data

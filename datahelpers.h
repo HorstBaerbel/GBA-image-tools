@@ -2,17 +2,21 @@
 #pragma once
 
 #include <algorithm>
-#include <numeric>
 #include <cstdint>
-#include <string>
 #include <cstring>
-#include <vector>
+#include <numeric>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 /// @brief Fill up the vector with values until its size is a multiple of multipleOf.
 template <typename T>
 std::vector<T> fillUpToMultipleOf(const std::vector<T> &data, uint32_t multipleOf, T value = T())
 {
+    if (data.empty())
+    {
+        return {};
+    }
     std::vector<T> result = data;
     const auto size = result.size();
     if (size < multipleOf)

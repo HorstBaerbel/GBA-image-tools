@@ -38,6 +38,7 @@ public:
     static OptionT<uint32_t> pruneIndices;
     static OptionT<std::vector<uint32_t>> sprites;
     static Option tiles;
+    static Option tilemap;
     static Option deltaImage;
     static Option delta8;
     static Option delta16;

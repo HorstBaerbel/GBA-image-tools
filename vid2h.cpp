@@ -181,7 +181,7 @@ void printUsage()
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
-    std::cout << "EXECUTION ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites," << std::endl;
+    std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites," << std::endl;
     std::cout << "tiles, deltaimage, dxt1, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
 }
 

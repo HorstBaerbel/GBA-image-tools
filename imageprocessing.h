@@ -68,6 +68,11 @@ namespace Image
         /// @brief Verbatim data copy. only used to add final compression header
         static Data verbatimCopy(const Data &image, const std::vector<Parameter> &parameters);
 
+        /// @brief Store optimized tile and screen map
+        /// Width and height of image MUST be a multiple of 8!
+        /// @param parameters Unused
+        static Data toTileMap(const Data &image, const std::vector<Parameter> &parameters);
+
         /// @brief Cut data to 8 x 8 pixel wide tiles and store per tile instead of per scanline.
         /// Width and height of image MUST be a multiple of 8!
         /// @param parameters Unused
@@ -130,8 +135,8 @@ namespace Image
 
         // --- misc conversion functions ------------------------------------------------------------------------
 
-        /// @brief Fill up image data with 0s to a multiple of N bytes
-        /// @param parameters "Modulo value" as uint32_t. The data will be padded to a multiple of this
+        /// @brief Fill up map and image data with 0s to a multiple of N bytes
+        /// @param parameters "Modulo value" as uint32_t. The mapData and data will be padded to a multiple of this
         static Data padImageData(const Data &image, const std::vector<Parameter> &parameters);
 
         /// @brief Fill up color map with 0s to a multiple of N colors
@@ -167,12 +172,23 @@ namespace Image
                 const auto allDataSameSize = std::find_if_not(images.cbegin(), images.cend(), [refSize = images.front().data.size()](const auto &img)
                                                               { return img.data.size() == refSize; }) == images.cend();
                 REQUIRE(allDataSameSize, std::runtime_error, "The image data size of all images must be the same for interleaving");
-                return {convertTo<DATA_TYPE>(interleave(temp8, bitsPerPixelForFormat(images.front().format))), std::vector<uint32_t>()};
+                return {convertTo<DATA_TYPE>(interleave(temp8, bitsPerPixelForFormat(images.front().colorFormat))), std::vector<uint32_t>()};
             }
             else
             {
                 return {combineTo<DATA_TYPE>(temp8), divideBy<uint32_t>(getStartIndices(temp8), sizeof(DATA_TYPE) / sizeof(uint8_t))};
             }
+        }
+
+        /// @brief Combine map data of all images and return the data and the start indices into that data.
+        /// Indices are return in DATA_TYPE units
+        template <typename DATA_TYPE>
+        static std::pair<std::vector<DATA_TYPE>, std::vector<uint32_t>> combineMapData(const std::vector<Data> &images)
+        {
+            std::vector<std::vector<uint16_t>> temp16;
+            std::transform(images.cbegin(), images.cend(), std::back_inserter(temp16), [](const auto &img)
+                           { return img.mapData; });
+            return {combineTo<DATA_TYPE>(temp16), divideBy<uint32_t>(getStartIndices(temp16), sizeof(DATA_TYPE) / sizeof(uint16_t))};
         }
 
         /// @brief Combine color maps of all images using conversion function and return the data and the start indices into that data.

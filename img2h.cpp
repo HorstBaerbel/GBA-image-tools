@@ -53,6 +53,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.pruneIndices.cxxOption);
         opts.add_option("", options.sprites.cxxOption);
         opts.add_option("", options.tiles.cxxOption);
+        opts.add_option("", options.tilemap.cxxOption);
         opts.add_option("", options.delta8.cxxOption);
         opts.add_option("", options.delta16.cxxOption);
         opts.add_option("", options.rle.cxxOption);
@@ -114,6 +115,11 @@ bool readArguments(int argc, const char *argv[])
         options.shiftIndices.parse(result);
         options.pruneIndices.parse(result);
         options.sprites.parse(result);
+        // if tilemap is set, also set tiles
+        if (options.tilemap)
+        {
+            options.tiles.isSet = true;
+        }
     }
     catch (const cxxopts::OptionException &e)
     {
@@ -138,6 +144,7 @@ void printUsage()
     std::cout << options.shiftIndices.helpString() << std::endl;
     std::cout << options.pruneIndices.helpString() << std::endl;
     std::cout << options.tiles.helpString() << std::endl;
+    std::cout << options.tilemap.helpString() << std::endl;
     std::cout << options.sprites.helpString() << std::endl;
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
@@ -156,8 +163,8 @@ void printUsage()
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
-    std::cout << "EXECUTION ORDER: input, reordercolors, addcolor0, movecolor0, shift, prune," << std::endl;
-    std::cout << "sprites, tiles, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
+    std::cout << "ORDER: input, reordercolors, addcolor0, movecolor0, shift, prune, sprites" << std::endl;
+    std::cout << "tiles, tilemap, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
 std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
@@ -211,7 +218,7 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        Image::Data entry{*ifIt, imgType, imgSize, (isPaletted ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
+        Image::Data entry{*ifIt, imgType, imgSize, Image::DataType::Bitmap, (isPaletted ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), {}, (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
         images.push_back(entry);
         ifIt++;
     }
@@ -281,6 +288,10 @@ int main(int argc, const char *argv[])
         if (options.tiles)
         {
             processing.addStep(Image::ProcessingType::ConvertTiles, {});
+        }
+        if (options.tilemap)
+        {
+            processing.addStep(Image::ProcessingType::BuildTileMap, {});
         }
         if (options.delta8)
         {
@@ -373,8 +384,18 @@ int main(int argc, const char *argv[])
                 // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
                 nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
                 // output image and palette data
-                writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
+                if (options.tilemap)
+                {
+                    // convert map data to uint32_ts
+                    auto [mapData32, mapStartIndices] = Image::Processing::combineMapData<uint32_t>(images);
+                    writeImageInfoToH(hFile, varName, imageData32, mapData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                    writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, mapData32, storeTileOrSpriteWise);
+                }
+                else
+                {
+                    writeImageInfoToH(hFile, varName, imageData32, {}, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                    writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, {}, storeTileOrSpriteWise);
+                }
                 if (imgType == Magick::ImageType::PaletteType)
                 {
                     auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(images, [](auto cm)
