@@ -27,7 +27,7 @@ namespace Video
         {
             frame.index = previous.index + 1;
             auto colorMapSize = info.colorMapEntries;
-            switch (info.bitsPerColor)
+            switch (info.bitsInColorMap)
             {
             case 15:
             case 16:

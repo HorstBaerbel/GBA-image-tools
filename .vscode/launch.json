@@ -5,7 +5,32 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Starten",
+            "name": "img2h debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [
+                "--shift=128",
+                "--tilemap",
+                "--movecolor0=00ff00",
+                "\"${workspaceFolder}/../Remute-Unity/Gfx_work/slides/glow1.png\"",
+                "bla"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Automatische Strukturierung und Einrückung für \"gdb\" aktivieren",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "vid2h debug",
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
@@ -15,7 +40,7 @@
                 "--rle",
                 "--lz10",
                 "--vram",
-                "${workspaceFolder}/test_data/videos/bbb_120x80_24fps_part.mp4",
+                "${workspaceFolder}/test_data/videos/bbb_160x128_24fps_part.mp4",
                 "video"
             ],
             "stopAtEntry": false,

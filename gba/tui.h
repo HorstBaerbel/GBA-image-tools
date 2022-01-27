@@ -2,6 +2,7 @@
 
 #include <gba_base.h>
 
+#include <cstdarg>
 #include <cstdint>
 
 #include "./data/font_8x8.h"
@@ -43,10 +44,16 @@ namespace TUI
     /// @brief Fill background rect with color
     void fillBackgroundRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, Color color = Color::Black);
 
+    /// @brief Set background and foreground colors
+    void setColor(Color backColor = Color::Black, Color textColor = Color::White);
+
     void printChar(char c, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White) IWRAM_CODE;
     uint16_t printChars(char c, uint16_t n, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White) IWRAM_CODE;
     uint16_t printString(const char *s, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White) IWRAM_CODE;
     uint16_t printInt(int32_t value, uint32_t base, uint16_t x, uint16_t y, Color backColor, Color textColor) IWRAM_CODE;
     uint16_t printFloat(int32_t value, uint16_t x, uint16_t y, Color backColor, Color textColor) IWRAM_CODE;
+
+    /// @brief Print at position with currently set colors
+    void printf(uint16_t x, uint16_t y, const char *fmt...);
 
 }

@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/**",
                 "${env:DEVKITPRO}/libgba/include/**",
                 "${env:DEVKITARM}/arm-none-eabi/include/**"
             ],

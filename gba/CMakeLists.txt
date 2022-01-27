@@ -18,11 +18,12 @@ include(CompilerFlagsGBA)
 LIST(APPEND TARGET_SOURCE_FILES
 	dma.cpp
 	decompression.cpp
-	video.cpp
+	itoa.cpp
 	memcpy.s
 	memset.s
-	videoreader.cpp
 	tui.cpp
+	video.cpp
+	videoreader.cpp
 	data/font_8x8.c
 	data/data.s
 )

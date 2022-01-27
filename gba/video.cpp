@@ -34,6 +34,13 @@ int main()
 	TUI::fillBackground(TUI::Color::Black);
 	// read file header
 	const auto videoInfo = Video::GetInfo(VIDEO_DATA);
+	// print video info
+	TUI::printf(0, 0, "Frames: %d, Fps: %d", videoInfo.nrOfFrames, videoInfo.fps);
+	TUI::printf(0, 1, "Size: %dx%d", videoInfo.width, videoInfo.height);
+	TUI::printf(0, 2, "Bits / pixel: %d", videoInfo.bitsPerPixel);
+	TUI::printf(0, 3, "Colors in colormap: %d", videoInfo.colorMapEntries);
+	TUI::printf(0, 4, "Bits / color: %d", videoInfo.bitsInColorMap);
+	TUI::printf(0, 5, "Memory needed: %d", videoInfo.maxMemoryNeeded);
 	// set up timer to increase with frame interval
 	irqSet(irqMASKS::IRQ_TIMER3, frameRequest);
 	irqEnable(irqMASKS::IRQ_TIMER3);
@@ -53,7 +60,7 @@ int main()
 		// read next frame from data
 		frame = Video::GetNextFrame(videoInfo, frame);
 		// uncompress frame
-		Video::decode(reinterpret_cast<uint8_t *>(VRAM), ScratchPad, videoInfo, frame);
+		//Video::decode(reinterpret_cast<uint8_t *>(VRAM), ScratchPad, videoInfo, frame);
 	} while (true);
 	return 0;
 }

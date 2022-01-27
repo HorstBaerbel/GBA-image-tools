@@ -9,6 +9,8 @@
 namespace TUI
 {
     static const uint16_t CGA_COLORS[16]{0, 0x5000, 0x280, 0x5280, 0x0014, 0x5014, 0x0154, 0x5294, 0x294a, 0x7d4a, 0x2bea, 0x7fea, 0x295f, 0x7d5f, 0x2bff, 0x7fff};
+    static Color backColor = Color::Black;
+    static Color textColor = Color::White;
     static char PrintBuffer[64] = {0};
 
     void setup()
@@ -91,6 +93,60 @@ namespace TUI
     {
         fptoa(value, PrintBuffer, 8, 2);
         return printString(PrintBuffer, x, y, backColor, textColor);
+    }
+
+    void setColor(Color backColor, Color textColor)
+    {
+    }
+
+    void printf(uint16_t x, uint16_t y, const char *fmt...)
+    {
+        auto currentX = x;
+        va_list args;
+        va_start(args, fmt);
+        bool expectType = false;
+        while (*fmt != '\0')
+        {
+            if (expectType)
+            {
+                expectType = false;
+                if (*fmt == 'd')
+                {
+                    auto i = va_arg(args, int32_t);
+                    currentX += printInt(i, 10, currentX, y, backColor, textColor);
+                }
+                else if (*fmt == 'x')
+                {
+                    auto i = va_arg(args, int32_t);
+                    currentX += printInt(i, 16, currentX, y, backColor, textColor);
+                }
+                else if (*fmt == 'c')
+                {
+                    // note automatic conversion to integral type
+                    auto c = va_arg(args, int32_t);
+                    printChar(c, currentX++, y, backColor, textColor);
+                }
+                else if (*fmt == 'f')
+                {
+                    auto f = va_arg(args, int32_t);
+                    currentX += printFloat(f, currentX, y, backColor, textColor);
+                }
+                else
+                {
+                    printChar(*fmt, currentX++, y, backColor, textColor);
+                }
+            }
+            else if (*fmt == '%')
+            {
+                expectType = true;
+            }
+            else
+            {
+                printChar(*fmt, currentX++, y, backColor, textColor);
+            }
+            ++fmt;
+        }
+        va_end(args);
     }
 
 }
