@@ -41,16 +41,17 @@ namespace Image
     /// @brief Stores data for an image
     struct Data
     {
-        std::string fileName;                // input file name
-        Magick::ImageType type;              // input image type
-        Magick::Geometry size;               // image size
-        DataType dataType;                   // image data type
-        ColorFormat colorFormat;             // image color format
-        std::vector<uint16_t> mapData;       // raw screen / map data (only if dataType == Tilemap)
-        std::vector<uint8_t> data;           // raw image / bitmap / tile data
-        std::vector<Magick::Color> colorMap; // image color map if paletted
-        ColorFormat colorMapFormat;          // raw color map data format
-        std::vector<uint8_t> colorMapData;   // raw color map data
+        std::string fileName;                                      // input file name
+        Magick::ImageType type = Magick::ImageType::UndefinedType; // input image type
+        Magick::Geometry size = {0, 0};                            // image size
+        DataType dataType = DataType::Unknown;                     // image data type
+        ColorFormat colorFormat = ColorFormat::Unknown;            // image color format
+        std::vector<uint16_t> mapData;                             // raw screen / map data (only if dataType == Tilemap)
+        std::vector<uint8_t> data;                                 // raw image / bitmap / tile data
+        std::vector<Magick::Color> colorMap;                       // image color map if paletted
+        ColorFormat colorMapFormat = ColorFormat::Unknown;         // raw color map data format
+        std::vector<uint8_t> colorMapData;                         // raw color map data
+        uint32_t maxMemoryNeeded = 0;                              // max. intermediate memory needed to process the image. 0 if it can be directly written to destination (single processing stage)
     };
 
 }

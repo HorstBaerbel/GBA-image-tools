@@ -65,9 +65,6 @@ namespace Image
 
         // --- data conversion functions ------------------------------------
 
-        /// @brief Verbatim data copy. only used to add final compression header
-        static Data verbatimCopy(const Data &image, const std::vector<Parameter> &parameters);
-
         /// @brief Store optimized tile and screen map. Only max. 1024 unique tiles allowed!
         /// Width and height of image MUST be a multiple of 8!
         /// Will detect horizontally, vertically and horizontally+vertically flipped tiles and will set the map index flip flags accordingly (if parameter set)

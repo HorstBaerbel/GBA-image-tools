@@ -64,7 +64,7 @@ namespace Image
         return os;
     }
 
-    auto IO::writeFileHeader(std::ostream &os, const std::vector<Data> &frames, uint8_t fps) -> std::ostream &
+    auto IO::writeFileHeader(std::ostream &os, const std::vector<Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &
     {
         REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
         // check if we're using a color map
@@ -72,12 +72,13 @@ namespace Image
         // generate file header and store it
         FileHeader fileHeader;
         fileHeader.nrOfFrames = frames.size();
-        fileHeader.fps = fps;
         fileHeader.width = frames.front().size.width();
         fileHeader.height = frames.front().size.height();
+        fileHeader.fps = fps;
         fileHeader.bitsPerPixel = bitsPerPixelForFormat(frames.front().colorFormat);
         fileHeader.bitsPerColor = frameHasColorMap ? bitsPerPixelForFormat(frames.front().colorMapFormat) : 0;
         fileHeader.colorMapEntries = frameHasColorMap ? frames.front().colorMap.size() : 0;
+        fileHeader.maxMemoryNeeded = maxMemoryNeeded;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(fileHeader));
         return os;
     }

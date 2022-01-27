@@ -276,7 +276,6 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::ConvertTiles, {});
         }
-        processing.addStep(Image::ProcessingType::Uncompressed, {}, true);
         if (options.deltaImage)
         {
             processing.addStep(Image::ProcessingType::DeltaImage, {});
@@ -339,10 +338,10 @@ int main(int argc, const char *argv[])
         const bool allColorMapsSame = false;
         const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
         // output some info about data
-        auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
+        const auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
         std::cout << "Input size: " << inputSize / (1024 * 1024) << " MB" << std::endl;
-        auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
-                                              { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
+        const auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
+                                                    { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
         std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
         std::cout << "Bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
         if (videoInfo.fps > 255 || (videoInfo.fps - std::trunc(videoInfo.fps)) != 0)
@@ -352,6 +351,11 @@ int main(int argc, const char *argv[])
             videoInfo.fps = videoInfo.fps > 255 ? 255 : videoInfo.fps;
             std::cout << videoInfo.fps << std::endl;
         }
+        // find out the max. memory needed to decompress
+        const auto maxMemoryNeeded = std::max_element(images.cbegin(), images.cend(), [](const auto &img0, const auto &img1)
+                                                      { return img0.maxMemoryNeeded > img1.maxMemoryNeeded ? img0.maxMemoryNeeded : img1.maxMemoryNeeded; })
+                                         ->maxMemoryNeeded;
+        std::cout << "Max. intermediate memory for decompression: " << maxMemoryNeeded << " Byte" << std::endl;
         // check if we want to write output files
         if (!options.dryRun)
         {
@@ -362,7 +366,7 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    Image::IO::writeFileHeader(binFile, images, static_cast<uint8_t>(videoInfo.fps));
+                    Image::IO::writeFileHeader(binFile, images, static_cast<uint8_t>(videoInfo.fps), maxMemoryNeeded);
                     Image::IO::writeFrames(binFile, images);
                 }
                 catch (const std::runtime_error &e)
