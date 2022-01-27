@@ -9,7 +9,7 @@ namespace Video
 
     /// @brief Get static file information from video data
     /// @param data Pointer to start of file data
-    Info GetInfo(const uint8_t *data);
+    Info GetInfo(const uint32_t *data);
 
     /// @brief Get frame following previous frame
     /// @param info File data information. Read with GetInfo()

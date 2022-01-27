@@ -33,7 +33,7 @@ int main()
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
 	// read file header
-	const auto videoInfo = Video::GetInfo(VIDEO_DATA);
+	const auto videoInfo = Video::GetInfo(reinterpret_cast<const uint32_t *>(VIDEO_DATA));
 	// print video info
 	TUI::printf(0, 0, "Frames: %d, Fps: %d", videoInfo.nrOfFrames, videoInfo.fps);
 	TUI::printf(0, 1, "Size: %dx%d", videoInfo.width, videoInfo.height);
@@ -41,6 +41,17 @@ int main()
 	TUI::printf(0, 3, "Colors in colormap: %d", videoInfo.colorMapEntries);
 	TUI::printf(0, 4, "Bits / color: %d", videoInfo.bitsInColorMap);
 	TUI::printf(0, 5, "Memory needed: %d", videoInfo.maxMemoryNeeded);
+	// wait for keypress
+	do
+	{
+		scanKeys();
+		if (keysDown() & KEY_A)
+		{
+			break;
+		}
+	} while (true);
+	// switch video mode to 160x128x2
+	REG_DISPCNT = MODE_5;
 	// set up timer to increase with frame interval
 	irqSet(irqMASKS::IRQ_TIMER3, frameRequest);
 	irqEnable(irqMASKS::IRQ_TIMER3);
@@ -60,7 +71,7 @@ int main()
 		// read next frame from data
 		frame = Video::GetNextFrame(videoInfo, frame);
 		// uncompress frame
-		//Video::decode(reinterpret_cast<uint8_t *>(VRAM), ScratchPad, videoInfo, frame);
+		Video::decode((uint32_t *)VRAM, ScratchPad, sizeof(ScratchPad), videoInfo, frame);
 	} while (true);
 	return 0;
 }

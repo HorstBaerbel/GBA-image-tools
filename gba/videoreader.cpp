@@ -5,12 +5,13 @@
 namespace Video
 {
 
-    Info GetInfo(const uint8_t *data)
+    Info GetInfo(const uint32_t *data)
     {
+        static_assert(sizeof(FileHeader) % 4 == 0);
         Info info;
         Memory::memcpy32(&info, data, sizeof(FileHeader));
         info.fileData = data;
-        info.frameData = data + sizeof(FileHeader) + 4 + 4;
+        info.frameData = data + sizeof(FileHeader) / 4;
         return info;
     }
 
@@ -21,7 +22,7 @@ namespace Video
         {
             // read first frame
             frame.index = 0;
-            frame.chunkOffset = 0;
+            frame.chunkOffset = sizeof(Frame::compressedSize);
         }
         else
         {
@@ -40,9 +41,9 @@ namespace Video
                 // TODO: What?
                 break;
             }
-            frame.chunkOffset = previous.chunkOffset + sizeof(Frame::compressedSize) + sizeof(DataChunk) + previous.compressedSize + colorMapSize;
+            frame.chunkOffset = previous.chunkOffset + sizeof(DataChunk) + previous.compressedSize + colorMapSize + sizeof(Frame::compressedSize);
         }
-        frame.compressedSize = *reinterpret_cast<const uint32_t *>(info.frameData + frame.chunkOffset);
+        frame.compressedSize = *(info.frameData + frame.chunkOffset / 4);
         frame.colorMapOffset = info.colorMapEntries > 0 ? frame.chunkOffset + frame.compressedSize : 0;
         return frame;
     }

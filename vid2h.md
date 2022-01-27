@@ -63,6 +63,8 @@ vid2h will store binary file header fields and frame header fields:
 | *Frame #1*                      |
 | ...                             |
 
+Note that (if the file header is aligned to 4 bytes) every *Frame* and every *Data Chunk* in the file will be aligned to 4 bytes. If you use aligned memory as a scratchpad when decoding, again, every *Chunk Data* will be aligned too.
+
 Processing type meaning:
 
 | Processing type byte | Meaning                                                         |

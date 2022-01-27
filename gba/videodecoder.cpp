@@ -44,10 +44,10 @@ namespace Video
         const uint32_t LineStride16 = width / 2;             // stride to next line in dst
         const uint32_t BlockLineStride16 = LineStride16 * 4; // vertical stride to next block in dst
         const uint32_t BlockStride16 = 4 * 2 / 2;            // horizontal stride to next block in dst
-        for (uint32_t blockY = 0, blockY < height / 4; blockY += 4)
+        for (uint32_t blockY = 0; blockY < height / 4; blockY += 4)
         {
             auto blockLineDst = dst;
-            for (uint32_t blockX = 0, blockX < width / 4; blockX += 4)
+            for (uint32_t blockX = 0; blockX < width / 4; blockX += 4)
             {
                 // get anchor colors c0 and c1
                 uint16_t c0 = *src++;
@@ -59,24 +59,24 @@ namespace Video
                 uint16_t c3 = static_cast<uint16_t>(DXT1ThirdTable[r0 + 2 * r1]) << 10;
                 uint32_t g0 = (c0 & 0x7E0) >> 5; // 6 bits of green
                 uint32_t g1 = (c1 & 0x7E0) >> 5; // 6 bits of green
-                uint16_t c2 |= static_cast<uint16_t>(DXT1ThirdTable[2 * g0 + g1]) << 5;
-                uint16_t c3 |= static_cast<uint16_t>(DXT1ThirdTable[g0 + 2 * g1]) << 5;
+                c2 |= static_cast<uint16_t>(DXT1ThirdTable[2 * g0 + g1]) << 5;
+                c3 |= static_cast<uint16_t>(DXT1ThirdTable[g0 + 2 * g1]) << 5;
                 uint32_t b0 = c0 & 0x1F; // 5 bits of blue
                 uint32_t b1 = c1 & 0x1F; // 5 bits of blue
-                uint16_t c2 |= static_cast<uint16_t>(DXT1ThirdTable[2 * b0 + b1]);
-                uint16_t c3 |= static_cast<uint16_t>(DXT1ThirdTable[b0 + 2 * b1]);
+                c2 |= static_cast<uint16_t>(DXT1ThirdTable[2 * b0 + b1]);
+                c3 |= static_cast<uint16_t>(DXT1ThirdTable[b0 + 2 * b1]);
                 // get pixel color indices
                 uint32_t indices = *reinterpret_cast<const uint32_t *>(src);
                 src += 2;
                 // set pixels
                 auto blockDst = blockLineDst;
-                for (uint32_t y = 0, y < 4; y++)
+                for (uint32_t y = 0; y < 4; y++)
                 {
-                    for (uint32_t x = 0, x < 4; x++)
+                    for (uint32_t x = 0; x < 4; x++)
                     {
                         // select color by 2 bit index from [c0, c1, c2, c3]
-                        *blockDst[x] = selectColor(index & 0x3, c0, c1, c2, c3);
-                        index >>= 2;
+                        blockDst[x] = selectColor(indices & 0x3, c0, c1, c2, c3);
+                        indices >>= 2;
                     }
                     // move to next line in destination vertically
                     blockDst += LineStride16;
@@ -91,25 +91,27 @@ namespace Video
 
     void decode(uint32_t *finalDst, uint32_t *scratchPad, uint32_t scratchPadSize, const Info &info, const Frame &frame)
     {
+        static_assert(sizeof(DataChunk) % 4 == 0);
         // split scratchpad into two parts
-        uint8_t *scratch0 = reinterpret_cast<uint8_t *>(scratchPad);
-        uint8_t *scratch1 = reinterpret_cast<uint8_t *>(scratchPad) + scratchPadSize / 2;
+        auto scratch0 = scratchPad;
+        auto scratch1 = scratchPad + scratchPadSize / (2 * 4);
         // get pointer to start of data chunk
-        const uint8_t *currentChunk = info.frameData + frame.chunkOffset;
+        auto currentChunk = info.frameData + frame.chunkOffset / 4;
         do
         {
-            const auto &chunk = reinterpret_cast<const DataChunk *>(currentChunk);
+            const auto chunk = reinterpret_cast<const DataChunk *>(currentChunk);
+            const auto isFinal = (chunk->processingType & Image::ProcessingTypeFinal) != 0;
             // get pointer to start of frame data
-            const uint8_t *currentSrc = currentChunk + sizeof(DataChunk);
+            auto currentSrc = currentChunk + sizeof(DataChunk) / 4;
             // check where our output is going to
-            auto currentDst = (chunk.processingType & Image::ProcessingTypeFinal) != 0 ? finalDst : scratchPad;
+            auto currentDst = isFinal ? finalDst : scratchPad;
             // check wether destination is in VRAM (no 8-bit writes possible)
-            const bool dstInVRAM = static_cast<uint32_t>(currentDst) >= 0x05000000 && static_cast<uint32_t>(currentDst) < 0x08000000;
-            // check which processing is used in this stage
-            switch (static_cast<Image::ProcessingType>(frame.processingType))
+            const bool dstInVRAM = (((uint32_t)currentDst) >= 0x05000000) && (((uint32_t)currentDst) < 0x08000000);
+            // reverse processing operation used in this stage
+            switch (static_cast<Image::ProcessingType>(chunk->processingType & ~Image::ProcessingTypeFinal))
             {
             case Image::ProcessingType::Uncompressed:
-                DMA::dma_copy32(currentDst, currentSrc, chunk.uncompressedSize / 4);
+                DMA::dma_copy32(currentDst, currentSrc, chunk->uncompressedSize / 4);
                 break;
             case Image::ProcessingType::CompressLz10:
                 dstInVRAM ? Decompression::LZ77UnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompression::LZ77UnCompReadNormalWrite8bit(currentSrc, currentDst);
@@ -118,15 +120,20 @@ namespace Video
                 dstInVRAM ? Decompression::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompression::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressDXT1:
-                UnCompDXT1Write16(currentDst, currentSrc, info.width, info.height);
+                UnCompDXT1Write16(reinterpret_cast<uint16_t *>(currentDst), reinterpret_cast<const uint16_t *>(currentSrc), info.width, info.height);
                 break;
             default:
                 return;
             }
+            // break if this was the last processing operation
+            if (isFinal)
+            {
+                break;
+            }
             // decide where to decode the next chunk from. our old destination is the new source
             currentChunk = currentDst;
             // swap scratchpads
-            scratchPad = currentDst == scratchPad1 ? scratchPad0 : scratchPad1;
-        } while (frame.processingType != 0);
+            scratchPad = currentDst == scratch1 ? scratch0 : scratch1;
+        } while (true);
     }
 }

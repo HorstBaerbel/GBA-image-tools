@@ -23,6 +23,7 @@ LIST(APPEND TARGET_SOURCE_FILES
 	memset.s
 	tui.cpp
 	video.cpp
+	videodecoder.cpp
 	videoreader.cpp
 	data/font_8x8.c
 	data/data.s
