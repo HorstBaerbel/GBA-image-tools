@@ -2,5 +2,5 @@
 
 #include <cstdint>
 
-extern const uint8_t VIDEO_DATA[];
-extern const uint32_t VIDEO_DATA_SIZE;
+extern __attribute__((aligned(4))) const uint8_t VIDEO_DATA[];
+extern __attribute__((aligned(4))) const uint32_t VIDEO_DATA_SIZE;
