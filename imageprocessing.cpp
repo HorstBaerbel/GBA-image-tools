@@ -578,9 +578,9 @@ namespace Image
     {
         REQUIRE(img.data.size() < (1 << 24), std::runtime_error, "Data size stored must be < 16MB");
         REQUIRE(static_cast<uint32_t>(type) <= 127, std::runtime_error, "Type value must be <= 127");
-        const uint32_t sizeAndType = ((size & 0xFFFFFF) << 8) & ((static_cast<uint32_t>(type) & 0x7F) | (isFinal ? static_cast<uint32_t>(ProcessingTypeFinal) : 0));
+        const uint32_t sizeAndType = ((size & 0xFFFFFF) << 8) | ((static_cast<uint32_t>(type) & 0x7F) | (isFinal ? static_cast<uint32_t>(ProcessingTypeFinal) : 0));
         auto result = img;
-        result.data = prependValue(img.data, size);
+        result.data = prependValue(img.data, sizeAndType);
         return result;
     }
 
