@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
+
+#-------------------------------------------------------------------------------
+# Add required libraries
  
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBMAGICK REQUIRED IMPORTED_TARGET
@@ -15,9 +18,9 @@ pkg_check_modules(TBB REQUIRED IMPORTED_TARGET
 )
 
 #-------------------------------------------------------------------------------
-#set up compiler flags and executable names
+# Set up compiler flags
 
-# Add defines so Magick++ does not throw warnings 
+# Add defines so Magick++ does not throw warnings
 add_definitions(-DMAGICKCORE_HDRI_ENABLE=0)
 add_definitions(-DMAGICKCORE_QUANTUM_DEPTH=16)
 
@@ -29,14 +32,11 @@ if(MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP") #multi-processor compilation
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCXX)
-    #set up compiler flags for GCC
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") #support C++17
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11") #support C11
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
 
 #-------------------------------------------------------------------------------
-#define targets
+# Define targets
 
 set(HELPERS_SRC
     colorhelpers.cpp
@@ -63,7 +63,7 @@ add_executable(vid2h vid2h.cpp ${HELPERS_SRC} videoreader.cpp)
 target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV PkgConfig::TBB stdc++fs pthread)
 
 #-------------------------------------------------------------------------------
-#define install files for CPack
+# Define install files for CPack
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/colormap555"
