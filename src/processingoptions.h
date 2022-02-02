@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "cxxopts/include/cxxopts.hpp"
 #include <Magick++.h>
+#include <cxxopts/include/cxxopts.hpp>
 
 class ProcessingOptions
 {

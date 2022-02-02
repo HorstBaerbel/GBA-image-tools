@@ -2,12 +2,12 @@
 // See also: http://www.budmelvin.com/dev/15bitconverter.html
 // and: https://en.wikipedia.org/wiki/High_color
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <string>
 
-#include "cxxopts/include/cxxopts.hpp"
 #include <Magick++.h>
+#include <cxxopts/include/cxxopts.hpp>
 
 Magick::Color m_color;
 

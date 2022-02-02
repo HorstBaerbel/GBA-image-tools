@@ -57,7 +57,7 @@ vid2h will store binary file header fields and frame header fields:
 | Compressed frame data size N    | 4 bytes  | Padded size of frame data in chunk (ONLY frame data, not whole chunk) |
 | *Data chunk #0*                 |
 | Uncompressed frame data size    | 3 bytes  |
-| Processing type                 | 1 byte   | See following table and [imageprocessing.h](imageprocessing.h)        |
+| Processing type                 | 1 byte   | See following table and [imageprocessing.h](src/imageprocessing.h)        |
 | Frame data                      | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)   |
 | Color map data                  | M colors | Only if M > 0. Padded to multiple of 4                                |
 | *Frame #1*                      |
