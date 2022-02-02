@@ -48,7 +48,7 @@ namespace Image
         // write frame data
         os.write(reinterpret_cast<const char *>(frame.data.data()), frame.data.size());
         // check if we're using a color map and write that
-        if (hasColorMap(frame) > 0)
+        if (hasColorMap(frame))
         {
             os.write(reinterpret_cast<const char *>(frame.colorMapData.data()), frame.colorMapData.size());
         }
