@@ -22,24 +22,24 @@ namespace Video
     /// @brief Video file / data information
     struct Info : public FileHeader
     {
-        const uint32_t *fileData = nullptr;  // Pointer to file header data
-        const uint32_t *frameData = nullptr; // Pointer to frame data
+        const uint32_t *fileData = nullptr; // Pointer to file header data
+        uint32_t colorMapSize = 0;          // Size of color map data in bytes
     } __attribute__((aligned(4), packed));
 
     /// @brief Chunk of compressed data
     struct DataChunk
     {
+        uint8_t processingType : 8;     // Processing / compression type used on data in this chunk
         uint32_t uncompressedSize : 24; // Uncompressed size of data in this chunk
-        uint8_t processingType = 0;     // Processing / compression type used on data in this chunk
     } __attribute__((aligned(4), packed));
 
     /// @brief Frame header describing frame data
     struct Frame
     {
-        uint32_t index = std::numeric_limits<uint32_t>::max(); // Frame index in video
-        uint32_t chunkOffset = 0;                              // Offset to start of chunk in Info::frameData
-        uint32_t colorMapOffset = 0;                           // Offset to color map in Info::frameData
-        uint32_t compressedSize = 0;                           // Size of frame data in chunk (ONLY frame data, not whole chunk)
+        int32_t index = -1;             // Frame index in video
+        const uint32_t *data = nullptr; // Pointer to frame data
+        uint32_t colorMapOffset = 0;    // Byte offset to color map in data
+        uint32_t compressedSize = 0;    // Size of frame data in chunk (ONLY frame data, not whole chunk)
     } __attribute__((aligned(4), packed));
 
 }

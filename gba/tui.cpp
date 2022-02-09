@@ -91,7 +91,7 @@ namespace TUI
 
     uint16_t printFloat(int32_t value, uint16_t x, uint16_t y, Color backColor, Color textColor)
     {
-        fptoa(value, PrintBuffer, 8, 2);
+        fptoa(value, PrintBuffer, 16, 2);
         return printString(PrintBuffer, x, y, backColor, textColor);
     }
 

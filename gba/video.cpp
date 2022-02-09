@@ -7,6 +7,7 @@
 
 #include "dma.h"
 #include "memory.h"
+#include "output.h"
 #include "tui.h"
 #include "videodecoder.h"
 #include "videoreader.h"
@@ -51,7 +52,10 @@ int main()
 		}
 	} while (true);
 	// switch video mode to 160x128x2
-	REG_DISPCNT = MODE_5;
+	REG_DISPCNT = MODE_5 | BG2_ON;
+	REG_BG2PA = 256 / 1.5;
+	REG_BG2PD = 256 / 1.5;
+	REG_BG2Y = 11 << 8;
 	// set up timer to increase with frame interval
 	irqSet(irqMASKS::IRQ_TIMER3, frameRequest);
 	irqEnable(irqMASKS::IRQ_TIMER3);
@@ -68,10 +72,15 @@ int main()
 		{
 		};
 		frameRequested = false;
+		REG_TM2CNT_L = 0;
+		REG_TM2CNT_H = TIMER_START | 2;
 		// read next frame from data
 		frame = Video::GetNextFrame(videoInfo, frame);
 		// uncompress frame
 		Video::decode((uint32_t *)VRAM, ScratchPad, sizeof(ScratchPad), videoInfo, frame);
+		REG_TM2CNT_H = 0;
+		auto durationMs = static_cast<int32_t>(REG_TM2CNT_L) * 1000;
+		Debug::printf("Frame %d, Needed: %f ms", frame.index, durationMs);
 	} while (true);
 	return 0;
 }

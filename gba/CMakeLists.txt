@@ -21,6 +21,7 @@ LIST(APPEND TARGET_SOURCE_FILES
 	itoa.cpp
 	memcpy.s
 	memset.s
+	output.cpp
 	tui.cpp
 	video.cpp
 	videodecoder.cpp
@@ -32,6 +33,7 @@ LIST(APPEND TARGET_SOURCE_FILES
 LIST(APPEND TARGET_INCLUDE_DIRS
 	${DEVKITPRO}/libgba/include
 	${DEVKITARM}/arm-none-eabi/include
+	${CMAKE_CURRENT_SOURCE_DIR}/../src
 )
 
 LIST(APPEND TARGET_LIB_DIRS

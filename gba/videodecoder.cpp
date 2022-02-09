@@ -3,7 +3,7 @@
 #include "decompression.h"
 #include "dma.h"
 
-#include "../processingtypes.h"
+#include "processingtypes.h"
 
 namespace Video
 {
@@ -41,13 +41,13 @@ namespace Video
     // See also: https://stackoverflow.com/questions/56474930/efficiently-implementing-dxt1-texture-decompression-in-hardware
     void UnCompDXT1Write16(uint16_t *dst, const uint16_t *src, uint32_t width, uint32_t height)
     {
-        const uint32_t LineStride16 = width / 2;             // stride to next line in dst
-        const uint32_t BlockLineStride16 = LineStride16 * 4; // vertical stride to next block in dst
-        const uint32_t BlockStride16 = 4 * 2 / 2;            // horizontal stride to next block in dst
-        for (uint32_t blockY = 0; blockY < height / 4; blockY += 4)
+        const uint32_t LineStride16 = width;                 // stride to next line in dst (width * 2 bytes)
+        const uint32_t BlockLineStride16 = LineStride16 * 4; // vertical stride to next block in dst (4 lines)
+        const uint32_t BlockStride16 = 4;                    // horizontal stride to next block in dst (4 * 2 bytes)
+        for (uint32_t blockY = 0; blockY < (height / 4); blockY += 4)
         {
             auto blockLineDst = dst;
-            for (uint32_t blockX = 0; blockX < width / 4; blockX += 4)
+            for (uint32_t blockX = 0; blockX < (width / 4); blockX += 4)
             {
                 // get anchor colors c0 and c1
                 uint16_t c0 = *src++;
@@ -96,7 +96,7 @@ namespace Video
         auto scratch0 = scratchPad;
         auto scratch1 = scratchPad + scratchPadSize / (2 * 4);
         // get pointer to start of data chunk
-        auto currentChunk = info.frameData + frame.chunkOffset / 4;
+        auto currentChunk = frame.data + sizeof(DataChunk) / 4;
         do
         {
             const auto chunk = reinterpret_cast<const DataChunk *>(currentChunk);
