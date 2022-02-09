@@ -42,7 +42,9 @@ namespace Image
 
     auto IO::writeFrame(std::ostream &os, const Data &frame) -> std::ostream &
     {
-        // store compressed frame data size
+        REQUIRE((frame.data.size() & 3) == 0, std::runtime_error, "Frame data size is not a multiple of 4");
+        REQUIRE((frame.colorMapData.size() & 3) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
+        // store compressed frame data size. this might include a prepended processing type / uncompressed size
         const uint32_t frameSize = frame.data.size();
         os.write(reinterpret_cast<const char *>(&frameSize), sizeof(frameSize));
         // write frame data
