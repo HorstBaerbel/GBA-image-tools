@@ -42,24 +42,24 @@ Some general information:
 
 vid2h will store binary file header fields and frame header fields:
 
-| Field                           | Size     |                                                                       |
-| ------------------------------- | -------- | --------------------------------------------------------------------- |
+| Field                           | Size     |                                                                        |
+| ------------------------------- | -------- | ---------------------------------------------------------------------- |
 | *File / Video*                  |
 | Number of frames in file        | 4 bytes  |
 | Frame width in pixels           | 2 bytes  |
 | Frame height in pixels          | 2 bytes  |
-| Frames / s                      | 1 byte   | No fractions allowed here                                             |
-| Image data bits / pixel         | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                         |
-| Color map data bits / color     | 1 byte   | Can be 0 (no color map), 15, 16, 24                                   |
-| Color map entries M             | 1 byte   | Color map stored if M > 0                                             |
-| Max. intermediate memory needed | 4 bytes  | Maximum intermediate memory needed for decompression (for ALL frames) |
+| Frames / s                      | 1 byte   | No fractions allowed here                                              |
+| Image data bits / pixel         | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                          |
+| Color map data bits / color     | 1 byte   | Can be 0 (no color map), 15, 16, 24                                    |
+| Color map entries M             | 1 byte   | Color map stored if M > 0                                              |
+| Max. intermediate memory needed | 4 bytes  | Maximum intermediate storage needed for decompression (for ALL frames) |
 | *Frame #0*                      |
-| Compressed frame data size N    | 4 bytes  | Padded size of frame data in chunk (ONLY frame data, not whole chunk) |
-| *Data chunk #0*                 |
-| Uncompressed frame data size    | 3 bytes  |
-| Processing type                 | 1 byte   | See following table and [imageprocessing.h](src/imageprocessing.h)        |
-| Frame data                      | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)   |
-| Color map data                  | M colors | Only if M > 0. Padded to multiple of 4                                |
+| &emsp; Frame data chunk size               | 4 bytes  | Padded size of frame data chunk (NOT including the color map size)            |
+| &emsp; *Frame data chunk #0*                 |
+| &emsp; &emsp; Processing type                 | 1 byte   | See following table and [imageprocessing.h](src/imageprocessing.h)     |
+| &emsp; &emsp; Uncompressed frame data size    | 3 bytes  |
+| &emsp; &emsp; Frame data                      | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)    |
+| &emsp; Color map data                  | M colors | Only if M > 0. Padded to multiple of 4                                 |
 | *Frame #1*                      |
 | ...                             |
 
@@ -77,9 +77,9 @@ Processing type meaning:
 | 61                   | Image data is compressed using LZ77 variant 11                  |
 | 65                   | Image data is compressed using run-length-encoding              |
 | 70                   | Image data is compressed using DXT1                             |
-| 128 (ORed with type) | Final compression / processing step on data                     |
+| 128 (ORed w/ type) | Final compression / processing step on data                     |
 
-Thus a processing chain could be `50,65,188` meaning `8-bit deltas, RLE, final LZ77 10`.
+Thus a processing chain could be `50,65,188` meaning `8-bit deltas, RLE, LZ77 10 (final step)`.
 
 ## TODO
 
