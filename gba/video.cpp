@@ -22,7 +22,7 @@ IWRAM_FUNC void frameRequest()
 	frameRequested = true;
 }
 
-IWRAM_DATA ALIGN(4) uint32_t ScratchPad[10248 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
+EWRAM_DATA ALIGN(4) uint32_t ScratchPad[19208 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
 
 int main()
 {
@@ -53,7 +53,7 @@ int main()
 		}
 	} while (true);
 	// switch video mode to 160x128x2
-	REG_DISPCNT = MODE_5 | BG2_ON;
+	REG_DISPCNT = MODE_3 | BG2_ON;
 	// REG_BG2PA = 256 / 1.5;
 	// REG_BG2PD = 256 / 1.5;
 	// REG_BG2Y = 11 << 8;

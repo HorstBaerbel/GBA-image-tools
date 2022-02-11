@@ -9,7 +9,7 @@
 namespace Video
 {
 
-    /// @brief Division table for x/3*2 where x is in [0,3*31]
+    /// @brief Division table for x/3 where x is in [0,3*31]
     IWRAM_DATA ALIGN(4) const uint32_t OneThirdTable[94] = {
         0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,
         4, 4, 4, 5, 5, 5, 6, 6, 6, 7,

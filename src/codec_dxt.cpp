@@ -25,7 +25,7 @@ std::vector<uint8_t> DXT::encodeBlockDXTG(const uint16_t *start, uint32_t pixels
         pixel += pixelsPerScanline;
     }
     // calculate minimum color distance for each combination of block endpoints
-    uint32_t bestDistance = std::numeric_limits<uint32_t>::max();
+    float bestIterationDistance = std::numeric_limits<int32_t>::max();
     uint16_t bestC0 = colors.front();
     uint16_t bestC1 = colors.front();
     std::array<uint32_t, 16> bestIndices = {0};
@@ -36,35 +36,40 @@ std::vector<uint8_t> DXT::encodeBlockDXTG(const uint16_t *start, uint32_t pixels
         for (auto c1It = colors.cbegin(); c1It != colors.cend(); ++c1It)
         {
             endpoints[1] = *c1It;
+            if (*c0It > *c1It)
+            {
+                std::swap(endpoints[0], endpoints[1]);
+            }
             // calculate intermediate colors c2 and c3
             endpoints[2] = lerpRGB555(*c0It, *c1It, 1.0 / 3.0);
             endpoints[3] = lerpRGB555(*c0It, *c1It, 2.0 / 3.0);
             // calculate minimum distance for all colors to endpoints
-            uint32_t iterationDistance = 0;
+            float iterationDistance = 0;
             std::fill(iterationIndices.begin(), iterationIndices.end(), 0);
             for (uint32_t ci = 0; ci < 16; ++ci)
             {
                 const auto &distMapColorI = distanceSqrMap[colors[ci]];
                 // calculate minimum distance for each index for this color
-                uint8_t colorDistance = std::numeric_limits<uint8_t>::max();
+                uint8_t bestColorDistance = std::numeric_limits<uint8_t>::max();
                 for (uint32_t ei = 0; ei < 4; ++ei)
                 {
                     auto indexDistance = distMapColorI[endpoints[ei]];
                     // check if result improved
-                    if (colorDistance > indexDistance)
+                    if (bestColorDistance > indexDistance)
                     {
-                        colorDistance = indexDistance;
+                        bestColorDistance = indexDistance;
                         iterationIndices[ci] = ei;
                     }
                 }
-                iterationDistance += colorDistance;
+                iterationDistance += bestColorDistance;
             }
             // check if result improved
-            if (bestDistance > iterationDistance)
+            iterationDistance = std::sqrt(iterationDistance / 16);
+            if (bestIterationDistance > iterationDistance)
             {
-                bestDistance = iterationDistance;
-                bestC0 = *c0It;
-                bestC1 = *c1It;
+                bestIterationDistance = iterationDistance;
+                bestC0 = endpoints[0];
+                bestC1 = endpoints[1];
                 bestIndices = iterationIndices;
             }
         }
