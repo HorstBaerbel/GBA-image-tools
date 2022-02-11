@@ -1,12 +1,8 @@
 #pragma once
 
-#include <cstdint>
-#include <gba_base.h>
+#include "base.h"
 
-/// @brief Use for default 0 initialized static variables
-#define STATIC_BSS static EWRAM_BSS
-/// @brief Use for initialized static variables
-#define STATIC_DATA static EWRAM_DATA
+#include <cstdint>
 
 namespace Memory
 {
@@ -43,18 +39,18 @@ namespace Memory
 	/// @param destination Copy destination.
 	/// @param source Copy source.
 	/// @param nrOfWords Number of dwords to copy.
-	extern "C" void memcpy32(void *destination, const void *source, uint32_t nrOfWords) IWRAM_CODE;
+	extern "C" void memcpy32(void *destination, const void *source, uint32_t nrOfWords) IWRAM_FUNC;
 
 	/// @brief Set words in destination to value.
 	/// @param destination Set destination.
 	/// @param value Value to set destination half-words to.
 	/// @param nrOfHwords Number of half-words to set.
-	extern "C" void memset16(void *destination, uint16_t value, uint32_t nrOfHwords) IWRAM_CODE;
+	extern "C" void memset16(void *destination, uint16_t value, uint32_t nrOfHwords) IWRAM_FUNC;
 
 	/// @brief Set dwords in destination to value.
 	/// @param destination Set destination.
 	/// @param value Value to set destination dwords to.
 	/// @param nrOfWords Number of dwords to set.
-	extern "C" void memset32(void *destination, uint32_t value, uint32_t nrOfWords) IWRAM_CODE;
+	extern "C" void memset32(void *destination, uint32_t value, uint32_t nrOfWords) IWRAM_FUNC;
 
 } // namespace Memory

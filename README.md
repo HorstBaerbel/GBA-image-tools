@@ -1,12 +1,12 @@
-# GBA / NDS / DSi image and video conversion tools
+# GBA homebrew image and video conversion tools
 
-This folder contains some tools to convert / compress images and videos to GBA and NDS formats:  
+This folder contains some tools to convert / compress images and videos to GBA formats for homebrew development:  
 
 * [colormap555](src/colormap555.cpp) - Generate the file [colormap555.png](colormap555.png) that can be used to convert images directly to the GBAs RGB555 color-space with good quality.
 * [gimppalette555](src/gimppalette555.cpp) - Generate the file [GBA.gpl](GBA.gpl) for using / editing / painting with GBA colors in Gimp.
 * [hex2gba](src/hex2gba.cpp) - Convert a RGB888 color to GBA RGB555 / BGR555 high-color format.
 * [img2h](src/img2h.cpp) - Convert / compress a (list of) image(s) that can be read with [ImageMagick](https://imagemagick.org/index.php) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compress them with RLE or LZ77. Suitable to compress small image sequences too. Documentation is [here](img2h.md).
-* [vid2h](src/vid2h.cpp) - Convert / compress a a video that can be read with [FFmpeg](https://www.ffmpeg.org/) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compresses them using intra-frame techniques and RLE, LZ77 or DXT1. Documentation is [here](vid2h.md).
+* [vid2h](src/vid2h.cpp) - Convert / compress a a video that can be read with [FFmpeg](https://www.ffmpeg.org/) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compresses them using intra-frame techniques and RLE, LZ77 or DXT. Documentation is [here](vid2h.md).
 
 If you find a bug or make an improvement your pull requests are appreciated.
 

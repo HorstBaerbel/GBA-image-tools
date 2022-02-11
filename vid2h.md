@@ -17,7 +17,7 @@ Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COM
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
   * ```--deltaimage``` - Pixel-wise delta encoding between successive images.
 * ```IMAGE COMPRESSION``` is optional, mutually exclusive:
-  * ```--dxt1``` - Use DXT1 RGB565 compression on frame.
+  * ```--dxtg``` - Use DXT1-ish RGB555 compression on frame.
 * ```DATA COMPRESSION``` is optional:
   * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
@@ -31,7 +31,7 @@ Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COM
 * ```INFILE``` specifies the input video file. Must be readable with FFmpeg.
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_". Binary output will be written as "abc.bin".
 
-The order of the operations performed is: Read input file ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxt1 ➜ diff8 / diff16 ➜ rle ➜ lz10 / lz11 ➜ Write output
+The order of the operations performed is: Read input file ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxtg ➜ diff8 / diff16 ➜ rle ➜ lz10 / lz11 ➜ Write output
 
 Some general information:
 
@@ -76,7 +76,7 @@ Processing type meaning:
 | 60                   | Image data is compressed using LZ77 variant 10                  |
 | 61                   | Image data is compressed using LZ77 variant 11                  |
 | 65                   | Image data is compressed using run-length-encoding              |
-| 70                   | Image data is compressed using DXT1                             |
+| 70                   | Image data is compressed using DXTG                             |
 | 128 (ORed w/ type) | Final compression / processing step on data                     |
 
 Thus a processing chain could be `50,65,188` meaning `8-bit deltas, RLE, LZ77 10 (final step)`.

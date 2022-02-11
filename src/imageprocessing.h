@@ -127,9 +127,9 @@ namespace Image
         /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
         static Data compressRLE(const Data &image, const std::vector<Parameter> &parameters);
 
-        /// @brief Encode a truecolor RGB888 or RGB565 image as DXT1 with RGB565 pixels
+        /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
         /// @param parameters:
-        static Data compressDXT1(const Data &image, const std::vector<Parameter> &parameters);
+        static Data compressDXTG(const Data &image, const std::vector<Parameter> &parameters);
 
         // --- misc conversion functions ------------------------------------------------------------------------
 

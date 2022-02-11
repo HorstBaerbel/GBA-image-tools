@@ -46,7 +46,7 @@ public:
     static Option lz11;
     static Option rle;
     static Option vram;
-    static Option dxt1;
+    static Option dxtg;
     static Option interleavePixels;
     static Option dryRun;
     static Option binary;

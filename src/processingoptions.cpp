@@ -191,9 +191,9 @@ ProcessingOptions::Option ProcessingOptions::vram{
     false,
     {"vram", "Make compression VRAM-safe.", cxxopts::value(vram.isSet)}};
 
-ProcessingOptions::Option ProcessingOptions::dxt1{
+ProcessingOptions::Option ProcessingOptions::dxtg{
     false,
-    {"dxt1", "Use DXT1 RGB565 compression.", cxxopts::value(dxt1.isSet)}};
+    {"dxtg", "Use DXT1-ish RGB555 compression.", cxxopts::value(dxtg.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::interleavePixels{
     false,

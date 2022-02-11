@@ -1,10 +1,10 @@
 // some color / color map utility functions used by the tools
 #pragma once
 
-#include <cstdint>
-#include <vector>
-#include <string>
 #include <Magick++.h>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 /// @brief Convert ImageMagick color to string
 std::string asHex(const Magick::Color &color);
@@ -21,11 +21,23 @@ std::vector<uint16_t> convertToBGR555(const std::vector<Magick::Color> &colors);
 /// @brief Convert a ImageMagick Color to a BGR555 color for GBA
 uint16_t colorToBGR555(const Magick::Color &color);
 
+/// @brief Convert a RGB555 color to a BGR555 color
+uint16_t toBGR555(uint16_t color);
+
+/// @brief Interpolate between two RGB555 colors
+uint16_t lerpRGB555(uint16_t a, uint16_t b, double t);
+
 /// @brief Convert ImageMagick Colors to BGR565 colors
 std::vector<uint16_t> convertToBGR565(const std::vector<Magick::Color> &colors);
 
 /// @brief Convert a ImageMagick Color to a BGR565 color
 uint16_t colorToBGR565(const Magick::Color &color);
+
+/// @brief Convert a RGB565 color to a BGR565 color
+uint16_t toBGR565(uint16_t color);
+
+/// @brief Interpolate between two RGB565 colors
+uint16_t lerpRGB565(uint16_t a, uint16_t b, double t);
 
 /// @brief Convert ImageMagick Colors to BGR888 colors
 std::vector<uint8_t> convertToBGR888(const std::vector<Magick::Color> &colors);
@@ -33,17 +45,14 @@ std::vector<uint8_t> convertToBGR888(const std::vector<Magick::Color> &colors);
 /// @brief Build an image with the RGB555 color map the GBA uses
 Magick::Image buildColorMapRGB555();
 
-/// @brief Interpolate between two RGB565 colors
-uint16_t lerpRGB565(uint16_t a, uint16_t b, double t);
-
 /// @brief Calculate perceived distance between colors
 /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
-/// @return Returns a value in [0,2.8284)
+/// @return Returns a value in [0,3)
 float distance(const Magick::Color &a, const Magick::Color &b);
 
 /// @brief Calculate square of perceived distance between colors (see above)
 /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
-/// @return Returns a value in [0,8]
+/// @return Returns a value in [0,9]
 float distanceSqr(const Magick::Color &a, const Magick::Color &b);
 
 /// @brief Reorder palette colors to minimize preceived color distance
@@ -53,6 +62,6 @@ std::vector<uint8_t> minimizeColorDistance(const std::vector<Magick::Color> &col
 /// @brief Swap colors in palette according to index table
 std::vector<Magick::Color> swapColors(const std::vector<Magick::Color> &colors, const std::vector<uint8_t> &newIndices);
 
-/// @brief Build table that stores the squared percieved distance of one RGB565 color to another RGB565 color as [0,255]
-/// @note This table is ~4GB in size!
-std::vector<std::vector<uint8_t>> RGB565DistanceSqrTable();
+/// @brief Build table that stores the squared percieved distance of one RGB555 color to another RGB555 color as [0,255]
+/// @note This table is ~2GB in size!
+std::vector<std::vector<uint8_t>> RGB555DistanceSqrTable();

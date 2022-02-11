@@ -19,7 +19,7 @@ namespace Image
         Paletted2 = 2, // 2bit paletted format
         Paletted4 = 4, // 4bit paletted format
         Paletted8 = 8, // 8bit paletted format
-        RGB555 = 15,   // RGB555 GBA format
+        RGB555 = 15,   // RGB555 format
         RGB565 = 16,   // RGB565 format for DXT
         RGB888 = 24    // RGB888 straight truecolor format
     };

@@ -5,6 +5,7 @@
 #include <gba_timers.h>
 #include <gba_video.h>
 
+#include "base.h"
 #include "dma.h"
 #include "memory.h"
 #include "output.h"
@@ -14,14 +15,14 @@
 
 #include "data/data.h"
 
-bool frameRequested = true;
+IWRAM_DATA bool frameRequested = true;
 
-void frameRequest()
+IWRAM_FUNC void frameRequest()
 {
 	frameRequested = true;
 }
 
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[160 * 128 * 2 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
+IWRAM_DATA ALIGN(4) uint32_t ScratchPad[10248 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
 
 int main()
 {
@@ -53,10 +54,10 @@ int main()
 	} while (true);
 	// switch video mode to 160x128x2
 	REG_DISPCNT = MODE_5 | BG2_ON;
-	REG_BG2PA = 256 / 1.5;
-	REG_BG2PD = 256 / 1.5;
-	REG_BG2Y = 11 << 8;
-	// set up timer to increase with frame interval
+	// REG_BG2PA = 256 / 1.5;
+	// REG_BG2PD = 256 / 1.5;
+	// REG_BG2Y = 11 << 8;
+	//  set up timer to increase with frame interval
 	irqSet(irqMASKS::IRQ_TIMER3, frameRequest);
 	irqEnable(irqMASKS::IRQ_TIMER3);
 	// Timer divider 2 == 256 -> 16*1024*1024 cycles/s / 256 = 65536/s
@@ -68,10 +69,10 @@ int main()
 	do
 	{
 		// wait for the timer to signal a frame request
-		while (!frameRequested)
+		/*while (!frameRequested)
 		{
 		};
-		frameRequested = false;
+		frameRequested = false;*/
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;
 		// read next frame from data

@@ -67,7 +67,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.deltaImage.cxxOption);
         opts.add_option("", options.delta8.cxxOption);
         opts.add_option("", options.delta16.cxxOption);
-        opts.add_option("", options.dxt1.cxxOption);
+        opts.add_option("", options.dxtg.cxxOption);
         opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.lz11.cxxOption);
@@ -166,7 +166,7 @@ void printUsage()
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << "IMAGE COMPRESSION options (mutually exclusive):" << std::endl;
-    std::cout << options.dxt1.helpString() << std::endl;
+    std::cout << options.dxtg.helpString() << std::endl;
     std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
@@ -182,7 +182,7 @@ void printUsage()
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites," << std::endl;
-    std::cout << "tiles, deltaimage, dxt1, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
+    std::cout << "tiles, deltaimage, dxtg, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -280,9 +280,9 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::DeltaImage, {});
         }
-        if (options.dxt1)
+        if (options.dxtg)
         {
-            processing.addStep(Image::ProcessingType::CompressDXT1, {}, true);
+            processing.addStep(Image::ProcessingType::CompressDXTG, {}, true);
         }
         if (options.delta8)
         {
@@ -339,12 +339,12 @@ int main(int argc, const char *argv[])
         const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
         // output some info about data
         const auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
-        std::cout << "Input size: " << inputSize / (1024 * 1024) << " MB" << std::endl;
+        std::cout << "Input size: " << static_cast<double>(inputSize) / (1024 * 1024) << " MB" << std::endl;
         const auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
                                                     { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
         std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
         std::cout << "Bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
-        if (videoInfo.fps > 255 || (videoInfo.fps - std::trunc(videoInfo.fps)) != 0)
+        if (videoInfo.fps > 255 || (videoInfo.fps - std::round(videoInfo.fps)) != 0)
         {
             std::cout << "Frame rate of " << videoInfo.fps << " will be set to ";
             videoInfo.fps = std::round(videoInfo.fps);
