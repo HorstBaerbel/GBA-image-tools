@@ -15,7 +15,7 @@
 
 #include "data/data.h"
 
-IWRAM_DATA bool frameRequested = true;
+IWRAM_DATA volatile bool frameRequested = true;
 
 IWRAM_FUNC void frameRequest()
 {
@@ -43,6 +43,7 @@ int main()
 	TUI::printf(0, 3, "Colors in colormap: %d", videoInfo.colorMapEntries);
 	TUI::printf(0, 4, "Bits / color: %d", videoInfo.bitsInColorMap);
 	TUI::printf(0, 5, "Memory needed: %d", videoInfo.maxMemoryNeeded);
+	TUI::printf(0, 19, "       Press A to play");
 	// wait for keypress
 	do
 	{
@@ -52,8 +53,10 @@ int main()
 			break;
 		}
 	} while (true);
-	// switch video mode to 160x128x2
+	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
+	// switch video mode to 160x128x2
+	// REG_DISPCNT = MODE_5 | BG2_ON;
 	// REG_BG2PA = 256 / 1.5;
 	// REG_BG2PD = 256 / 1.5;
 	// REG_BG2Y = 11 << 8;
@@ -69,16 +72,18 @@ int main()
 	do
 	{
 		// wait for the timer to signal a frame request
-		/*while (!frameRequested)
+		while (!frameRequested)
 		{
 		};
-		frameRequested = false;*/
+		frameRequested = false;
+		// start benchmark timer
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;
 		// read next frame from data
 		frame = Video::GetNextFrame(videoInfo, frame);
 		// uncompress frame
 		Video::decode((uint32_t *)VRAM, ScratchPad, sizeof(ScratchPad), videoInfo, frame);
+		// end benchmark timer
 		REG_TM2CNT_H = 0;
 		auto durationMs = static_cast<int32_t>(REG_TM2CNT_L) * 1000;
 		Debug::printf("Frame %d, Needed: %f ms", frame.index, durationMs);
