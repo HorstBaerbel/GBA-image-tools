@@ -16,7 +16,7 @@
 # Removed (does not seem to be needed): -mlong-calls
 # See also: https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html
 set(ARCH "-march=armv4t -mthumb -mthumb-interwork -Wl,--wrap=malloc,--wrap=free,--wrap=alloc,--wrap=calloc,--print-memory-usage,--gc-sections,-Map=${PROJECT_NAME}.map")
-set(COMPILERFLAGS "-save-temps -Wall -mcpu=arm7tdmi -mtune=arm7tdmi -fomit-frame-pointer -ffast-math -fno-aggressive-loop-optimizations -no-pie -fno-stack-protector -fdata-sections -ffunction-sections")
+set(COMPILERFLAGS "-save-temps -Wall -Wextra -Wpedantic -mcpu=arm7tdmi -mtune=arm7tdmi -fomit-frame-pointer -ffast-math -fno-aggressive-loop-optimizations -no-pie -fno-stack-protector -fdata-sections -ffunction-sections")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--warn -x assembler-with-cpp ${ARCH}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH} ${COMPILERFLAGS} -std=c11")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -Og -g")
