@@ -1,7 +1,6 @@
 #include "codec_dxt.h"
 
 #include "colorhelpers.h"
-#include "compresshelpers.h"
 #include "exception.h"
 
 #include <array>
@@ -107,7 +106,8 @@ auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_
                           return y - 4; });
     // compress to DXT1. we get 8 bytes per 4x4 block / 16 pixels
     const auto yStride = width * 8 / 16;
-    std::vector<uint8_t> resultData(width * height * 8 / 16);
+    const auto nrOfBlocks = width / 4 * height / 4;
+    std::vector<uint8_t> resultData(nrOfBlocks * 8);
     std::for_each(std::execution::par_unseq, ys.cbegin(), ys.cend(), [&](uint32_t y)
                   {
                           for (uint32_t x = 0; x < width; x += 4)
@@ -115,7 +115,19 @@ auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_
                               auto block = encodeBlockDXTG(image.data() + y * width + x, width, RGB555DistanceSqrCache);
                               std::copy(block.cbegin(), block.cend(), std::next(resultData.begin(), y * yStride + x * 8 / 4));
                           } });
-    return resultData;
+    // split data into colors and indices for better compression
+    std::vector<uint8_t> splitData(nrOfBlocks * 8);
+    auto srcPtr = reinterpret_cast<const uint16_t *>(resultData.data());
+    auto colorPtr = reinterpret_cast<uint16_t *>(splitData.data());
+    auto indexPtr = reinterpret_cast<uint16_t *>(splitData.data() + nrOfBlocks * 8 / 2);
+    for (uint32_t i = 0; i < nrOfBlocks; i++)
+    {
+        *colorPtr++ = *srcPtr++;
+        *colorPtr++ = *srcPtr++;
+        *indexPtr++ = *srcPtr++;
+        *indexPtr++ = *srcPtr++;
+    }
+    return splitData;
 }
 
 auto decodeDXTG(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint8_t>

@@ -41,6 +41,7 @@ set(CMAKE_C_STANDARD 11)
 set(HELPERS_SRC
     colorhelpers.cpp
     codec_dxt.cpp
+    codec_rle.cpp
     compresshelpers.cpp
     datahelpers.cpp
     filehelpers.cpp

@@ -1,6 +1,7 @@
 #include "imageprocessing.h"
 
 #include "codec_dxt.h"
+#include "codec_rle.h"
 #include "colorhelpers.h"
 #include "compresshelpers.h"
 #include "datahelpers.h"
@@ -294,7 +295,7 @@ namespace Image
         const auto vramCompatible = std::get<bool>(parameters.front());
         // compress data
         auto result = image;
-        result.data = Compression::compressRLE(image.data, vramCompatible);
+        result.data = RLE::compressRLE(image.data, vramCompatible);
         return result;
     }
 

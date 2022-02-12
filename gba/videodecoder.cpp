@@ -24,24 +24,28 @@ namespace Video
 
     IWRAM_DATA ALIGN(4) uint16_t colors[4];
 
-    // DXT1 compresses one 4x4 block to 2 bytes color0, 2 bytes color1 and 16*2 bit = 4 bytes index information
+    // Decompresses one DXT1 4x4 block to 2 bytes color0, 2 bytes color1 and 16*2 bit = 4 bytes index information
     // See: https://www.khronos.org/opengl/wiki/S3_Texture_Compression#DXT1_Format
-    // Blocks are stored sequentially from left to right, top to bottom
+    // Blocks are stored sequentially from left to right, top to bottom, but colors and
+    // indices are stored separately for better compression (first all colors, then all indices)
     // See also: https://stackoverflow.com/questions/56474930/efficiently-implementing-dxt1-texture-decompression-in-hardware
     IWRAM_FUNC void UnCompDXTGWrite16(uint16_t *dst, const uint16_t *src, uint32_t width, uint32_t height)
     {
+        const uint32_t nrOfBlocks = width / 4 * height / 4;
         const uint32_t LineStride16 = width;                 // stride to next line in dst (width * 2 bytes)
         const uint32_t BlockLineStride16 = LineStride16 * 4; // vertical stride to next block in dst (4 lines)
         const uint32_t BlockStride16 = 4;                    // horizontal stride to next block in dst (4 * 2 bytes)
         const uint32_t DstStride32 = (LineStride16 - 4) / 2;
+        auto colorPtr = src;
+        auto indexPtr = reinterpret_cast<const uint32_t *>(src + nrOfBlocks * 8 / 4);
         for (uint32_t blockY = 0; blockY < height; blockY += 4)
         {
             auto blockLineDst = dst;
             for (uint32_t blockX = 0; blockX < width; blockX += 4)
             {
                 // get anchor colors c0 and c1
-                uint32_t c0 = *src++;
-                uint32_t c1 = *src++;
+                uint32_t c0 = *colorPtr++;
+                uint32_t c1 = *colorPtr++;
                 colors[0] = c0;
                 colors[1] = c1;
                 // calculate intermediate colors c2 and c3
@@ -63,8 +67,7 @@ namespace Video
                 colors[2] = c2;
                 colors[3] = c3;
                 // get pixel color indices
-                uint32_t indices = *reinterpret_cast<const uint32_t *>(src);
-                src += 2;
+                uint32_t indices = *indexPtr++;
                 // set pixels
                 auto blockDst = reinterpret_cast<uint32_t *>(blockLineDst);
                 // select color by 2 bit index from [c0, c1, c2, c3]
