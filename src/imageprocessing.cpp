@@ -295,7 +295,7 @@ namespace Image
         const auto vramCompatible = std::get<bool>(parameters.front());
         // compress data
         auto result = image;
-        result.data = RLE::compressRLE(image.data, vramCompatible);
+        result.data = RLE::encodeRLE(image.data, vramCompatible);
         return result;
     }
 
@@ -309,7 +309,7 @@ namespace Image
         auto data = image.data;
         if (image.colorFormat == ColorFormat::RGB888)
         {
-            data = toRGB565(data);
+            data = toRGB555(data);
         }
         auto result = image;
         result.colorFormat = ColorFormat::RGB555;

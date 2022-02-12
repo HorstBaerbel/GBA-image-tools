@@ -3,7 +3,7 @@
 #include "colorhelpers.h"
 #include "exception.h"
 
-auto RLE::compressRLE(const std::vector<uint8_t> &data, bool /*vramCompatible*/) -> std::vector<uint8_t>
+auto RLE::encodeRLE(const std::vector<uint8_t> &data, bool /*vramCompatible*/) -> std::vector<uint8_t>
 {
     constexpr int32_t MinRepeatLength = 3;
     constexpr int32_t MaxRepeatLength = ((1 << 7) - 1) + MinRepeatLength;
