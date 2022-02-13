@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 # Add required libraries
  
 find_package(PkgConfig REQUIRED)
+
 pkg_check_modules(LIBMAGICK REQUIRED IMPORTED_TARGET
     Magick++
 )
@@ -16,6 +17,8 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
 pkg_check_modules(TBB REQUIRED IMPORTED_TARGET
     tbb
 )
+
+find_package(OpenMP REQUIRED)
 
 #-------------------------------------------------------------------------------
 # Set up compiler flags
@@ -53,16 +56,16 @@ set(HELPERS_SRC
     spritehelpers.cpp
 )
 
-include_directories(${ImageMagick_INCLUDE_DIRS} ../)
+include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/eigen ../)
 add_executable(colormap555 colormap555.cpp colorhelpers.cpp)
 target_link_libraries(colormap555 PkgConfig::LIBMAGICK PkgConfig::TBB)
 add_executable(gimppalette555 gimppalette555.cpp)
 add_executable(hex2gba hex2gba.cpp)
 target_link_libraries(hex2gba PkgConfig::LIBMAGICK)
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
-target_link_libraries(img2h PkgConfig::LIBMAGICK PkgConfig::TBB stdc++fs pthread)
+target_link_libraries(img2h PkgConfig::LIBMAGICK PkgConfig::TBB OpenMP::OpenMP_CXX stdc++fs pthread)
 add_executable(vid2h vid2h.cpp ${HELPERS_SRC} videoreader.cpp)
-target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV PkgConfig::TBB stdc++fs pthread)
+target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV PkgConfig::TBB OpenMP::OpenMP_CXX stdc++fs pthread)
 
 #-------------------------------------------------------------------------------
 # Define install files for CPack

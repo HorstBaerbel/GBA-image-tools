@@ -2,6 +2,7 @@
 #pragma once
 
 #include <Magick++.h>
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -26,6 +27,9 @@ uint16_t toBGR555(uint16_t color);
 
 /// @brief Interpolate between two RGB555 colors
 uint16_t lerpRGB555(uint16_t a, uint16_t b, double t);
+
+/// @brief Convert a RGB555 value to an array of floats
+std::array<float, 3> rgb555toArray(uint16_t color);
 
 /// @brief Convert ImageMagick Colors to BGR565 colors
 std::vector<uint16_t> convertToBGR565(const std::vector<Magick::Color> &colors);

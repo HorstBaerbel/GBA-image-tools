@@ -11,3 +11,6 @@
 	path = Catch2
 	url = https://github.com/catchorg/Catch2.git
 	branch = v2.x
+[submodule "eigen"]
+	path = eigen
+	url = https://gitlab.com/libeigen/eigen.git

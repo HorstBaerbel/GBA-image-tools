@@ -78,6 +78,11 @@ uint16_t lerpRGB555(uint16_t c0, uint16_t c1, double t)
     return (r << 10) | (g << 5) | b;
 }
 
+std::array<float, 3> rgb555toArray(uint16_t color)
+{
+    return {static_cast<float>((color & 0x7C00) >> 10), static_cast<float>((color & 0x3E0) >> 5), static_cast<float>(color & 0x1F)};
+}
+
 std::vector<uint16_t> convertToBGR565(const std::vector<Magick::Color> &colors)
 {
     std::vector<uint16_t> result;

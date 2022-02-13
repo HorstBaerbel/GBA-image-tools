@@ -16,6 +16,7 @@ All of this is under the [MIT License](LICENSE). It uses:
 
 * [cxxopts](https://github.com/jarro2783/cxxopts) for command line argument parsing.
 * [glob](https://github.com/p-ranav/glob) for input file globbing / wildcards.
+* [Eigen](https://gitlab.com/libeigen) for math and video compression.
 * [Catch2](https://github.com/catchorg/Catch2) for unit tests.
 
 ## Prequisites

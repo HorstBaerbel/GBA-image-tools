@@ -27,7 +27,7 @@ EWRAM_DATA ALIGN(4) uint32_t ScratchPad[19208 * 2 / 4]; // scratch pad memory fo
 int main()
 {
 	// set waitstates for GamePak ROM and EWRAM
-	Memory::RegWaitCnt = Memory::WaitCntFast;
+	Memory::RegWaitCnt = Memory::WaitCntNormal;
 	Memory::RegWaitEwram = Memory::WaitEwramNormal;
 	// start wall clock
 	irqInit();
