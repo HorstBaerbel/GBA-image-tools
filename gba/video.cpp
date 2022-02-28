@@ -55,6 +55,9 @@ int main()
 	} while (true);
 	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
+	// center video on screen
+	REG_BG2X = ((videoInfo.width - 240) / 2) << 8;
+	REG_BG2Y = ((videoInfo.height - 160) / 2) << 8;
 	// switch video mode to 160x128x2
 	// REG_DISPCNT = MODE_5 | BG2_ON;
 	// REG_BG2PA = 256 / 1.5;
@@ -71,6 +74,8 @@ int main()
 	Video::Frame frame{};
 	do
 	{
+		// read next frame from data
+		frame = Video::GetNextFrame(videoInfo, frame);
 		// wait for the timer to signal a frame request
 		while (!frameRequested)
 		{
@@ -79,8 +84,6 @@ int main()
 		// start benchmark timer
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;
-		// read next frame from data
-		frame = Video::GetNextFrame(videoInfo, frame);
 		// uncompress frame
 		Video::decode((uint32_t *)VRAM, ScratchPad, sizeof(ScratchPad), videoInfo, frame);
 		// end benchmark timer
