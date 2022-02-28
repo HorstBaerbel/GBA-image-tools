@@ -42,8 +42,11 @@ set(CMAKE_C_STANDARD 11)
 # Define targets
 
 set(HELPERS_SRC
+    color.cpp
     colorhelpers.cpp
     codec_dxt.cpp
+    codec_gvid.cpp
+    codec_lzss.cpp
     codec_rle.cpp
     compresshelpers.cpp
     datahelpers.cpp

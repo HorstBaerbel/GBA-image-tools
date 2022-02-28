@@ -219,7 +219,7 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        Image::Data entry{*ifIt, imgType, imgSize, Image::DataType::Bitmap, (isPaletted ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), {}, (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
+        Image::Data entry{static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, imgType, imgSize, Image::DataType::Bitmap, (isPaletted ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), {}, (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
         images.push_back(entry);
         ifIt++;
     }

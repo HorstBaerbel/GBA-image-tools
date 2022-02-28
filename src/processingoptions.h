@@ -47,6 +47,7 @@ public:
     static Option rle;
     static Option vram;
     static Option dxtg;
+    static Option gvid;
     static Option interleavePixels;
     static Option dryRun;
     static Option binary;

@@ -1,13 +1,17 @@
 #include "imageprocessing.h"
 
 #include "codec_dxt.h"
+#include "codec_gvid.h"
 #include "codec_rle.h"
+#include "codec_lzss.h"
 #include "colorhelpers.h"
 #include "compresshelpers.h"
 #include "datahelpers.h"
 #include "exception.h"
 #include "imagehelpers.h"
 #include "spritehelpers.h"
+
+#include <iostream>
 
 namespace Image
 {
@@ -31,6 +35,7 @@ namespace Image
             {ProcessingType::CompressLz11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
             {ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXTG, {"compress DXTG", OperationType::Convert, FunctionType(compressDXTG)}},
+            {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
             {ProcessingType::PadImageData, {"pad image data", OperationType::Convert, FunctionType(padImageData)}},
             {ProcessingType::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
             {ProcessingType::ConvertColorMap, {"convert color map", OperationType::Convert, FunctionType(convertColorMap)}},
@@ -51,7 +56,7 @@ namespace Image
         temp.quantizeColors(2);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {"", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
     Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters)
@@ -70,7 +75,7 @@ namespace Image
         temp.quantizeColors(nrOfcolors);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {"", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
     Data Processing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters)
@@ -104,7 +109,7 @@ namespace Image
         {
             imageData = toRGB565(imageData);
         }
-        return {"", temp.type(), image.size(), DataType::Bitmap, format, {}, imageData, {}, ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, format, {}, imageData, {}, ColorFormat::Unknown, {}};
     }
 
     // ----------------------------------------------------------------------------
@@ -274,6 +279,7 @@ namespace Image
         // compress data
         auto result = image;
         result.data = Compression::compressLzss(image.data, vramCompatible, false);
+        // result.data = LZSS::encodeLZSS(image.data, vramCompatible);
         return result;
     }
 
@@ -301,7 +307,7 @@ namespace Image
 
     Data Processing::compressDXTG(const Data &image, const std::vector<Parameter> &parameters)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTG1 expects bitmaps as input data");
+        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTG expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTG compression is only possible for RGB888 and RGB555 truecolor images");
         REQUIRE(image.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
         REQUIRE(image.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
@@ -315,6 +321,22 @@ namespace Image
         result.colorFormat = ColorFormat::RGB555;
         result.mapData = {};
         result.data = DXT::encodeDXTG(convertTo<uint16_t>(data), image.size.width(), image.size.height());
+        result.colorMap = {};
+        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapData = {};
+        return result;
+    }
+
+    Data Processing::compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state)
+    {
+        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressGVID expects bitmaps as input data");
+        REQUIRE(image.colorFormat == ColorFormat::RGB888, std::runtime_error, "GVID compression is only possible for RGB888 truecolor images");
+        REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for GVID compression");
+        REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for GVID compression");
+        auto result = image;
+        result.colorFormat = ColorFormat::RGB888;
+        result.mapData = {};
+        result.data = GVID::encodeGVID(image.data, image.size.width(), image.size.height(), true);
         result.colorMap = {};
         result.colorMapFormat = ColorFormat::Unknown;
         result.colorMapData = {};

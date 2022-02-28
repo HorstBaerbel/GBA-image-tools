@@ -41,6 +41,7 @@ namespace Image
     /// @brief Stores data for an image
     struct Data
     {
+        uint32_t index = 0;                                        // image index counter
         std::string fileName;                                      // input file name
         Magick::ImageType type = Magick::ImageType::UndefinedType; // input image type
         Magick::Geometry size = {0, 0};                            // image size

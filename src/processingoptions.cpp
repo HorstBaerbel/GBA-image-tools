@@ -195,6 +195,10 @@ ProcessingOptions::Option ProcessingOptions::dxtg{
     false,
     {"dxtg", "Use DXT1-ish RGB555 compression.", cxxopts::value(dxtg.isSet)}};
 
+ProcessingOptions::Option ProcessingOptions::gvid{
+    false,
+    {"gvid", "Use GVID video compression.", cxxopts::value(gvid.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::interleavePixels{
     false,
     {"interleavepixels", "Interleave pixels from different images into one array.", cxxopts::value(interleavePixels.isSet)}};

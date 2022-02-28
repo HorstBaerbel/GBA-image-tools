@@ -128,8 +128,15 @@ namespace Image
         static Data compressRLE(const Data &image, const std::vector<Parameter> &parameters);
 
         /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
-        /// @param parameters:
+        /// @param parameters: Unused
         static Data compressDXTG(const Data &image, const std::vector<Parameter> &parameters);
+
+        /// @brief Encode a truecolor RGB888 image with YCgCo block-based method
+        /// @param parameters:
+        /// - Allowed error for inter-frame block references as float in [0,1]. 0 means no error allowed
+        /// - Key frame rate n as int in [1,20] meaning a key frame is stored every n frames
+        /// @param state Previous image as Data
+        static Data compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state);
 
         // --- misc conversion functions ------------------------------------------------------------------------
 
@@ -154,7 +161,7 @@ namespace Image
 
         /// @brief Calcuate pixel-difference to previous image
         /// @param parameters Unused
-        /// @param state Previous image as Magick::Image
+        /// @param state Previous image as Data
         static Data imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state);
 
         /// @brief Combine image data of all images and return the data and the start indices into that data.
