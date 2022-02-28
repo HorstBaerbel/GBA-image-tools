@@ -7,8 +7,13 @@
 #include <Eigen/Dense>
 #include <array>
 #include <execution>
+#include <deque>
+
+#include <iostream>
 
 std::vector<std::vector<uint8_t>> DXT::RGB555DistanceSqrCache;
+
+using Colord = Eigen::Vector3d;
 
 // Found here: https://gist.github.com/ialhashim/0a2554076a6cf32831ca
 // See also: https://zalo.github.io/blog/line-fitting/
@@ -33,18 +38,44 @@ std::pair<Vector3, Vector3> bestLineFromColors(const std::vector<Vector3> &color
 }
 
 template <typename T>
+Eigen::Vector3<T> roundToGrid(const Eigen::Vector3<T> &v)
+{
+    Eigen::Vector3<T> r;
+    // clamp to [0,31]
+    r.x() = v.x() < 0.0 ? 0.0 : (v.x() > 31.0 ? 31.0 : v.x());
+    r.y() = v.y() < 0.0 ? 0.0 : (v.y() > 31.0 ? 31.0 : v.y());
+    r.z() = v.z() < 0.0 ? 0.0 : (v.z() > 31.0 ? 31.0 : v.z());
+    // round to grid point
+    r.x() = std::trunc(r.x() + 0.5);
+    r.y() = std::trunc(r.y() + 0.5);
+    r.z() = std::trunc(r.z() + 0.5);
+    return r;
+}
+
+template <typename T>
 Eigen::Vector3<T> toVector(uint16_t color)
 {
     return {static_cast<T>((color & 0x7C00) >> 10), static_cast<T>((color & 0x3E0) >> 5), static_cast<T>(color & 0x1F)};
 }
 
+template <typename T>
+uint16_t toPixel(const Eigen::Vector3<T> &color)
+{
+    auto cr = roundToGrid(color);
+    uint16_t r = static_cast<uint16_t>(cr.x());
+    uint16_t g = static_cast<uint16_t>(cr.y());
+    uint16_t b = static_cast<uint16_t>(cr.z());
+    return (r << 10) | (g << 5) | b;
+}
+
+// This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
 std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap)
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
     std::array<uint16_t, 16> colors16 = {0};
     auto c16It = colors16.begin();
-    std::vector<Eigen::Vector3d> colors(16);
+    std::vector<Colord> colors(16);
     auto cIt = colors.begin();
     auto pixel = start;
     for (int y = 0; y < 4; y++)
@@ -62,21 +93,28 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     // calculate line fit through RGB color space
     auto originAndAxis = bestLineFromColors(colors);
     // project all points onto the line
-    std::vector<Eigen::Vector3d> colorsOnLine(16);
+    std::vector<Colord> colorsOnLine(16);
     std::transform(colors.cbegin(), colors.cend(), colorsOnLine.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
                    { return origin + (color - origin).dot(axis) / axis.dot(axis) * axis; });
     // calculate signed distance from origin
     std::vector<double> distanceFromOrigin(16);
     std::transform(colorsOnLine.cbegin(), colorsOnLine.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
                    { return color.norm() * axis.dot(color); });
-    // get the min/max point indices
+    // get the endpoints c0 and c1
     auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
     auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
     auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
+    uint16_t endpoints[4] = {toPixel(colors[indexC0]), toPixel(colors[indexC1]), 0, 0};
+    /*if (endpoints[0] > endpoints[1])
+    {
+        std::swap(indexC0, indexC1);
+        std::swap(endpoints[0], endpoints[1]);
+    }*/
     // calculate intermediate colors c2 and c3
-    uint16_t endpoints[4] = {colors16[indexC0], colors16[indexC1], 0, 0};
-    endpoints[2] = lerpRGB555(endpoints[0], endpoints[1], 1.0 / 3.0);
-    endpoints[3] = lerpRGB555(endpoints[0], endpoints[1], 2.0 / 3.0);
+    Colord c2 = (colors[indexC0].cwiseProduct(Colord(2, 2, 2)) + colors[indexC1]).cwiseQuotient(Colord(3, 3, 3));
+    Colord c3 = (colors[indexC0] + colors[indexC1].cwiseProduct(Colord(2, 2, 2))).cwiseQuotient(Colord(3, 3, 3));
+    endpoints[2] = toPixel(c2);
+    endpoints[3] = toPixel(c3);
     // calculate minimum distance for all colors to endpoints
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
@@ -111,86 +149,144 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     return result;
 }
 
-std::vector<uint8_t> DXT::encodeBlockDXTG1(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap)
+using Cluster = std::pair<Colord, std::vector<Colord>>;
+
+double DistanceSqr(const Colord &a, const Colord &b)
+{
+    if (a == b)
+    {
+        return 0.0;
+    }
+    auto ra = a.x();
+    auto rb = b.x();
+    auto r = 0.5 * (ra + rb);
+    auto dR = ra - rb;
+    auto dG = a.y() - b.y();
+    auto dB = a.z() - b.z();
+    return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
+}
+
+/*double DistanceSqr(const std::array<Cluster, 4> &clusters)
+{
+    auto dist = 0.0;
+    for (auto clusterIt = clusters.begin(); clusterIt != clusters.end(); ++clusterIt)
+    {
+        dist += std::accumulate(clusterIt->second.cbegin(), clusterIt->second.cend(), 0.0, [center = clusterIt->first](const auto &v, const auto &color)
+                                { return v + DistanceSqr(center, color); });
+    }
+    return dist;
+}
+
+// This is basically the "cluster fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
+std::vector<uint8_t> DXT::encodeBlockDXTG3(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap)
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
-    std::array<uint16_t, 16> colors = {0};
-    auto c16It = colors.begin();
+    std::array<uint16_t, 16> colors16 = {0};
+    auto c16It = colors16.begin();
+    std::vector<Colord> colors(16);
+    auto cIt = colors.begin();
     auto pixel = start;
     for (int y = 0; y < 4; y++)
     {
         *c16It++ = pixel[0];
+        *cIt++ = toVector<double>(pixel[0]);
         *c16It++ = pixel[1];
+        *cIt++ = toVector<double>(pixel[1]);
         *c16It++ = pixel[2];
+        *cIt++ = toVector<double>(pixel[2]);
         *c16It++ = pixel[3];
+        *cIt++ = toVector<double>(pixel[3]);
         pixel += pixelsPerScanline;
     }
-    // calculate minimum color distance for each combination of block endpoints
-    float bestIterationDistance = std::numeric_limits<int32_t>::max();
-    uint16_t bestC0 = colors.front();
-    uint16_t bestC1 = colors.front();
-    std::array<uint32_t, 16> bestIndices = {0};
-    std::array<uint32_t, 16> iterationIndices;
-    for (auto c0It = colors.cbegin(); c0It != colors.cend(); ++c0It)
+    // calculate line fit through RGB color space
+    auto originAndAxis = bestLineFromColors(colors);
+    // project all points onto the line
+    std::array<Colord, 14> colorsOnLine;
+    std::transform(colors.cbegin(), colors.cend(), colorsOnLine.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
+                   { return origin + (color - origin).dot(axis) / axis.dot(axis) * axis; });
+    // calculate signed distance from origin
+    std::array<double, 16> distanceFromOrigin;
+    std::transform(colorsOnLine.cbegin(), colorsOnLine.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
+                   { return color.norm() * axis.dot(color); });
+    // get the min/max point indices
+    auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
+    auto p0 = colorsOnLine[std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first)];
+    auto p1 = colorsOnLine[std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second)];
+    // we split the line into 4 parts and use the centers as cluster centers
+    std::array<Cluster, 4> clusters;
+    // put the initial cluster centers at 1/8, 3/8, 5/8 and 7/8 along the principle axis
+    clusters[0].first = (p1 - p0) * 1.0 / 8.0 + p0;
+    clusters[1].first = (p1 - p0) * 3.0 / 8.0 + p0;
+    clusters[2].first = (p1 - p0) * 5.0 / 8.0 + p0;
+    clusters[3].first = (p1 - p0) * 7.0 / 8.0 + p0;
+    // put colors into clusters
+    for (const auto &color : colors)
     {
-        uint16_t endpoints[4] = {*c0It, 0, 0, 0};
-        for (auto c1It = colors.cbegin(); c1It != colors.cend(); ++c1It)
+        // find cluster with minimal color-distance
+        auto minDist = std::numeric_limits<double>::max();
+        auto minIt = clusters.begin();
+        for (auto clusterIt = clusters.begin(); clusterIt != clusters.end(); ++clusterIt)
         {
-            endpoints[1] = *c1It;
-            if (*c0It > *c1It)
+            auto dist = DistanceSqr(clusterIt->first, color);
+            if (minDist > dist)
             {
-                std::swap(endpoints[0], endpoints[1]);
-            }
-            // calculate intermediate colors c2 and c3
-            endpoints[2] = lerpRGB555(*c0It, *c1It, 1.0 / 3.0);
-            endpoints[3] = lerpRGB555(*c0It, *c1It, 2.0 / 3.0);
-            // calculate minimum distance for all colors to endpoints
-            float iterationDistance = 0;
-            std::fill(iterationIndices.begin(), iterationIndices.end(), 0);
-            for (uint32_t ci = 0; ci < 16; ++ci)
-            {
-                const auto &distMapColorI = distanceSqrMap[colors[ci]];
-                // calculate minimum distance for each index for this color
-                uint8_t bestColorDistance = std::numeric_limits<uint8_t>::max();
-                for (uint32_t ei = 0; ei < 4; ++ei)
-                {
-                    auto indexDistance = distMapColorI[endpoints[ei]];
-                    // check if result improved
-                    if (bestColorDistance > indexDistance)
-                    {
-                        bestColorDistance = indexDistance;
-                        iterationIndices[ci] = ei;
-                    }
-                }
-                iterationDistance += bestColorDistance;
-            }
-            // check if result improved
-            iterationDistance = std::sqrt(iterationDistance / 16);
-            if (bestIterationDistance > iterationDistance)
-            {
-                bestIterationDistance = iterationDistance;
-                bestC0 = endpoints[0];
-                bestC1 = endpoints[1];
-                bestIndices = iterationIndices;
+                minDist = dist;
+                minIt = clusterIt;
             }
         }
+        // insert point into cluster
+        minIt->second.push_back(color);
+        // recalculate cluster center
+        minIt->first = std::accumulate(minIt->second.cbegin(), minIt->second.cend(), Eigen::Vector3d::Zero());
+        minIt->first /= minIt->second.size();
     }
-    // build result data
-    std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
-    // add color endpoints c0 and c1
-    auto data16 = reinterpret_cast<uint16_t *>(result.data());
-    *data16++ = toBGR555(bestC0);
-    *data16++ = toBGR555(bestC1);
-    // add index data in reverse
-    uint32_t indices = 0;
-    for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
+    // calculate current distance
+    auto bestDist = DistanceSqr(clusters);
+    auto bestClusters = clusters;
+    // try to optimize clusters
+    int32_t iterationsLeft = 8;
+    while (iterationsLeft-- > 0)
     {
-        indices = (indices << 2) | *iIt;
+        // find
     }
-    *(reinterpret_cast<uint32_t *>(data16)) = indices;
-    return result;
+// calculate intermediate colors c2 and c3
+uint16_t endpoints[4] = {colors16[indexC0], colors16[indexC1], 0, 0};
+endpoints[2] = lerpRGB555(endpoints[0], endpoints[1], 1.0 / 3.0);
+endpoints[3] = lerpRGB555(endpoints[0], endpoints[1], 2.0 / 3.0);
+// calculate minimum distance for all colors to endpoints
+std::array<uint32_t, 16> bestIndices = {0};
+for (uint32_t ci = 0; ci < 16; ++ci)
+{
+    const auto &distMapColorI = distanceSqrMap[colors16[ci]];
+    // calculate minimum distance for each index for this color
+    uint8_t bestColorDistance = std::numeric_limits<uint8_t>::max();
+    for (uint32_t ei = 0; ei < 4; ++ei)
+    {
+        auto indexDistance = distMapColorI[endpoints[ei]];
+        // check if result improved
+        if (bestColorDistance > indexDistance)
+        {
+            bestColorDistance = indexDistance;
+            bestIndices[ci] = ei;
+        }
+    }
 }
+// build result data
+std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
+// add color endpoints c0 and c1
+auto data16 = reinterpret_cast<uint16_t *>(result.data());
+*data16++ = toBGR555(endpoints[0]);
+*data16++ = toBGR555(endpoints[1]);
+// add index data in reverse
+uint32_t indices = 0;
+for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
+{
+    indices = (indices << 2) | *iIt;
+}
+*(reinterpret_cast<uint32_t *>(data16)) = indices;
+return result;
+}*/
 
 auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_t height) -> std::vector<uint8_t>
 {
@@ -210,38 +306,110 @@ auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_
     // compress to DXT1. we get 8 bytes per 4x4 block / 16 pixels
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
-    std::vector<uint8_t> resultData(nrOfBlocks * 8);
+    std::vector<uint8_t> dxtData(nrOfBlocks * 8);
     for (uint32_t y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
         {
             auto block = encodeBlockDXTG2(image.data() + y * width + x, width, RGB555DistanceSqrCache);
-            std::copy(block.cbegin(), block.cend(), std::next(resultData.begin(), y * yStride + x * 8 / 4));
+            std::copy(block.cbegin(), block.cend(), std::next(dxtData.begin(), y * yStride + x * 8 / 4));
         }
     }
     // split data into colors and indices for better compression
-    std::vector<uint8_t> splitData(nrOfBlocks * 8);
-    auto srcPtr = reinterpret_cast<const uint16_t *>(resultData.data());
-    auto colorPtr = reinterpret_cast<uint16_t *>(splitData.data());
-    auto indexPtr = reinterpret_cast<uint16_t *>(splitData.data() + nrOfBlocks * 8 / 2);
+    std::vector<uint8_t> data(nrOfBlocks * 8);
+    // std::vector<uint16_t> colorData(nrOfBlocks * 2);
+    auto colorPtr16 = reinterpret_cast<uint16_t *>(data.data());
+    // std::vector<uint16_t> indexData(nrOfBlocks * 2);
+    auto indexPtr16 = reinterpret_cast<uint16_t *>(data.data() + nrOfBlocks * 4);
+    auto srcPtr16 = reinterpret_cast<const uint16_t *>(dxtData.data());
     for (uint32_t i = 0; i < nrOfBlocks; i++)
     {
-        *colorPtr++ = *srcPtr++;
-        *colorPtr++ = *srcPtr++;
-        *indexPtr++ = *srcPtr++;
-        *indexPtr++ = *srcPtr++;
+        *colorPtr16++ = *srcPtr16++;
+        *colorPtr16++ = *srcPtr16++;
+        *indexPtr16++ = *srcPtr16++;
+        *indexPtr16++ = *srcPtr16++;
     }
-    /*std::vector<uint16_t> uniqueColors;
+    /*auto srcPtr16 = reinterpret_cast<const uint16_t *>(resultData.data());
+    std::vector<uint16_t> uniqueColors;
     for (uint32_t i = 0; i < nrOfBlocks * 2; i++)
     {
-        auto color = *srcPtr++;
+        auto color = *srcPtr16++;
         if (std::find(uniqueColors.cbegin(), uniqueColors.cend(), color) == uniqueColors.cend())
         {
             uniqueColors.push_back(color);
         }
     }
-    std::cout << "Colors: " << uniqueColors.size() << std::endl;*/
-    return splitData;
+    auto srcPtr32 = reinterpret_cast<const uint32_t *>(srcPtr16);
+    std::vector<uint32_t> uniqueIndices;
+    for (uint32_t i = 0; i < nrOfBlocks; i++)
+    {
+        auto indices = *srcPtr32++;
+        if (std::find(uniqueIndices.cbegin(), uniqueIndices.cend(), indices) == uniqueIndices.cend())
+        {
+            uniqueIndices.push_back(indices);
+        }
+    }
+    std::cout << "Unique colors: " << uniqueColors.size() << ", indices: " << uniqueIndices.size() << std::endl;*/
+#ifdef SLIDING_WINDOW
+    // encode colors with moving window
+    std::deque<uint16_t> colorWindow;
+    srcPtr16 = reinterpret_cast<const uint16_t *>(colorData.data());
+    uint32_t colorReuseCount = 0;
+    for (uint32_t i = 0; i < nrOfBlocks * 2; i++)
+    {
+        auto color = *srcPtr16++;
+        auto cwIt = std::find(colorWindow.cbegin(), colorWindow.cend(), color);
+        if (cwIt != colorWindow.cend())
+        {
+            auto dist = std::distance(colorWindow.cbegin(), cwIt);
+            data.push_back(static_cast<uint8_t>(dist));
+            colorWindow.erase(cwIt);
+            colorWindow.push_front(color);
+            colorReuseCount++;
+        }
+        else
+        {
+            data.push_back(static_cast<uint8_t>(color >> 8));
+            data.push_back(static_cast<uint8_t>(color & 0xFF));
+            if (colorWindow.size() >= 256)
+            {
+                colorWindow.pop_back();
+            }
+            colorWindow.push_front(color);
+        }
+    }
+    // std::cout << "Reused " << colorReuseCount << " of " << nrOfBlocks * 2 << " colors (" << ((colorReuseCount * 100) / (nrOfBlocks * 2)) << "%)" << std::endl;
+#endif
+#ifdef SLIDING_WINDOW
+    std::deque<uint16_t> indexWindow;
+    srcPtr16 = reinterpret_cast<const uint16_t *>(indexData.data());
+    uint32_t indexReuseCount = 0;
+    for (uint32_t i = 0; i < nrOfBlocks * 2; i++)
+    {
+        auto indices = *srcPtr16++;
+        auto iwIt = std::find(indexWindow.cbegin(), indexWindow.cend(), indices);
+        if (iwIt != indexWindow.cend())
+        {
+            auto dist = std::distance(indexWindow.cbegin(), iwIt);
+            data.push_back(static_cast<uint8_t>(dist));
+            indexWindow.erase(iwIt);
+            indexWindow.push_front(indices);
+            indexReuseCount++;
+        }
+        else
+        {
+            data.push_back(static_cast<uint8_t>(indices >> 8));
+            data.push_back(static_cast<uint8_t>(indices & 0xFF));
+            if (indexWindow.size() >= 256)
+            {
+                indexWindow.pop_back();
+            }
+            indexWindow.push_front(indices);
+        }
+    }
+    // std::cout << "Reused " << indexReuseCount << " of " << nrOfBlocks * 2 << " indices (" << ((indexReuseCount * 100) / (nrOfBlocks * 2)) << "%)" << std::endl;
+#endif
+    return data;
 }
 
 auto decodeDXTG(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint8_t>

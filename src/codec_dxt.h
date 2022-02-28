@@ -17,8 +17,8 @@ public:
     static auto decodeDXTG(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint8_t>;
 
 private:
-    static std::vector<uint8_t> encodeBlockDXTG1(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap);
     static std::vector<uint8_t> encodeBlockDXTG2(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap);
+    // static std::vector<uint8_t> encodeBlockDXTG3(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap);
 
     static std::vector<std::vector<uint8_t>> RGB555DistanceSqrCache;
 };
