@@ -6,7 +6,6 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <array>
-#include <execution>
 #include <deque>
 
 #include <iostream>
@@ -307,7 +306,8 @@ auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
     std::vector<uint8_t> dxtData(nrOfBlocks * 8);
-    for (uint32_t y = 0; y < height; y += 4)
+#pragma omp parallel for
+    for (int y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
         {

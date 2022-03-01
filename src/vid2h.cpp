@@ -68,6 +68,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.delta8.cxxOption);
         opts.add_option("", options.delta16.cxxOption);
         opts.add_option("", options.dxtg.cxxOption);
+        opts.add_option("", options.gvid.cxxOption);
         opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.lz11.cxxOption);
@@ -167,6 +168,7 @@ void printUsage()
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << "IMAGE COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.dxtg.helpString() << std::endl;
+    std::cout << options.gvid.helpString() << std::endl;
     std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
@@ -182,7 +184,7 @@ void printUsage()
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites," << std::endl;
-    std::cout << "tiles, deltaimage, dxtg, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
+    std::cout << "tiles, deltaimage, dxtg / gvid, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -284,6 +286,10 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::CompressDXTG, {}, true);
         }
+        if (options.gvid)
+        {
+            processing.addStep(Image::ProcessingType::CompressGVID, {});
+        }
         if (options.delta8)
         {
             processing.addStep(Image::ProcessingType::ConvertDelta8, {});
@@ -319,6 +325,7 @@ int main(int argc, const char *argv[])
             {
                 break;
             }
+            REQUIRE(frame.size() == videoInfo.width * videoInfo.height * 3, std::runtime_error, "Unexpected frame size");
             // build image from frame and apply processing
             images.push_back(processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data())));
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);

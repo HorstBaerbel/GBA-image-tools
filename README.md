@@ -6,7 +6,7 @@ This folder contains some tools to convert / compress images and videos to GBA f
 * [gimppalette555](src/gimppalette555.cpp) - Generate the file [GBA.gpl](GBA.gpl) for using / editing / painting with GBA colors in Gimp.
 * [hex2gba](src/hex2gba.cpp) - Convert a RGB888 color to GBA RGB555 / BGR555 high-color format.
 * [img2h](src/img2h.cpp) - Convert / compress a (list of) image(s) that can be read with [ImageMagick](https://imagemagick.org/index.php) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compress them with RLE or LZ77. Suitable to compress small image sequences too. Documentation is [here](img2h.md).
-* [vid2h](src/vid2h.cpp) - Convert / compress a a video that can be read with [FFmpeg](https://www.ffmpeg.org/) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compresses them using intra-frame techniques and RLE, LZ77 or DXT. Documentation is [here](vid2h.md).
+* [vid2h](src/vid2h.cpp) - Convert / compress a a video that can be read with [FFmpeg](https://www.ffmpeg.org/) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compresses them using intra- and inter-frame techniques and RLE, LZ77 or DXT. Documentation is [here](vid2h.md).
 
 If you find a bug or make an improvement your pull requests are appreciated.
 
@@ -29,9 +29,9 @@ All of this is under the [MIT License](LICENSE). It uses:
 
   ```apt install imagemagick``` or ```dnf install imagemagick```
 
-* You **must** have the Threaded Building Blocks / [TBB](https://github.com/oneapi-src/oneTBB) installed for compiling. Install it with:
+* You **must** have [OpenMP](https://www.openmp.org/) installed for compiling. Install it with:
 
-  ```apt install libtbb-dev``` or ```dnf install tbb-devel```
+  ```apt install libomp-dev``` or ```dnf install libomp-devel```
 
 * You **must** have [FFmpeg](https://www.ffmpeg.org/) installed for compiling vid2h. Install it with:
 

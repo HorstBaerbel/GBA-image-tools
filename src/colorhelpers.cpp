@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <execution>
 #include <future>
 #include <iomanip>
 #include <limits>
@@ -290,28 +289,31 @@ std::vector<std::vector<uint8_t>> RGB555DistanceSqrTable()
     std::iota(indices.begin(), indices.end(), 0);
     // calculate distance for colors
     std::vector<std::vector<uint8_t>> result(1 << 15);
-    std::for_each(std::execution::par_unseq, indices.cbegin(), indices.cend(), [&](uint16_t ci0)
-                  {
-                      const auto c0 = colors[ci0];
-                      std::vector<uint8_t> distances(1 << 15);
-                      for (uint32_t ci1 = 0; ci1 < colors.size(); ci1++)
-                      {
-                          if (ci0 == ci1)
-                          {
-                              // same color, no distance
-                              distances[ci1] = 0;
-                          }
-                          /*else if (ci1 < ci0)
-                          {
-                              // color combination already in table, copy
-                              distances[ci1] = result[ci1][ci0];
-                          }*/
-                          else
-                          {
-                              // new color combination, calculate distance
-                              distances[ci1] = std::min(std::round(distanceSqr(c0, colors[ci1]) * 28.333), 255.0);
-                          }
-                      }
-                      result[ci0] = std::move(distances); });
+#pragma omp parallel for
+    for (int i = 0; i < indices.size(); i++)
+    {
+        const auto ci0 = indices[i];
+        const auto c0 = colors[ci0];
+        std::vector<uint8_t> distances(1 << 15);
+        for (uint32_t ci1 = 0; ci1 < colors.size(); ci1++)
+        {
+            if (ci0 == ci1)
+            {
+                // same color, no distance
+                distances[ci1] = 0;
+            }
+            /*else if (ci1 < ci0)
+            {
+                // color combination already in table, copy
+                distances[ci1] = result[ci1][ci0];
+            }*/
+            else
+            {
+                // new color combination, calculate distance
+                distances[ci1] = std::min(std::round(distanceSqr(c0, colors[ci1]) * 28.333), 255.0);
+            }
+        }
+        result[ci0] = std::move(distances);
+    }
     return std::move(result);
 }
