@@ -37,6 +37,17 @@ std::pair<Vector3, Vector3> bestLineFromColors(const std::vector<Vector3> &color
 }
 
 template <typename T>
+Eigen::Vector3<T> truncToGrid(const Eigen::Vector3<T> &v)
+{
+    Eigen::Vector3<T> r;
+    // clamp to [0,31]
+    r.x() = std::trunc(v.x() < 0.0 ? 0.0 : (v.x() > 31.0 ? 31.0 : v.x()));
+    r.y() = std::trunc(v.y() < 0.0 ? 0.0 : (v.y() > 31.0 ? 31.0 : v.y()));
+    r.z() = std::trunc(v.z() < 0.0 ? 0.0 : (v.z() > 31.0 ? 31.0 : v.z()));
+    return r;
+}
+
+template <typename T>
 Eigen::Vector3<T> roundToGrid(const Eigen::Vector3<T> &v)
 {
     Eigen::Vector3<T> r;
@@ -60,32 +71,40 @@ Eigen::Vector3<T> toVector(uint16_t color)
 template <typename T>
 uint16_t toPixel(const Eigen::Vector3<T> &color)
 {
-    auto cr = roundToGrid(color);
-    uint16_t r = static_cast<uint16_t>(cr.x());
-    uint16_t g = static_cast<uint16_t>(cr.y());
-    uint16_t b = static_cast<uint16_t>(cr.z());
+    uint16_t r = static_cast<uint16_t>(color.x());
+    uint16_t g = static_cast<uint16_t>(color.y());
+    uint16_t b = static_cast<uint16_t>(color.z());
     return (r << 10) | (g << 5) | b;
 }
+
+double colorDistance(const Colord &a, const Colord &b)
+{
+    if (a == b)
+    {
+        return 0.0;
+    }
+    auto ra = a.x() / 31.0;
+    auto rb = b.x() / 31.0;
+    auto r = 0.5 * (ra + rb);
+    auto dR = ra - rb;
+    auto dG = (a.y() / 31.0) - (b.y() / 31.0);
+    auto dB = (a.z() / 31.0) - (b.z() / 31.0);
+    return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
+} // max:  (2   + 1) *  1 *  1 + 4   *  1 *  1 + (3   - 1) *  1 *  1 = 3 + 4 + 2 = 9
 
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
 std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap)
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
-    std::array<uint16_t, 16> colors16 = {0};
-    auto c16It = colors16.begin();
     std::vector<Colord> colors(16);
     auto cIt = colors.begin();
     auto pixel = start;
     for (int y = 0; y < 4; y++)
     {
-        *c16It++ = pixel[0];
         *cIt++ = toVector<double>(pixel[0]);
-        *c16It++ = pixel[1];
         *cIt++ = toVector<double>(pixel[1]);
-        *c16It++ = pixel[2];
         *cIt++ = toVector<double>(pixel[2]);
-        *c16It++ = pixel[3];
         *cIt++ = toVector<double>(pixel[3]);
         pixel += pixelsPerScanline;
     }
@@ -103,27 +122,23 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
     auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
     auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
-    uint16_t endpoints[4] = {toPixel(colors[indexC0]), toPixel(colors[indexC1]), 0, 0};
-    /*if (endpoints[0] > endpoints[1])
+    Colord endpoints[4] = {colors[indexC0], colors[indexC1], {}, {}};
+    /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
     {
-        std::swap(indexC0, indexC1);
         std::swap(endpoints[0], endpoints[1]);
     }*/
     // calculate intermediate colors c2 and c3
-    Colord c2 = (colors[indexC0].cwiseProduct(Colord(2, 2, 2)) + colors[indexC1]).cwiseQuotient(Colord(3, 3, 3));
-    Colord c3 = (colors[indexC0] + colors[indexC1].cwiseProduct(Colord(2, 2, 2))).cwiseQuotient(Colord(3, 3, 3));
-    endpoints[2] = toPixel(c2);
-    endpoints[3] = toPixel(c3);
+    endpoints[2] = truncToGrid(Colord((endpoints[0].cwiseProduct(Colord(2, 2, 2)) + endpoints[1]).cwiseQuotient(Colord(3, 3, 3))));
+    endpoints[3] = truncToGrid(Colord((endpoints[0] + endpoints[1].cwiseProduct(Colord(2, 2, 2))).cwiseQuotient(Colord(3, 3, 3))));
     // calculate minimum distance for all colors to endpoints
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
     {
-        const auto &distMapColorI = distanceSqrMap[colors16[ci]];
         // calculate minimum distance for each index for this color
-        uint8_t bestColorDistance = std::numeric_limits<uint8_t>::max();
+        double bestColorDistance = std::numeric_limits<double>::max();
         for (uint32_t ei = 0; ei < 4; ++ei)
         {
-            auto indexDistance = distMapColorI[endpoints[ei]];
+            auto indexDistance = colorDistance(colors[ci], endpoints[ei]);
             // check if result improved
             if (bestColorDistance > indexDistance)
             {
@@ -136,8 +151,8 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
     // add color endpoints c0 and c1
     auto data16 = reinterpret_cast<uint16_t *>(result.data());
-    *data16++ = toBGR555(endpoints[0]);
-    *data16++ = toBGR555(endpoints[1]);
+    *data16++ = toBGR555(toPixel(endpoints[0]));
+    *data16++ = toBGR555(toPixel(endpoints[1]));
     // add index data in reverse
     uint32_t indices = 0;
     for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
