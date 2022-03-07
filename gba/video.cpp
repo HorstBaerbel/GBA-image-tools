@@ -22,7 +22,7 @@ IWRAM_FUNC void frameRequest()
 	frameRequested = true;
 }
 
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[19208 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
+EWRAM_DATA ALIGN(4) uint32_t ScratchPad[19264 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
 
 int main()
 {

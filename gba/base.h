@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef BIT
+#undef BIT
+#endif
+
 /// @brief Base address of GBA video ram
 #define VRAM 0x06000000
 
@@ -33,6 +37,9 @@
 #ifdef EWRAM_DATA
 #undef EWRAM_DATA
 #endif
+#ifdef EWRAM_BSS
+#undef EWRAM_BSS
+#endif
 
 #ifdef ALIGN
 #undef ALIGN
@@ -40,6 +47,7 @@
 
 #define STRINGIFY_2(a) #a
 #define STRINGIFY(a) STRINGIFY_2(a)
+#define SECTION_COUNTER STRINGIFY(__COUNTER__)
 
 #define ALIGN(n) __attribute__((aligned(n)))
 #define ALIGN_PACK(n) __attribute__((aligned(n), packed))
@@ -50,12 +58,12 @@
 
 #define SECTION(name) __attribute__((section(name)))
 
-#define IWRAM_FUNC __attribute__((section(".iwram.text." STRINGIFY(__COUNTER__)), noinline))
-#define IWRAM_DATA __attribute__((section(".iwram.data." STRINGIFY(__COUNTER__))))
-#define IWRAM_BSS __attribute__((section(".bss." STRINGIFY(__COUNTER__))))
-#define EWRAM_FUNC __attribute__((section(".ewram.text." STRINGIFY(__COUNTER__), noinline)))
-#define EWRAM_DATA __attribute__((section(".ewram.data." STRINGIFY(__COUNTER__))))
-#define EWRAM_BSS __attribute__((section(".sbss." STRINGIFY(__COUNTER__))))
+#define IWRAM_FUNC __attribute__((section(".iwram.text." SECTION_COUNTER))) NOINLINE
+#define IWRAM_DATA __attribute__((section(".iwram.data." SECTION_COUNTER)))
+#define IWRAM_BSS __attribute__((section(".bss." SECTION_COUNTER)))
+#define EWRAM_FUNC __attribute__((section(".ewram.text." SECTION_COUNTER))) NOINLINE
+#define EWRAM_DATA __attribute__((section(".ewram.data." SECTION_COUNTER)))
+#define EWRAM_BSS __attribute__((section(".sbss." SECTION_COUNTER)))
 
 /// @brief Use for default 0 initialized static variables
 #define STATIC_BSS static EWRAM_BSS
