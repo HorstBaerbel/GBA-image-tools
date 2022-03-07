@@ -36,10 +36,9 @@ std::pair<Vector3, Vector3> bestLineFromColors(const std::vector<Vector3> &color
     return {origin, axis};
 }
 
-template <typename T>
-Eigen::Vector3<T> truncToGrid(const Eigen::Vector3<T> &v)
+Colord truncToGrid(const Colord &v)
 {
-    Eigen::Vector3<T> r;
+    Colord r;
     // clamp to [0,31]
     r.x() = std::trunc(v.x() < 0.0 ? 0.0 : (v.x() > 31.0 ? 31.0 : v.x()));
     r.y() = std::trunc(v.y() < 0.0 ? 0.0 : (v.y() > 31.0 ? 31.0 : v.y()));
@@ -47,10 +46,9 @@ Eigen::Vector3<T> truncToGrid(const Eigen::Vector3<T> &v)
     return r;
 }
 
-template <typename T>
-Eigen::Vector3<T> roundToGrid(const Eigen::Vector3<T> &v)
+Colord roundToGrid(const Colord &v)
 {
-    Eigen::Vector3<T> r;
+    Colord r;
     // clamp to [0,31]
     r.x() = v.x() < 0.0 ? 0.0 : (v.x() > 31.0 ? 31.0 : v.x());
     r.y() = v.y() < 0.0 ? 0.0 : (v.y() > 31.0 ? 31.0 : v.y());
@@ -62,14 +60,12 @@ Eigen::Vector3<T> roundToGrid(const Eigen::Vector3<T> &v)
     return r;
 }
 
-template <typename T>
-Eigen::Vector3<T> toVector(uint16_t color)
+Colord toVector(uint16_t color)
 {
-    return {static_cast<T>((color & 0x7C00) >> 10), static_cast<T>((color & 0x3E0) >> 5), static_cast<T>(color & 0x1F)};
+    return {static_cast<double>((color & 0x7C00) >> 10), static_cast<double>((color & 0x3E0) >> 5), static_cast<double>(color & 0x1F)};
 }
 
-template <typename T>
-uint16_t toPixel(const Eigen::Vector3<T> &color)
+uint16_t toPixel(const Colord &color)
 {
     uint16_t r = static_cast<uint16_t>(color.x());
     uint16_t g = static_cast<uint16_t>(color.y());
@@ -102,10 +98,10 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     auto pixel = start;
     for (int y = 0; y < 4; y++)
     {
-        *cIt++ = toVector<double>(pixel[0]);
-        *cIt++ = toVector<double>(pixel[1]);
-        *cIt++ = toVector<double>(pixel[2]);
-        *cIt++ = toVector<double>(pixel[3]);
+        *cIt++ = toVector(pixel[0]);
+        *cIt++ = toVector(pixel[1]);
+        *cIt++ = toVector(pixel[2]);
+        *cIt++ = toVector(pixel[3]);
         pixel += pixelsPerScanline;
     }
     // calculate line fit through RGB color space
@@ -113,23 +109,26 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     // project all points onto the line
     std::vector<Colord> colorsOnLine(16);
     std::transform(colors.cbegin(), colors.cend(), colorsOnLine.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
-                   { return origin + (color - origin).dot(axis) / axis.dot(axis) * axis; });
+                   { return (color - origin).dot(axis) / axis.dot(axis) * axis; });
     // calculate signed distance from origin
     std::vector<double> distanceFromOrigin(16);
     std::transform(colorsOnLine.cbegin(), colorsOnLine.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
-                   { return color.norm() * axis.dot(color); });
-    // get the endpoints c0 and c1
+                   { return axis.dot(color); });
+    // get the distance of endpoints c0 and c1 on line
     auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
     auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
     auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
-    Colord endpoints[4] = {colors[indexC0], colors[indexC1], {}, {}};
+    // get colors c0 and c1 on line and round to grid
+    auto c0 = roundToGrid(originAndAxis.first + colorsOnLine[indexC0]);
+    auto c1 = roundToGrid(originAndAxis.first + colorsOnLine[indexC1]);
+    Colord endpoints[4] = {c0, c1, {}, {}};
     /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
     {
         std::swap(endpoints[0], endpoints[1]);
     }*/
     // calculate intermediate colors c2 and c3
-    endpoints[2] = truncToGrid(Colord((endpoints[0].cwiseProduct(Colord(2, 2, 2)) + endpoints[1]).cwiseQuotient(Colord(3, 3, 3))));
-    endpoints[3] = truncToGrid(Colord((endpoints[0] + endpoints[1].cwiseProduct(Colord(2, 2, 2))).cwiseQuotient(Colord(3, 3, 3))));
+    endpoints[2] = roundToGrid(Colord((c0.cwiseProduct(Colord(2, 2, 2)) + c1).cwiseQuotient(Colord(3, 3, 3))));
+    endpoints[3] = roundToGrid(Colord((c0 + c1.cwiseProduct(Colord(2, 2, 2))).cwiseQuotient(Colord(3, 3, 3))));
     // calculate minimum distance for all colors to endpoints
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
@@ -164,21 +163,6 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
 }
 
 using Cluster = std::pair<Colord, std::vector<Colord>>;
-
-double DistanceSqr(const Colord &a, const Colord &b)
-{
-    if (a == b)
-    {
-        return 0.0;
-    }
-    auto ra = a.x();
-    auto rb = b.x();
-    auto r = 0.5 * (ra + rb);
-    auto dR = ra - rb;
-    auto dG = a.y() - b.y();
-    auto dB = a.z() - b.z();
-    return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
-}
 
 /*double DistanceSqr(const std::array<Cluster, 4> &clusters)
 {
