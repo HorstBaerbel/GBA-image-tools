@@ -138,9 +138,8 @@ namespace DXTG
                 uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
                 uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
                 *c2c3Ptr = (C2C3table[b] << 10) | (C2C3table[g] << 5) | C2C3table[r];
-                // get pixel color indices
+                // get pixel color indices and set pixels accordingly
                 uint32_t indices = *indexPtr++;
-                // set pixels
                 auto blockDst = blockLineDst;
                 // select color by 2 bit index from [c0, c1, c2, c3]
                 *blockDst++ = colors[(indices >> 0) & 0x3];

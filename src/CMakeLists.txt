@@ -42,6 +42,7 @@ set(HELPERS_SRC
     color.cpp
     colorhelpers.cpp
     codec_dxt.cpp
+    codec_dxtv.cpp
     codec_gvid.cpp
     codec_lzss.cpp
     codec_rle.cpp
