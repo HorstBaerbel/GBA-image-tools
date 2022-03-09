@@ -1,9 +1,10 @@
 #include "imageprocessing.h"
 
 #include "codec_dxt.h"
+#include "codec_dxtv.h"
 #include "codec_gvid.h"
-#include "codec_rle.h"
 #include "codec_lzss.h"
+#include "codec_rle.h"
 #include "colorhelpers.h"
 #include "compresshelpers.h"
 #include "datahelpers.h"
@@ -35,6 +36,7 @@ namespace Image
             {ProcessingType::CompressLz11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
             {ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXTG, {"compress DXTG", OperationType::Convert, FunctionType(compressDXTG)}},
+            {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::Convert, FunctionType(compressDXTV)}},
             {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
             {ProcessingType::PadImageData, {"pad image data", OperationType::Convert, FunctionType(padImageData)}},
             {ProcessingType::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
@@ -321,6 +323,28 @@ namespace Image
         result.colorFormat = ColorFormat::RGB555;
         result.mapData = {};
         result.data = DXT::encodeDXTG(convertTo<uint16_t>(data), image.size.width(), image.size.height());
+        result.colorMap = {};
+        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapData = {};
+        return result;
+    }
+
+    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters)
+    {
+        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTV expects bitmaps as input data");
+        REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTV compression is only possible for RGB888 and RGB555 truecolor images");
+        REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXT compression");
+        REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXT compression");
+        // convert RGB888 to RGB565
+        auto data = image.data;
+        if (image.colorFormat == ColorFormat::RGB888)
+        {
+            data = toRGB555(data);
+        }
+        auto result = image;
+        result.colorFormat = ColorFormat::RGB555;
+        result.mapData = {};
+        result.data = DXTV::encodeDXTV(convertTo<uint16_t>(data), image.size.width(), image.size.height(), true);
         result.colorMap = {};
         result.colorMapFormat = ColorFormat::Unknown;
         result.colorMapData = {};

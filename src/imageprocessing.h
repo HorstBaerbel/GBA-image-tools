@@ -131,6 +131,11 @@ namespace Image
         /// @param parameters: Unused
         static Data compressDXTG(const Data &image, const std::vector<Parameter> &parameters);
 
+        /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
+        /// Has additional intra- and inter-frame compression in comparison to DTXG
+        /// @param parameters: Unused
+        static Data compressDXTV(const Data &image, const std::vector<Parameter> &parameters);
+
         /// @brief Encode a truecolor RGB888 image with YCgCo block-based method
         /// @param parameters:
         /// - Allowed error for inter-frame block references as float in [0,1]. 0 means no error allowed

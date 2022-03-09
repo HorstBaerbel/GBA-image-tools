@@ -195,6 +195,10 @@ ProcessingOptions::Option ProcessingOptions::dxtg{
     false,
     {"dxtg", "Use DXT1-ish RGB555 compression.", cxxopts::value(dxtg.isSet)}};
 
+ProcessingOptions::Option ProcessingOptions::dxtv{
+    false,
+    {"dxtv", "Use DXT1-ish RGB555 compression. With intra- and inter-frame compression", cxxopts::value(dxtv.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::gvid{
     false,
     {"gvid", "Use GVID video compression.", cxxopts::value(gvid.isSet)}};

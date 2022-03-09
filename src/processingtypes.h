@@ -27,6 +27,7 @@ namespace Image
         CompressLz11 = 61,     // Compress image data using LZ77 variant 11
         CompressRLE = 65,      // Compress image data using run-length-encoding
         CompressDXTG = 70,     // Compress image data using DXTG
+        CompressDXTV = 71,     // Compress image data using DXTV
         CompressGVID = 72,     // Compress image data using GVID
         PadImageData = 80,     // Fill up image data with 0s to a multiple of N bytes
         PadColorMap = 90,      // Fill up color map with 0s to a multiple of N colors
