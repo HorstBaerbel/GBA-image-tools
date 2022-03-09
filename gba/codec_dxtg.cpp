@@ -136,7 +136,7 @@ namespace DXTG
                 // calculate intermediate colors c2 and c3
                 uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
                 uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
-                uint32_t r = (c0 & 0x1F << 5) | (c1 & 0x1F);
+                uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
                 *c2c3Ptr = (C2C3table[b] << 10) | (C2C3table[g] << 5) | C2C3table[r];
                 // get pixel color indices
                 uint32_t indices = *indexPtr++;

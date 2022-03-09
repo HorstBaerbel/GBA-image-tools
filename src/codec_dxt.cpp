@@ -10,66 +10,84 @@
 
 #include <iostream>
 
-std::vector<std::vector<uint8_t>> DXT::RGB555DistanceSqrCache;
-
 using Colord = Eigen::Vector3d;
 
 // Found here: https://gist.github.com/ialhashim/0a2554076a6cf32831ca
 // See also: https://zalo.github.io/blog/line-fitting/
+// See also: https://stackoverflow.com/questions/39370370/eigen-and-svd-to-find-best-fitting-plane-given-a-set-of-points
+// See also: https://stackoverflow.com/questions/40589802/eigen-best-fit-of-a-plane-to-n-points
 template <class Vector3>
-std::pair<Vector3, Vector3> bestLineFromColors(const std::vector<Vector3> &colors)
+std::pair<Vector3, Vector3> bestLineFromColors(const std::array<Vector3, 16> &colors)
 {
     // copy coordinates to matrix in Eigen format
-    const size_t NrOfAtoms = colors.size();
-    Eigen::Matrix<typename Vector3::Scalar, Eigen::Dynamic, Eigen::Dynamic> centers(NrOfAtoms, 3);
+    constexpr size_t NrOfAtoms = colors.size();
+    Eigen::Matrix<typename Vector3::Scalar, Eigen::Dynamic, Eigen::Dynamic> points(3, NrOfAtoms);
     for (size_t i = 0; i < NrOfAtoms; ++i)
     {
-        centers.row(i) = colors[i];
+        points.col(i) = colors[i];
     }
     // center on mean
-    Vector3 origin = centers.colwise().mean();
-    Eigen::MatrixXd centered = centers.rowwise() - origin.transpose();
-    // calculate adjoint
-    Eigen::MatrixXd cov = centered.adjoint() * centered;
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eig(cov);
-    Vector3 axis = eig.eigenvectors().col(2).normalized();
-    return {origin, axis};
+    Vector3 mean = points.rowwise().mean();
+    auto centered = points.colwise() - mean;
+    // calculate SVD and first eigenvector
+    auto svd = centered.jacobiSvd(Eigen::DecompositionOptions::ComputeFullU);
+    Vector3 axis = svd.matrixU().col(0).transpose().normalized();
+    return {mean, axis};
 }
 
-Colord truncToGrid(const Colord &v)
+Colord truncToGrid(const Colord &color)
 {
-    Colord r;
+    // bring into range
+    auto cr = color.x() * 31.0;
+    auto cg = color.y() * 31.0;
+    auto cb = color.z() * 31.0;
     // clamp to [0,31]
-    r.x() = std::trunc(v.x() < 0.0 ? 0.0 : (v.x() > 31.0 ? 31.0 : v.x()));
-    r.y() = std::trunc(v.y() < 0.0 ? 0.0 : (v.y() > 31.0 ? 31.0 : v.y()));
-    r.z() = std::trunc(v.z() < 0.0 ? 0.0 : (v.z() > 31.0 ? 31.0 : v.z()));
-    return r;
+    cr = cr < 0.0 ? 0.0 : (cr > 31.0 ? 31.0 : cr);
+    cg = cg < 0.0 ? 0.0 : (cg > 31.0 ? 31.0 : cg);
+    cb = cb < 0.0 ? 0.0 : (cb > 31.0 ? 31.0 : cb);
+    // truncate to grid point
+    cr = std::trunc(cr);
+    cg = std::trunc(cg);
+    cb = std::trunc(cb);
+    return {cr / 31.0, cg / 31.0, cb / 31.0};
 }
 
-Colord roundToGrid(const Colord &v)
+Colord roundToGrid(const Colord &color)
 {
-    Colord r;
+    // bring into range
+    auto cr = color.x() * 31.0;
+    auto cg = color.y() * 31.0;
+    auto cb = color.z() * 31.0;
     // clamp to [0,31]
-    r.x() = v.x() < 0.0 ? 0.0 : (v.x() > 31.0 ? 31.0 : v.x());
-    r.y() = v.y() < 0.0 ? 0.0 : (v.y() > 31.0 ? 31.0 : v.y());
-    r.z() = v.z() < 0.0 ? 0.0 : (v.z() > 31.0 ? 31.0 : v.z());
+    cr = cr < 0.0 ? 0.0 : (cr > 31.0 ? 31.0 : cr);
+    cg = cg < 0.0 ? 0.0 : (cg > 31.0 ? 31.0 : cg);
+    cb = cb < 0.0 ? 0.0 : (cb > 31.0 ? 31.0 : cb);
     // round to grid point
-    r.x() = std::trunc(r.x() + 0.5);
-    r.y() = std::trunc(r.y() + 0.5);
-    r.z() = std::trunc(r.z() + 0.5);
-    return r;
+    cr = std::trunc(cr + 0.5);
+    cg = std::trunc(cg + 0.5);
+    cb = std::trunc(cb + 0.5);
+    return {cr / 31.0, cg / 31.0, cb / 31.0};
 }
 
 Colord toVector(uint16_t color)
 {
-    return {static_cast<double>((color & 0x7C00) >> 10), static_cast<double>((color & 0x3E0) >> 5), static_cast<double>(color & 0x1F)};
+    return {static_cast<double>((color & 0x7C00) >> 10) / 31.0, static_cast<double>((color & 0x3E0) >> 5) / 31.0, static_cast<double>(color & 0x1F) / 31.0};
 }
 
 uint16_t toPixel(const Colord &color)
 {
-    uint16_t r = static_cast<uint16_t>(color.x());
-    uint16_t g = static_cast<uint16_t>(color.y());
-    uint16_t b = static_cast<uint16_t>(color.z());
+    // bring into range
+    auto cr = color.x() * 31.0;
+    auto cg = color.y() * 31.0;
+    auto cb = color.z() * 31.0;
+    // clamp to [0,31]
+    cr = cr < 0.0 ? 0.0 : (cr > 31.0 ? 31.0 : cr);
+    cg = cg < 0.0 ? 0.0 : (cg > 31.0 ? 31.0 : cg);
+    cb = cb < 0.0 ? 0.0 : (cb > 31.0 ? 31.0 : cb);
+    // convert to RGB555
+    auto r = static_cast<uint16_t>(cr);
+    auto g = static_cast<uint16_t>(cg);
+    auto b = static_cast<uint16_t>(cb);
     return (r << 10) | (g << 5) | b;
 }
 
@@ -79,21 +97,21 @@ double colorDistance(const Colord &a, const Colord &b)
     {
         return 0.0;
     }
-    auto ra = a.x() / 31.0;
-    auto rb = b.x() / 31.0;
-    auto r = 0.5 * (ra + rb);
-    auto dR = ra - rb;
-    auto dG = (a.y() / 31.0) - (b.y() / 31.0);
-    auto dB = (a.z() / 31.0) - (b.z() / 31.0);
+    double ra = a.x();
+    double rb = b.x();
+    double r = 0.5 * (ra + rb);
+    double dR = ra - rb;
+    double dG = a.y() - b.y();
+    double dB = a.z() - b.z();
     return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
 } // max:  (2   + 1) *  1 *  1 + 4   *  1 *  1 + (3   - 1) *  1 *  1 = 3 + 4 + 2 = 9
 
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap)
+std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixelsPerScanline)
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
-    std::vector<Colord> colors(16);
+    std::array<Colord, 16> colors;
     auto cIt = colors.begin();
     auto pixel = start;
     for (int y = 0; y < 4; y++)
@@ -106,24 +124,21 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     }
     // calculate line fit through RGB color space
     auto originAndAxis = bestLineFromColors(colors);
-    // project all points onto the line
-    std::vector<Colord> colorsOnLine(16);
-    std::transform(colors.cbegin(), colors.cend(), colorsOnLine.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
-                   { return (color - origin).dot(axis) / axis.dot(axis) * axis; });
     // calculate signed distance from origin
     std::vector<double> distanceFromOrigin(16);
-    std::transform(colorsOnLine.cbegin(), colorsOnLine.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
-                   { return axis.dot(color); });
+    std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
+                   { return color.dot(axis); });
     // get the distance of endpoints c0 and c1 on line
     auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
     auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
     auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
     // get colors c0 and c1 on line and round to grid
-    auto c0 = roundToGrid(originAndAxis.first + colorsOnLine[indexC0]);
-    auto c1 = roundToGrid(originAndAxis.first + colorsOnLine[indexC1]);
+    auto c0 = colors[indexC0];
+    auto c1 = colors[indexC1];
     Colord endpoints[4] = {c0, c1, {}, {}};
     /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
     {
+        std::swap(c0, c1);
         std::swap(endpoints[0], endpoints[1]);
     }*/
     // calculate intermediate colors c2 and c3
@@ -290,11 +305,6 @@ auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
-    // check if squared distance map has been allocated
-    if (RGB555DistanceSqrCache.empty())
-    {
-        RGB555DistanceSqrCache = std::move(RGB555DistanceSqrTable());
-    }
     // build y-position table for parallel for
     std::vector<uint32_t> ys(height / 4);
     std::generate(ys.begin(), ys.end(), [y = 0]() mutable
@@ -310,7 +320,7 @@ auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_
     {
         for (uint32_t x = 0; x < width; x += 4)
         {
-            auto block = encodeBlockDXTG2(image.data() + y * width + x, width, RGB555DistanceSqrCache);
+            auto block = encodeBlockDXTG2(image.data() + y * width + x, width);
             std::copy(block.cbegin(), block.cend(), std::next(dxtData.begin(), y * yStride + x * 8 / 4));
         }
     }

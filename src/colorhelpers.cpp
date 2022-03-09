@@ -49,9 +49,9 @@ uint16_t colorToBGR555(const Magick::Color &color)
 
 uint16_t toBGR555(uint16_t color)
 {
-    auto r = (color & 0x7C00) >> 10;
-    auto g = (color & 0x3E0);
-    auto b = (color & 0x1F);
+    uint16_t r = (color & 0x7C00) >> 10;
+    uint16_t g = (color & 0x3E0);
+    uint16_t b = (color & 0x1F);
     return ((b << 10) | g | r);
 }
 
