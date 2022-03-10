@@ -2,6 +2,7 @@
 
 #include "base.h"
 #include "codec_dxtg.h"
+#include "codec_dxtv.h"
 #include "decompression.h"
 #include "dma.h"
 
@@ -42,6 +43,9 @@ namespace Video
                 break;
             case Image::ProcessingType::CompressDXTG:
                 DXTG::UnCompWrite16bit<240>(reinterpret_cast<uint16_t *>(currentDst), reinterpret_cast<const uint16_t *>(currentSrc), info.width, info.height);
+                break;
+            case Image::ProcessingType::CompressDXTV:
+                DXTV::UnCompWrite16bit<240>(reinterpret_cast<uint16_t *>(currentDst), currentSrc, info.width, info.height);
                 break;
             default:
                 return;

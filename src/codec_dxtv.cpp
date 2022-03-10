@@ -2,6 +2,7 @@
 
 #include "color.h"
 #include "colorhelpers.h"
+#include "datahelpers.h"
 #include "exception.h"
 
 #include <Eigen/Core>
@@ -13,6 +14,20 @@
 #include <iostream>
 
 constexpr float MaxKeyFrameBlockError = 1.0F; // Maximum error allowed for key frame block references [0,6]
+
+struct FrameHeader
+{
+    uint16_t flags = 0;         // e.g. FRAME_IS_PFRAME
+    uint16_t nrOfRefBlocks = 0; // # of reference blocks in frame. rest is verbatim blocks
+
+    std::array<uint8_t, 4> toArray() const
+    {
+        std::array<uint8_t, 4> result;
+        *reinterpret_cast<uint16_t *>(&result[0]) = flags;
+        *reinterpret_cast<uint16_t *>(&result[2]) = nrOfRefBlocks;
+        return result;
+    }
+};
 
 constexpr uint8_t FRAME_IS_PFRAME = 0x80; // 0 for key frames, 1 for inter-frame compression ("predicted frame")
 
@@ -47,9 +62,9 @@ struct DXTBlock
     std::array<uint8_t, 8> toArray() const
     {
         std::array<uint8_t, 8> result;
-        *reinterpret_cast<uint16_t *>(result[0]) = color0;
-        *reinterpret_cast<uint16_t *>(result[2]) = color1;
-        *reinterpret_cast<uint32_t *>(result[4]) = indices;
+        *reinterpret_cast<uint16_t *>(&result[0]) = color0;
+        *reinterpret_cast<uint16_t *>(&result[2]) = color1;
+        *reinterpret_cast<uint32_t *>(&result[4]) = indices;
         return result;
     }
 };
@@ -144,15 +159,20 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
 {
     static_assert(sizeof(BlockReferenceInterFrame) == 1, "Size of intra-frame reference block must be 8 bit");
     static_assert(sizeof(BlockReferenceIntraFrame) == 1, "Size of inter-frame reference block must be 8 bit");
-    REQUIRE(width % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
-    REQUIRE(height % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
+    static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
+    REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXTV compression");
+    REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXTV compression");
+    REQUIRE((width / 4 * height / 4) % 8 == 0, std::runtime_error, "Number of 4x4 block must be a multiple of 8 for DXTV compression");
     // set up some variables
     uint32_t blockIndex = 0;            // 4x4 block index in frame
-    uint32_t blockFlags = 0;            // flags for current 16 blocks
-    std::vector<uint8_t> flags;         // block flags store flags for 16 blocks (16*2 bits = 4 bytes)
-    std::vector<uint8_t> blocks;        // blocks store verbatim codebook entries or references
+    uint16_t blockFlags = 0;            // flags for current 8 blocks
+    std::vector<uint8_t> flags;         // block flags store flags for 8 blocks (8*2 bits = 2 bytes)
+    std::vector<uint8_t> refBlocks;     // stores block references
+    std::vector<uint8_t> dxtBlocks;     // stores verbatim DXT blocks
     CodeBook codebook;                  // code book storing all codebook entries (when finished this equals the frame in RGB format)
     std::array<Color::RGBd, 16> colors; // current set of colors in 4x4 block
+    FrameHeader frameHeader;
+    frameHeader.flags = keyFrame ? 0 : FRAME_IS_PFRAME;
     // loop through source images blocks
     for (uint32_t y = 0; y < height; y += 4)
     {
@@ -174,32 +194,31 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
             {
                 blockFlags >>= 2;
                 // for key frames, search the last -1 to -256 entries of the current codebook
-                auto bestMatch = findBestMatchingBlock(codebook, colors, MaxKeyFrameBlockError, blockIndex, -1, -256);
+                /*auto bestMatch = findBestMatchingBlock(codebook, colors, MaxKeyFrameBlockError, blockIndex, -1, -256);
                 if (bestMatch.has_value())
                 {
                     // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
                     int32_t offset = blockIndex - bestMatch.value().second - 1;
                     assert(offset >= 0 && offset <= 255);
-                    blocks.push_back(static_cast<uint8_t>(offset));
-                    blockFlags |= (BLOCK_IS_REFERENCE << 30);
+                    refBlocks.push_back(static_cast<uint8_t>(offset));
+                    blockFlags |= (BLOCK_IS_REFERENCE << 14);
                     // insert referenced codebook entry into codebook
                     codebook.push_back(codebook[bestMatch.value().second]);
+                    frameHeader.nrOfRefBlocks++;
                 }
                 else
-                {
-                    // else insert the codebook entry itself
-                    auto block = encodeBlock(colors).toArray();
-                    std::copy(block.cbegin(), block.cend(), std::back_inserter(blocks));
-                    // insert new codebook entry into codebook
-                    codebook.push_back(colors);
-                }
+                {*/
+                // else insert the codebook entry itself
+                auto block = encodeBlock(colors).toArray();
+                std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
+                // insert new codebook entry into codebook
+                codebook.push_back(colors);
+                //}
             }
             // store and clear block flags every 16 blocks
             blockIndex++;
-            if (blockIndex % 16 == 0)
+            if ((blockIndex % 8) == 0)
             {
-                flags.push_back((blockFlags >> 24) & 0xFF);
-                flags.push_back((blockFlags >> 16) & 0xFF);
                 flags.push_back((blockFlags >> 8) & 0xFF);
                 flags.push_back((blockFlags >> 0) & 0xFF);
                 blockFlags = 0;
@@ -208,9 +227,15 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
     }
     // combine frame flags, flags and block data
     std::vector<uint8_t> result;
-    result.push_back(keyFrame ? 0 : FRAME_IS_PFRAME);
+    auto headerData = frameHeader.toArray();
+    std::copy(headerData.cbegin(), headerData.cend(), std::back_inserter(result));
+    // expand all arrays to multiple of 4 and copy to result
+    fillUpToMultipleOf(flags, 4);
     std::copy(flags.cbegin(), flags.cend(), std::back_inserter(result));
-    std::copy(blocks.cbegin(), blocks.cend(), std::back_inserter(result));
+    fillUpToMultipleOf(refBlocks, 4);
+    std::copy(refBlocks.cbegin(), refBlocks.cend(), std::back_inserter(result));
+    // verbatim DXT blocks do not need to be filled up. they're always 8 bytes in size
+    std::copy(dxtBlocks.cbegin(), dxtBlocks.cend(), std::back_inserter(result));
     return result;
 }
 

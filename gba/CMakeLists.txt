@@ -17,6 +17,7 @@ include(CompilerFlagsGBA)
 # List all the source files in our directory
 LIST(APPEND TARGET_SOURCE_FILES
 	codec_dxtg.cpp
+	codec_dxtv.cpp
 	dma.cpp
 	decompression.cpp
 	itoa.cpp

@@ -82,9 +82,9 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     return result;
 }
 
-using Cluster = std::pair<Color::RGBd, std::vector<Color::RGBd>>;
+/*using Cluster = std::pair<Color::RGBd, std::vector<Color::RGBd>>;
 
-/*double DistanceSqr(const std::array<Cluster, 4> &clusters)
+double DistanceSqr(const std::array<Cluster, 4> &clusters)
 {
     auto dist = 0.0;
     for (auto clusterIt = clusters.begin(); clusterIt != clusters.end(); ++clusterIt)

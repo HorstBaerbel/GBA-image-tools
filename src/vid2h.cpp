@@ -68,6 +68,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.delta8.cxxOption);
         opts.add_option("", options.delta16.cxxOption);
         opts.add_option("", options.dxtg.cxxOption);
+        opts.add_option("", options.dxtv.cxxOption);
         opts.add_option("", options.gvid.cxxOption);
         opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
@@ -168,6 +169,7 @@ void printUsage()
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << "IMAGE COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.dxtg.helpString() << std::endl;
+    std::cout << options.dxtv.helpString() << std::endl;
     std::cout << options.gvid.helpString() << std::endl;
     std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.rle.helpString() << std::endl;
@@ -183,8 +185,8 @@ void printUsage()
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
-    std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites," << std::endl;
-    std::cout << "tiles, deltaimage, dxtg / gvid, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
+    std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites, tiles," << std::endl;
+    std::cout << "deltaimage, dxtg / dtxv / gvid, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -285,6 +287,10 @@ int main(int argc, const char *argv[])
         if (options.dxtg)
         {
             processing.addStep(Image::ProcessingType::CompressDXTG, {}, true);
+        }
+        if (options.dxtv)
+        {
+            processing.addStep(Image::ProcessingType::CompressDXTV, {}, true);
         }
         if (options.gvid)
         {
