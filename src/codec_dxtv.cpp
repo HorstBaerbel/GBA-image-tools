@@ -13,7 +13,7 @@
 
 #include <iostream>
 
-constexpr float MaxKeyFrameBlockError = 1.0F; // Maximum error allowed for key frame block references [0,6]
+constexpr double MaxKeyFrameBlockError = 0.1; // Maximum error allowed for key frame block references [0,9]
 
 struct FrameHeader
 {
@@ -123,25 +123,27 @@ DXTBlock encodeBlock(const std::array<Color::RGBd, 16> &colors)
 
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, entry index) if usable entry found or empty optional, if not
-auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry, float maxAllowedError, int32_t currentIndex, int32_t distanceMin, int32_t distanceMax) -> std::optional<std::pair<float, int32_t>>
+auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry, double maxAllowedError, int32_t currentIndex, int32_t distanceMin, int32_t distanceMax) -> std::optional<std::pair<double, int32_t>>
 {
     if (codebook.empty())
     {
-        return {};
+        return std::optional<std::pair<double, int32_t>>();
     }
-    // cacluate start and end of search
+    // caculate start and end of search
     auto maxIndex = currentIndex + distanceMin;
     maxIndex = maxIndex < 0 ? 0 : maxIndex;
+    maxIndex = maxIndex >= codebook.size() ? codebook.size() - 1 : maxIndex;
     auto minIndex = currentIndex + distanceMax;
     minIndex = minIndex < 0 ? 0 : minIndex;
     minIndex = minIndex >= codebook.size() ? codebook.size() - 1 : minIndex;
     // searched entries must be >= 1
     if ((maxIndex - minIndex) < 1)
     {
-        return {};
+        return std::optional<std::pair<double, int32_t>>();
     }
+    assert(maxIndex - minIndex >= 1);
     // calculate codebook errors in reverse (increasing distance from current position)
-    std::deque<std::pair<float, int32_t>> errors;
+    std::deque<std::pair<double, int32_t>> errors;
     auto start = std::next(codebook.cbegin(), minIndex);
     auto end = std::next(codebook.cbegin(), maxIndex);
     std::transform(start, end, std::front_inserter(errors), [entry, index = minIndex](const auto &b) mutable
@@ -152,10 +154,10 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     // find first codebook that is below max error
     auto bestErrorIt = std::find_if(errors.cbegin(), errors.cend(), [maxAllowedError](const auto &a)
                                     { return a.first < maxAllowedError; });
-    return (bestErrorIt != errors.cend()) ? std::optional<std::pair<float, int32_t>>({bestErrorIt->first, bestErrorIt->second}) : std::optional<std::pair<float, int32_t>>();
+    return (bestErrorIt != errors.cend()) ? std::optional<std::pair<double, int32_t>>({bestErrorIt->first, bestErrorIt->second}) : std::optional<std::pair<double, int32_t>>();
 }
 
-auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::vector<uint8_t>
+auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32_t height, bool keyFrame, double maxBlockError) -> std::vector<uint8_t>
 {
     static_assert(sizeof(BlockReferenceInterFrame) == 1, "Size of intra-frame reference block must be 8 bit");
     static_assert(sizeof(BlockReferenceIntraFrame) == 1, "Size of inter-frame reference block must be 8 bit");
@@ -194,7 +196,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
             {
                 blockFlags >>= 2;
                 // for key frames, search the last -1 to -256 entries of the current codebook
-                /*auto bestMatch = findBestMatchingBlock(codebook, colors, MaxKeyFrameBlockError, blockIndex, -1, -256);
+                auto bestMatch = findBestMatchingBlock(codebook, colors, MaxKeyFrameBlockError, blockIndex, -1, -256);
                 if (bestMatch.has_value())
                 {
                     // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
@@ -204,38 +206,46 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
                     blockFlags |= (BLOCK_IS_REFERENCE << 14);
                     // insert referenced codebook entry into codebook
                     codebook.push_back(codebook[bestMatch.value().second]);
-                    frameHeader.nrOfRefBlocks++;
                 }
                 else
-                {*/
-                // else insert the codebook entry itself
-                auto block = encodeBlock(colors).toArray();
-                std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
-                // insert new codebook entry into codebook
-                codebook.push_back(colors);
-                //}
+                {
+                    // else insert the codebook entry itself
+                    auto block = encodeBlock(colors).toArray();
+                    std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
+                    // insert new codebook entry into codebook
+                    codebook.push_back(colors);
+                }
             }
             // store and clear block flags every 16 blocks
             blockIndex++;
             if ((blockIndex % 8) == 0)
             {
-                flags.push_back((blockFlags >> 8) & 0xFF);
                 flags.push_back((blockFlags >> 0) & 0xFF);
+                flags.push_back((blockFlags >> 8) & 0xFF);
                 blockFlags = 0;
             }
         }
     }
-    // combine frame flags, flags and block data
+    // add frame header to result
     std::vector<uint8_t> result;
+    frameHeader.nrOfRefBlocks = static_cast<uint16_t>(refBlocks.size());
     auto headerData = frameHeader.toArray();
+    assert((headerData.size() % 4) == 0);
     std::copy(headerData.cbegin(), headerData.cend(), std::back_inserter(result));
-    // expand all arrays to multiple of 4 and copy to result
-    fillUpToMultipleOf(flags, 4);
+    // expand block flags to multiple of 4 and copy to result
+    flags = fillUpToMultipleOf(flags, 4);
+    assert((flags.size() % 4) == 0);
     std::copy(flags.cbegin(), flags.cend(), std::back_inserter(result));
-    fillUpToMultipleOf(refBlocks, 4);
-    std::copy(refBlocks.cbegin(), refBlocks.cend(), std::back_inserter(result));
-    // verbatim DXT blocks do not need to be filled up. they're always 8 bytes in size
+    // if we have reference blocks, expand to multiple of 4 and copy to result
+    if (!refBlocks.empty())
+    {
+        refBlocks = fillUpToMultipleOf(refBlocks, 4);
+        assert((refBlocks.size() % 4) == 0);
+        std::copy(refBlocks.cbegin(), refBlocks.cend(), std::back_inserter(result));
+    }
+    // copy DXT blocks to result. they're always 8 bytes in size
     std::copy(dxtBlocks.cbegin(), dxtBlocks.cend(), std::back_inserter(result));
+    assert((result.size() % 4) == 0);
     return result;
 }
 

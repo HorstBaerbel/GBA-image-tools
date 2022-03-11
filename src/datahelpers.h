@@ -2,6 +2,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <numeric>
@@ -25,8 +26,10 @@ std::vector<T> fillUpToMultipleOf(const std::vector<T> &data, uint32_t multipleO
     }
     else if (size % multipleOf != 0)
     {
-        result.resize(size + (size % multipleOf), value);
+        auto newSize = ((size + multipleOf - 1) / multipleOf) * multipleOf;
+        result.resize(newSize, value);
     }
+    assert((result.size() % 4) == 0);
     return result;
 }
 

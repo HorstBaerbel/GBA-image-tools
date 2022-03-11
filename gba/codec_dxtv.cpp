@@ -1,6 +1,7 @@
 #include "codec_dxtv.h"
 
 #include "memory.h"
+#include "output.h"
 
 namespace DXTV
 {
@@ -128,25 +129,26 @@ namespace DXTV
     template <>
     IWRAM_FUNC void UnCompWrite16bit<240>(uint16_t *dst, const uint32_t *src, uint32_t width, uint32_t height)
     {
-        constexpr uint32_t LineStride16 = 240;                   // stride to next line in dst (screen width * 2 bytes)
-        constexpr uint32_t LineStride32 = LineStride16 / 2;      // stride to next line in dst (screen width * 2 bytes)
+        constexpr uint32_t LineStride16 = 240;                   // stride to next line in dst in half-words
+        constexpr uint32_t LineStride32 = LineStride16 / 2;      // stride to next line in dst in words
         constexpr uint32_t BlockLineStride16 = LineStride16 * 4; // vertical stride to next block in dst (4 lines)
         constexpr uint32_t BlockStride16 = 4;                    // horizontal stride to next block in dst (4 * 2 bytes)
         const uint32_t nrOfBlocks = width / 4 * height / 4;
+        uint32_t blockIndex = 0; // 4x4 block index in frame
         // copy frame header
         Memory::memcpy32(&frameHeader, src, sizeof(FrameHeader) / 4);
         const bool isKeyFrame = (frameHeader.flags & FRAME_IS_PFRAME) == 0;
         // set up some variables
         auto c2c3Ptr = reinterpret_cast<uint32_t *>(&colors[2]);
-        uint32_t blockIndex = 0;                                                               // 4x4 block index in frame
-        auto srcFlagPtr = reinterpret_cast<const uint16_t *>(src + sizeof(FrameHeader) / 4);   // flags that define encoding state of blocks
-        auto flags = 0;                                                                        // flags for current 8 blocks
-        auto srcRefPtr = reinterpret_cast<const uint8_t *>(srcFlagPtr) + (2 * nrOfBlocks) / 8; // reference block data. offset is 2 flag bits per block = 2 bytes per 8 blocks
-        const uint32_t nrOfRefBlocks = (frameHeader.nrOfRefBlocks + 3) & 0xFFFFFFFC;           // round # of references up to multiple of 4
-        auto srcDxtPtr = reinterpret_cast<const uint16_t *>(srcRefPtr + nrOfRefBlocks);        // DXT block data. offset is nrOfRefBlocks bytes
+        auto srcFlagPtr = reinterpret_cast<const uint16_t *>(src + (sizeof(FrameHeader) / 4));              // flags that define encoding state of blocks
+        uint32_t flags = 0;                                                                                 // flags for current 8 blocks
+        auto srcRefPtr = reinterpret_cast<const uint8_t *>(srcFlagPtr) + ((2 * nrOfBlocks) / 8);            // reference block data. offset is 2 flag bits per block = 2 bytes per 8 blocks
+        const uint32_t nrOfRefBlocks = (static_cast<uint32_t>(frameHeader.nrOfRefBlocks) + 3) & 0xFFFFFFFC; // round # of references up to multiple of 4
+        auto srcDxtPtr = reinterpret_cast<const uint16_t *>(srcRefPtr + nrOfRefBlocks);                     // DXT block data. offset is nrOfRefBlocks bytes
+        auto currentDst = dst;
         for (uint32_t blockY = 0; blockY < height / 4; blockY++)
         {
-            auto blockLineDst = dst;
+            auto blockLineDst = currentDst;
             for (uint32_t blockX = 0; blockX < width / 4; blockX++)
             {
                 auto blockDst = blockLineDst;
@@ -161,10 +163,11 @@ namespace DXTV
                     // check block encoding type
                     if ((flags & 0x02) != 0)
                     {
-                        // reference block. get block offset (# of blocks)
-                        uint32_t blockOffset = *srcRefPtr++ + 1;
+                        // reference block. get block index (# of blocks)
+                        uint32_t refBlockIndex = (blockIndex - 1) - *srcRefPtr++;
                         // copy block from previous codebook (destination - offset)
-                        auto copySrcPtr = reinterpret_cast<const uint32_t *>(blockDst - blockOffset * 4);
+                        uint32_t refBlockOffset = ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
+                        auto copySrcPtr = reinterpret_cast<const uint32_t *>(dst + refBlockOffset);
                         auto copyDstPtr = reinterpret_cast<uint32_t *>(blockDst);
                         // copy 4 pixels = 8 bytes from reference to current block
                         copyDstPtr[0] = copySrcPtr[0];
@@ -237,7 +240,7 @@ namespace DXTV
                 blockIndex++;
             }
             // move to next block line in destination vertically
-            dst += BlockLineStride16;
+            currentDst += BlockLineStride16;
         }
     }
 
