@@ -34,7 +34,7 @@ namespace Color
 
     /// @brief Calculate square of perceived distance between colors
     /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
-    /// @return Returns a value in [0,16*9]
+    /// @return Returns a value in [0,9]
     double distance(const std::array<RGBd, 16> &colors0, const std::array<RGBd, 16> &colors1);
 
     /// @brief Fit a line through colors colors passed using SVD

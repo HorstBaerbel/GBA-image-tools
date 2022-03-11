@@ -13,7 +13,7 @@
 
 #include <iostream>
 
-constexpr double MaxKeyFrameBlockError = 0.1; // Maximum error allowed for key frame block references [0,9]
+constexpr double MaxKeyFrameBlockError = 0.005; // Maximum error allowed for key frame block references [0,9]
 
 struct FrameHeader
 {

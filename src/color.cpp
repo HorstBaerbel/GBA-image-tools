@@ -68,7 +68,7 @@ namespace Color
         double dG = color0.y() - color1.y();
         double dB = color0.z() - color1.z();
         return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
-    } // max:  (2   + 1) *  1 *  1 + 4   *  1 *  1 + (3   - 1) *  1 *  1 = 3 + 4 + 2 = 9
+    } // max:  (2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1 = 2.5 + 4 + 2.5 = 9
 
     double distance(const std::array<RGBd, 16> &colors0, const std::array<RGBd, 16> &colors1)
     {
@@ -77,7 +77,7 @@ namespace Color
         {
             dist += distance(*c0It, *c1It);
         }
-        return dist;
+        return dist / 16.0;
     }
 
     std::pair<RGBd, RGBd> lineFit(const std::array<Color::RGBd, 16> &colors)

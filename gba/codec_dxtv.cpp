@@ -165,8 +165,17 @@ namespace DXTV
                     {
                         // reference block. get block index (# of blocks)
                         uint32_t refBlockIndex = (blockIndex - 1) - *srcRefPtr++;
-                        // copy block from previous codebook (destination - offset)
-                        uint32_t refBlockOffset = ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
+                        // block pixel offset is: ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
+                        // division by 60 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
+                        // calculate refBlockIndex / 15 / 4 with extra precision
+                        uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
+                        offsetY = (offsetY + refBlockIndex) >> 4;
+                        offsetY = (offsetY + refBlockIndex) >> 4;
+                        offsetY = (offsetY + refBlockIndex) >> (4 + 2);
+                        // calculate refBlockIndex % 60
+                        uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 2);
+                        // multiply y-offset by stride and add x-offset
+                        uint32_t refBlockOffset = offsetY * 240 * 4 + offsetX * 4;
                         auto copySrcPtr = reinterpret_cast<const uint32_t *>(dst + refBlockOffset);
                         auto copyDstPtr = reinterpret_cast<uint32_t *>(blockDst);
                         // copy 4 pixels = 8 bytes from reference to current block

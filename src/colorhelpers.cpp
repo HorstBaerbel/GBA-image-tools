@@ -173,7 +173,7 @@ float distance(const Magick::Color &a, const Magick::Color &b)
     auto dG = Magick::Color::scaleQuantumToDouble(a.greenQuantum()) - Magick::Color::scaleQuantumToDouble(b.greenQuantum());
     auto dB = Magick::Color::scaleQuantumToDouble(a.blueQuantum()) - Magick::Color::scaleQuantumToDouble(b.blueQuantum());
     return sqrt((2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB);
-} // max:  sqrt((2   + 1) *  1 *  1 + 4   *  1 *  1 + (3   - 1) *  1 *  1) = sqrt(3 + 4 + 2) = 3
+} // max:  sqrt((2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1) = sqrt(2.5 + 4 + 2.5) = 3
 
 float distanceSqr(const Magick::Color &a, const Magick::Color &b)
 {
@@ -188,7 +188,7 @@ float distanceSqr(const Magick::Color &a, const Magick::Color &b)
     auto dG = Magick::Color::scaleQuantumToDouble(a.greenQuantum()) - Magick::Color::scaleQuantumToDouble(b.greenQuantum());
     auto dB = Magick::Color::scaleQuantumToDouble(a.blueQuantum()) - Magick::Color::scaleQuantumToDouble(b.blueQuantum());
     return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
-} // max:  (2   + 1) *  1 *  1 + 4   *  1 *  1 + (3   - 1) *  1 *  1 = 3 + 4 + 2 = 9
+} // max:  (2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1 = 2.5 + 4 + 2.5 = 9
 
 float calculateDistanceRMS(const std::vector<uint8_t> &indices, const std::map<uint8_t, std::vector<float>> &distancesSqrMap)
 {
