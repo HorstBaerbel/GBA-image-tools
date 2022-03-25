@@ -8,9 +8,9 @@ namespace Color
 
     auto YCgCoRd::fromRGB888(const uint8_t *rgb888) -> YCgCoRd
     {
-        double R = static_cast<double>(rgb888[0]) / 256.0;
-        double G = static_cast<double>(rgb888[1]) / 256.0;
-        double B = static_cast<double>(rgb888[2]) / 256.0;
+        double R = static_cast<double>(rgb888[0]) / 255.0;
+        double G = static_cast<double>(rgb888[1]) / 255.0;
+        double B = static_cast<double>(rgb888[2]) / 255.0;
         YCgCoRd result;
         result.Co() = R - B;
         double tmp = B + result.Co() / 2.0;
@@ -87,8 +87,11 @@ namespace Color
         {
             return 0.0;
         }
-        return (color0.Y() * color1.Y() + color0.Cg() * color1.Cg() + color0.Co() * color1.Co()) / 3.0;
-    } // max: (1 + 1 + 1) / 3
+        auto dY = 2.0 * (color0.Y() - color1.Y()); // [0,2]
+        auto dCg = color0.Cg() - color1.Cg();      // [0,2]
+        auto dCo = color0.Co() - color1.Co();      // [0,2]
+        return (dY * dY + dCg * dCg + dCo * dCo) / 12.0;
+    } // max: (2*2 + 2*2 + 2*2) / 12 = 12 / 12 / 1
 
     auto YCgCoRd::distance(const std::array<YCgCoRd, 16> &colors0, const std::array<YCgCoRd, 16> &colors1) -> double
     {

@@ -9,9 +9,9 @@ namespace Color
     auto RGBd::fromRGB888(const uint8_t *rgb888) -> RGBd
     {
         RGBd result;
-        result.R() = static_cast<double>(rgb888[0]) / 256.0;
-        result.G() = static_cast<double>(rgb888[1]) / 256.0;
-        result.B() = static_cast<double>(rgb888[2]) / 256.0;
+        result.R() = static_cast<double>(rgb888[0]) / 255.0;
+        result.G() = static_cast<double>(rgb888[1]) / 255.0;
+        result.B() = static_cast<double>(rgb888[2]) / 255.0;
         return result;
     }
 

@@ -1,6 +1,6 @@
 #include "codec_dxtv.h"
 
-#include "color_rgb.h"
+#include "color_ycgco.h"
 #include "colorhelpers.h"
 #include "datahelpers.h"
 #include "exception.h"
@@ -16,7 +16,7 @@
 
 using namespace Color;
 
-constexpr double MaxKeyFrameBlockError = 0.001; // Maximum error allowed for key frame block references [0,1]
+constexpr double MaxKeyFrameBlockError = 0.0001; // Maximum error allowed for key frame block references [0,1]
 
 struct FrameHeader
 {
@@ -51,7 +51,7 @@ struct BlockReferenceInterFrame
 };
 
 /// @brief 4x4 RGB verbatim block
-using CodeBookEntry = std::array<RGBd, 16>;
+using CodeBookEntry = std::array<YCgCoRd, 16>;
 
 /// @brief List of code book entries representing the image
 using CodeBook = std::vector<CodeBookEntry>;
@@ -74,7 +74,7 @@ struct DXTBlock
 
 // DTX-encodes one 4x4 block
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-DXTBlock encodeBlock(const std::array<RGBd, 16> &colors)
+DXTBlock encodeBlock(const std::array<YCgCoRd, 16> &colors)
 {
     // calculate line fit through RGB color space
     auto originAndAxis = lineFit(colors);
@@ -89,15 +89,15 @@ DXTBlock encodeBlock(const std::array<RGBd, 16> &colors)
     // get colors c0 and c1 on line and round to grid
     auto c0 = colors[indexC0];
     auto c1 = colors[indexC1];
-    RGBd endpoints[4] = {c0, c1, {}, {}};
+    YCgCoRd endpoints[4] = {c0, c1, {}, {}};
     /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
     {
         std::swap(c0, c1);
         std::swap(endpoints[0], endpoints[1]);
     }*/
     // calculate intermediate colors c2 and c3 (rounded like in decoder)
-    endpoints[2] = RGBd::roundToRGB555((c0.cwiseProduct(RGBd(2, 2, 2)) + c1).cwiseQuotient(RGBd(3, 3, 3)));
-    endpoints[3] = RGBd::roundToRGB555((c0 + c1.cwiseProduct(RGBd(2, 2, 2))).cwiseQuotient(RGBd(3, 3, 3)));
+    endpoints[2] = YCgCoRd::roundToRGB555((c0.cwiseProduct(YCgCoRd(2, 2, 2)) + c1).cwiseQuotient(YCgCoRd(3, 3, 3)));
+    endpoints[3] = YCgCoRd::roundToRGB555((c0 + c1.cwiseProduct(YCgCoRd(2, 2, 2))).cwiseQuotient(YCgCoRd(3, 3, 3)));
     // calculate minimum distance for all colors to endpoints
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
@@ -106,7 +106,7 @@ DXTBlock encodeBlock(const std::array<RGBd, 16> &colors)
         double bestColorDistance = std::numeric_limits<double>::max();
         for (uint32_t ei = 0; ei < 4; ++ei)
         {
-            auto indexDistance = RGBd::distance(colors[ci], endpoints[ei]);
+            auto indexDistance = YCgCoRd::distance(colors[ci], endpoints[ei]);
             // check if result improved
             if (bestColorDistance > indexDistance)
             {
@@ -150,7 +150,7 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     auto start = std::next(codebook.cbegin(), minIndex);
     auto end = std::next(codebook.cbegin(), maxIndex);
     std::transform(start, end, std::front_inserter(errors), [entry, index = minIndex](const auto &b) mutable
-                   { return std::make_pair(RGBd::distance(entry, b), index++); });
+                   { return std::make_pair(YCgCoRd::distance(entry, b), index++); });
     // stable sort by error
     std::stable_sort(errors.begin(), errors.end(), [](const auto &a, const auto &b)
                      { return a.first < b.first; });
@@ -175,7 +175,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
     std::vector<uint8_t> refBlocks; // stores block references
     std::vector<uint8_t> dxtBlocks; // stores verbatim DXT blocks
     CodeBook codebook;              // code book storing all codebook entries (when finished this equals the frame in RGB format)
-    std::array<RGBd, 16> colors;    // current set of colors in 4x4 block
+    std::array<YCgCoRd, 16> colors; // current set of colors in 4x4 block
     FrameHeader frameHeader;
     frameHeader.flags = keyFrame ? 0 : FRAME_IS_PFRAME;
     // loop through source images blocks
@@ -188,10 +188,10 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
             auto cIt = colors.begin();
             for (int y = 0; y < 4; y++)
             {
-                *cIt++ = RGBd::fromRGB555(pixel[0]);
-                *cIt++ = RGBd::fromRGB555(pixel[1]);
-                *cIt++ = RGBd::fromRGB555(pixel[2]);
-                *cIt++ = RGBd::fromRGB555(pixel[3]);
+                *cIt++ = YCgCoRd::fromRGB555(pixel[0]);
+                *cIt++ = YCgCoRd::fromRGB555(pixel[1]);
+                *cIt++ = YCgCoRd::fromRGB555(pixel[2]);
+                *cIt++ = YCgCoRd::fromRGB555(pixel[3]);
                 pixel += width;
             }
             // compare codebook to existing codebooks in list
