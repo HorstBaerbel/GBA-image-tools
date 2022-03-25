@@ -1,6 +1,6 @@
 #include "codec_gvid.h"
 
-#include "color.h"
+#include "color_ycgco.h"
 #include "colorhelpers.h"
 #include "exception.h"
 
@@ -157,15 +157,15 @@ auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_
             }
             // convert block to codebook
             CodeBookEntry cbe;
-            cbe.Y[0] = (colors[0].Y + colors[1].Y + colors[4].Y + colors[5].Y) / 4.0F;
-            cbe.Y[1] = (colors[2].Y + colors[3].Y + colors[6].Y + colors[7].Y) / 4.0F;
-            cbe.Y[2] = (colors[8].Y + colors[9].Y + colors[12].Y + colors[13].Y) / 4.0F;
-            cbe.Y[3] = (colors[10].Y + colors[11].Y + colors[14].Y + colors[15].Y) / 4.0F;
+            cbe.Y[0] = (colors[0].Y() + colors[1].Y() + colors[4].Y() + colors[5].Y()) / 4.0F;
+            cbe.Y[1] = (colors[2].Y() + colors[3].Y() + colors[6].Y() + colors[7].Y()) / 4.0F;
+            cbe.Y[2] = (colors[8].Y() + colors[9].Y() + colors[12].Y() + colors[13].Y()) / 4.0F;
+            cbe.Y[3] = (colors[10].Y() + colors[11].Y() + colors[14].Y() + colors[15].Y()) / 4.0F;
             cbe.Cg = std::accumulate(colors.cbegin(), colors.cend(), 0.0F, [](auto v, auto c)
-                                     { return v + c.Cg; }) /
+                                     { return v + c.Cg(); }) /
                      colors.size();
             cbe.Co = std::accumulate(colors.cbegin(), colors.cend(), 0.0F, [](auto v, auto c)
-                                     { return v + c.Co; }) /
+                                     { return v + c.Co(); }) /
                      colors.size();
             // compare codebook to existing codebooks in list
             if (keyFrame)

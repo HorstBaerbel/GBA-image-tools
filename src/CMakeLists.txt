@@ -39,7 +39,8 @@ set(CMAKE_C_STANDARD 11)
 # Define targets
 
 set(HELPERS_SRC
-    color.cpp
+    color_rgb.cpp
+    color_ycgco.cpp
     colorhelpers.cpp
     codec_dxt.cpp
     codec_dxtv.cpp

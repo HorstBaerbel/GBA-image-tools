@@ -1,9 +1,10 @@
 #include "codec_dxtv.h"
 
-#include "color.h"
+#include "color_rgb.h"
 #include "colorhelpers.h"
 #include "datahelpers.h"
 #include "exception.h"
+#include "linefit.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -13,7 +14,9 @@
 
 #include <iostream>
 
-constexpr double MaxKeyFrameBlockError = 0.005; // Maximum error allowed for key frame block references [0,9]
+using namespace Color;
+
+constexpr double MaxKeyFrameBlockError = 0.001; // Maximum error allowed for key frame block references [0,1]
 
 struct FrameHeader
 {
@@ -48,7 +51,7 @@ struct BlockReferenceInterFrame
 };
 
 /// @brief 4x4 RGB verbatim block
-using CodeBookEntry = std::array<Color::RGBd, 16>;
+using CodeBookEntry = std::array<RGBd, 16>;
 
 /// @brief List of code book entries representing the image
 using CodeBook = std::vector<CodeBookEntry>;
@@ -71,10 +74,10 @@ struct DXTBlock
 
 // DTX-encodes one 4x4 block
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-DXTBlock encodeBlock(const std::array<Color::RGBd, 16> &colors)
+DXTBlock encodeBlock(const std::array<RGBd, 16> &colors)
 {
     // calculate line fit through RGB color space
-    auto originAndAxis = Color::lineFit(colors);
+    auto originAndAxis = lineFit(colors);
     // calculate signed distance from origin
     std::vector<double> distanceFromOrigin(16);
     std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
@@ -86,15 +89,15 @@ DXTBlock encodeBlock(const std::array<Color::RGBd, 16> &colors)
     // get colors c0 and c1 on line and round to grid
     auto c0 = colors[indexC0];
     auto c1 = colors[indexC1];
-    Color::RGBd endpoints[4] = {c0, c1, {}, {}};
+    RGBd endpoints[4] = {c0, c1, {}, {}};
     /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
     {
         std::swap(c0, c1);
         std::swap(endpoints[0], endpoints[1]);
     }*/
     // calculate intermediate colors c2 and c3 (rounded like in decoder)
-    endpoints[2] = Color::roundToRGB555(Color::RGBd((c0.cwiseProduct(Color::RGBd(2, 2, 2)) + c1).cwiseQuotient(Color::RGBd(3, 3, 3))));
-    endpoints[3] = Color::roundToRGB555(Color::RGBd((c0 + c1.cwiseProduct(Color::RGBd(2, 2, 2))).cwiseQuotient(Color::RGBd(3, 3, 3))));
+    endpoints[2] = RGBd::roundToRGB555((c0.cwiseProduct(RGBd(2, 2, 2)) + c1).cwiseQuotient(RGBd(3, 3, 3)));
+    endpoints[3] = RGBd::roundToRGB555((c0 + c1.cwiseProduct(RGBd(2, 2, 2))).cwiseQuotient(RGBd(3, 3, 3)));
     // calculate minimum distance for all colors to endpoints
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
@@ -103,7 +106,7 @@ DXTBlock encodeBlock(const std::array<Color::RGBd, 16> &colors)
         double bestColorDistance = std::numeric_limits<double>::max();
         for (uint32_t ei = 0; ei < 4; ++ei)
         {
-            auto indexDistance = Color::distance(colors[ci], endpoints[ei]);
+            auto indexDistance = RGBd::distance(colors[ci], endpoints[ei]);
             // check if result improved
             if (bestColorDistance > indexDistance)
             {
@@ -118,7 +121,7 @@ DXTBlock encodeBlock(const std::array<Color::RGBd, 16> &colors)
     {
         indices = (indices << 2) | *iIt;
     }
-    return {toBGR555(Color::toRGB555(c0)), toBGR555(Color::toRGB555(c1)), indices};
+    return {toBGR555(c0.toRGB555()), toBGR555(c1.toRGB555()), indices};
 }
 
 /// @brief Search for entry in codebook with minimum error
@@ -147,7 +150,7 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     auto start = std::next(codebook.cbegin(), minIndex);
     auto end = std::next(codebook.cbegin(), maxIndex);
     std::transform(start, end, std::front_inserter(errors), [entry, index = minIndex](const auto &b) mutable
-                   { return std::make_pair(Color::distance(entry, b), index++); });
+                   { return std::make_pair(RGBd::distance(entry, b), index++); });
     // stable sort by error
     std::stable_sort(errors.begin(), errors.end(), [](const auto &a, const auto &b)
                      { return a.first < b.first; });
@@ -166,13 +169,13 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXTV compression");
     REQUIRE((width / 4 * height / 4) % 8 == 0, std::runtime_error, "Number of 4x4 block must be a multiple of 8 for DXTV compression");
     // set up some variables
-    uint32_t blockIndex = 0;            // 4x4 block index in frame
-    uint16_t blockFlags = 0;            // flags for current 8 blocks
-    std::vector<uint8_t> flags;         // block flags store flags for 8 blocks (8*2 bits = 2 bytes)
-    std::vector<uint8_t> refBlocks;     // stores block references
-    std::vector<uint8_t> dxtBlocks;     // stores verbatim DXT blocks
-    CodeBook codebook;                  // code book storing all codebook entries (when finished this equals the frame in RGB format)
-    std::array<Color::RGBd, 16> colors; // current set of colors in 4x4 block
+    uint32_t blockIndex = 0;        // 4x4 block index in frame
+    uint16_t blockFlags = 0;        // flags for current 8 blocks
+    std::vector<uint8_t> flags;     // block flags store flags for 8 blocks (8*2 bits = 2 bytes)
+    std::vector<uint8_t> refBlocks; // stores block references
+    std::vector<uint8_t> dxtBlocks; // stores verbatim DXT blocks
+    CodeBook codebook;              // code book storing all codebook entries (when finished this equals the frame in RGB format)
+    std::array<RGBd, 16> colors;    // current set of colors in 4x4 block
     FrameHeader frameHeader;
     frameHeader.flags = keyFrame ? 0 : FRAME_IS_PFRAME;
     // loop through source images blocks
@@ -185,10 +188,10 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
             auto cIt = colors.begin();
             for (int y = 0; y < 4; y++)
             {
-                *cIt++ = Color::fromRGB555(pixel[0]);
-                *cIt++ = Color::fromRGB555(pixel[1]);
-                *cIt++ = Color::fromRGB555(pixel[2]);
-                *cIt++ = Color::fromRGB555(pixel[3]);
+                *cIt++ = RGBd::fromRGB555(pixel[0]);
+                *cIt++ = RGBd::fromRGB555(pixel[1]);
+                *cIt++ = RGBd::fromRGB555(pixel[2]);
+                *cIt++ = RGBd::fromRGB555(pixel[3]);
                 pixel += width;
             }
             // compare codebook to existing codebooks in list
