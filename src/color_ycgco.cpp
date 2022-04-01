@@ -6,6 +6,11 @@
 namespace Color
 {
 
+    auto YCgCoRd::normalized() const -> YCgCoRd
+    {
+        return {Y(), 0.5 * (Cg() + 1.0), 0.5 * (Co() + 1.0)};
+    }
+
     auto YCgCoRd::fromRGB888(const uint8_t *rgb888) -> YCgCoRd
     {
         double R = static_cast<double>(rgb888[0]) / 255.0;
@@ -87,18 +92,37 @@ namespace Color
         {
             return 0.0;
         }
-        auto dY = 2.0 * (color0.Y() - color1.Y()); // [0,2]
-        auto dCg = color0.Cg() - color1.Cg();      // [0,2]
-        auto dCo = color0.Co() - color1.Co();      // [0,2]
-        return (dY * dY + dCg * dCg + dCo * dCo) / 12.0;
-    } // max: (2*2 + 2*2 + 2*2) / 12 = 12 / 12 / 1
+        auto dY = color0.Y() - color1.Y();            // [0,1]
+        auto dCg = 0.5 * (color0.Cg() - color1.Cg()); // [0,1]
+        auto dCo = 0.5 * (color0.Co() - color1.Co()); // [0,1]
+        return (2.0 * dY * dY + dCg * dCg + dCo * dCo) / 4.0;
+    } // max: (2 + 1 + 1) / 4 = 1
 
     auto YCgCoRd::distance(const std::array<YCgCoRd, 16> &colors0, const std::array<YCgCoRd, 16> &colors1) -> double
     {
         double dist = 0.0;
-        for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.end(); ++c0It, ++c1It)
+        for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend(); ++c0It, ++c1It)
         {
             dist += distance(*c0It, *c1It);
+        }
+        return dist / 16.0;
+    }
+
+    auto YCgCoRd::dctDistance(const std::array<YCgCoRd, 16> &spectrum0, const std::array<YCgCoRd, 16> &spectrum1) -> double
+    {
+        constexpr double DistanceFactor[7] = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4}; // manhattan distance from frequency 0 (overall factor 9.6)
+        double dist = 0.0;
+        for (int64_t y = 0; y < 4; ++y)
+        {
+            for (int64_t x = 0; x < 4; ++x)
+            {
+                const auto &s0 = spectrum0[y * 4 + x];
+                const auto &s1 = spectrum1[y * 4 + x];
+                auto dY = s0.Y() - s1.Y();
+                auto dCg = s0.Cg() - s1.Cg();
+                auto dCo = s0.Co() - s1.Co();
+                dist += (2.0 * dY * dY + dCg * dCg + dCo * dCo) / 4.0;
+            }
         }
         return dist / 16.0;
     }

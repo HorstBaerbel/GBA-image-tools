@@ -77,7 +77,7 @@ namespace Color
     auto RGBd::distance(const std::array<RGBd, 16> &colors0, const std::array<RGBd, 16> &colors1) -> double
     {
         double dist = 0.0;
-        for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.end(); ++c0It, ++c1It)
+        for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend(); ++c0It, ++c1It)
         {
             dist += distance(*c0It, *c1It);
         }

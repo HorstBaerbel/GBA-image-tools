@@ -7,9 +7,9 @@ namespace Color
 {
 
     /// @brief Floating point YCgCoR color in range
-    /// Y [0,1] Luminance
-    /// Cg [-1,1] Chrominance green
-    /// Co [-1,1] Chrominance orange
+    /// Y [0,1] Luma
+    /// Cg [-1,1] Chroma green
+    /// Co [-1,1] Chroma orange
     // See: https://en.wikipedia.org/wiki/YCoCg#The_lifting-based_YCoCg-R_variation
     class YCgCoRd : public Eigen::Vector3d
     {
@@ -27,6 +27,9 @@ namespace Color
         inline auto Cg() -> double & { return y(); }
         inline auto Co() const -> const double & { return z(); }
         inline auto Co() -> double & { return z(); }
+
+        /// @brief Return color with all components normalized to [0,1]
+        auto normalized() const -> YCgCoRd;
 
         /// @brief YCgCoR color from raw 24bit RGB888 data
         static auto fromRGB888(const uint8_t *rgb888) -> YCgCoRd;
@@ -47,6 +50,10 @@ namespace Color
         /// @brief Calculate square of distance between colors (scalar product)
         /// @return Returns a value in [0,1]
         static auto distance(const std::array<YCgCoRd, 16> &colors0, const std::array<YCgCoRd, 16> &colors1) -> double;
+
+        /// @brief Calculate distance between DCT-transformed blocks.
+        /// @return Returns a value in [0,1]
+        static auto dctDistance(const std::array<YCgCoRd, 16> &colors0, const std::array<YCgCoRd, 16> &colors1) -> double;
     };
 
 }

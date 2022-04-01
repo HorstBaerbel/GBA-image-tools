@@ -2,7 +2,9 @@
 
 #include "color_ycgco.h"
 #include "colorhelpers.h"
+#include "correlation.h"
 #include "datahelpers.h"
+#include "dtc.h"
 #include "exception.h"
 #include "linefit.h"
 
@@ -16,7 +18,9 @@
 
 using namespace Color;
 
-constexpr double MaxKeyFrameBlockError = 0.0001; // Maximum error allowed for key frame block references [0,1]
+constexpr double MaxKeyFrameBlockError = 0.00015; // Maximum error allowed for key frame block references [0,1] color
+// constexpr double MaxKeyFrameBlockError = 0.0047; // Maximum error allowed for key frame block references [0,1] dct
+//  constexpr double MaxKeyFrameBlockError = 0.8; // Maximum error allowed for key frame block references [0,1] convolve
 
 struct FrameHeader
 {
@@ -51,7 +55,11 @@ struct BlockReferenceInterFrame
 };
 
 /// @brief 4x4 RGB verbatim block
-using CodeBookEntry = std::array<YCgCoRd, 16>;
+struct CodeBookEntry
+{
+    std::array<YCgCoRd, 16> colors{};
+    // std::array<YCgCoRd, 16> dct{};
+};
 
 /// @brief List of code book entries representing the image
 using CodeBook = std::vector<CodeBookEntry>;
@@ -72,9 +80,40 @@ struct DXTBlock
     }
 };
 
+auto correlate(const std::array<YCgCoRd, 16> &a, const std::array<YCgCoRd, 16> &b) -> double
+{
+    // bring all values into the range [0,1]
+    std::array<YCgCoRd, 16> normalizedA;
+    std::array<YCgCoRd, 16> normalizedB;
+    std::transform(a.cbegin(), a.cend(), normalizedA.begin(), [](const auto &c)
+                   { return c.normalized(); });
+    std::transform(b.cbegin(), b.cend(), normalizedB.begin(), [](const auto &c)
+                   { return c.normalized(); });
+    // convolve blocks. result is in [0,16]
+    auto result = Correlation::convolve0(normalizedA, normalizedB);
+    // normalize and invert result to get "error"
+    return 1.0 - ((2.0 * result.Y() + result.Cg() + result.Co()) / (4.0 * 16.0));
+}
+
+// Apply DCT-II to a block
+auto applyDCT(const std::array<YCgCoRd, 16> &colors) -> std::array<YCgCoRd, 16>
+{
+    // bring all values into the range [-1,1]
+    std::array<YCgCoRd, 16> zeroCentered;
+    auto zcIt = zeroCentered.begin();
+    for (auto cIt = colors.cbegin(); cIt != colors.cend(); ++cIt, ++zcIt)
+    {
+        zcIt->Y() = 2.0 * cIt->Y() - 1.0;
+        zcIt->Cg() = cIt->Cg();
+        zcIt->Co() = cIt->Co();
+    }
+    // apply DCT-II
+    return DCT::dct<4, 4>(zeroCentered);
+}
+
 // DTX-encodes one 4x4 block
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-DXTBlock encodeBlock(const std::array<YCgCoRd, 16> &colors)
+auto encodeBlock(const std::array<YCgCoRd, 16> &colors) -> DXTBlock
 {
     // calculate line fit through RGB color space
     auto originAndAxis = lineFit(colors);
@@ -132,7 +171,7 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     {
         return std::optional<std::pair<double, int32_t>>();
     }
-    // caculate start and end of search
+    // calculate start and end of search
     auto maxIndex = currentIndex + distanceMin;
     maxIndex = maxIndex < 0 ? 0 : maxIndex;
     maxIndex = maxIndex >= codebook.size() ? codebook.size() - 1 : maxIndex;
@@ -150,14 +189,13 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     auto start = std::next(codebook.cbegin(), minIndex);
     auto end = std::next(codebook.cbegin(), maxIndex);
     std::transform(start, end, std::front_inserter(errors), [entry, index = minIndex](const auto &b) mutable
-                   { return std::make_pair(YCgCoRd::distance(entry, b), index++); });
+                   { return std::make_pair(YCgCoRd::distance(entry.colors, b.colors), index++); });
     // stable sort by error
     std::stable_sort(errors.begin(), errors.end(), [](const auto &a, const auto &b)
                      { return a.first < b.first; });
-    // find first codebook that is below max error
-    auto bestErrorIt = std::find_if(errors.cbegin(), errors.cend(), [maxAllowedError](const auto &a)
-                                    { return a.first < maxAllowedError; });
-    return (bestErrorIt != errors.cend()) ? std::optional<std::pair<double, int32_t>>({bestErrorIt->first, bestErrorIt->second}) : std::optional<std::pair<double, int32_t>>();
+    // find codebook that has minumum error
+    auto bestErrorIt = std::min_element(errors.cbegin(), errors.cend());
+    return (bestErrorIt->first < maxAllowedError) ? std::optional<std::pair<double, int32_t>>({bestErrorIt->first, bestErrorIt->second}) : std::optional<std::pair<double, int32_t>>();
 }
 
 auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32_t height, bool keyFrame, double maxBlockError) -> std::vector<uint8_t>
@@ -175,7 +213,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
     std::vector<uint8_t> refBlocks; // stores block references
     std::vector<uint8_t> dxtBlocks; // stores verbatim DXT blocks
     CodeBook codebook;              // code book storing all codebook entries (when finished this equals the frame in RGB format)
-    std::array<YCgCoRd, 16> colors; // current set of colors in 4x4 block
+    CodeBookEntry entry;            // current code book entry with colors of 4x4 block
     FrameHeader frameHeader;
     frameHeader.flags = keyFrame ? 0 : FRAME_IS_PFRAME;
     // loop through source images blocks
@@ -185,7 +223,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
         {
             // get block colors for all 16 pixels
             auto pixel = image.data() + y * width + x;
-            auto cIt = colors.begin();
+            auto cIt = entry.colors.begin();
             for (int y = 0; y < 4; y++)
             {
                 *cIt++ = YCgCoRd::fromRGB555(pixel[0]);
@@ -194,12 +232,14 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
                 *cIt++ = YCgCoRd::fromRGB555(pixel[3]);
                 pixel += width;
             }
+            // center values on zero and DCT-II-transform block
+            // entry.dct = applyDCT(entry.colors);
             // compare codebook to existing codebooks in list
             if (keyFrame)
             {
                 blockFlags >>= 2;
                 // for key frames, search the last -1 to -256 entries of the current codebook
-                auto bestMatch = findBestMatchingBlock(codebook, colors, MaxKeyFrameBlockError, blockIndex, -1, -256);
+                auto bestMatch = findBestMatchingBlock(codebook, entry, MaxKeyFrameBlockError, blockIndex, -1, -256);
                 if (bestMatch.has_value())
                 {
                     // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
@@ -213,10 +253,10 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, uint32_t width, uint32
                 else
                 {
                     // else insert the codebook entry itself
-                    auto block = encodeBlock(colors).toArray();
+                    auto block = encodeBlock(entry.colors).toArray();
                     std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
                     // insert new codebook entry into codebook
-                    codebook.push_back(colors);
+                    codebook.push_back(entry);
                 }
             }
             // store and clear block flags every 16 blocks
