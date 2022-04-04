@@ -66,12 +66,82 @@ struct DXTBlock
     uint16_t color1;
     uint32_t indices;
 
-    std::array<uint8_t, 8> toArray() const
+    auto toArray() const -> std::array<uint8_t, 8>
     {
         std::array<uint8_t, 8> result;
         *reinterpret_cast<uint16_t *>(&result[0]) = color0;
         *reinterpret_cast<uint16_t *>(&result[2]) = color1;
         *reinterpret_cast<uint32_t *>(&result[4]) = indices;
+        return result;
+    }
+
+    /// @brief DXT-encodes one 4x4 block
+    /// This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
+    static auto encode(const std::array<YCgCoRd, 16> &colors) -> DXTBlock
+    {
+        // calculate line fit through RGB color space
+        auto originAndAxis = lineFit(colors);
+        // calculate signed distance from origin
+        std::vector<double> distanceFromOrigin(16);
+        std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
+                       { return color.dot(axis); });
+        // get the distance of endpoints c0 and c1 on line
+        auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
+        auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
+        auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
+        // get colors c0 and c1 on line and round to grid
+        auto c0 = colors[indexC0];
+        auto c1 = colors[indexC1];
+        YCgCoRd endpoints[4] = {c0, c1, {}, {}};
+        /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
+        {
+            std::swap(c0, c1);
+            std::swap(endpoints[0], endpoints[1]);
+        }*/
+        // calculate intermediate colors c2 and c3 (rounded like in decoder)
+        endpoints[2] = YCgCoRd::roundToRGB555((c0.cwiseProduct(YCgCoRd(2, 2, 2)) + c1).cwiseQuotient(YCgCoRd(3, 3, 3)));
+        endpoints[3] = YCgCoRd::roundToRGB555((c0 + c1.cwiseProduct(YCgCoRd(2, 2, 2))).cwiseQuotient(YCgCoRd(3, 3, 3)));
+        // calculate minimum distance for all colors to endpoints
+        std::array<uint32_t, 16> bestIndices = {0};
+        for (uint32_t ci = 0; ci < 16; ++ci)
+        {
+            // calculate minimum distance for each index for this color
+            double bestColorDistance = std::numeric_limits<double>::max();
+            for (uint32_t ei = 0; ei < 4; ++ei)
+            {
+                auto indexDistance = YCgCoRd::distance(colors[ci], endpoints[ei]);
+                // check if result improved
+                if (bestColorDistance > indexDistance)
+                {
+                    bestColorDistance = indexDistance;
+                    bestIndices[ci] = ei;
+                }
+            }
+        }
+        // reverse index data
+        uint32_t indices = 0;
+        for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
+        {
+            indices = (indices << 2) | *iIt;
+        }
+        return {toBGR555(c0.toRGB555()), toBGR555(c1.toRGB555()), indices};
+    }
+
+    static auto decode(const DXTBlock &block) -> std::array<uint16_t, 16>
+    {
+        std::array<uint16_t, 4> colors;
+        auto c0 = YCgCoRd::fromRGB555(block.color0);
+        auto c1 = YCgCoRd::fromRGB555(block.color1);
+        colors[0] = block.color0;
+        colors[1] = block.color1;
+        colors[2] = YCgCoRd((c0.cwiseProduct(YCgCoRd(2, 2, 2)) + c1).cwiseQuotient(YCgCoRd(3, 3, 3))).toRGB555();
+        colors[3] = YCgCoRd((c0 + c1.cwiseProduct(YCgCoRd(2, 2, 2))).cwiseQuotient(YCgCoRd(3, 3, 3))).toRGB555();
+        uint32_t shift = 0;
+        std::array<uint16_t, 16> result;
+        for (uint32_t i = 0; i < result.size(); ++i, shift += 2)
+        {
+            result[i] = colors[(block.indices >> shift) & 0x3];
+        }
         return result;
     }
 };
@@ -102,71 +172,52 @@ auto toCodebook(const std::vector<uint16_t> &image, uint32_t width, uint32_t hei
     return result;
 }
 
-// DXT-encodes one 4x4 block
-// This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-auto encodeBlock(const std::array<YCgCoRd, 16> &colors) -> DXTBlock
+/// @brief Copy 4x4 image block to from src to dst
+auto copyImageBlock(std::vector<uint16_t> &dstImage, const std::array<uint16_t, 16> &srcBlock, uint32_t width, uint32_t height, int32_t blockIndex) -> void
 {
-    // calculate line fit through RGB color space
-    auto originAndAxis = lineFit(colors);
-    // calculate signed distance from origin
-    std::vector<double> distanceFromOrigin(16);
-    std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
-                   { return color.dot(axis); });
-    // get the distance of endpoints c0 and c1 on line
-    auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
-    auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
-    auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
-    // get colors c0 and c1 on line and round to grid
-    auto c0 = colors[indexC0];
-    auto c1 = colors[indexC1];
-    YCgCoRd endpoints[4] = {c0, c1, {}, {}};
-    /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
+    auto blockPixelOffset = ((blockIndex / (width / 4)) * width * 4) + ((blockIndex % (width / 4)) * 4);
+    auto dstPixel = dstImage.data() + blockPixelOffset;
+    auto srcPixel = srcBlock.data();
+    for (uint32_t y = 0; y < 4; ++y)
     {
-        std::swap(c0, c1);
-        std::swap(endpoints[0], endpoints[1]);
-    }*/
-    // calculate intermediate colors c2 and c3 (rounded like in decoder)
-    endpoints[2] = YCgCoRd::roundToRGB555((c0.cwiseProduct(YCgCoRd(2, 2, 2)) + c1).cwiseQuotient(YCgCoRd(3, 3, 3)));
-    endpoints[3] = YCgCoRd::roundToRGB555((c0 + c1.cwiseProduct(YCgCoRd(2, 2, 2))).cwiseQuotient(YCgCoRd(3, 3, 3)));
-    // calculate minimum distance for all colors to endpoints
-    std::array<uint32_t, 16> bestIndices = {0};
-    for (uint32_t ci = 0; ci < 16; ++ci)
-    {
-        // calculate minimum distance for each index for this color
-        double bestColorDistance = std::numeric_limits<double>::max();
-        for (uint32_t ei = 0; ei < 4; ++ei)
+        for (uint32_t x = 0; x < 4; ++x)
         {
-            auto indexDistance = YCgCoRd::distance(colors[ci], endpoints[ei]);
-            // check if result improved
-            if (bestColorDistance > indexDistance)
-            {
-                bestColorDistance = indexDistance;
-                bestIndices[ci] = ei;
-            }
+            dstPixel[x] = *srcPixel++;
         }
+        dstPixel += width;
     }
-    // reverse index data
-    uint32_t indices = 0;
-    for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
+}
+
+/// @brief Copy 4x4 image block to from src to dst
+auto copyImageBlock(std::vector<uint16_t> &dstImage, const std::vector<uint16_t> &srcImage, uint32_t width, uint32_t height, int32_t blockIndex) -> void
+{
+    auto blockPixelOffset = ((blockIndex / (width / 4)) * width * 4) + ((blockIndex % (width / 4)) * 4);
+    auto dstPixel = dstImage.data() + blockPixelOffset;
+    auto srcPixel = srcImage.data() + blockPixelOffset;
+    for (uint32_t y = 0; y < 4; ++y)
     {
-        indices = (indices << 2) | *iIt;
+        for (uint32_t x = 0; x < 4; ++x)
+        {
+            dstPixel[x] = srcPixel[x];
+        }
+        srcPixel += width;
+        dstPixel += width;
     }
-    return {toBGR555(c0.toRGB555()), toBGR555(c1.toRGB555()), indices};
 }
 
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, entry index) if usable entry found or empty optional, if not
-auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry, double maxAllowedError, int32_t currentIndex, int32_t distanceMin, int32_t distanceMax) -> std::optional<std::pair<double, int32_t>>
+auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry, double maxAllowedError, int32_t blockIndex, int32_t distanceMin, int32_t distanceMax) -> std::optional<std::pair<double, int32_t>>
 {
     if (codebook.empty())
     {
         return std::optional<std::pair<double, int32_t>>();
     }
     // calculate start and end of search
-    auto maxIndex = currentIndex + distanceMin;
+    auto maxIndex = blockIndex + distanceMin;
     maxIndex = maxIndex < 0 ? 0 : maxIndex;
     maxIndex = maxIndex >= codebook.size() ? codebook.size() - 1 : maxIndex;
-    auto minIndex = currentIndex + distanceMax;
+    auto minIndex = blockIndex + distanceMax;
     minIndex = minIndex < 0 ? 0 : minIndex;
     minIndex = minIndex >= codebook.size() ? codebook.size() - 1 : minIndex;
     // searched entries must be >= 1
@@ -202,8 +253,9 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     maxBlockError /= 1000;
     // convert frames to codebooks
     auto currentCodeBook = toCodebook(image, width, height);
-    CodeBook previousCodeBook; // = toCodebook(previousImage, width, height);
+    CodeBook previousCodeBook = keyFrame ? CodeBook() : toCodebook(previousImage, width, height);
     // compress frame
+    std::vector<uint16_t> decompressedFrame(width * height);
     uint16_t blockFlags = 0;        // flags for current 8 blocks
     std::vector<uint8_t> flags;     // block flags store flags for 8 blocks (8*2 bits = 2 bytes)
     std::vector<uint8_t> refBlocks; // stores block references
@@ -229,12 +281,17 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
                 blockFlags |= (BLOCK_IS_REFERENCE << 14);
                 // replace current entry by referenced entry
                 entry = currentCodeBook[currentMatch.value().second];
+                // store decompressed block to image
+                copyImageBlock(decompressedFrame, image, width, height, currentMatch.value().second);
             }
             else
             {
                 // else insert the codebook entry itself
-                auto block = encodeBlock(entry).toArray();
-                std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
+                auto block = DXTBlock::encode(entry);
+                auto rawBlock = block.toArray();
+                std::copy(rawBlock.cbegin(), rawBlock.cend(), std::back_inserter(dxtBlocks));
+                // store decompressed block to image
+                copyImageBlock(decompressedFrame, DXTBlock::decode(block), width, height, blockIndex);
             }
         }
         else
@@ -252,6 +309,8 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
                 blockFlags |= ((BLOCK_PREVIOUS_FRAME | BLOCK_IS_REFERENCE) << 14);
                 // replace current entry by referenced entry
                 entry = previousCodeBook[previousMatch.value().second];
+                // store decompressed block to image
+                copyImageBlock(decompressedFrame, previousImage, width, height, currentMatch.value().second);
             }
             else if (currentMatch.has_value() && (!previousMatch.has_value() || previousMatch.value().first > currentMatch.value().first))
             {
@@ -262,12 +321,17 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
                 blockFlags |= (BLOCK_IS_REFERENCE << 14);
                 // replace current entry by referenced entry
                 entry = currentCodeBook[currentMatch.value().second];
+                // store decompressed block to image
+                copyImageBlock(decompressedFrame, image, width, height, currentMatch.value().second);
             }
             else
             {
                 // else insert the codebook entry itself
-                auto block = encodeBlock(entry).toArray();
-                std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
+                auto block = DXTBlock::encode(entry);
+                auto rawBlock = block.toArray();
+                std::copy(rawBlock.cbegin(), rawBlock.cend(), std::back_inserter(dxtBlocks));
+                // store decompressed block to image
+                copyImageBlock(decompressedFrame, DXTBlock::decode(block), width, height, blockIndex);
             }
         }
         // store and clear block flags every 16 blocks
@@ -299,7 +363,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     // copy DXT blocks to compressedData. they're always 8 bytes in size
     std::copy(dxtBlocks.cbegin(), dxtBlocks.cend(), std::back_inserter(compressedData));
     assert((compressedData.size() % 4) == 0);
-    return {compressedData, {}};
+    return {compressedData, decompressedFrame};
 }
 
 auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint16_t>

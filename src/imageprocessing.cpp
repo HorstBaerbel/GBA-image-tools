@@ -329,7 +329,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state)
+    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTV expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTV compression is only possible for RGB888 and RGB555 truecolor images");
@@ -346,28 +346,29 @@ namespace Image
         REQUIRE(std::holds_alternative<double>(parameters.at(2)), std::runtime_error, "compressDXTV max. P-frame error must be a double");
         auto maxPframeError = std::get<double>(parameters.at(2));
         REQUIRE(maxPframeError >= 0.01 && maxPframeError <= 1, std::runtime_error, "compressDXTV max. P-frame error must be in [0.01,1]");
-        // convert RGB888 to RGB565
+        const bool isKeyframe = (image.index % keyframeInterval) == 0;
+        REQUIRE(isKeyframe ? true : !state.empty(), std::runtime_error, "compressDXTV needs state for P-frames");
+        // convert RGB888 to RGB555
         auto data = image.data;
         if (image.colorFormat == ColorFormat::RGB888)
         {
             data = toRGB555(data);
         }
-        // set current image to state
-        // state.push_back(image);
         // compress data
-        const bool isKeyframe = (image.index % keyframeInterval) == 0;
         auto result = image;
         result.colorFormat = ColorFormat::RGB555;
         result.mapData = {};
-        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), {}, image.size.width(), image.size.height(), isKeyframe, isKeyframe ? maxBframeError : maxPframeError);
+        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), isKeyframe ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), isKeyframe, isKeyframe ? maxBframeError : maxPframeError);
         result.data = dxtData.first;
         result.colorMap = {};
         result.colorMapFormat = ColorFormat::Unknown;
         result.colorMapData = {};
+        // store decompressed image as state
+        state = convertTo<uint8_t>(dxtData.second);
         return result;
     }
 
-    Data Processing::compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state)
+    Data Processing::compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressGVID expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::RGB888, std::runtime_error, "GVID compression is only possible for RGB888 truecolor images");
@@ -466,27 +467,26 @@ namespace Image
         return images;
     }
 
-    Data Processing::imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state)
+    Data Processing::imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state)
     {
         // check if a usable state was passed
-        if (state.size() == 1 && std::holds_alternative<Data>(state.front()))
+        if (!state.empty())
         {
             // ok. calculate difference
-            auto &prevImage = std::get<Data>(state.front());
-            REQUIRE(image.data.size() == prevImage.data.size(), std::runtime_error, "Images must have the same size");
+            REQUIRE(image.data.size() == state.size(), std::runtime_error, "Images must have the same size");
             std::vector<uint8_t> diff(image.data.size());
             for (std::size_t i = 0; i < image.data.size(); i++)
             {
-                diff[i] = prevImage.data[i] - image.data[i];
+                diff[i] = state[i] - image.data[i];
             }
             // set current image to state
-            std::get<Data>(state.front()) = image;
+            state = image.data;
             auto result = image;
             result.data = diff;
             return result;
         }
         // set current image to state
-        state.push_back(image);
+        state = image.data;
         // no state, return input data
         return image;
     }

@@ -138,14 +138,14 @@ namespace Image
         /// - Maximum error for B-frame references (keyframes)
         /// - Maximum error for P-frame references (inter-frames)
         /// @param state Previous image as Data
-        static Data compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state);
+        static Data compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state);
 
         /// @brief Encode a truecolor RGB888 image with YCgCo block-based method
         /// @param parameters:
         /// - Allowed error for inter-frame block references as float in [0,1]. 0 means no error allowed
         /// - Key frame rate n as int in [1,20] meaning a key frame is stored every n frames
         /// @param state Previous image as Data
-        static Data compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state);
+        static Data compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state);
 
         // --- misc conversion functions ------------------------------------------------------------------------
 
@@ -171,7 +171,7 @@ namespace Image
         /// @brief Calcuate pixel-difference to previous image
         /// @param parameters Unused
         /// @param state Previous image as Data
-        static Data imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state);
+        static Data imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state);
 
         /// @brief Combine image data of all images and return the data and the start indices into that data.
         /// Indices are return in DATA_TYPE units
@@ -222,7 +222,7 @@ namespace Image
             ProcessingType type;
             std::vector<Parameter> parameters;
             bool prependProcessing = false;
-            std::vector<Parameter> state;
+            std::vector<uint8_t> state;
         };
         std::vector<ProcessingStep> m_steps;
 
@@ -237,7 +237,7 @@ namespace Image
 
         using InputFunc = std::function<Data(const Magick::Image &, const std::vector<Parameter> &)>;
         using ConvertFunc = std::function<Data(const Data &, const std::vector<Parameter> &)>;
-        using ConvertStateFunc = std::function<Data(const Data &, const std::vector<Parameter> &, std::vector<Parameter> &)>;
+        using ConvertStateFunc = std::function<Data(const Data &, const std::vector<Parameter> &, std::vector<uint8_t> &)>;
         using BatchConvertFunc = std::function<std::vector<Data>(const std::vector<Data> &, const std::vector<Parameter> &)>;
         using ReduceFunc = std::function<Data(const std::vector<Data> &, const std::vector<Parameter> &)>;
         using FunctionType = std::variant<InputFunc, ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc>;
