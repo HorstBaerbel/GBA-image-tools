@@ -12,7 +12,7 @@ std::string ProcessingOptions::Option::helpString() const
     return cxxOption.opts_ + ": " + cxxOption.desc_;
 }
 
-ProcessingOptions::OptionT<float> ProcessingOptions::blackWhite{
+ProcessingOptions::OptionT<double> ProcessingOptions::blackWhite{
     false,
     {"blackwhite", "Convert images to b/w image with intensity threshold at N. N must be in [0.0, 1.0].", cxxopts::value(blackWhite.value)},
     {},
@@ -195,9 +195,25 @@ ProcessingOptions::Option ProcessingOptions::dxtg{
     false,
     {"dxtg", "Use DXT1-ish RGB555 compression.", cxxopts::value(dxtg.isSet)}};
 
-ProcessingOptions::Option ProcessingOptions::dxtv{
+ProcessingOptions::OptionT<std::vector<double>> ProcessingOptions::dxtv{
     false,
-    {"dxtv", "Use DXT1-ish RGB555 compression. With intra- and inter-frame compression", cxxopts::value(dxtv.isSet)}};
+    {"dxtv", "Use DXT1-ish RGB555 compression. With intra- and inter-frame compression. Parameters are keyframe interval in [1,20], max. B-frame error in [0.1,1], max. P-frame error in [0.1,1], e,g, \"--dxtv=5,0.1,0.2\"", cxxopts::value(dxtv.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(dxtv.cxxOption.opts_))
+        {
+            REQUIRE(dxtv.value.size() == 3, std::runtime_error, "DXTV parameter format must be \"R,EB,EP\", e.g. \"--dxtv=5,0.1,0.2\"");
+            auto keyframeInterval = static_cast<int64_t>(dxtv.value.at(0));
+            REQUIRE(keyframeInterval >= 1 && keyframeInterval <= 20, std::runtime_error, "Keyframe interval must be in [1,20]");
+            auto maxBframeError = dxtv.value.at(1);
+            REQUIRE(maxBframeError >= 0.01 && maxBframeError <= 1, std::runtime_error, "Max. B-frame error must be in [0.01,1]");
+            auto maxPframeError = dxtv.value.at(2);
+            REQUIRE(maxPframeError >= 0.01 && maxPframeError <= 1, std::runtime_error, "Max. P-frame error must be in [0.01,1]");
+            dxtv.isSet = true;
+        }
+    }};
 
 ProcessingOptions::Option ProcessingOptions::gvid{
     false,

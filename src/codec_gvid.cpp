@@ -22,13 +22,13 @@ constexpr uint32_t BLOCK_KEEP = 0x01;         // If bit is 1 the current block i
 constexpr uint32_t BLOCK_IS_REFERENCE = 0x02; // If bit is 1 the current block is a reference, else it is a new, full code book entry
 
 /// @brief Reference to code book entry for intra-frame compression. References the current codebook / frame
-struct BlockReferenceIntraFrame
+struct BlockReferenceBFrame
 {
     uint8_t index; // negative relative index of code book entry / frame block to use [0,255]->[1-256]
 };
 
 /// @brief Reference to code book entry for inter-frame compression / P-frames. References the current or previous codebook / frame
-struct BlockReferenceInterFrame
+struct BlockReferencePFrame
 {
     uint8_t previousFrame : 1; // if 1 this references the previous code book / frame block, if 0 the current one
     uint8_t index : 7;         // negative relative index of code book entry / frame block to use [0,127]->[1-128]
@@ -123,8 +123,8 @@ auto findBestMatch(const CodeBook &codebook, const CodeBookEntry &entry, float m
 auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::vector<uint8_t>
 {
     static_assert(sizeof(BlockCodeBookEntry) == 4, "Size of code book block must be 32 bit");
-    static_assert(sizeof(BlockReferenceInterFrame) == 1, "Size of intra-frame reference block must be 8 bit");
-    static_assert(sizeof(BlockReferenceIntraFrame) == 1, "Size of inter-frame reference block must be 8 bit");
+    static_assert(sizeof(BlockReferenceBFrame) == 1, "Size of intra-frame reference block must be 8 bit");
+    static_assert(sizeof(BlockReferenceBFrame) == 1, "Size of inter-frame reference block must be 8 bit");
     REQUIRE(width % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for GVID compression");
     REQUIRE(height % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for GVID compression");
     REQUIRE(image.size() % 3 == 0, std::runtime_error, "Image data size must be a multiple of 3 for GVID compression");

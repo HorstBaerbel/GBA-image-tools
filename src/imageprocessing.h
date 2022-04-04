@@ -17,7 +17,7 @@ namespace Image
     {
     public:
         /// @brief Variable parameters for processing step
-        using Parameter = std::variant<bool, int32_t, uint32_t, float, Magick::Color, Magick::Image, ColorFormat, Data, std::string>;
+        using Parameter = std::variant<bool, int32_t, uint32_t, double, Magick::Color, Magick::Image, ColorFormat, Data, std::string>;
 
         /// @brief Add a processing step and its parameters
         /// @param type Processing type
@@ -49,7 +49,7 @@ namespace Image
         // --- image conversion functions ------------------------------------
 
         /// @brief Binarize image using threshold. Everything < threshold will be black everything > threshold white
-        /// @param parameters Binarization threshold as float. Must be in [0.0, 1.0]
+        /// @param parameters Binarization threshold as double. Must be in [0.0, 1.0]
         static Data toBlackWhite(const Magick::Image &image, const std::vector<Parameter> &parameters);
 
         /// @brief Convert input image to paletted image by:
@@ -133,8 +133,12 @@ namespace Image
 
         /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
         /// Has additional intra- and inter-frame compression in comparison to DTXG
-        /// @param parameters: Unused
-        static Data compressDXTV(const Data &image, const std::vector<Parameter> &parameters);
+        /// @param parameters:
+        /// - Key frame interval n as int in [1,20] meaning a key frame is stored every n frames
+        /// - Maximum error for B-frame references (keyframes)
+        /// - Maximum error for P-frame references (inter-frames)
+        /// @param state Previous image as Data
+        static Data compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state);
 
         /// @brief Encode a truecolor RGB888 image with YCgCo block-based method
         /// @param parameters:

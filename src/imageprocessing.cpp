@@ -36,7 +36,7 @@ namespace Image
             {ProcessingType::CompressLz11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
             {ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXTG, {"compress DXTG", OperationType::Convert, FunctionType(compressDXTG)}},
-            {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::Convert, FunctionType(compressDXTV)}},
+            {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
             {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
             {ProcessingType::PadImageData, {"pad image data", OperationType::Convert, FunctionType(padImageData)}},
             {ProcessingType::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
@@ -48,8 +48,8 @@ namespace Image
     Data Processing::toBlackWhite(const Magick::Image &image, const std::vector<Parameter> &parameters)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<float>(parameters.front()), std::runtime_error, "toBlackWhite expects a single float threshold parameter");
-        const auto threshold = std::get<float>(parameters.front());
+        REQUIRE(parameters.size() == 1 && std::holds_alternative<double>(parameters.front()), std::runtime_error, "toBlackWhite expects a single double threshold parameter");
+        const auto threshold = std::get<double>(parameters.front());
         REQUIRE(threshold >= 0 && threshold <= 1, std::runtime_error, "Threshold must be in [0.0, 1.0]");
         // threshold image
         Magick::Image temp = image;
@@ -329,22 +329,38 @@ namespace Image
         return result;
     }
 
-    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<Parameter> &state)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTV expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTV compression is only possible for RGB888 and RGB555 truecolor images");
         REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXT compression");
         REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXT compression");
+        // get parameter(s)
+        REQUIRE(parameters.size() == 3, std::runtime_error, "compressDXTV expects 3 parameters");
+        REQUIRE(std::holds_alternative<uint32_t>(parameters.at(0)), std::runtime_error, "compressDXTV keyframe interval must be a uint32_t");
+        auto keyframeInterval = std::get<uint32_t>(parameters.at(0));
+        REQUIRE(keyframeInterval >= 1 && keyframeInterval <= 20, std::runtime_error, "compressDXTV keyframe interval must be in [1,20]");
+        REQUIRE(std::holds_alternative<double>(parameters.at(1)), std::runtime_error, "compressDXTV max. B-frame error must be a double");
+        auto maxBframeError = std::get<double>(parameters.at(1));
+        REQUIRE(maxBframeError >= 0.01 && maxBframeError <= 1, std::runtime_error, "compressDXTV max. B-frame error must be in [0.01,1]");
+        REQUIRE(std::holds_alternative<double>(parameters.at(2)), std::runtime_error, "compressDXTV max. P-frame error must be a double");
+        auto maxPframeError = std::get<double>(parameters.at(2));
+        REQUIRE(maxPframeError >= 0.01 && maxPframeError <= 1, std::runtime_error, "compressDXTV max. P-frame error must be in [0.01,1]");
         // convert RGB888 to RGB565
         auto data = image.data;
         if (image.colorFormat == ColorFormat::RGB888)
         {
             data = toRGB555(data);
         }
+        // set current image to state
+        // state.push_back(image);
+        // compress data
+        const bool isKeyframe = (image.index % keyframeInterval) == 0;
         auto result = image;
         result.colorFormat = ColorFormat::RGB555;
         result.mapData = {};
-        result.data = DXTV::encodeDXTV(convertTo<uint16_t>(data), image.size.width(), image.size.height(), true);
+        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), {}, image.size.width(), image.size.height(), isKeyframe, isKeyframe ? maxBframeError : maxPframeError);
+        result.data = dxtData.first;
         result.colorMap = {};
         result.colorMapFormat = ColorFormat::Unknown;
         result.colorMapData = {};
@@ -505,7 +521,7 @@ namespace Image
                 result += std::holds_alternative<bool>(p) ? (std::get<bool>(p) ? "true" : "false") : "";
                 result += std::holds_alternative<int32_t>(p) ? std::to_string(std::get<int32_t>(p)) : "";
                 result += std::holds_alternative<uint32_t>(p) ? std::to_string(std::get<uint32_t>(p)) : "";
-                result += std::holds_alternative<float>(p) ? std::to_string(std::get<float>(p)) : "";
+                result += std::holds_alternative<double>(p) ? std::to_string(std::get<double>(p)) : "";
                 result += std::holds_alternative<Magick::Color>(p) ? asHex(std::get<Magick::Color>(p)) : "";
                 result += std::holds_alternative<ColorFormat>(p) ? to_string(std::get<ColorFormat>(p)) : "";
                 result += std::holds_alternative<std::string>(p) ? std::get<std::string>(p) : "";

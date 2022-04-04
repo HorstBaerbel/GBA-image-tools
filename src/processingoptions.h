@@ -28,7 +28,7 @@ public:
         std::function<void(const cxxopts::ParseResult &)> parse;
     };
 
-    static OptionT<float> blackWhite;
+    static OptionT<double> blackWhite;
     static OptionT<uint32_t> paletted;
     static OptionT<std::string> truecolor;
     static Option reorderColors;
@@ -47,7 +47,7 @@ public:
     static Option rle;
     static Option vram;
     static Option dxtg;
-    static Option dxtv;
+    static OptionT<std::vector<double>> dxtv;
     static Option gvid;
     static Option interleavePixels;
     static Option dryRun;
