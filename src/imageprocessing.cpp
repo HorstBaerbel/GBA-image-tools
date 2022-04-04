@@ -506,6 +506,14 @@ namespace Image
         m_steps.clear();
     }
 
+    void Processing::clearState()
+    {
+        for (std::size_t si = 0; si < m_steps.size(); si++)
+        {
+            m_steps[si].state.clear();
+        }
+    }
+
     std::string Processing::getProcessingDescription(const std::string &seperator)
     {
         std::string result;
@@ -542,11 +550,13 @@ namespace Image
         return result;
     }
 
-    std::vector<Data> Processing::processBatch(const std::vector<Data> &data, bool clearState)
+    std::vector<Data> Processing::processBatch(const std::vector<Data> &data)
     {
         REQUIRE(data.size() > 0, std::runtime_error, "Empty data passed to processing");
         bool finalStepFound = false;
         std::vector<Data> processed = data;
+        std::for_each(processed.begin(), processed.end(), [index = 0](auto &p) mutable
+                      { p.index = index++; });
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
@@ -616,7 +626,7 @@ namespace Image
         return processed;
     }
 
-    Data Processing::processStream(const Magick::Image &image, bool clearState)
+    Data Processing::processStream(const Magick::Image &image, uint32_t index)
     {
         REQUIRE(ProcessingFunctions.find(m_steps.front().type)->second.type == OperationType::Input, std::runtime_error, "First step must be an input step");
         bool finalStepFound = false;
@@ -629,6 +639,7 @@ namespace Image
             {
                 auto inputFunc = std::get<InputFunc>(stepFunc.func);
                 processed = inputFunc(image, stepIt->parameters);
+                processed.index = index;
             }
             else if (stepFunc.type == OperationType::Convert)
             {

@@ -31,20 +31,22 @@ namespace Image
         /// @brief Remove all processing steps
         void clear();
 
+        /// @brief Clear the internal state of all processing steps. Call to reset state if you want to run the processing pipeline multiple times
+        void clearState();
+
         /// @brief Get human-readable description for processing steps in pipeline
         std::string getProcessingDescription(const std::string &seperator = ", ");
 
         /// @brief Run processing steps in pipeline on data. Used for processing a batch of images
         /// @param images Input data
-        /// @param clearState Clear internal state for all operations
         /// @note Will silently ignore OperationType::Input operations
-        std::vector<Data> processBatch(const std::vector<Data> &images, bool clearState = true);
+        std::vector<Data> processBatch(const std::vector<Data> &images);
 
         /// @brief Run processing steps in pipeline on single image. Used for processing a stream of images / video frames
         /// @param image Input image
-        /// @param clearState Clear internal state for all operations
+        /// @param index Image index in stream
         /// @note Will silently ignore OperationType::BatchConvert and ::Reduce operations
-        Data processStream(const Magick::Image &image, bool clearState = true);
+        Data processStream(const Magick::Image &image, uint32_t index = 0);
 
         // --- image conversion functions ------------------------------------
 
@@ -249,11 +251,6 @@ namespace Image
             FunctionType func;
         };
         static const std::map<ProcessingType, ProcessingFunc> ProcessingFunctions;
-
-        static std::vector<std::vector<uint8_t>> RGB565DistanceSqrCache;
-
-        /// @brief Encode a pixel block as DXT1 with RGB565 pixels
-        static std::vector<uint8_t> encodeBlockDXT1(const uint16_t *start, uint32_t pixelStride, const std::vector<std::vector<uint8_t>> &distanceSqrMap);
     };
 
 }

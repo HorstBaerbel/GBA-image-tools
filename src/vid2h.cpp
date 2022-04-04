@@ -324,6 +324,7 @@ int main(int argc, const char *argv[])
         // start reading frames from video
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
+        uint32_t frameIndex = 0;
         std::vector<Image::Data> images;
         do
         {
@@ -334,7 +335,7 @@ int main(int argc, const char *argv[])
             }
             REQUIRE(frame.size() == videoInfo.width * videoInfo.height * 3, std::runtime_error, "Unexpected frame size");
             // build image from frame and apply processing
-            images.push_back(processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data())));
+            images.push_back(processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data()), frameIndex++));
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
             if (lastProgress != newProgress)
             {
