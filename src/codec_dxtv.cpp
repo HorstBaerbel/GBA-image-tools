@@ -39,8 +39,8 @@ struct FrameHeader
 
 constexpr uint8_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames, 1 for P-frame / inter-frame compression ("predicted frame")
 
-constexpr uint32_t BLOCK_PREVIOUS = 0x01;     // If bit is set this references the previous code book / frame block, if 0 the current one
-constexpr uint32_t BLOCK_IS_REFERENCE = 0x02; // If bit is set the current block is a reference, else it is a new, full code book entry
+constexpr uint32_t BLOCK_PREVIOUS_FRAME = 0x01; // If bit is set this references the previous code book / frame block, if 0 the current one
+constexpr uint32_t BLOCK_IS_REFERENCE = 0x02;   // If bit is set the current block is a reference, else it is a new, full code book entry
 
 /// @brief Reference to code book entry for intra-frame compression / B-frames. References the current codebook / frame
 struct BlockReferenceBFrame
@@ -51,14 +51,11 @@ struct BlockReferenceBFrame
 /// @brief Reference to code book entry for inter-frame compression / P-frames. References the current or previous codebook / frame
 struct BlockReferencePFrame
 {
-    uint8_t index; // relative index of code book entry / frame block to use in [-127,128], sent as [0,255]. 0 means keep the current block
+    uint8_t index; // relative index of code book entry / frame block to use in [-127,128], sent as [0,255]. 0 means skip / keep the current block
 };
 
 /// @brief 4x4 RGB verbatim block
-struct CodeBookEntry
-{
-    std::array<YCgCoRd, 16> colors{};
-};
+using CodeBookEntry = std::array<YCgCoRd, 16>;
 
 /// @brief List of code book entries representing the image
 using CodeBook = std::vector<CodeBookEntry>;
@@ -79,19 +76,30 @@ struct DXTBlock
     }
 };
 
-auto correlate(const std::array<YCgCoRd, 16> &a, const std::array<YCgCoRd, 16> &b) -> double
+// Convert an image to a codebook
+auto toCodebook(const std::vector<uint16_t> &image, uint32_t width, uint32_t height) -> CodeBook
 {
-    // bring all values into the range [0,1]
-    std::array<YCgCoRd, 16> normalizedA;
-    std::array<YCgCoRd, 16> normalizedB;
-    std::transform(a.cbegin(), a.cend(), normalizedA.begin(), [](const auto &c)
-                   { return c.normalized(); });
-    std::transform(b.cbegin(), b.cend(), normalizedB.begin(), [](const auto &c)
-                   { return c.normalized(); });
-    // convolve blocks. result is in [0,16]
-    auto result = Correlation::convolve0(normalizedA, normalizedB);
-    // normalize and invert result to get "error"
-    return 1.0 - ((2.0 * result.Y() + result.Cg() + result.Co()) / (4.0 * 16.0));
+    CodeBook result(width / 4 * height / 4);
+    auto cbIt = result.begin();
+    for (uint32_t y = 0; y < height; y += 4)
+    {
+        for (uint32_t x = 0; x < width; x += 4)
+        {
+            // get block colors for all 16 pixels
+            auto pixel = image.data() + y * width + x;
+            auto eIt = cbIt->begin();
+            for (int y = 0; y < 4; y++)
+            {
+                *eIt++ = YCgCoRd::fromRGB555(pixel[0]);
+                *eIt++ = YCgCoRd::fromRGB555(pixel[1]);
+                *eIt++ = YCgCoRd::fromRGB555(pixel[2]);
+                *eIt++ = YCgCoRd::fromRGB555(pixel[3]);
+                pixel += width;
+            }
+            ++cbIt;
+        }
+    }
+    return result;
 }
 
 // DXT-encodes one 4x4 block
@@ -172,7 +180,7 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     auto start = std::next(codebook.cbegin(), minIndex);
     auto end = std::next(codebook.cbegin(), maxIndex);
     std::transform(start, end, std::front_inserter(errors), [entry, index = minIndex](const auto &b) mutable
-                   { return std::make_pair(YCgCoRd::distance(entry.colors, b.colors), index++); });
+                   { return std::make_pair(YCgCoRd::distance(entry, b), index++); });
     // stable sort by error
     std::stable_sort(errors.begin(), errors.end(), [](const auto &a, const auto &b)
                      { return a.first < b.first; });
@@ -181,7 +189,7 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     return (bestErrorIt->first < maxAllowedError) ? std::optional<std::pair<double, int32_t>>({bestErrorIt->first, bestErrorIt->second}) : std::optional<std::pair<double, int32_t>>();
 }
 
-auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &prevImage, uint32_t width, uint32_t height, bool keyFrame, double maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>
+auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &previousImage, uint32_t width, uint32_t height, bool keyFrame, double maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>
 {
     static_assert(sizeof(BlockReferenceBFrame) == 1, "Size of intra-frame reference block must be 8 bit");
     static_assert(sizeof(BlockReferenceBFrame) == 1, "Size of inter-frame reference block must be 8 bit");
@@ -190,71 +198,85 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXTV compression");
     REQUIRE((width / 4 * height / 4) % 8 == 0, std::runtime_error, "Number of 4x4 block must be a multiple of 8 for DXTV compression");
     REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "Max. block error must be in [0.01,1]");
-    // set up some variables
-    uint32_t blockIndex = 0;        // 4x4 block index in frame
+    // divide max block error to get into internal range
+    maxBlockError /= 1000;
+    // convert frames to codebooks
+    auto currentCodeBook = toCodebook(image, width, height);
+    CodeBook previousCodeBook; // = toCodebook(previousImage, width, height);
+    // compress frame
     uint16_t blockFlags = 0;        // flags for current 8 blocks
     std::vector<uint8_t> flags;     // block flags store flags for 8 blocks (8*2 bits = 2 bytes)
     std::vector<uint8_t> refBlocks; // stores block references
     std::vector<uint8_t> dxtBlocks; // stores verbatim DXT blocks
-    CodeBook codebook;              // code book storing all codebook entries (when finished this equals the frame in RGB format)
-    CodeBookEntry entry;            // current code book entry with colors of 4x4 block
     FrameHeader frameHeader;
     frameHeader.flags = keyFrame ? 0 : FRAME_IS_PFRAME;
-    // divide max block error to get into internal range
-    maxBlockError /= 1000;
     // loop through source images blocks
-    for (uint32_t y = 0; y < height; y += 4)
+    for (uint32_t blockIndex = 0; blockIndex < currentCodeBook.size();)
     {
-        for (uint32_t x = 0; x < width; x += 4)
+        auto &entry = currentCodeBook[blockIndex];
+        // compare entry to existing codebook entries in list
+        blockFlags >>= 2;
+        if (keyFrame)
         {
-            // get block colors for all 16 pixels
-            auto pixel = image.data() + y * width + x;
-            auto cIt = entry.colors.begin();
-            for (int y = 0; y < 4; y++)
+            // for B-frames / key frames, search the last -1 to -256 entries of the current frame
+            auto currentMatch = findBestMatchingBlock(currentCodeBook, entry, maxBlockError, blockIndex, -1, -256);
+            if (currentMatch.has_value())
             {
-                *cIt++ = YCgCoRd::fromRGB555(pixel[0]);
-                *cIt++ = YCgCoRd::fromRGB555(pixel[1]);
-                *cIt++ = YCgCoRd::fromRGB555(pixel[2]);
-                *cIt++ = YCgCoRd::fromRGB555(pixel[3]);
-                pixel += width;
-            }
-            // compare codebook to existing codebooks in list
-            if (keyFrame)
-            {
-                blockFlags >>= 2;
-                // for key frames, search the last -1 to -256 entries of the current codebook
-                auto bestMatch = findBestMatchingBlock(codebook, entry, maxBlockError, blockIndex, -1, -256);
-                if (bestMatch.has_value())
-                {
-                    // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
-                    int32_t offset = blockIndex - bestMatch.value().second - 1;
-                    assert(offset >= 0 && offset <= 255);
-                    refBlocks.push_back(static_cast<uint8_t>(offset));
-                    blockFlags |= (BLOCK_IS_REFERENCE << 14);
-                    // insert referenced codebook entry into codebook
-                    codebook.push_back(codebook[bestMatch.value().second]);
-                }
-                else
-                {
-                    // else insert the codebook entry itself
-                    auto block = encodeBlock(entry.colors).toArray();
-                    std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
-                    // insert new codebook entry into codebook
-                    codebook.push_back(entry);
-                }
+                // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
+                int32_t offset = blockIndex - currentMatch.value().second - 1;
+                assert(offset >= 0 && offset <= 255);
+                refBlocks.push_back(static_cast<uint8_t>(offset));
+                blockFlags |= (BLOCK_IS_REFERENCE << 14);
+                // replace current entry by referenced entry
+                entry = currentCodeBook[currentMatch.value().second];
             }
             else
             {
-                // P-frame. can use previous frame as reference
+                // else insert the codebook entry itself
+                auto block = encodeBlock(entry).toArray();
+                std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
             }
-            // store and clear block flags every 16 blocks
-            blockIndex++;
-            if ((blockIndex % 8) == 0)
+        }
+        else
+        {
+            // P-frame / inter-frame, search the last -1 to -256 entries of the current frame
+            auto currentMatch = findBestMatchingBlock(currentCodeBook, entry, maxBlockError, blockIndex, -1, -256);
+            // search the last -127 to 128 entries of the previous frame
+            auto previousMatch = findBestMatchingBlock(previousCodeBook, entry, maxBlockError, blockIndex, -127, 128);
+            if (previousMatch.has_value() && (!currentMatch.has_value() || currentMatch.value().first > previousMatch.value().first))
             {
-                flags.push_back((blockFlags >> 0) & 0xFF);
-                flags.push_back((blockFlags >> 8) & 0xFF);
-                blockFlags = 0;
+                // if we've found a usable codebook entry, store the index [-127,128]->[0,255]
+                int32_t offset = blockIndex - previousMatch.value().second + 127;
+                assert(offset >= 0 && offset <= 255);
+                refBlocks.push_back(static_cast<uint8_t>(offset));
+                blockFlags |= ((BLOCK_PREVIOUS_FRAME | BLOCK_IS_REFERENCE) << 14);
+                // replace current entry by referenced entry
+                entry = previousCodeBook[previousMatch.value().second];
             }
+            else if (currentMatch.has_value() && (!previousMatch.has_value() || previousMatch.value().first > currentMatch.value().first))
+            {
+                // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
+                int32_t offset = blockIndex - currentMatch.value().second - 1;
+                assert(offset >= 0 && offset <= 255);
+                refBlocks.push_back(static_cast<uint8_t>(offset));
+                blockFlags |= (BLOCK_IS_REFERENCE << 14);
+                // replace current entry by referenced entry
+                entry = currentCodeBook[currentMatch.value().second];
+            }
+            else
+            {
+                // else insert the codebook entry itself
+                auto block = encodeBlock(entry).toArray();
+                std::copy(block.cbegin(), block.cend(), std::back_inserter(dxtBlocks));
+            }
+        }
+        // store and clear block flags every 16 blocks
+        blockIndex++;
+        if ((blockIndex % 8) == 0)
+        {
+            flags.push_back((blockFlags >> 0) & 0xFF);
+            flags.push_back((blockFlags >> 8) & 0xFF);
+            blockFlags = 0;
         }
     }
     // add frame header to compressedData
@@ -280,7 +302,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     return {compressedData, {}};
 }
 
-auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint8_t>
+auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint16_t>
 {
     return {};
 }

@@ -139,6 +139,7 @@ bool readArguments(int argc, const char *argv[])
         options.shiftIndices.parse(result);
         options.pruneIndices.parse(result);
         options.sprites.parse(result);
+        options.dxtv.parse(result);
     }
     catch (const cxxopts::OptionException &e)
     {
@@ -290,7 +291,7 @@ int main(int argc, const char *argv[])
         }
         if (options.dxtv)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTV, {}, true);
+            processing.addStep(Image::ProcessingType::CompressDXTV, {static_cast<uint32_t>(options.dxtv.value.at(0)), options.dxtv.value.at(1), options.dxtv.value.at(2)}, true);
         }
         if (options.gvid)
         {
