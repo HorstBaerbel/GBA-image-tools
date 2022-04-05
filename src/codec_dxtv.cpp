@@ -39,8 +39,10 @@ struct FrameHeader
 
 constexpr uint8_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames, 1 for P-frame / inter-frame compression ("predicted frame")
 
-constexpr uint32_t BLOCK_PREVIOUS_FRAME = 0x01; // If bit is set this references the previous code book / frame block, if 0 the current one
-constexpr uint32_t BLOCK_IS_REFERENCE = 0x02;   // If bit is set the current block is a reference, else it is a new, full code book entry
+constexpr uint32_t BLOCK_CURRENT_NEW = 0x00;        // The block is a new, full DXT block
+constexpr uint32_t BLOCK_CURRENT_REFERENCE = 0x02;  // The block is a reference into the current codebook
+constexpr uint32_t BLOCK_PREVIOUS_KEEP = 0x01;      // The block should be kept from the previous frame
+constexpr uint32_t BLOCK_PREVIOUS_REFERENCE = 0x03; // The block is a reference into the previous frame
 
 /// @brief Reference to code book entry for intra-frame compression / B-frames. References the current codebook / frame
 struct BlockReferenceBFrame
@@ -207,26 +209,26 @@ auto copyImageBlock(std::vector<uint16_t> &dstImage, const std::vector<uint16_t>
 
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, entry index) if usable entry found or empty optional, if not
-auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry, double maxAllowedError, int32_t blockIndex, int32_t distanceMin, int32_t distanceMax) -> std::optional<std::pair<double, int32_t>>
+auto findBestMatchingBlock(const CodeBook &codebook, int32_t nrOfBlocks, const CodeBookEntry &entry, double maxAllowedError, int32_t blockIndex, int32_t distanceMin, int32_t distanceMax) -> std::optional<std::pair<double, int32_t>>
 {
     if (codebook.empty())
     {
         return std::optional<std::pair<double, int32_t>>();
     }
     // calculate start and end of search
-    auto maxIndex = blockIndex + distanceMin;
+    auto maxIndex = blockIndex + distanceMax;
     maxIndex = maxIndex < 0 ? 0 : maxIndex;
-    maxIndex = maxIndex >= codebook.size() ? codebook.size() - 1 : maxIndex;
-    auto minIndex = blockIndex + distanceMax;
+    maxIndex = maxIndex >= nrOfBlocks ? nrOfBlocks - 1 : maxIndex;
+    auto minIndex = blockIndex + distanceMin;
     minIndex = minIndex < 0 ? 0 : minIndex;
-    minIndex = minIndex >= codebook.size() ? codebook.size() - 1 : minIndex;
+    minIndex = minIndex >= nrOfBlocks ? nrOfBlocks - 1 : minIndex;
     // searched entries must be >= 1
     if ((maxIndex - minIndex) < 1)
     {
         return std::optional<std::pair<double, int32_t>>();
     }
     assert(maxIndex - minIndex >= 1);
-    // calculate codebook errors in reverse (increasing distance from current position)
+    // calculate codebook errors
     std::deque<std::pair<double, int32_t>> errors;
     auto start = std::next(codebook.cbegin(), minIndex);
     auto end = std::next(codebook.cbegin(), maxIndex);
@@ -235,10 +237,16 @@ auto findBestMatchingBlock(const CodeBook &codebook, const CodeBookEntry &entry,
     // stable sort by error
     std::stable_sort(errors.begin(), errors.end(), [](const auto &a, const auto &b)
                      { return a.first < b.first; });
-    // find codebook that has minumum error
+    // find codebook that has minimum error
     auto bestErrorIt = std::min_element(errors.cbegin(), errors.cend());
     return (bestErrorIt->first < maxAllowedError) ? std::optional<std::pair<double, int32_t>>({bestErrorIt->first, bestErrorIt->second}) : std::optional<std::pair<double, int32_t>>();
 }
+
+int32_t currentRefBlock = 0;
+int32_t previousRefPos = 0;
+int32_t previousRefNeg = 0;
+int32_t keepBlock = 0;
+int32_t repeatBlock = 0;
 
 auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &previousImage, uint32_t width, uint32_t height, bool keyFrame, double maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>
 {
@@ -263,7 +271,12 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     FrameHeader frameHeader;
     frameHeader.flags = keyFrame ? 0 : FRAME_IS_PFRAME;
     // loop through source images blocks
-    for (uint32_t blockIndex = 0; blockIndex < currentCodeBook.size();)
+    currentRefBlock = 0;
+    previousRefPos = 0;
+    previousRefNeg = 0;
+    keepBlock = 0;
+    repeatBlock = 0;
+    for (int32_t blockIndex = 0; blockIndex < currentCodeBook.size();)
     {
         auto &entry = currentCodeBook[blockIndex];
         // compare entry to existing codebook entries in list
@@ -271,14 +284,17 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
         if (keyFrame)
         {
             // for B-frames / key frames, search the last -1 to -256 entries of the current frame
-            auto currentMatch = findBestMatchingBlock(currentCodeBook, entry, maxBlockError, blockIndex, -1, -256);
+            auto currentMatch = findBestMatchingBlock(currentCodeBook, blockIndex + 1, entry, maxBlockError, blockIndex, -256, -1);
             if (currentMatch.has_value())
             {
+                currentRefBlock++;
+                repeatBlock += (blockIndex - currentMatch.value().second) == 1 ? 1 : 0;
+
                 // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
                 int32_t offset = blockIndex - currentMatch.value().second - 1;
                 assert(offset >= 0 && offset <= 255);
                 refBlocks.push_back(static_cast<uint8_t>(offset));
-                blockFlags |= (BLOCK_IS_REFERENCE << 14);
+                blockFlags |= (BLOCK_CURRENT_REFERENCE << 14);
                 // replace current entry by referenced entry
                 entry = currentCodeBook[currentMatch.value().second];
                 // store decompressed block to image
@@ -296,29 +312,42 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
         }
         else
         {
-            // P-frame / inter-frame, search the last -1 to -256 entries of the current frame
-            auto currentMatch = findBestMatchingBlock(currentCodeBook, entry, maxBlockError, blockIndex, -1, -256);
-            // search the last -127 to 128 entries of the previous frame
-            auto previousMatch = findBestMatchingBlock(previousCodeBook, entry, maxBlockError, blockIndex, -127, 128);
-            if (previousMatch.has_value() && (!currentMatch.has_value() || currentMatch.value().first > previousMatch.value().first))
+            // P-frame / inter-frame, search the last -63 to 192 entries of the previous frame
+            if (auto previousMatch = findBestMatchingBlock(previousCodeBook, previousCodeBook.size(), entry, maxBlockError, blockIndex, -63, 192); previousMatch.has_value())
             {
-                // if we've found a usable codebook entry, store the index [-127,128]->[0,255]
-                int32_t offset = blockIndex - previousMatch.value().second + 127;
-                assert(offset >= 0 && offset <= 255);
-                refBlocks.push_back(static_cast<uint8_t>(offset));
-                blockFlags |= ((BLOCK_PREVIOUS_FRAME | BLOCK_IS_REFERENCE) << 14);
+                previousRefPos += (blockIndex - previousMatch.value().second) > 0 ? 1 : 0;
+                previousRefNeg += (blockIndex - previousMatch.value().second) < 0 ? 1 : 0;
+                keepBlock += (blockIndex - previousMatch.value().second) == 0 ? 1 : 0;
+
+                if (blockIndex == previousMatch.value().second)
+                {
+                    // the block should be kept. only set flags accordingly
+                    blockFlags |= (BLOCK_PREVIOUS_KEEP << 14);
+                }
+                else
+                {
+                    // if we've found a usable codebook entry, store the index [-63,192]->[0,255]
+                    int32_t offset = blockIndex - previousMatch.value().second + 63;
+                    assert(offset >= 0 && offset <= 255);
+                    refBlocks.push_back(static_cast<uint8_t>(offset));
+                    blockFlags |= (BLOCK_PREVIOUS_REFERENCE << 14);
+                }
                 // replace current entry by referenced entry
                 entry = previousCodeBook[previousMatch.value().second];
                 // store decompressed block to image
-                copyImageBlock(decompressedFrame, previousImage, width, height, currentMatch.value().second);
+                copyImageBlock(decompressedFrame, previousImage, width, height, previousMatch.value().second);
             }
-            else if (currentMatch.has_value() && (!previousMatch.has_value() || previousMatch.value().first > currentMatch.value().first))
+            // search the last -1 to -256 entries of the current frame
+            else if (auto currentMatch = findBestMatchingBlock(currentCodeBook, blockIndex + 1, entry, maxBlockError, blockIndex, -256, -1); currentMatch.has_value())
             {
+                currentRefBlock++;
+                repeatBlock += (blockIndex - currentMatch.value().second) == 1 ? 1 : 0;
+
                 // if we've found a usable codebook entry, use the relative index to it (-1, as it is never 0)
                 int32_t offset = blockIndex - currentMatch.value().second - 1;
                 assert(offset >= 0 && offset <= 255);
                 refBlocks.push_back(static_cast<uint8_t>(offset));
-                blockFlags |= (BLOCK_IS_REFERENCE << 14);
+                blockFlags |= (BLOCK_CURRENT_REFERENCE << 14);
                 // replace current entry by referenced entry
                 entry = currentCodeBook[currentMatch.value().second];
                 // store decompressed block to image
@@ -343,6 +372,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
             blockFlags = 0;
         }
     }
+    std::cout << "Curr: " << currentRefBlock << ", prev -/+: " << previousRefNeg << "/" << previousRefPos << ", repeat: " << repeatBlock << ", keep: " << keepBlock << std::endl;
     // add frame header to compressedData
     std::vector<uint8_t> compressedData;
     frameHeader.nrOfRefBlocks = static_cast<uint16_t>(refBlocks.size());
