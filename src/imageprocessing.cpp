@@ -336,18 +336,10 @@ namespace Image
         REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXT compression");
         REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXT compression");
         // get parameter(s)
-        REQUIRE(parameters.size() == 3, std::runtime_error, "compressDXTV expects 3 parameters");
-        REQUIRE(std::holds_alternative<uint32_t>(parameters.at(0)), std::runtime_error, "compressDXTV keyframe interval must be a uint32_t");
-        auto keyframeInterval = std::get<uint32_t>(parameters.at(0));
-        REQUIRE(keyframeInterval >= 1 && keyframeInterval <= 20, std::runtime_error, "compressDXTV keyframe interval must be in [1,20]");
-        REQUIRE(std::holds_alternative<double>(parameters.at(1)), std::runtime_error, "compressDXTV max. B-frame error must be a double");
-        auto maxBframeError = std::get<double>(parameters.at(1));
-        REQUIRE(maxBframeError >= 0.01 && maxBframeError <= 1, std::runtime_error, "compressDXTV max. B-frame error must be in [0.01,1]");
-        REQUIRE(std::holds_alternative<double>(parameters.at(2)), std::runtime_error, "compressDXTV max. P-frame error must be a double");
-        auto maxPframeError = std::get<double>(parameters.at(2));
-        REQUIRE(maxPframeError >= 0.01 && maxPframeError <= 1, std::runtime_error, "compressDXTV max. P-frame error must be in [0.01,1]");
-        const bool isKeyframe = (image.index % keyframeInterval) == 0;
-        REQUIRE(isKeyframe ? true : !state.empty(), std::runtime_error, "compressDXTV needs state for P-frames");
+        REQUIRE(parameters.size() == 1, std::runtime_error, "compressDXTV expects 1 double parameter");
+        REQUIRE(std::holds_alternative<double>(parameters.at(0)), std::runtime_error, "compressDXTV max. block error must be a double");
+        auto maxBlockError = std::get<double>(parameters.at(0));
+        REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01,1]");
         // convert RGB888 to RGB555
         auto data = image.data;
         if (image.colorFormat == ColorFormat::RGB888)
@@ -358,7 +350,7 @@ namespace Image
         auto result = image;
         result.colorFormat = ColorFormat::RGB555;
         result.mapData = {};
-        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), isKeyframe ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), isKeyframe, isKeyframe ? maxBframeError : maxPframeError);
+        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), state.empty() ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), true /* state.empty()*/, maxBlockError);
         result.data = dxtData.first;
         result.colorMap = {};
         result.colorMapFormat = ColorFormat::Unknown;

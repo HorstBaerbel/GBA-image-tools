@@ -291,7 +291,7 @@ int main(int argc, const char *argv[])
         }
         if (options.dxtv)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTV, {static_cast<uint32_t>(options.dxtv.value.at(0)), options.dxtv.value.at(1), options.dxtv.value.at(2)}, true);
+            processing.addStep(Image::ProcessingType::CompressDXTV, {options.dxtv.value}, true);
         }
         if (options.gvid)
         {
