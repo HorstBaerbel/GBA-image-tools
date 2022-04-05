@@ -41,11 +41,8 @@ namespace Video
             case Image::ProcessingType::CompressRLE:
                 dstInVRAM ? Decompression::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompression::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
                 break;
-            case Image::ProcessingType::CompressDXTG:
-                DXTG::UnCompWrite16bit<240>(reinterpret_cast<uint16_t *>(currentDst), reinterpret_cast<const uint16_t *>(currentSrc), info.width, info.height);
-                break;
             case Image::ProcessingType::CompressDXTV:
-                DXTV::UnCompWrite16bit<240>(reinterpret_cast<uint16_t *>(currentDst), currentSrc, info.width, info.height);
+                DXTV::UnCompWrite16bit<240>(reinterpret_cast<uint16_t *>(currentDst), currentSrc, (const uint32_t *)VRAM, info.width, info.height);
                 break;
             default:
                 return;

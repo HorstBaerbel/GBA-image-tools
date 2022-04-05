@@ -127,7 +127,7 @@ namespace DXTV
     IWRAM_DATA ALIGN(4) uint16_t colors[4];
 
     template <>
-    IWRAM_FUNC void UnCompWrite16bit<240>(uint16_t *dst, const uint32_t *src, uint32_t width, uint32_t height)
+    IWRAM_FUNC void UnCompWrite16bit<240>(uint16_t *dst, const uint32_t *src, const uint32_t *prevSrc, uint32_t width, uint32_t height)
     {
         constexpr uint32_t LineStride16 = 240;                   // stride to next line in dst in half-words
         constexpr uint32_t LineStride32 = LineStride16 / 2;      // stride to next line in dst in words

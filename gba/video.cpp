@@ -22,6 +22,8 @@ IWRAM_FUNC void frameRequest()
 	frameRequested = true;
 }
 
+EWRAM_DATA ALIGN(4) uint32_t BackBuffer[240 * 160 / 2];
+
 EWRAM_DATA ALIGN(4) uint32_t ScratchPad[19264 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
 
 int main()
@@ -84,8 +86,10 @@ int main()
 		// start benchmark timer
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;
-		// uncompress frame
-		Video::decode((uint32_t *)VRAM, ScratchPad, sizeof(ScratchPad), videoInfo, frame);
+		// uncompress frame to backbuffer
+		Video::decode(BackBuffer, ScratchPad, sizeof(ScratchPad), videoInfo, frame);
+		// blit to VRAM
+		Memory::memcpy32((uint32_t *)VRAM, BackBuffer, sizeof(BackBuffer) / 4);
 		// end benchmark timer
 		REG_TM2CNT_H = 0;
 		auto durationMs = static_cast<int32_t>(REG_TM2CNT_L) * 1000;
