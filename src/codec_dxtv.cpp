@@ -33,15 +33,15 @@ struct FrameHeader
     }
 };
 
-constexpr uint8_t FRAME_IS_PFRAME = 0x80;  // 0 for B-frames / key frames, 1 for P-frame / inter-frame compression ("predicted frame")
-constexpr uint32_t BLOCK_PREVIOUS = 0x01;  // The block is from from the previous frame
-constexpr uint32_t BLOCK_REFERENCE = 0x02; // The block is a reference into the current or previous frame
+constexpr uint8_t FRAME_IS_PFRAME = 0x80;      // 0 for B-frames / key frames, 1 for P-frame / inter-frame compression ("predicted frame")
+constexpr uint32_t BLOCK_FROM_PREVIOUS = 0x01; // The block is from from the previous frame
+constexpr uint32_t BLOCK_REFERENCE = 0x02;     // The block is a reference into the current or previous frame
 
 // Block flags mean:
 // 0 | 0 --> new, full DXT block
 // 0 | BLOCK_REFERENCE --> reference into current frame
-// BLOCK_PREVIOUS | BLOCK_REFERENCE --> reference into previous frame
-// BLOCK_PREVIOUS | 0 --> keep previous frame block
+// BLOCK_FROM_PREVIOUS | BLOCK_REFERENCE --> reference into previous frame
+// BLOCK_FROM_PREVIOUS | 0 --> keep previous frame block
 
 /// @brief 4x4 RGB verbatim block
 using CodeBookEntry = std::array<YCgCoRd, 16>;
@@ -341,7 +341,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
                 if (blockIndex == previousMatch.value().second)
                 {
                     // the block should be kept. only set flags accordingly
-                    blockFlags |= (BLOCK_PREVIOUS << 14);
+                    blockFlags |= (BLOCK_FROM_PREVIOUS << 14);
                 }
                 else
                 {
@@ -349,7 +349,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
                     int32_t offset = blockIndex - previousMatch.value().second + 15;
                     assert(offset >= 0 && offset <= 255);
                     refBlocks.push_back(static_cast<uint8_t>(offset));
-                    blockFlags |= ((BLOCK_PREVIOUS | BLOCK_REFERENCE) << 14);
+                    blockFlags |= ((BLOCK_FROM_PREVIOUS | BLOCK_REFERENCE) << 14);
                 }
                 // replace current entry by referenced entry
                 entry = previousCodeBook[previousMatch.value().second];

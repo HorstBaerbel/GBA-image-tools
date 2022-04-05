@@ -6,15 +6,15 @@
 namespace DXTV
 {
 
-    constexpr uint16_t FRAME_IS_PFRAME = 0x80; // 0 for key frames, 1 for inter-frame compression ("predicted frame")
-    constexpr uint32_t BLOCK_PREVIOUS = 0x01;  // The block is from from the previous frame
-    constexpr uint32_t BLOCK_REFERENCE = 0x02; // The block is a reference into the current or previous frame
+    constexpr uint16_t FRAME_IS_PFRAME = 0x80;     // 0 for key frames, 1 for inter-frame compression ("predicted frame")
+    constexpr uint32_t BLOCK_FROM_PREVIOUS = 0x01; // The block is from from the previous frame
+    constexpr uint32_t BLOCK_REFERENCE = 0x02;     // The block is a reference into the current or previous frame
 
     // Block flags mean:
     // 0 | 0 --> new, full DXT block
     // 0 | BLOCK_REFERENCE --> reference into current frame
-    // BLOCK_PREVIOUS | BLOCK_REFERENCE --> reference into previous frame
-    // BLOCK_PREVIOUS | 0 --> keep previous frame block
+    // BLOCK_FROM_PREVIOUS | BLOCK_REFERENCE --> reference into previous frame
+    // BLOCK_FROM_PREVIOUS | 0 --> keep previous frame block
 
     IWRAM_DATA struct FrameHeader
     {
@@ -142,8 +142,8 @@ namespace DXTV
         uint32_t blockIndex = 0; // 4x4 block index in frame
         // copy frame header
         Memory::memcpy32(&frameHeader, src, sizeof(FrameHeader) / 4);
-        const bool isKeyFrame = (frameHeader.flags & FRAME_IS_PFRAME) == 0;
-        // set up some variables
+        // const bool isKeyFrame = (frameHeader.flags & FRAME_IS_PFRAME) == 0; // currently P-frames only
+        //  set up some variables
         auto c2c3Ptr = reinterpret_cast<uint32_t *>(&colors[2]);
         auto srcFlagPtr = reinterpret_cast<const uint16_t *>(src + (sizeof(FrameHeader) / 4));              // flags that define encoding state of blocks
         uint32_t flags = 0;                                                                                 // flags for current 8 blocks
@@ -163,39 +163,49 @@ namespace DXTV
                     flags = *srcFlagPtr++;
                 }
                 // check block encoding type
-                if ((flags & BLOCK_REFERENCE) != 0)
+                const bool isFromPreviousFrame = (flags & BLOCK_FROM_PREVIOUS) != 0;
+                const bool isReference = (flags & BLOCK_REFERENCE) != 0;
+                if (isReference || isFromPreviousFrame)
                 {
-                    // block reference. get block index (# of blocks)
-                    uint32_t refBlockIndex = (blockIndex - 1) - *srcRefPtr++;
-                    // block pixel offset is: ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
-                    // division by 60 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
-                    // calculate refBlockIndex / 15 / 4 with extra precision
-                    uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
-                    offsetY = (offsetY + refBlockIndex) >> 4;
-                    offsetY = (offsetY + refBlockIndex) >> 4;
-                    offsetY = (offsetY + refBlockIndex) >> (4 + 2);
-                    // calculate refBlockIndex % 60
-                    uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 2);
-                    // multiply y-offset by stride and add x-offset
-                    uint32_t refBlockOffset = offsetY * 240 * 4 + offsetX * 4;
-                    auto copySrcPtr = reinterpret_cast<const uint32_t *>(dst + refBlockOffset);
+                    // some sort of block reference
+                    const uint32_t *copySrcPtr = nullptr;
+                    if (!isReference && isFromPreviousFrame)
+                    {
+                        // keep block from previous frame. offset is the same as in current destination
+                        uint32_t refBlockOffset = blockDst - dst;
+                        copySrcPtr = reinterpret_cast<const uint32_t *>(prevSrc + refBlockOffset / 2);
+                    }
+                    else
+                    {
+                        // copy block from current or previous frame at index (# of blocks)
+                        uint32_t refBlockIndex = (blockIndex - 1) - *srcRefPtr++;
+                        // block pixel offset is: ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
+                        // division by 60 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
+                        // calculate refBlockIndex / 15 / 4 with extra precision
+                        uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
+                        offsetY = (offsetY + refBlockIndex) >> 4;
+                        offsetY = (offsetY + refBlockIndex) >> 4;
+                        offsetY = (offsetY + refBlockIndex) >> (4 + 2);
+                        // calculate refBlockIndex % 60
+                        uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 2);
+                        // multiply y-offset by stride and add x-offset
+                        uint32_t refBlockOffset = offsetY * 240 * 4 + offsetX * 4;
+                        copySrcPtr = isFromPreviousFrame ? reinterpret_cast<const uint32_t *>(prevSrc + refBlockOffset / 2) : reinterpret_cast<const uint32_t *>(dst + refBlockOffset);
+                    }
                     auto copyDstPtr = reinterpret_cast<uint32_t *>(blockDst);
-                    // copy 4 pixels = 8 bytes from reference to current block
+                    // copy 4 pixels = 8 bytes from reference to current block, then move to next line in source and destination vertically
                     copyDstPtr[0] = copySrcPtr[0];
                     copyDstPtr[1] = copySrcPtr[1];
-                    // move to next line in source and destination vertically
                     copySrcPtr += LineStride32;
                     copyDstPtr += LineStride32;
-                    // copy 4 pixels = 8 bytes from reference to current block
+                    // copy 4 pixels = 8 bytes from reference to current block, then move to next line in source and destination vertically
                     copyDstPtr[0] = copySrcPtr[0];
                     copyDstPtr[1] = copySrcPtr[1];
-                    // move to next line in source and destination vertically
                     copySrcPtr += LineStride32;
                     copyDstPtr += LineStride32;
-                    // copy 4 pixels = 8 bytes from reference to current block
+                    // copy 4 pixels = 8 bytes from reference to current block, then move to next line in source and destination vertically
                     copyDstPtr[0] = copySrcPtr[0];
                     copyDstPtr[1] = copySrcPtr[1];
-                    // move to next line in source and destination vertically
                     copySrcPtr += LineStride32;
                     copyDstPtr += LineStride32;
                     // copy 4 pixels = 8 bytes from reference to current block
@@ -217,26 +227,23 @@ namespace DXTV
                     // get pixel color indices and set pixels accordingly
                     uint32_t indices = *reinterpret_cast<const uint32_t *>(srcDxtPtr);
                     srcDxtPtr += 2;
-                    // select color by 2 bit index from [c0, c1, c2, c3]
+                    // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
                     blockDst[0] = colors[(indices >> 0) & 0x3];
                     blockDst[1] = colors[(indices >> 2) & 0x3];
                     blockDst[2] = colors[(indices >> 4) & 0x3];
                     blockDst[3] = colors[(indices >> 6) & 0x3];
-                    // move to next line in destination vertically
                     blockDst += LineStride16;
-                    // select color by 2 bit index from [c0, c1, c2, c3]
+                    // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
                     blockDst[0] = colors[(indices >> 8) & 0x3];
                     blockDst[1] = colors[(indices >> 10) & 0x3];
                     blockDst[2] = colors[(indices >> 12) & 0x3];
                     blockDst[3] = colors[(indices >> 14) & 0x3];
-                    // move to next line in destination vertically
                     blockDst += LineStride16;
-                    // select color by 2 bit index from [c0, c1, c2, c3]
+                    // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
                     blockDst[0] = colors[(indices >> 16) & 0x3];
                     blockDst[1] = colors[(indices >> 18) & 0x3];
                     blockDst[2] = colors[(indices >> 20) & 0x3];
                     blockDst[3] = colors[(indices >> 22) & 0x3];
-                    // move to next line in destination vertically
                     blockDst += LineStride16;
                     // select color by 2 bit index from [c0, c1, c2, c3]
                     blockDst[0] = colors[(indices >> 24) & 0x3];
