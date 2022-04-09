@@ -15,6 +15,8 @@
 
 #include "data/data.h"
 
+extern bool ShowBlockTypes;
+
 IWRAM_DATA volatile bool frameRequested = true;
 
 IWRAM_FUNC void frameRequest()
@@ -83,6 +85,11 @@ int main()
 		{
 		};
 		frameRequested = false;
+		scanKeys();
+		if (keysDown() & KEY_L)
+		{
+			ShowBlockTypes = !ShowBlockTypes;
+		}
 		// start benchmark timer
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;

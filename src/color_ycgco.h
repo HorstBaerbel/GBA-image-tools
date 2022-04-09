@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <array>
 #include <cstdint>
 
 namespace Color
@@ -40,20 +41,51 @@ namespace Color
         /// @brief Convert color to raw RGB555 uint16_t by truncating and clamping
         auto toRGB555() const -> uint16_t;
 
+        /// @brief Convert colors to raw RGB555 uint16_t by truncating and clamping
+        template <std::size_t N>
+        static auto toRGB555(const std::array<YCgCoRd, N> &colors) -> std::array<uint16_t, N>
+        {
+            std::array<uint16_t, N> result;
+            std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
+                           { return c.toRGB555(); });
+            return result;
+        }
+
         /// @brief Round and clamp YCgCoR values to RGB555 grid positions. The values themselves will stay in their ranges
         static auto roundToRGB555(const YCgCoRd &color) -> YCgCoRd;
 
         /// @brief Calculate square of distance between colors (scalar product)
-        /// @return Returns a value in [0,1]
+        /// @return Returns color distance in [0,1]
         static auto distance(const YCgCoRd &color0, const YCgCoRd &color1) -> double;
 
         /// @brief Calculate square of distance between colors (scalar product)
-        /// @return Returns a value in [0,1]
-        static auto distance(const std::array<YCgCoRd, 16> &colors0, const std::array<YCgCoRd, 16> &colors1) -> double;
+        /// @return Returns block color distance in [0,1]
+        template <std::size_t N>
+        static auto distance(const std::array<YCgCoRd, N> &colors0, const std::array<YCgCoRd, N> &colors1) -> double
+        {
+            double dist = 0.0;
+            for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
+            {
+                dist += distance(*c0It, *c1It);
+            }
+            return dist / N;
+        }
 
-        /// @brief Calculate distance between DCT-transformed blocks.
-        /// @return Returns a value in [0,1]
-        static auto dctDistance(const std::array<YCgCoRd, 16> &colors0, const std::array<YCgCoRd, 16> &colors1) -> double;
+        /// @brief Calculate square of distance between colors (scalar product) and if there are are outliers above a threshold
+        /// @return Returns (allColorsBelowThreshold?, block color distance in [0,1])
+        template <std::size_t N>
+        static auto distanceBelowThreshold(const std::array<YCgCoRd, N> &colors0, const std::array<YCgCoRd, N> &colors1, double threshold) -> std::pair<bool, double>
+        {
+            bool belowThreshold = true;
+            double dist = 0.0;
+            for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
+            {
+                auto colorDist = distance(*c0It, *c1It);
+                belowThreshold = belowThreshold ? colorDist < threshold : belowThreshold;
+                dist += colorDist;
+            }
+            return {belowThreshold, dist / N};
+        }
     };
 
 }

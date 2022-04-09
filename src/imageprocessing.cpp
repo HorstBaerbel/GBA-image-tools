@@ -350,7 +350,7 @@ namespace Image
         auto result = image;
         result.colorFormat = ColorFormat::RGB555;
         result.mapData = {};
-        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), state.empty() ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), true /* state.empty()*/, maxBlockError);
+        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), state.empty() ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), state.empty(), maxBlockError);
         result.data = dxtData.first;
         result.colorMap = {};
         result.colorMapFormat = ColorFormat::Unknown;
