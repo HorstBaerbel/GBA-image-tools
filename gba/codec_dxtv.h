@@ -13,6 +13,6 @@ namespace DXTV
     // indices are stored separately for better compression (first all colors, then all indices)
     // See also: https://stackoverflow.com/questions/56474930/efficiently-implementing-dxt1-texture-decompression-in-hardware
     template <uint32_t RESOLUTION_X>
-    void UnCompWrite16bit(uint16_t *dst, const uint32_t *src, const uint32_t *prevSrc, uint32_t width, uint32_t height);
+    void UnCompWrite16bit(uint32_t *dst, const uint32_t *src, const uint32_t *prevSrc, uint32_t width, uint32_t height);
 
 }

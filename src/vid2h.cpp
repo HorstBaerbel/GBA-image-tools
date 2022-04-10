@@ -344,7 +344,7 @@ int main(int argc, const char *argv[])
                 auto timePassedMs = std::chrono::duration<double>(newTime - startTime);
                 auto fps = static_cast<double>(images.size()) / timePassedMs.count();
                 auto restS = (videoInfo.nrOfFrames - images.size()) / fps;
-                std::cout << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
+                std::cout << std::fixed << std::setprecision(1) << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
             }
         } while (true);
         // set up some image info
@@ -357,12 +357,12 @@ int main(int argc, const char *argv[])
         std::cout << "Input size: " << static_cast<double>(inputSize) / (1024 * 1024) << " MB" << std::endl;
         const auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
                                                     { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
-        std::cout << "Compressed size: " << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
-        std::cout << "Avg. bit rate: " << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
-        std::cout << "Avg. frame size: " << static_cast<double>(compressedSize) / images.size() << " Byte" << std::endl;
+        std::cout << "Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
+        std::cout << "Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
+        std::cout << "Avg. frame size: " << std::fixed << std::setprecision(1) << static_cast<double>(compressedSize) / images.size() << " Byte" << std::endl;
         if (videoInfo.fps > 255 || (videoInfo.fps - std::round(videoInfo.fps)) != 0)
         {
-            std::cout << "Frame rate of " << videoInfo.fps << " will be set to ";
+            std::cout << "Frame rate of " << std::fixed << std::setprecision(2) << videoInfo.fps << " will be set to ";
             videoInfo.fps = std::round(videoInfo.fps);
             videoInfo.fps = videoInfo.fps > 255 ? 255 : videoInfo.fps;
             std::cout << videoInfo.fps << std::endl;

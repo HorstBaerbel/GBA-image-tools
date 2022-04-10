@@ -8,24 +8,44 @@ IWRAM_DATA bool ShowBlockTypes = false;
 namespace DXTV
 {
 
-    constexpr uint16_t FRAME_IS_PFRAME = 0x80;     // 0 for key frames, 1 for inter-frame compression ("predicted frame")
-    constexpr uint16_t FRAME_KEEP = 0x40;          // 1 for frames that are considered a direct copy of the previous frame and can be kept
-    constexpr uint32_t BLOCK_FROM_PREVIOUS = 0x01; // The block is from from the previous frame
-    constexpr uint32_t BLOCK_REFERENCE = 0x02;     // The block is a reference into the current or previous frame
-    constexpr int32_t currentReferenceOffset = 1;
-    constexpr int32_t previousReferenceOffset = 63;
-
-    // Block flags mean:
-    // 0 | 0 --> new, full DXT block
-    // 0 | BLOCK_REFERENCE --> reference into current frame
-    // BLOCK_FROM_PREVIOUS | BLOCK_REFERENCE --> reference into previous frame
-    // BLOCK_FROM_PREVIOUS | 0 --> keep previous frame block
-
     IWRAM_DATA struct FrameHeader
     {
-        uint16_t flags = 0;         // e.g. FRAME_IS_PFRAME
-        uint16_t nrOfRefBlocks = 0; // # of reference blocks in frame. rest is verbatim DXT blocks
+        uint16_t flags = 0;     // e.g. FRAME_IS_PFRAME
+        uint16_t nrOfFlags = 0; // # of blocks > MinDim in frame (determines the size of flags block)
     } ALIGN_PACK(4) frameHeader;
+
+    // The image is split into 16x16 pixel blocks which can be futher split into 8x8 and 4x4 blocks.
+    //
+    // Every 16x16 (block size 0) block has one flag:
+    // Bit 0: Block handled entirely (0) or block split into 8x8 (1)
+    //
+    // Every 8x8 block (block size 1) has one flag:
+    // Bit 0: Block handled entirely (0) or block split into 4x4 (1)
+    //
+    // 4x4 block (block size 2) has no flags. If an 8x8 block has been split,
+    // 4 block references or DXT blocks will be read from data.
+    //
+    // Block flags are sent depth first. So if a 16x16 block is split into 4 8x8 children ABCD, its first 8x8 child A is sent first.
+    // If that child is split, its 4 4x4 children CDEF are sent first, then child B and so on. This makes sure no flag bits are wasted.
+    //
+    // DXT and reference blocks differ in their Bit 15. If 0 it is a DXT-block, if 1 a reference block.
+    // - DXT blocks store verbatim DXT data (2 * uint16_t RGB555 colors and index data depending on blocks size).
+    //   Due to RGB555 having bit 15 == 0, the correct bit is automatically set.
+    // - Reference blocks store:
+    //   Bit 15: Always 1 (see above)
+    //   Bit 14: Current (0) / previous (1) frame Bit
+    //   Bit 0-13: Reference index into frame
+    //             Range [-16384,-1] is used for references to the current frame.
+    //             Range [-8191,8192] is used for references to the previous frame.
+
+    constexpr uint16_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames, 1 for P-frame / inter-frame compression ("predicted frame")
+    constexpr uint16_t FRAME_KEEP = 0x40;      // 1 for frames that are considered a direct copy of the previous frame and can be kept
+
+    constexpr uint32_t BLOCK_NO_SPLIT = 0;             // The block is a full block
+    constexpr uint32_t BLOCK_IS_SPLIT = 1;             // The block is split into smaller sub-blocks
+    constexpr uint32_t BLOCK_IS_REF = (1 << 15);       // The block is a reference into the current or previous frame
+    constexpr uint32_t BLOCK_FROM_PREV = (1 << 14);    // The reference block is from from the previous frame
+    constexpr uint32_t BLOCK_INDEX_MASK = ~(3U << 14); // Mask to get the block index from the reference info
 
     /// @brief Lookup table for c0 vs c1 that returns (c2 << 16 | c3)
     /// Formula: (round((2.0*floor(i/32)+(i%32))/3.0)) | (round((floor(i/32)+2.0*(i%32))/3.0)<<16), i in [0,32*32]
@@ -134,54 +154,266 @@ namespace DXTV
         1507355, 1572891, 1572892, 1638428, 1703964, 1703965, 1769501, 1835037, 1835038, 1900574,
         1966110, 1966111, 2031647};
 
-    IWRAM_DATA ALIGN(4) uint16_t colors[4];
+    IWRAM_DATA ALIGN(4) uint16_t DxtColors[4];
 
+    template <uint32_t BLOCK_DIM>
     inline IWRAM_FUNC void FillBlock(uint32_t *dst32, uint32_t value, uint32_t LineStride32)
     {
-        dst32[0] = value;
-        dst32[1] = value;
-        dst32 += LineStride32;
-        dst32[0] = value;
-        dst32[1] = value;
-        dst32 += LineStride32;
-        dst32[0] = value;
-        dst32[1] = value;
-        dst32 += LineStride32;
-        dst32[0] = value;
-        dst32[1] = value;
+        for (uint32_t i = 0; i < BLOCK_DIM; ++i)
+        {
+            dst32[0] = value;
+            dst32[1] = value;
+            if constexpr (BLOCK_DIM >= 8)
+            {
+                dst32[2] = value;
+                dst32[3] = value;
+            }
+            if constexpr (BLOCK_DIM >= 16)
+            {
+                dst32[4] = value;
+                dst32[5] = value;
+                dst32[6] = value;
+                dst32[7] = value;
+            }
+            dst32 += LineStride32;
+        }
     }
 
+    /// @brief Get DXT colors from source, calculate intermediate colors and write to DxtColors array
+    /// @return Pointer past DXT colors
+    inline IWRAM_FUNC auto GetDXTColors(const uint16_t *src16) -> const uint16_t *
+    {
+        // get anchor colors c0 and c1
+        uint32_t c0 = *src16++;
+        uint32_t c1 = *src16++;
+        DxtColors[0] = c0;
+        DxtColors[1] = c1;
+        // calculate intermediate colors c2 and c3
+        uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
+        uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
+        uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
+        auto DxtC2C3Ptr = reinterpret_cast<uint32_t *>(&DxtColors[2]);
+        *DxtC2C3Ptr = (C2C3table[b] << 10) | (C2C3table[g] << 5) | C2C3table[r];
+        return src16;
+    }
+
+    /// @brief Uncompress 4x4 DXT block
+    /// @return Pointer past whole DXT block in src
+    template <uint32_t BLOCK_DIM>
+    IWRAM_FUNC auto UncompressBlock(uint16_t *dst16, const uint16_t *src16, uint32_t LineStride16) -> const uint16_t *;
+
+    /// @brief Uncompress 4x4 DXT block
+    /// @return Pointer past whole DXT block in src
+    template <>
+    inline IWRAM_FUNC auto UncompressBlock<4>(uint16_t *dst16, const uint16_t *src16, uint32_t LineStride16) -> const uint16_t *
+    {
+        // full DXT block. get colors
+        src16 = GetDXTColors(src16);
+        // get pixel color indices and set pixels accordingly
+        uint32_t indices = *reinterpret_cast<const uint32_t *>(src16);
+        // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
+        dst16[0] = DxtColors[(indices >> 0) & 0x3];
+        dst16[1] = DxtColors[(indices >> 2) & 0x3];
+        dst16[2] = DxtColors[(indices >> 4) & 0x3];
+        dst16[3] = DxtColors[(indices >> 6) & 0x3];
+        dst16 += LineStride16;
+        // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
+        dst16[0] = DxtColors[(indices >> 8) & 0x3];
+        dst16[1] = DxtColors[(indices >> 10) & 0x3];
+        dst16[2] = DxtColors[(indices >> 12) & 0x3];
+        dst16[3] = DxtColors[(indices >> 14) & 0x3];
+        dst16 += LineStride16;
+        // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
+        dst16[0] = DxtColors[(indices >> 16) & 0x3];
+        dst16[1] = DxtColors[(indices >> 18) & 0x3];
+        dst16[2] = DxtColors[(indices >> 20) & 0x3];
+        dst16[3] = DxtColors[(indices >> 22) & 0x3];
+        dst16 += LineStride16;
+        // select color by 2 bit index from [c0, c1, c2, c3]
+        dst16[0] = DxtColors[(indices >> 24) & 0x3];
+        dst16[1] = DxtColors[(indices >> 26) & 0x3];
+        dst16[2] = DxtColors[(indices >> 28) & 0x3];
+        dst16[3] = DxtColors[(indices >> 30) & 0x3];
+        return src16 + 2;
+    }
+
+    /// @brief Uncompress 4x4 DXT block
+    /// @return Pointer past whole DXT block in src
+    template <>
+    inline IWRAM_FUNC auto UncompressBlock<8>(uint16_t *dst16, const uint16_t *src16, uint32_t LineStride16) -> const uint16_t *
+    {
+        // full DXT block. get colors
+        src16 = GetDXTColors(src16);
+        // get pixel color indices and set pixels accordingly
+        auto indexPtr = reinterpret_cast<const uint32_t *>(src16);
+        for (uint32_t i = 0; i < 4; ++i)
+        {
+            uint32_t indices = *indexPtr++;
+            // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
+            dst16[0] = DxtColors[(indices >> 0) & 0x3];
+            dst16[1] = DxtColors[(indices >> 2) & 0x3];
+            dst16[2] = DxtColors[(indices >> 4) & 0x3];
+            dst16[3] = DxtColors[(indices >> 6) & 0x3];
+            dst16[4] = DxtColors[(indices >> 8) & 0x3];
+            dst16[5] = DxtColors[(indices >> 10) & 0x3];
+            dst16[6] = DxtColors[(indices >> 12) & 0x3];
+            dst16[7] = DxtColors[(indices >> 14) & 0x3];
+            dst16 += LineStride16;
+            // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
+            dst16[0] = DxtColors[(indices >> 16) & 0x3];
+            dst16[1] = DxtColors[(indices >> 18) & 0x3];
+            dst16[2] = DxtColors[(indices >> 20) & 0x3];
+            dst16[3] = DxtColors[(indices >> 22) & 0x3];
+            dst16[4] = DxtColors[(indices >> 24) & 0x3];
+            dst16[5] = DxtColors[(indices >> 26) & 0x3];
+            dst16[6] = DxtColors[(indices >> 28) & 0x3];
+            dst16[7] = DxtColors[(indices >> 30) & 0x3];
+            dst16 += LineStride16;
+        }
+        return src16 + (2 * 4);
+    }
+
+    /// @brief Uncompress 4x4 DXT block
+    /// @return Pointer past whole DXT block in src
+    template <>
+    inline IWRAM_FUNC auto UncompressBlock<16>(uint16_t *dst16, const uint16_t *src16, uint32_t LineStride16) -> const uint16_t *
+    {
+        // full DXT block. get colors
+        src16 = GetDXTColors(src16);
+        // get pixel color indices and set pixels accordingly
+        for (uint32_t i = 0; i < 16; ++i)
+        {
+            uint16_t indices = *src16++;
+            // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
+            dst16[0] = DxtColors[(indices >> 0) & 0x3];
+            dst16[1] = DxtColors[(indices >> 2) & 0x3];
+            dst16[2] = DxtColors[(indices >> 4) & 0x3];
+            dst16[3] = DxtColors[(indices >> 6) & 0x3];
+            dst16[4] = DxtColors[(indices >> 8) & 0x3];
+            dst16[5] = DxtColors[(indices >> 10) & 0x3];
+            dst16[6] = DxtColors[(indices >> 12) & 0x3];
+            dst16[7] = DxtColors[(indices >> 14) & 0x3];
+            indices = *src16++;
+            dst16[8] = DxtColors[(indices >> 0) & 0x3];
+            dst16[9] = DxtColors[(indices >> 2) & 0x3];
+            dst16[10] = DxtColors[(indices >> 4) & 0x3];
+            dst16[11] = DxtColors[(indices >> 6) & 0x3];
+            dst16[12] = DxtColors[(indices >> 8) & 0x3];
+            dst16[13] = DxtColors[(indices >> 10) & 0x3];
+            dst16[14] = DxtColors[(indices >> 12) & 0x3];
+            dst16[15] = DxtColors[(indices >> 14) & 0x3];
+            dst16 += LineStride16;
+        }
+        return src16;
+    }
+
+    template <uint32_t BLOCK_DIM>
     inline IWRAM_FUNC void CopyBlock(uint32_t *dst32, const uint32_t *src32, uint32_t LineStride32)
     {
-        // copy 4 pixels = 8 bytes from reference to current block, then move to next line in source and destination vertically
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
-        src32 += LineStride32;
-        dst32 += LineStride32;
-        // copy 4 pixels = 8 bytes from reference to current block, then move to next line in source and destination vertically
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
-        src32 += LineStride32;
-        dst32 += LineStride32;
-        // copy 4 pixels = 8 bytes from reference to current block, then move to next line in source and destination vertically
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
-        src32 += LineStride32;
-        dst32 += LineStride32;
-        // copy 4 pixels = 8 bytes from reference to current block
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
+        for (uint32_t i = 0; i < BLOCK_DIM; ++i)
+        {
+            // copy BLOCK_DIM pixels = 2 * BLOCK_DIM bytes from reference to current block, then move to next line in source and destination vertically
+            dst32[0] = src32[0];
+            dst32[1] = src32[1];
+            if constexpr (BLOCK_DIM >= 8)
+            {
+                dst32[2] = src32[2];
+                dst32[3] = src32[3];
+            }
+            if constexpr (BLOCK_DIM >= 16)
+            {
+                dst32[4] = src32[4];
+                dst32[5] = src32[5];
+                dst32[6] = src32[6];
+                dst32[7] = src32[7];
+            }
+            src32 += LineStride32;
+            dst32 += LineStride32;
+        }
+    }
+
+    /// @brief Uncompress one BLOCK_DIM*BLOCK_DIM block
+    /// @return Pointer past whole block in src
+    template <uint32_t BLOCK_DIM>
+    IWRAM_FUNC auto DecodeBlock240(uint32_t *dst32, const uint16_t *src16, const uint32_t *prevSrc32, uint32_t LineStride32) -> const uint16_t *
+    {
+        // check if block is DXT or reference
+        auto blockFlags = static_cast<uint32_t>(*src16);
+        if ((blockFlags & BLOCK_IS_REF) != 0)
+        {
+            const bool isFromPrev = (blockFlags & BLOCK_FROM_PREV) != 0;
+            auto refSrc32 = isFromPrev ? prevSrc32 : dst32;
+            uint32_t refBlockIndex = blockFlags & BLOCK_INDEX_MASK;
+            if (refBlockIndex > 0)
+            {
+                if constexpr (BLOCK_DIM == 4)
+                {
+                    // block pixel offset is: ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
+                    // division by 60 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
+                    // calculate refBlockIndex / 15 / 4 with extra precision
+                    uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> (4 + 2);
+                    // calculate refBlockIndex % 60 = refBlockIndex - (offsetY * 60)
+                    uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 2);
+                    // multiply y-offset by stride and add x-offset
+                    auto refPixelOffset = offsetY * 240 * 4 + offsetX * 4;
+                    refSrc32 += (refPixelOffset >> 1);
+                }
+                else if constexpr (BLOCK_DIM == 8)
+                {
+                    // block pixel offset is: ((refBlockIndex / (240 / 8)) * 240 * 8) + ((refBlockIndex % (240 / 8)) * 8);
+                    // division by 30 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
+                    // calculate refBlockIndex / 15 / 2 with extra precision
+                    uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> (4 + 1);
+                    // calculate refBlockIndex % 30 = refBlockIndex - (offsetY * 30)
+                    uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 1);
+                    // multiply y-offset by stride and add x-offset
+                    auto refPixelOffset = offsetY * 240 * 8 + offsetX * 8;
+                    refSrc32 += (refPixelOffset >> 1);
+                }
+                else if constexpr (BLOCK_DIM == 16)
+                {
+                    // block pixel offset is: ((refBlockIndex / (240 / 16)) * 240 * 16) + ((refBlockIndex % (240 / 16)) * 16);
+                    // division by 15 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
+                    // calculate refBlockIndex / 15 with extra precision
+                    uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> 4;
+                    offsetY = (offsetY + refBlockIndex) >> 4;
+                    // calculate refBlockIndex % 15 = refBlockIndex - (offsetY * 15)
+                    uint32_t offsetX = refBlockIndex - ((offsetY << 4) - offsetY);
+                    // multiply y-offset by stride and add x-offset
+                    auto refPixelOffset = offsetY * 240 * 16 + offsetX * 16;
+                    refSrc32 += (refPixelOffset >> 1);
+                }
+            }
+            CopyBlock<BLOCK_DIM>(dst32, refSrc32, LineStride32);
+            // FillBlock<BLOCK_DIM>(dst32, isFromPrev ? 0x03E003E0 : 0x03FF03FF, LineStride32);
+            return src16 + 1;
+        }
+        else
+        {
+            return UncompressBlock<BLOCK_DIM>(reinterpret_cast<uint16_t *>(dst32), src16, LineStride32 << 1);
+        }
     }
 
     template <>
-    IWRAM_FUNC void UnCompWrite16bit<240>(uint16_t *dst, const uint32_t *src, const uint32_t *prevSrc, uint32_t width, uint32_t height)
+    IWRAM_FUNC void UnCompWrite16bit<240>(uint32_t *dst, const uint32_t *src, const uint32_t *prevSrc, uint32_t width, uint32_t height)
     {
-        constexpr uint32_t LineStride16 = 240;                   // stride to next line in dst in half-words
-        constexpr uint32_t LineStride32 = LineStride16 / 2;      // stride to next line in dst in words
-        constexpr uint32_t BlockLineStride16 = LineStride16 * 4; // vertical stride to next block in dst (4 lines)
-        constexpr uint32_t BlockStride16 = 4;                    // horizontal stride to next block in dst (4 * 2 bytes)
-        const uint32_t nrOfBlocks = width / 4 * height / 4;
-        uint32_t blockIndex = 0; // 4x4 block index in frame
+        constexpr uint32_t LineStride32 = 120;                                                                               // stride to next line in dst in words / 2 pixels
+        constexpr uint32_t Block4LineStride32 = LineStride32 * 4;                                                            // vertical stride to next 4x4 block in dst (4 lines)
+        constexpr uint32_t Block8LineStride32 = LineStride32 * 8;                                                            // vertical stride to next 8x8 block in dst (8 lines)
+        constexpr uint32_t Block16LineStride32 = LineStride32 * 16;                                                          // vertical stride to next 16x16 block in dst (16 lines)
+        constexpr uint32_t Block4Stride32 = 2;                                                                               // horizontal stride to next 4x4 block (4 * 2 bytes)
+        constexpr uint32_t Block8Stride32 = 4;                                                                               // horizontal stride to next 8x8 block (8 * 2 bytes)
+        constexpr uint32_t Block16Stride32 = 8;                                                                              // horizontal stride to next 16x6 block (16 * 2 bytes)
+        constexpr uint32_t Block4Offsets32[] = {0, Block4Stride32, Block4LineStride32, Block4LineStride32 + Block4Stride32}; // block pixel offsets from parent 8x8 block
+        constexpr uint32_t Block8Offsets32[] = {0, Block8Stride32, Block8LineStride32, Block8LineStride32 + Block8Stride32}; // block pixel offsets from parent 16x16 block
         // copy frame header
         Memory::memcpy32(&frameHeader, src, sizeof(FrameHeader) / 4);
         // check if we want to keep this duplicate frame
@@ -198,125 +430,63 @@ namespace DXTV
         {
             Debug::printf("Key frame");
         }
-        //  set up some variables
-        auto c2c3Ptr = reinterpret_cast<uint32_t *>(&colors[2]);
-        auto srcFlagPtr = reinterpret_cast<const uint16_t *>(src + (sizeof(FrameHeader) / 4));              // flags that define encoding state of blocks
-        uint32_t flags = 0;                                                                                 // flags for current 8 blocks
-        auto srcRefPtr = reinterpret_cast<const uint8_t *>(srcFlagPtr) + ((2 * nrOfBlocks) / 8);            // reference block data. offset is 2 flag bits per block = 2 bytes per 8 blocks
-        const uint32_t nrOfRefBlocks = (static_cast<uint32_t>(frameHeader.nrOfRefBlocks) + 3) & 0xFFFFFFFC; // round # of references up to multiple of 4
-        auto srcDxtPtr = reinterpret_cast<const uint16_t *>(srcRefPtr + nrOfRefBlocks);                     // DXT block data. offset is nrOfRefBlocks bytes
-        auto currentDst = dst;
-        for (uint32_t blockY = 0; blockY < height / 4; blockY++)
+        // set up some variables
+        uint32_t splitFlags = 0;                                                                                 // Block split bit flags for blocks
+        uint32_t splitFlagsAvailable = 0;                                                                        // How many bits we have left in flags
+        auto srcSplitFlagPtr = reinterpret_cast<const uint16_t *>(src) + (sizeof(FrameHeader) / 2);              // flags that define encoding state of blocks
+        const uint32_t nrOfFlagHwords = ((static_cast<uint32_t>(frameHeader.nrOfFlags) + 31) & 0xFFFFFFE0) >> 4; // round # of flags up to multiple of 32 and divide by 16
+        auto srcDataPtr = srcSplitFlagPtr + nrOfFlagHwords;                                                      // DXT block data. offset is nrOfRefBlocks bytes
+        auto currentDst32 = dst;
+        for (uint32_t blockY = 0; blockY < height / 16; blockY++)
         {
-            auto blockLineDst = currentDst;
-            for (uint32_t blockX = 0; blockX < width / 4; blockX++)
+            auto block16Dst32 = currentDst32;
+            for (uint32_t blockX = 0; blockX < width / 16; blockX++)
             {
-                auto blockDst = blockLineDst;
-                // load new block flags every 8 blocks
-                if ((blockIndex & 0x07) == 0)
+                // make sure we have enough flags left for one 16x16 and 4 8x8 blocks
+                if (splitFlagsAvailable < 5)
                 {
-                    flags = *srcFlagPtr++;
+                    splitFlags |= (static_cast<uint32_t>(*srcSplitFlagPtr++) << splitFlagsAvailable);
+                    splitFlagsAvailable += 16;
                 }
-                // check block encoding type
-                const bool isFromPreviousFrame = (flags & BLOCK_FROM_PREVIOUS) != 0;
-                const bool isReference = (flags & BLOCK_REFERENCE) != 0;
-                if (isReference)
+                // check if 16x16 block is split
+                const bool isSplit16 = (splitFlags & BLOCK_IS_SPLIT) != 0;
+                splitFlags >>= 1;
+                splitFlagsAvailable--;
+                if (isSplit16)
                 {
-                    // some sort of block reference
-                    auto copyDstPtr = reinterpret_cast<uint32_t *>(blockDst);
-                    if (isFromPreviousFrame)
+                    // decode 4 8x8 blocks
+                    for (uint32_t i8 = 0; i8 < 4; ++i8)
                     {
-                        // copy block from previous frame at index (# of blocks)
-                        uint32_t refBlockIndex = (blockIndex + *srcRefPtr++) - previousReferenceOffset;
-                        // block pixel offset is: ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
-                        // division by 60 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
-                        // calculate refBlockIndex / 15 / 4 with extra precision
-                        uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
-                        offsetY = (offsetY + refBlockIndex) >> 4;
-                        offsetY = (offsetY + refBlockIndex) >> 4;
-                        offsetY = (offsetY + refBlockIndex) >> (4 + 2);
-                        // calculate refBlockIndex % 60
-                        uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 2);
-                        // multiply y-offset by stride and add x-offset
-                        uint32_t refBlockOffset = offsetY * 240 * 2 + offsetX * 2;
-                        auto copySrcPtr = prevSrc + refBlockOffset;
-                        ShowBlockTypes ? FillBlock(copyDstPtr, 0x03FF << 16 | 0x03FF, LineStride32) : CopyBlock(copyDstPtr, copySrcPtr, LineStride32);
+                        auto block8Dst32 = block16Dst32 + Block8Offsets32[i8];
+                        // check if 8x8 block is split again
+                        const bool isSplit8 = (splitFlags & BLOCK_IS_SPLIT) != 0;
+                        splitFlags >>= 1;
+                        splitFlagsAvailable--;
+                        if (isSplit8)
+                        {
+                            // decode 4 4x4 blocks
+                            for (uint32_t i4 = 0; i4 < 4; ++i4)
+                            {
+                                srcDataPtr = DecodeBlock240<4>(block8Dst32 + Block4Offsets32[i4], srcDataPtr, prevSrc, LineStride32);
+                            }
+                        }
+                        else
+                        {
+                            // decode single 8x8 block
+                            srcDataPtr = DecodeBlock240<8>(block8Dst32, srcDataPtr, prevSrc, LineStride32);
+                        }
                     }
-                    else
-                    {
-                        // copy block from current frame at index (# of blocks)
-                        uint32_t refBlockIndex = (blockIndex - currentReferenceOffset) - *srcRefPtr++;
-                        // block pixel offset is: ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
-                        // division by 60 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
-                        // calculate refBlockIndex / 15 / 4 with extra precision
-                        uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
-                        offsetY = (offsetY + refBlockIndex) >> 4;
-                        offsetY = (offsetY + refBlockIndex) >> 4;
-                        offsetY = (offsetY + refBlockIndex) >> (4 + 2);
-                        // calculate refBlockIndex % 60
-                        uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 2);
-                        // multiply y-offset by stride and add x-offset
-                        uint32_t refBlockOffset = offsetY * 240 * 4 + offsetX * 4;
-                        auto copySrcPtr = reinterpret_cast<const uint32_t *>(dst + refBlockOffset);
-                        ShowBlockTypes ? FillBlock(copyDstPtr, 0x7FE0 << 16 | 0x7FE0, LineStride32) : CopyBlock(copyDstPtr, copySrcPtr, LineStride32);
-                    }
-                }
-                else if (isFromPreviousFrame)
-                {
-                    // keep block from previous frame
-                    auto copyDstPtr = reinterpret_cast<uint32_t *>(blockDst);
-                    // offset in previous frame is the same as in current destination
-                    uint32_t refBlockOffset = (blockDst - dst) / 2;
-                    auto copySrcPtr = prevSrc + refBlockOffset;
-                    ShowBlockTypes ? FillBlock(copyDstPtr, 0x03E0 << 16 | 0x03E0, LineStride32) : CopyBlock(copyDstPtr, copySrcPtr, LineStride32);
                 }
                 else
                 {
-                    // full DXT block. get anchor colors c0 and c1
-                    uint32_t c0 = *srcDxtPtr++;
-                    uint32_t c1 = *srcDxtPtr++;
-                    colors[0] = c0;
-                    colors[1] = c1;
-                    // calculate intermediate colors c2 and c3
-                    uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
-                    uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
-                    uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-                    *c2c3Ptr = (C2C3table[b] << 10) | (C2C3table[g] << 5) | C2C3table[r];
-                    // get pixel color indices and set pixels accordingly
-                    uint32_t indices = *reinterpret_cast<const uint32_t *>(srcDxtPtr);
-                    srcDxtPtr += 2;
-                    // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-                    blockDst[0] = colors[(indices >> 0) & 0x3];
-                    blockDst[1] = colors[(indices >> 2) & 0x3];
-                    blockDst[2] = colors[(indices >> 4) & 0x3];
-                    blockDst[3] = colors[(indices >> 6) & 0x3];
-                    blockDst += LineStride16;
-                    // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-                    blockDst[0] = colors[(indices >> 8) & 0x3];
-                    blockDst[1] = colors[(indices >> 10) & 0x3];
-                    blockDst[2] = colors[(indices >> 12) & 0x3];
-                    blockDst[3] = colors[(indices >> 14) & 0x3];
-                    blockDst += LineStride16;
-                    // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-                    blockDst[0] = colors[(indices >> 16) & 0x3];
-                    blockDst[1] = colors[(indices >> 18) & 0x3];
-                    blockDst[2] = colors[(indices >> 20) & 0x3];
-                    blockDst[3] = colors[(indices >> 22) & 0x3];
-                    blockDst += LineStride16;
-                    // select color by 2 bit index from [c0, c1, c2, c3]
-                    blockDst[0] = colors[(indices >> 24) & 0x3];
-                    blockDst[1] = colors[(indices >> 26) & 0x3];
-                    blockDst[2] = colors[(indices >> 28) & 0x3];
-                    blockDst[3] = colors[(indices >> 30) & 0x3];
+                    // decode single 16x16 block
+                    srcDataPtr = DecodeBlock240<16>(block16Dst32, srcDataPtr, prevSrc, LineStride32);
                 }
-                // move to next block in destination horizontally
-                blockLineDst += BlockStride16;
-                flags >>= 2;
-                blockIndex++;
+                // move to next 16x16 block in destination horizontally
+                block16Dst32 += Block16Stride32;
             }
-            // move to next block line in destination vertically
-            currentDst += BlockLineStride16;
+            // move to next 16x16 block line in destination vertically
+            currentDst32 += Block16LineStride32;
         }
     }
-
 }

@@ -42,7 +42,7 @@ namespace Video
                 dstInVRAM ? Decompression::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompression::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressDXTV:
-                DXTV::UnCompWrite16bit<240>(reinterpret_cast<uint16_t *>(currentDst), currentSrc, (const uint32_t *)VRAM, info.width, info.height);
+                DXTV::UnCompWrite16bit<240>(currentDst, currentSrc, (const uint32_t *)VRAM, info.width, info.height);
                 break;
             default:
                 return;

@@ -26,22 +26,24 @@ public:
     {
     }
 
-    auto toArray() const -> std::array<uint8_t, 4 + Width * Height * 2 / 8>
+    /// @brief Copyies encoded DXT block to binary array
+    /// This array can be read in 16-bit chunks
+    auto toArray() const -> std::array<uint8_t, 4 + (Width * Height * 2) / 8>
     {
-        std::array<uint8_t, 4 + Width * Height * 2 / 8> result;
+        std::array<uint8_t, 4 + (Width * Height * 2) / 8> result;
         *reinterpret_cast<uint16_t *>(&result[0]) = m_color0;
         *reinterpret_cast<uint16_t *>(&result[2]) = m_color1;
-        // reverse index data
-        auto indexPtr = reinterpret_cast<uint32_t *>(&result[4]);
-        uint32_t indices32 = 0;
+        auto indexPtr = reinterpret_cast<uint16_t *>(&result[4]);
+        uint16_t indices16 = 0;
         uint32_t shiftCount = 0;
-        for (auto iIt = m_indices.crbegin(); iIt != m_indices.crend(); ++iIt)
+        for (auto iIt = m_indices.cbegin(); iIt != m_indices.cend(); ++iIt)
         {
-            indices32 = (indices32 << 2) | static_cast<uint32_t>(*iIt);
-            if (++shiftCount >= 16)
+            // swap bits around so we end up with the last bit in the highest place
+            indices16 = (indices16 >> 2) | (static_cast<uint16_t>(*iIt) << 14);
+            if (++shiftCount >= 8)
             {
-                *indexPtr++ = indices32;
-                indices32 = 0;
+                *indexPtr++ = indices16;
+                indices16 = 0;
                 shiftCount = 0;
             }
         }
