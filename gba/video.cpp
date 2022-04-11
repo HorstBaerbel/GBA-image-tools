@@ -15,8 +15,6 @@
 
 #include "data/data.h"
 
-extern bool ShowBlockTypes;
-
 IWRAM_DATA volatile bool frameRequested = true;
 
 IWRAM_FUNC void frameRequest()
@@ -25,8 +23,7 @@ IWRAM_FUNC void frameRequest()
 }
 
 EWRAM_DATA ALIGN(4) uint32_t BackBuffer[240 * 160 / 2];
-
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[19264 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this
+EWRAM_DATA ALIGN(4) uint32_t ScratchPad[20148 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {
@@ -75,6 +72,7 @@ int main()
 	// Timer interval = 1 / fps (where 65536 == 1s)
 	REG_TM3CNT_L = 65536 - (65536 / videoInfo.fps);
 	// start main loop
+	int32_t maxFrameTimeMs = 0;
 	Video::Frame frame{};
 	do
 	{
@@ -86,10 +84,6 @@ int main()
 		};
 		frameRequested = false;
 		scanKeys();
-		if (keysDown() & KEY_L)
-		{
-			ShowBlockTypes = !ShowBlockTypes;
-		}
 		// start benchmark timer
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;
@@ -100,7 +94,11 @@ int main()
 		// end benchmark timer
 		REG_TM2CNT_H = 0;
 		auto durationMs = static_cast<int32_t>(REG_TM2CNT_L) * 1000;
-		Debug::printf("Frame %d, Needed: %f ms", frame.index, durationMs);
+		if (maxFrameTimeMs < durationMs)
+		{
+			maxFrameTimeMs = durationMs;
+			Debug::printf("Frame %d, Needed: %f ms", frame.index, durationMs);
+		}
 	} while (true);
 	return 0;
 }

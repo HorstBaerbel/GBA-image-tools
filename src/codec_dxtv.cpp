@@ -53,7 +53,7 @@ struct FrameHeader
 // - Reference blocks store:
 //   Bit 15: Always 1 (see above)
 //   Bit 14: Current (0) / previous (1) frame Bit
-//   Bit 0-13: Reference index into frame
+//   Bit 0-13: Reference index into frame [0,16383]
 //             Range [-16384,-1] is used for references to the current frame.
 //             Range [-8191,8192] is used for references to the previous frame.
 
