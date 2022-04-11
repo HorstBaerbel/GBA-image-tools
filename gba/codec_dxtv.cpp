@@ -210,31 +210,29 @@ namespace DXTV
         // full DXT block. get colors
         src16 = GetDXTColors(src16);
         // get pixel color indices and set pixels accordingly
-        uint32_t indices = *reinterpret_cast<const uint32_t *>(src16);
+        uint16_t indices = *src16++;
         // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
         dst16[0] = DxtColors[(indices >> 0) & 0x3];
         dst16[1] = DxtColors[(indices >> 2) & 0x3];
         dst16[2] = DxtColors[(indices >> 4) & 0x3];
         dst16[3] = DxtColors[(indices >> 6) & 0x3];
         dst16 += LineStride16;
-        // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
         dst16[0] = DxtColors[(indices >> 8) & 0x3];
         dst16[1] = DxtColors[(indices >> 10) & 0x3];
         dst16[2] = DxtColors[(indices >> 12) & 0x3];
         dst16[3] = DxtColors[(indices >> 14) & 0x3];
         dst16 += LineStride16;
-        // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-        dst16[0] = DxtColors[(indices >> 16) & 0x3];
-        dst16[1] = DxtColors[(indices >> 18) & 0x3];
-        dst16[2] = DxtColors[(indices >> 20) & 0x3];
-        dst16[3] = DxtColors[(indices >> 22) & 0x3];
+        indices = *src16++;
+        dst16[0] = DxtColors[(indices >> 0) & 0x3];
+        dst16[1] = DxtColors[(indices >> 2) & 0x3];
+        dst16[2] = DxtColors[(indices >> 4) & 0x3];
+        dst16[3] = DxtColors[(indices >> 6) & 0x3];
         dst16 += LineStride16;
-        // select color by 2 bit index from [c0, c1, c2, c3]
-        dst16[0] = DxtColors[(indices >> 24) & 0x3];
-        dst16[1] = DxtColors[(indices >> 26) & 0x3];
-        dst16[2] = DxtColors[(indices >> 28) & 0x3];
-        dst16[3] = DxtColors[(indices >> 30) & 0x3];
-        return src16 + 2;
+        dst16[0] = DxtColors[(indices >> 8) & 0x3];
+        dst16[1] = DxtColors[(indices >> 10) & 0x3];
+        dst16[2] = DxtColors[(indices >> 12) & 0x3];
+        dst16[3] = DxtColors[(indices >> 14) & 0x3];
+        return src16;
     }
 
     /// @brief Uncompress 4x4 DXT block
@@ -245,10 +243,9 @@ namespace DXTV
         // full DXT block. get colors
         src16 = GetDXTColors(src16);
         // get pixel color indices and set pixels accordingly
-        auto indexPtr = reinterpret_cast<const uint32_t *>(src16);
         for (uint32_t i = 0; i < 4; ++i)
         {
-            uint32_t indices = *indexPtr++;
+            uint16_t indices = *src16++;
             // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
             dst16[0] = DxtColors[(indices >> 0) & 0x3];
             dst16[1] = DxtColors[(indices >> 2) & 0x3];
@@ -259,18 +256,18 @@ namespace DXTV
             dst16[6] = DxtColors[(indices >> 12) & 0x3];
             dst16[7] = DxtColors[(indices >> 14) & 0x3];
             dst16 += LineStride16;
-            // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-            dst16[0] = DxtColors[(indices >> 16) & 0x3];
-            dst16[1] = DxtColors[(indices >> 18) & 0x3];
-            dst16[2] = DxtColors[(indices >> 20) & 0x3];
-            dst16[3] = DxtColors[(indices >> 22) & 0x3];
-            dst16[4] = DxtColors[(indices >> 24) & 0x3];
-            dst16[5] = DxtColors[(indices >> 26) & 0x3];
-            dst16[6] = DxtColors[(indices >> 28) & 0x3];
-            dst16[7] = DxtColors[(indices >> 30) & 0x3];
+            indices = *src16++;
+            dst16[0] = DxtColors[(indices >> 0) & 0x3];
+            dst16[1] = DxtColors[(indices >> 2) & 0x3];
+            dst16[2] = DxtColors[(indices >> 4) & 0x3];
+            dst16[3] = DxtColors[(indices >> 6) & 0x3];
+            dst16[4] = DxtColors[(indices >> 8) & 0x3];
+            dst16[5] = DxtColors[(indices >> 10) & 0x3];
+            dst16[6] = DxtColors[(indices >> 12) & 0x3];
+            dst16[7] = DxtColors[(indices >> 14) & 0x3];
             dst16 += LineStride16;
         }
-        return src16 + (2 * 4);
+        return src16;
     }
 
     /// @brief Uncompress 4x4 DXT block
@@ -335,7 +332,7 @@ namespace DXTV
     /// @brief Uncompress one BLOCK_DIM*BLOCK_DIM block
     /// @return Pointer past whole block in src
     template <uint32_t BLOCK_DIM>
-    IWRAM_FUNC auto DecodeBlock240(uint32_t *block32, const uint16_t *src16, uint32_t *curr32, const uint32_t *prev32, uint32_t LineStride32) -> const uint16_t *
+    inline IWRAM_FUNC auto DecodeBlock240(uint32_t *block32, const uint16_t *src16, uint32_t *curr32, const uint32_t *prev32, uint32_t LineStride32) -> const uint16_t *
     {
         // check if block is DXT or reference
         auto blockFlags = static_cast<uint32_t>(*src16);
