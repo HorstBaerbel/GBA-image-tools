@@ -338,8 +338,8 @@ namespace Image
         // get parameter(s)
         REQUIRE(parameters.size() == 2, std::runtime_error, "compressDXTV expects 2 double parameters");
         REQUIRE(std::holds_alternative<double>(parameters.at(0)), std::runtime_error, "compressDXTV keyframe interval must be a double");
-        auto keyFrameInterval = static_cast<uint32_t>(std::get<double>(parameters.at(0)));
-        REQUIRE(keyFrameInterval >= 1 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [1,60]");
+        auto keyFrameInterval = static_cast<int32_t>(std::get<double>(parameters.at(0)));
+        REQUIRE(keyFrameInterval >= 0 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [0,60] (0 = none)");
         REQUIRE(std::holds_alternative<double>(parameters.at(1)), std::runtime_error, "compressDXTV max. block error must be a double");
         auto maxBlockError = std::get<double>(parameters.at(1));
         REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01,1]");
@@ -350,7 +350,7 @@ namespace Image
             data = toRGB555(data);
         }
         // check if needs to be a keyframe
-        const bool isKeyFrame = (image.index % keyFrameInterval) == 0 || state.empty();
+        const bool isKeyFrame = keyFrameInterval > 0 ? ((image.index % keyFrameInterval) == 0 || state.empty()) : false;
         // compress data
         auto result = image;
         result.colorFormat = ColorFormat::RGB555;

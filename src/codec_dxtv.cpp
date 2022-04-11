@@ -504,7 +504,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     // calculate perceived frame distance
     const double frameDistance = previousCodeBook.empty<CodeBook::BlockMaxDim>() ? INT_MAX : currentCodeBook.distance(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
-    if (!keyFrame && frameDistance < 0.0015)
+    if (!keyFrame && frameDistance < 0.001)
     {
         // frame is a duplicate. pass header only
         FrameHeader frameHeader;
