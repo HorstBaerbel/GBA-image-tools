@@ -53,6 +53,7 @@
 #define ALIGN_PACK(n) __attribute__((aligned(n), packed))
 #define NORETURN __attribute__((__noreturn__))
 #define NOINLINE __attribute__((noinline))
+#define FORCEINLINE __attribute__((always_inline))
 #define ARM_CODE __attribute__((target("arm")))
 #define THUMB_CODE __attribute__((target("thumb")))
 
