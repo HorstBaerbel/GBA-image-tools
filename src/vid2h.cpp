@@ -292,7 +292,7 @@ int main(int argc, const char *argv[])
         }
         if (options.dxtv)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTV, {options.dxtv.value}, true, true);
+            processing.addStep(Image::ProcessingType::CompressDXTV, {options.dxtv.value.at(0), options.dxtv.value.at(1)}, true, true);
         }
         if (options.gvid)
         {
@@ -339,8 +339,7 @@ int main(int argc, const char *argv[])
             }
             REQUIRE(frame.size() == videoInfo.width * videoInfo.height * 3, std::runtime_error, "Unexpected frame size");
             // build image from frame and apply processing
-            auto image = processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data()), frameIndex++);
-            images.push_back(image);
+            images.push_back(processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data()), frameIndex++));
             // calculate progress
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
             if (lastProgress != newProgress)
@@ -377,7 +376,7 @@ int main(int argc, const char *argv[])
         }
         // find out the max. memory needed to decompress
         const auto maxMemoryNeeded = std::max_element(images.cbegin(), images.cend(), [](const auto &img0, const auto &img1)
-                                                      { return img0.maxMemoryNeeded > img1.maxMemoryNeeded ? img0.maxMemoryNeeded : img1.maxMemoryNeeded; })
+                                                      { return img0.maxMemoryNeeded < img1.maxMemoryNeeded; })
                                          ->maxMemoryNeeded;
         std::cout << "Max. intermediate memory for decompression: " << maxMemoryNeeded << " Byte" << std::endl;
         // check if we want to write output files
