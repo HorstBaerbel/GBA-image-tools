@@ -92,7 +92,10 @@ static auto distanceBelowThreshold(const BlockView<YCgCoRd, BLOCK_DIM> &a, const
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
         auto colorDist = YCgCoRd::distance(*aIt, *bIt);
-        belowThreshold = belowThreshold ? colorDist < threshold : belowThreshold;
+        if (belowThreshold)
+        {
+            belowThreshold = colorDist < threshold;
+        }
         dist += colorDist;
     }
     return {belowThreshold, dist / (BLOCK_DIM * BLOCK_DIM)};
@@ -341,10 +344,10 @@ auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::v
         return std::optional<return_type>();
     }
     // calculate start and end of search
-    int32_t minIndex = block.index() + offsetMin;
+    int32_t minIndex = static_cast<int32_t>(block.index()) + offsetMin;
     minIndex = minIndex < 0 ? 0 : minIndex;
     minIndex = minIndex >= codeBook.size<BLOCK_DIM>() ? codeBook.size<BLOCK_DIM>() - 1 : minIndex;
-    int32_t maxIndex = block.index() + offsetMax;
+    int32_t maxIndex = static_cast<int32_t>(block.index()) + offsetMax;
     maxIndex = maxIndex < 0 ? 0 : maxIndex;
     maxIndex = maxIndex >= codeBook.size<BLOCK_DIM>() ? codeBook.size<BLOCK_DIM>() - 1 : maxIndex;
     // searched entries must be >= 1
@@ -354,22 +357,22 @@ auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::v
     }
     // find blocks that are already encoded in codebook and calculate distance to block
     std::vector<std::pair<double, int32_t>> candidates;
-    auto cbIt = std::next(codeBook.cbegin<BLOCK_DIM>(), minIndex);
-    auto cbEnd = std::next(codeBook.cbegin<BLOCK_DIM>(), maxIndex);
-    for (int32_t index = minIndex; cbIt != cbEnd; ++cbIt, ++index)
+    auto cIt = std::next(codeBook.cbegin<BLOCK_DIM>(), minIndex);
+    auto cEnd = std::next(codeBook.cbegin<BLOCK_DIM>(), maxIndex);
+    for (int32_t index = minIndex; cIt != cEnd; ++cIt, ++index)
     {
-        const auto &candidate = *cbIt;
-        if (codeBook.isEncoded(candidate))
+        if (codeBook.isEncoded(*cIt))
         {
-            if (auto dist = distanceBelowThreshold(block, candidate, maxAllowedError); dist.first)
+            if (auto dist = distanceBelowThreshold(block, *cIt, maxAllowedError); dist.first)
             {
                 candidates.push_back({dist.second, index});
             }
         }
     }
     // find block that has minimum error
-    auto bestCandiateIt = std::min_element(candidates.cbegin(), candidates.cend());
-    return (bestCandiateIt != candidates.cend() && bestCandiateIt->first < maxAllowedError) ? std::optional<return_type>({bestCandiateIt->first, *std::next(codeBook.cbegin<BLOCK_DIM>(), bestCandiateIt->second)}) : std::optional<return_type>();
+    auto bestCandiateIt = std::min_element(candidates.cbegin(), candidates.cend(), [](const auto &a, const auto &b)
+                                           { return a.first < b.first; });
+    return (bestCandiateIt != candidates.cend()) ? std::optional<return_type>({bestCandiateIt->first, *std::next(codeBook.cbegin<BLOCK_DIM>(), bestCandiateIt->second)}) : std::optional<return_type>();
 }
 
 struct Statistics
@@ -394,8 +397,7 @@ auto storeDxtBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BL
     static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook::BlockMaxDim) - std::log2(BLOCK_DIM);
     auto dxtData = encodedBlock.toArray();
     std::copy(dxtData.cbegin(), dxtData.cend(), std::back_inserter(state.data));
-    // store decoded block colors in current frame and mark as encoded
-    block.copyColorsFrom(decodedBlock);
+    // mark block as encoded
     currentCodeBook.setEncoded<BLOCK_DIM>(block);
     statistics.dxtBlocks[BLOCK_LEVEL]++;
 }
@@ -419,8 +421,7 @@ auto storeRefBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BL
     }
     state.data.push_back(index & 0xFF);
     state.data.push_back((index >> 8) & 0xFF);
-    // store block colors in current frame and mark as encoded
-    block.copyColorsFrom(srcBlock);
+    // mark block as encoded
     currentCodeBook.setEncoded<BLOCK_DIM>(block);
 }
 
@@ -461,31 +462,31 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
         auto rawBlock = block.colors();
         auto encodedBlock = DXTBlock<BLOCK_DIM, BLOCK_DIM>::encode(rawBlock);
         auto decodedBlock = DXTBlock<BLOCK_DIM, BLOCK_DIM>::decode(encodedBlock);
-        /* if constexpr (BLOCK_DIM <= CodeBook::BlockMinDim)
+        if constexpr (BLOCK_DIM <= CodeBook::BlockMinDim)
         {
-        //  We can't split anyway. Store 4x4 DXT block
-        storeDxtBlock(currentCodeBook, block, encodedBlock, decodedBlock, state);
+            //  We can't split anymore. Store 4x4 DXT block
+            storeDxtBlock(currentCodeBook, block, encodedBlock, decodedBlock, state);
         }
         else if constexpr (BLOCK_DIM > CodeBook::BlockMinDim)
         {
             // check if encoded block is below allowed error or we want to split the block
-            auto encodedBlockDist = YCgCoRd::distanceBelowThreshold(rawBlock, decodedBlock, maxAllowedError);
-            if (encodedBlockDist.first)
-            {*/
-        // Threshold ok. Store full DXT block
-        state.flags.push_back(BLOCK_NO_SPLIT);
-        storeDxtBlock(currentCodeBook, block, encodedBlock, decodedBlock, state);
-        /*  }
-          else
-          {
-              // Split block and recurse
-              state.flags.push_back(BLOCK_IS_SPLIT);
-              encodeBlock(currentCodeBook, previousCodeBook, block.block(0), state, maxAllowedError);
-              encodeBlock(currentCodeBook, previousCodeBook, block.block(1), state, maxAllowedError);
-              encodeBlock(currentCodeBook, previousCodeBook, block.block(2), state, maxAllowedError);
-              encodeBlock(currentCodeBook, previousCodeBook, block.block(3), state, maxAllowedError);
-          }
-      }*/
+            auto encodedBlockDist = YCgCoRd::distance(rawBlock, decodedBlock);
+            if (encodedBlockDist < maxAllowedError)
+            {
+                // Threshold ok. Store full DXT block
+                state.flags.push_back(BLOCK_NO_SPLIT);
+                storeDxtBlock(currentCodeBook, block, encodedBlock, decodedBlock, state);
+            }
+            else
+            {
+                // Split block and recurse
+                state.flags.push_back(BLOCK_IS_SPLIT);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(0), state, maxAllowedError);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(1), state, maxAllowedError);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(2), state, maxAllowedError);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(3), state, maxAllowedError);
+            }
+        }
     }
 }
 
@@ -503,7 +504,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     // calculate perceived frame distance
     const double frameDistance = previousCodeBook.empty<CodeBook::BlockMaxDim>() ? INT_MAX : currentCodeBook.distance(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
-    if (!keyFrame && frameDistance < 0.001)
+    if (!keyFrame && frameDistance < 0.0015)
     {
         // frame is a duplicate. pass header only
         FrameHeader frameHeader;
@@ -573,7 +574,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     compressedData = fillUpToMultipleOf(compressedData, 4);
     assert((compressedData.size() % 4) == 0);
     // convert current frame / codebook back to store as decompressed frame
-    return {compressedData, currentCodeBook.toImage()};
+    return {compressedData, image};
 }
 
 auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint16_t>
