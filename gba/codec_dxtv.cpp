@@ -335,22 +335,22 @@ namespace DXTV
     /// @brief Uncompress one BLOCK_DIM*BLOCK_DIM block
     /// @return Pointer past whole block in src
     template <uint32_t BLOCK_DIM>
-    IWRAM_FUNC auto DecodeBlock240(uint32_t *dst32, const uint16_t *src16, const uint32_t *prevSrc32, uint32_t LineStride32) -> const uint16_t *
+    IWRAM_FUNC auto DecodeBlock240(uint32_t *block32, const uint16_t *src16, uint32_t *curr32, const uint32_t *prev32, uint32_t LineStride32) -> const uint16_t *
     {
         // check if block is DXT or reference
         auto blockFlags = static_cast<uint32_t>(*src16);
         if ((blockFlags & BLOCK_IS_REF) != 0)
         {
             const bool isFromPrev = (blockFlags & BLOCK_FROM_PREV) != 0;
-            auto refSrc32 = isFromPrev ? prevSrc32 : dst32;
+            auto refSrc32 = isFromPrev ? prev32 : curr32;
             uint32_t refBlockIndex = blockFlags & BLOCK_INDEX_MASK;
             if (refBlockIndex > 0)
             {
+                // block pixel offset is: ((refBlockIndex / (240 / DIM)) * 240 * DIM) + ((refBlockIndex % (240 / DIM)) * DIM);
+                // division using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
                 if constexpr (BLOCK_DIM == 4)
                 {
-                    // block pixel offset is: ((refBlockIndex / (240 / 4)) * 240 * 4) + ((refBlockIndex % (240 / 4)) * 4);
-                    // division by 60 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
-                    // calculate refBlockIndex / 15 / 4 with extra precision
+                    // calculate refBlockIndex / 60 = 15 / 4 with extra precision
                     uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
                     offsetY = (offsetY + refBlockIndex) >> 4;
                     offsetY = (offsetY + refBlockIndex) >> 4;
@@ -358,14 +358,12 @@ namespace DXTV
                     // calculate refBlockIndex % 60 = refBlockIndex - (offsetY * 60)
                     uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 2);
                     // multiply y-offset by stride and add x-offset
-                    auto refPixelOffset = offsetY * 240 * 4 + offsetX * 4;
-                    refSrc32 += (refPixelOffset >> 1);
+                    auto refPixelOffset = offsetY * 240 + offsetX;
+                    refSrc32 += (refPixelOffset << 1);
                 }
                 else if constexpr (BLOCK_DIM == 8)
                 {
-                    // block pixel offset is: ((refBlockIndex / (240 / 8)) * 240 * 8) + ((refBlockIndex % (240 / 8)) * 8);
-                    // division by 30 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
-                    // calculate refBlockIndex / 15 / 2 with extra precision
+                    // calculate refBlockIndex / 30 = 15 / 2 with extra precision
                     uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
                     offsetY = (offsetY + refBlockIndex) >> 4;
                     offsetY = (offsetY + refBlockIndex) >> 4;
@@ -373,13 +371,11 @@ namespace DXTV
                     // calculate refBlockIndex % 30 = refBlockIndex - (offsetY * 30)
                     uint32_t offsetX = refBlockIndex - (((offsetY << 4) - offsetY) << 1);
                     // multiply y-offset by stride and add x-offset
-                    auto refPixelOffset = offsetY * 240 * 8 + offsetX * 8;
-                    refSrc32 += (refPixelOffset >> 1);
+                    auto refPixelOffset = offsetY * 240 + offsetX;
+                    refSrc32 += (refPixelOffset << 2);
                 }
                 else if constexpr (BLOCK_DIM == 16)
                 {
-                    // block pixel offset is: ((refBlockIndex / (240 / 16)) * 240 * 16) + ((refBlockIndex % (240 / 16)) * 16);
-                    // division by 15 using shifts, see: http://homepage.divms.uiowa.edu/~jones/bcd/divide.html
                     // calculate refBlockIndex / 15 with extra precision
                     uint32_t offsetY = ((refBlockIndex >> 3) + refBlockIndex) >> 4;
                     offsetY = (offsetY + refBlockIndex) >> 4;
@@ -388,17 +384,17 @@ namespace DXTV
                     // calculate refBlockIndex % 15 = refBlockIndex - (offsetY * 15)
                     uint32_t offsetX = refBlockIndex - ((offsetY << 4) - offsetY);
                     // multiply y-offset by stride and add x-offset
-                    auto refPixelOffset = offsetY * 240 * 16 + offsetX * 16;
-                    refSrc32 += (refPixelOffset >> 1);
+                    auto refPixelOffset = offsetY * 240 + offsetX;
+                    refSrc32 += (refPixelOffset << 3);
                 }
             }
-            CopyBlock<BLOCK_DIM>(dst32, refSrc32, LineStride32);
-            // FillBlock<BLOCK_DIM>(dst32, isFromPrev ? 0x03E003E0 : 0x03FF03FF, LineStride32);
+            CopyBlock<BLOCK_DIM>(block32, refSrc32, LineStride32);
+            // FillBlock<BLOCK_DIM>(block32, isFromPrev ? 0x03E003E0 : 0x03FF03FF, LineStride32);
             return src16 + 1;
         }
         else
         {
-            return UncompressBlock<BLOCK_DIM>(reinterpret_cast<uint16_t *>(dst32), src16, LineStride32 << 1);
+            return UncompressBlock<BLOCK_DIM>(reinterpret_cast<uint16_t *>(block32), src16, LineStride32 << 1);
         }
     }
 
@@ -467,20 +463,20 @@ namespace DXTV
                             // decode 4 4x4 blocks
                             for (uint32_t i4 = 0; i4 < 4; ++i4)
                             {
-                                srcDataPtr = DecodeBlock240<4>(block8Dst32 + Block4Offsets32[i4], srcDataPtr, prevSrc, LineStride32);
+                                srcDataPtr = DecodeBlock240<4>(block8Dst32 + Block4Offsets32[i4], srcDataPtr, dst, prevSrc, LineStride32);
                             }
                         }
                         else
                         {
                             // decode single 8x8 block
-                            srcDataPtr = DecodeBlock240<8>(block8Dst32, srcDataPtr, prevSrc, LineStride32);
+                            srcDataPtr = DecodeBlock240<8>(block8Dst32, srcDataPtr, dst, prevSrc, LineStride32);
                         }
                     }
                 }
                 else
                 {
                     // decode single 16x16 block
-                    srcDataPtr = DecodeBlock240<16>(block16Dst32, srcDataPtr, prevSrc, LineStride32);
+                    srcDataPtr = DecodeBlock240<16>(block16Dst32, srcDataPtr, dst, prevSrc, LineStride32);
                 }
                 // move to next 16x16 block in destination horizontally
                 block16Dst32 += Block16Stride32;

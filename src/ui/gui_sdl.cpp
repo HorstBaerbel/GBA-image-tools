@@ -84,8 +84,8 @@ namespace Ui
                                 SDL_FreeSurface(surface);
                                 break;
                             }
-                            SDL_Rect dstRect = {data.x, data.y, static_cast<int>(data.width), static_cast<int>(data.height)};
-                            SDL_RenderCopy(renderer, texture, nullptr, &dstRect);
+                            // SDL_Rect dstRect = {data.x, data.y, static_cast<int>(data.width), static_cast<int>(data.height)};
+                            SDL_RenderCopy(renderer, texture, nullptr, nullptr); //&dstRect);
                             SDL_RenderPresent(renderer);
                             SDL_DestroyTexture(texture);
                             SDL_FreeSurface(surface);

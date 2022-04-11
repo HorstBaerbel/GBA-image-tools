@@ -60,12 +60,13 @@ struct FrameHeader
 constexpr uint16_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames, 1 for P-frame / inter-frame compression ("predicted frame")
 constexpr uint16_t FRAME_KEEP = 0x40;      // 1 for frames that are considered a direct copy of the previous frame and can be kept
 
-constexpr bool BLOCK_NO_SPLIT = false;          // The block is a full block
-constexpr bool BLOCK_IS_SPLIT = true;           // The block is split into smaller sub-blocks
-constexpr uint16_t BLOCK_IS_DXT = 0;            // The block is a verbatim DXT block
-constexpr uint16_t BLOCK_IS_REF = (1 << 15);    // The block is a reference into the current or previous frame
-constexpr uint16_t BLOCK_FROM_CURR = (0 << 14); // The reference block is from from the current frame
-constexpr uint16_t BLOCK_FROM_PREV = (1 << 14); // The reference block is from from the previous frame
+constexpr bool BLOCK_NO_SPLIT = false;             // The block is a full block
+constexpr bool BLOCK_IS_SPLIT = true;              // The block is split into smaller sub-blocks
+constexpr uint16_t BLOCK_IS_DXT = 0;               // The block is a verbatim DXT block
+constexpr uint16_t BLOCK_IS_REF = (1 << 15);       // The block is a reference into the current or previous frame
+constexpr uint16_t BLOCK_FROM_CURR = (0 << 14);    // The reference block is from from the current frame
+constexpr uint16_t BLOCK_FROM_PREV = (1 << 14);    // The reference block is from from the previous frame
+constexpr uint32_t BLOCK_INDEX_MASK = ~(3U << 14); // Mask to get the block index from the reference info
 
 constexpr std::pair<int32_t, int32_t> CurrRefOffset = {-16384, -1};  // Block search offsets for current frame for 16, 8, 4
 constexpr std::pair<int32_t, int32_t> PrevRefOffset = {-8191, 8192}; // Block search offsets for previous frame for 16, 8, 4
@@ -404,16 +405,15 @@ auto storeRefBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BL
 {
     static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook::BlockMaxDim) - std::log2(BLOCK_DIM);
     // get referenced block
+    REQUIRE(srcBlock.index() >= 0 && srcBlock.index() <= BLOCK_INDEX_MASK, std::runtime_error, "Frame reference block index out of range");
     auto index = static_cast<uint16_t>(srcBlock.index());
     if (fromPrevCodeBook)
     {
-        REQUIRE(index >= 0 && index < (PrevRefOffset.second - PrevRefOffset.first), std::runtime_error, "Previous frame block offset not in range");
         index |= BLOCK_IS_REF | BLOCK_FROM_PREV;
         statistics.refBlocksPrev[BLOCK_LEVEL]++;
     }
     else
     {
-        REQUIRE(index >= 0 && index < (CurrRefOffset.second - CurrRefOffset.first), std::runtime_error, "Current frame block offset not in range");
         index |= BLOCK_IS_REF | BLOCK_FROM_CURR;
         statistics.refBlocksCurr[BLOCK_LEVEL]++;
     }

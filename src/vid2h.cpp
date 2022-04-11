@@ -320,7 +320,7 @@ int main(int argc, const char *argv[])
         }
         processing.addStep(Image::ProcessingType::PadImageData, {uint32_t(4)});
         // create statistics window
-        Statistics::Window window(videoInfo.width, videoInfo.height);
+        Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height);
         processing.setStatisticsContainer(window.getStatisticsContainer());
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
