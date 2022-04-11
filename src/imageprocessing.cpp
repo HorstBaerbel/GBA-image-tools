@@ -45,7 +45,7 @@ namespace Image
             {ProcessingType::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
             {ProcessingType::DeltaImage, {"image diff", OperationType::ConvertState, FunctionType(imageDiff)}}};
 
-    Data Processing::toBlackWhite(const Magick::Image &image, const std::vector<Parameter> &parameters)
+    Data Processing::toBlackWhite(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<double>(parameters.front()), std::runtime_error, "toBlackWhite expects a single double threshold parameter");
@@ -61,7 +61,7 @@ namespace Image
         return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
-    Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters)
+    Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toPaletted expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
@@ -80,7 +80,7 @@ namespace Image
         return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
-    Data Processing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters)
+    Data Processing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<std::string>(parameters.front()), std::runtime_error, "toTruecolor expects a single std::string parameter");
@@ -116,7 +116,7 @@ namespace Image
 
     // ----------------------------------------------------------------------------
 
-    Data Processing::toUniqueTileMap(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::toUniqueTileMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toUniqueTileMap expects bitmaps as input data");
         // get parameter(s)
@@ -130,7 +130,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::toTiles(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::toTiles(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toTiles expects bitmaps as input data");
         auto result = image;
@@ -138,7 +138,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::toSprites(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::toSprites(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toSprites expects bitmaps as input data");
         // get parameter(s)
@@ -155,7 +155,7 @@ namespace Image
         return image;
     }
 
-    Data Processing::addColor0(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::addColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "addColor0 expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Adding a color can only be done for paletted images");
@@ -173,7 +173,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::moveColor0(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::moveColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "moveColor0 expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Moving a color can only be done for paletted images");
@@ -198,7 +198,7 @@ namespace Image
         return image;
     }
 
-    Data Processing::reorderColors(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::reorderColors(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "reorderColors expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::Paletted4 || image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Reordering colors can only be done for paletted images");
@@ -211,7 +211,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::shiftIndices(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::shiftIndices(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "shiftIndices expects bitmaps as input data");
         // get parameter(s)
@@ -225,7 +225,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::pruneIndices(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::pruneIndices(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "pruneIndices expects bitmaps as input data");
         // get parameter(s)
@@ -257,14 +257,14 @@ namespace Image
         return result;
     }
 
-    Data Processing::toDelta8(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::toDelta8(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         auto result = image;
         result.data = deltaEncode(image.data);
         return result;
     }
 
-    Data Processing::toDelta16(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::toDelta16(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         auto result = image;
         result.data = convertTo<uint8_t>(deltaEncode(convertTo<uint16_t>(image.data)));
@@ -273,7 +273,7 @@ namespace Image
 
     // ----------------------------------------------------------------------------
 
-    Data Processing::compressLZ10(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::compressLZ10(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ10 expects a single bool VRAMcompatible parameter");
@@ -285,7 +285,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::compressLZ11(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::compressLZ11(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ11 expects a single bool VRAMcompatible parameter");
@@ -296,7 +296,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::compressRLE(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::compressRLE(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressRLE expects a single bool VRAMcompatible parameter");
@@ -307,7 +307,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::compressDXTG(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::compressDXTG(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTG expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTG compression is only possible for RGB888 and RGB555 truecolor images");
@@ -329,7 +329,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state)
+    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTV expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTV compression is only possible for RGB888 and RGB555 truecolor images");
@@ -357,10 +357,15 @@ namespace Image
         result.colorMapData = {};
         // store decompressed image as state
         state = convertTo<uint8_t>(dxtData.second);
+        // add statistics
+        if (statistics != nullptr)
+        {
+            statistics->addImage("DXTV output", state, result.colorFormat, result.size.width(), result.size.height());
+        }
         return result;
     }
 
-    Data Processing::compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state)
+    Data Processing::compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressGVID expects bitmaps as input data");
         REQUIRE(image.colorFormat == ColorFormat::RGB888, std::runtime_error, "GVID compression is only possible for RGB888 truecolor images");
@@ -378,7 +383,7 @@ namespace Image
 
     // ----------------------------------------------------------------------------
 
-    Data Processing::padImageData(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::padImageData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padImageData expects a single uint32_t pad modulo parameter");
@@ -390,7 +395,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::padColorMap(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::padColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMap expects a single uint32_t pad modulo parameter");
@@ -403,7 +408,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::convertColorMap(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::convertColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<ColorFormat>(parameters.front()), std::runtime_error, "convertColorMap expects a single ColorFormat parameter");
@@ -430,7 +435,7 @@ namespace Image
         return result;
     }
 
-    Data Processing::padColorMapData(const Data &image, const std::vector<Parameter> &parameters)
+    Data Processing::padColorMapData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMapData expects a single uint32_t pad modulo parameter");
@@ -441,7 +446,7 @@ namespace Image
         return result;
     }
 
-    std::vector<Data> Processing::equalizeColorMaps(const std::vector<Data> &images, const std::vector<Parameter> &parameters)
+    std::vector<Data> Processing::equalizeColorMaps(const std::vector<Data> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         auto allColorMapsSameSize = std::find_if_not(images.cbegin(), images.cend(), [refSize = images.front().colorMap.size()](const auto &img)
                                                      { return img.colorMap.size() == refSize; }) == images.cend();
@@ -452,14 +457,14 @@ namespace Image
                                                           { return imgA.colorMap.size() < imgB.colorMap.size(); })
                                              ->colorMap.size();
             std::vector<Data> result;
-            std::transform(images.begin(), images.end(), std::back_inserter(result), [maxColorMapColors](auto &img)
-                           { return padColorMap(img, {Parameter(maxColorMapColors)}); });
+            std::transform(images.begin(), images.end(), std::back_inserter(result), [maxColorMapColors, statistics](auto &img)
+                           { return padColorMap(img, {Parameter(maxColorMapColors)}, statistics); });
             return result;
         }
         return images;
     }
 
-    Data Processing::imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state)
+    Data Processing::imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
         // check if a usable state was passed
         if (!state.empty())
@@ -483,9 +488,14 @@ namespace Image
         return image;
     }
 
-    void Processing::addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessing)
+    void Processing::setStatisticsContainer(Statistics::Container::SPtr c)
     {
-        m_steps.push_back({type, parameters, prependProcessing});
+        m_statistics = c;
+    }
+
+    void Processing::addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessing, bool addStatistics)
+    {
+        m_steps.push_back({type, parameters, prependProcessing, addStatistics});
     }
 
     std::size_t Processing::size() const
@@ -551,6 +561,7 @@ namespace Image
                       { p.index = index++; });
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
+            auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
             // check if this was the final processing step (first non-input processing)
             bool isFinalStep = false;
@@ -566,7 +577,7 @@ namespace Image
                 for (auto &img : processed)
                 {
                     const uint32_t inputSize = img.data.size();
-                    img = convertFunc(img, stepIt->parameters);
+                    img = convertFunc(img, stepIt->parameters, stepStatistics);
                     if (stepIt->prependProcessing)
                     {
                         img = prependProcessing(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
@@ -582,7 +593,7 @@ namespace Image
                 for (auto &img : processed)
                 {
                     const uint32_t inputSize = img.data.size();
-                    img = convertFunc(img, stepIt->parameters, stepIt->state);
+                    img = convertFunc(img, stepIt->parameters, stepIt->state, stepStatistics);
                     if (stepIt->prependProcessing)
                     {
                         img = prependProcessing(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
@@ -599,7 +610,7 @@ namespace Image
                 std::transform(processed.cbegin(), processed.cend(), std::back_inserter(inputSizes), [](const auto &d)
                                { return d.data.size(); });
                 auto batchFunc = std::get<BatchConvertFunc>(stepFunc.func);
-                processed = batchFunc(processed, stepIt->parameters);
+                processed = batchFunc(processed, stepIt->parameters, stepStatistics);
                 for (auto pIt = processed.begin(); pIt != processed.end(); pIt++)
                 {
                     const uint32_t inputSize = inputSizes.at(std::distance(processed.begin(), pIt));
@@ -612,7 +623,7 @@ namespace Image
             else if (stepFunc.type == OperationType::Reduce)
             {
                 auto reduceFunc = std::get<ReduceFunc>(stepFunc.func);
-                processed = {reduceFunc(processed, stepIt->parameters)};
+                processed = {reduceFunc(processed, stepIt->parameters, stepStatistics)};
             }
         }
         return processed;
@@ -626,22 +637,23 @@ namespace Image
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
             const uint32_t inputSize = processed.data.size();
+            auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
             if (stepFunc.type == OperationType::Input)
             {
                 auto inputFunc = std::get<InputFunc>(stepFunc.func);
-                processed = inputFunc(image, stepIt->parameters);
+                processed = inputFunc(image, stepIt->parameters, stepStatistics);
                 processed.index = index;
             }
             else if (stepFunc.type == OperationType::Convert)
             {
                 auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
-                processed = convertFunc(processed, stepIt->parameters);
+                processed = convertFunc(processed, stepIt->parameters, stepStatistics);
             }
             else if (stepFunc.type == OperationType::ConvertState)
             {
                 auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
-                processed = convertFunc(processed, stepIt->parameters, stepIt->state);
+                processed = convertFunc(processed, stepIt->parameters, stepIt->state, stepStatistics);
             }
             // check if this was the final processing step (first non-input processing)
             bool isFinalStep = false;

@@ -7,6 +7,7 @@
 #include "imageprocessing.h"
 #include "processingoptions.h"
 #include "spritehelpers.h"
+#include "statistics_window.h"
 #include "videoreader.h"
 
 #include <cstdlib>
@@ -287,15 +288,15 @@ int main(int argc, const char *argv[])
         }
         if (options.dxtg)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTG, {}, true);
+            processing.addStep(Image::ProcessingType::CompressDXTG, {}, true, true);
         }
         if (options.dxtv)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTV, {options.dxtv.value}, true);
+            processing.addStep(Image::ProcessingType::CompressDXTV, {options.dxtv.value}, true, true);
         }
         if (options.gvid)
         {
-            processing.addStep(Image::ProcessingType::CompressGVID, {});
+            processing.addStep(Image::ProcessingType::CompressGVID, {}, true, true);
         }
         if (options.delta8)
         {
@@ -318,6 +319,9 @@ int main(int argc, const char *argv[])
             processing.addStep(Image::ProcessingType::CompressLz11, {options.vram.isSet}, true);
         }
         processing.addStep(Image::ProcessingType::PadImageData, {uint32_t(4)});
+        // create statistics window
+        Statistics::Window window(videoInfo.width, videoInfo.height);
+        processing.setStatisticsContainer(window.getStatisticsContainer());
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;
@@ -335,7 +339,11 @@ int main(int argc, const char *argv[])
             }
             REQUIRE(frame.size() == videoInfo.width * videoInfo.height * 3, std::runtime_error, "Unexpected frame size");
             // build image from frame and apply processing
-            images.push_back(processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data()), frameIndex++));
+            auto image = processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data()), frameIndex++);
+            images.push_back(image);
+            // update statistics
+            window.update();
+            // calculate progress
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
             if (lastProgress != newProgress)
             {

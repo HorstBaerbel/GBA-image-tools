@@ -14,6 +14,9 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libavutil
     libswscale
 )
+pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET
+    sdl2
+)
 
 find_package(OpenMP REQUIRED)
 
@@ -56,6 +59,9 @@ set(HELPERS_SRC
     imageprocessing.cpp
     processingoptions.cpp
     spritehelpers.cpp
+    statistics.cpp
+    statistics_window.cpp
+    ui/gui_sdl.cpp
 )
 
 include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/eigen ../)
@@ -67,7 +73,7 @@ target_link_libraries(hex2gba PkgConfig::LIBMAGICK)
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
 target_link_libraries(img2h PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX stdc++fs pthread)
 add_executable(vid2h vid2h.cpp ${HELPERS_SRC} videoreader.cpp)
-target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX stdc++fs pthread)
+target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
 
 #-------------------------------------------------------------------------------
 # Define install files for CPack
