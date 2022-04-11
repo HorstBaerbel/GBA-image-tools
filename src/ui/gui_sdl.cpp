@@ -69,8 +69,8 @@ namespace Ui
                             case ColorFormat::FormatRGB888:
                                 surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 24, SDL_PIXELFORMAT_RGB24);
                                 break;
-                            case ColorFormat::FormatBGR555:
-                                surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 15, SDL_PIXELFORMAT_BGR555);
+                            case ColorFormat::FormatRGB555:
+                                surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 15, SDL_PIXELFORMAT_RGB555);
                                 break;
                             }
                             if (surface == nullptr)
@@ -123,13 +123,13 @@ namespace Ui
         }
     }
 
-    auto SDLWindow::displayImageBGR555(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
+    auto SDLWindow::displayImageRGB555(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
     {
         if (!m_quit)
         {
             // copy data to thread event queue
             SDL_LockMutex(m_mutex);
-            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatBGR555, image, width, height, x, y});
+            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatRGB555, image, width, height, x, y});
             SDL_UnlockMutex(m_mutex);
             // notify SDL thread about event
             SDL_Event e;

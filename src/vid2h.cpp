@@ -341,8 +341,6 @@ int main(int argc, const char *argv[])
             // build image from frame and apply processing
             auto image = processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data()), frameIndex++);
             images.push_back(image);
-            // update statistics
-            window.update();
             // calculate progress
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
             if (lastProgress != newProgress)
@@ -354,6 +352,8 @@ int main(int argc, const char *argv[])
                 auto restS = (videoInfo.nrOfFrames - images.size()) / fps;
                 std::cout << std::fixed << std::setprecision(1) << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
             }
+            // update statistics
+            window.update();
         } while (true);
         // set up some image info
         const auto imgType = images.front().type;

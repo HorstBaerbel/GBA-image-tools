@@ -25,7 +25,7 @@ namespace Statistics
                 displayImageRGB888(data.image, data.width, data.height);
                 break;
             case Image::ColorFormat::RGB555:
-                displayImageBGR555(data.image, data.width, data.height);
+                displayImageRGB555(data.image, data.width, data.height);
                 break;
             }
         }
