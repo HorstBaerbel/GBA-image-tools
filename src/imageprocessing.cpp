@@ -336,9 +336,12 @@ namespace Image
         REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXT compression");
         REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXT compression");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1, std::runtime_error, "compressDXTV expects 1 double parameter");
-        REQUIRE(std::holds_alternative<double>(parameters.at(0)), std::runtime_error, "compressDXTV max. block error must be a double");
-        auto maxBlockError = std::get<double>(parameters.at(0));
+        REQUIRE(parameters.size() == 2, std::runtime_error, "compressDXTV expects 2 double parameters");
+        REQUIRE(std::holds_alternative<double>(parameters.at(0)), std::runtime_error, "compressDXTV keyframe interval must be a double");
+        auto keyFrameInterval = static_cast<uint32_t>(std::get<double>(parameters.at(0)));
+        REQUIRE(keyFrameInterval >= 1 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [1,60]");
+        REQUIRE(std::holds_alternative<double>(parameters.at(1)), std::runtime_error, "compressDXTV max. block error must be a double");
+        auto maxBlockError = std::get<double>(parameters.at(1));
         REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01,1]");
         // convert RGB888 to RGB555
         auto data = image.data;
@@ -346,11 +349,13 @@ namespace Image
         {
             data = toRGB555(data);
         }
+        // check if needs to be a keyframe
+        const bool isKeyFrame = (image.index % keyFrameInterval) == 0 || state.empty();
         // compress data
         auto result = image;
         result.colorFormat = ColorFormat::RGB555;
         result.mapData = {};
-        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), state.empty() ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), state.empty(), maxBlockError);
+        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), state.empty() ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), isKeyFrame, maxBlockError);
         result.data = dxtData.first;
         result.colorMap = {};
         result.colorMapFormat = ColorFormat::Unknown;
