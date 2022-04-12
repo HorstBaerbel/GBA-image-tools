@@ -6,7 +6,7 @@
 // Write16bitUnits: Slow (dest must be halfword-aligned) (ok to use VRAM)
 // See also: http://problemkaputt.de/gbatek.htm#biosfunctions
 
-namespace Decompression
+namespace Decompress
 {
 
     void LZ77UnCompReadNormalWrite8bit(const void *source, void *dest);

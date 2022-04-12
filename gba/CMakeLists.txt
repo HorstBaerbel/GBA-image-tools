@@ -23,7 +23,7 @@ LIST(APPEND TARGET_SOURCE_FILES
 	memory/memset.s
 	print/itoa.cpp
 	print/output.cpp
-	sys/decompression.cpp
+	sys/decompress.cpp
 	video/codec_dxtg.cpp
 	video/codec_dxtv.cpp
 	video/videodecoder.cpp

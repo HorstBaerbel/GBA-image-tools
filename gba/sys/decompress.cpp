@@ -1,7 +1,7 @@
-#include "decompression.h"
+#include "decompress.h"
 #include "syscall.h"
 
-namespace Decompression
+namespace Decompress
 {
 
     void LZ77UnCompReadNormalWrite8bit(const void *source, void *dest)

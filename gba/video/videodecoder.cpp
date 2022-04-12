@@ -4,7 +4,7 @@
 #include "codec_dxtv.h"
 #include "memory/dma.h"
 #include "sys/base.h"
-#include "sys/decompression.h"
+#include "sys/decompress.h"
 
 #include "processingtypes.h"
 
@@ -34,10 +34,10 @@ namespace Video
                 DMA::dma_copy32(currentDst, currentSrc, chunk->uncompressedSize / 4);
                 break;
             case Image::ProcessingType::CompressLz10:
-                dstInVRAM ? Decompression::LZ77UnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompression::LZ77UnCompReadNormalWrite8bit(currentSrc, currentDst);
+                dstInVRAM ? Decompress::LZ77UnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompReadNormalWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressRLE:
-                dstInVRAM ? Decompression::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompression::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
+                dstInVRAM ? Decompress::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompress::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressDXTV:
                 DXTV::UnCompWrite16bit<240>(currentDst, currentSrc, (const uint32_t *)VRAM, info.width, info.height);
