@@ -22,8 +22,7 @@ IWRAM_FUNC void frameRequest()
 	frameRequested = true;
 }
 
-EWRAM_DATA ALIGN(4) uint32_t BackBuffer[240 * 160 / 2];
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[20148 * 2 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
+EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 20148 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {
@@ -57,8 +56,8 @@ int main()
 	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
 	// center video on screen
-	REG_BG2X = ((videoInfo.width - 240) / 2) << 8;
-	REG_BG2Y = ((videoInfo.height - 160) / 2) << 8;
+	// REG_BG2X = ((videoInfo.width - 240) / 2) << 8;
+	// REG_BG2Y = ((videoInfo.height - 160) / 2) << 8;
 	// switch video mode to 160x128x2
 	// REG_DISPCNT = MODE_5 | BG2_ON;
 	// REG_BG2PA = 256 / 1.5;
@@ -76,21 +75,20 @@ int main()
 	Video::Frame frame{};
 	do
 	{
-		// read next frame from data
-		frame = Video::GetNextFrame(videoInfo, frame);
 		// wait for the timer to signal a frame request
 		while (!frameRequested)
 		{
 		};
 		frameRequested = false;
-		scanKeys();
 		// start benchmark timer
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;
+		// read next frame from data
+		frame = Video::GetNextFrame(videoInfo, frame);
 		// uncompress frame to backbuffer
-		Video::decode(BackBuffer, ScratchPad, sizeof(ScratchPad), videoInfo, frame);
+		auto decodedFrame = Video::decode(ScratchPad, sizeof(ScratchPad), videoInfo, frame);
 		// blit to VRAM
-		Memory::memcpy32((uint32_t *)VRAM, BackBuffer, sizeof(BackBuffer) / 4);
+		Memory::memcpy32((uint32_t *)VRAM, decodedFrame, videoInfo.width * videoInfo.height / 2);
 		// end benchmark timer
 		REG_TM2CNT_H = 0;
 		auto durationMs = static_cast<int32_t>(REG_TM2CNT_L) * 1000;
