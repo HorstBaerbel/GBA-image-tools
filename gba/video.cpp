@@ -11,7 +11,7 @@
 #include "tui.h"
 #include "videoplayer.h"
 
-#include "data/data.h"
+#include "data/video.h"
 
 EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 20148 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 

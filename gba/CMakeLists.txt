@@ -30,7 +30,7 @@ LIST(APPEND TARGET_SOURCE_FILES
 	video/videoreader.cpp
 	video/videoplayer.cpp
 	data/font_8x8.c
-	data/data.s
+	data/video.s
 )
 
 LIST(APPEND TARGET_INCLUDE_DIRS

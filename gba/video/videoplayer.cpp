@@ -70,7 +70,7 @@ namespace Video
 
     auto hasMoreFrames() -> bool
     {
-        return m_playing && m_videoFrame.index < (m_videoInfo.nrOfFrames - 1);
+        return m_playing && m_videoFrame.index < static_cast<int32_t>(m_videoInfo.nrOfFrames - 1);
     }
 
     auto decodeFrame() -> void
