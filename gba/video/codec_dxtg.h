@@ -1,7 +1,5 @@
 #pragma once
 
-#include "base.h"
-
 #include <cstdint>
 
 namespace DXTG

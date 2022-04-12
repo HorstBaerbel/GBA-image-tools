@@ -18,4 +18,4 @@ namespace Decompression
     void Diff8bitUnFilterWrite16bit(const void *source, void *dest);
     void Diff16bitUnFilter(const void *source, void *dest);
 
-}
+} // namespace Decompress

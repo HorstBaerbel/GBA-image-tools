@@ -16,19 +16,19 @@ include(CompilerFlagsGBA)
 
 # List all the source files in our directory
 LIST(APPEND TARGET_SOURCE_FILES
-	codec_dxtg.cpp
-	codec_dxtv.cpp
-	dma.cpp
-	decompression.cpp
-	itoa.cpp
-	memcpy.s
-	memset.s
-	output.cpp
 	tui.cpp
 	video.cpp
-	videodecoder.cpp
-	videoreader.cpp
-	videoplayer.cpp
+	memory/dma.cpp
+	memory/memcpy.s
+	memory/memset.s
+	print/itoa.cpp
+	print/output.cpp
+	sys/decompression.cpp
+	video/codec_dxtg.cpp
+	video/codec_dxtv.cpp
+	video/videodecoder.cpp
+	video/videoreader.cpp
+	video/videoplayer.cpp
 	data/font_8x8.c
 	data/data.s
 )
@@ -37,6 +37,11 @@ LIST(APPEND TARGET_INCLUDE_DIRS
 	${DEVKITPRO}/libgba/include
 	${DEVKITARM}/arm-none-eabi/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../src
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/memory
+	${CMAKE_CURRENT_SOURCE_DIR}/video
+	${CMAKE_CURRENT_SOURCE_DIR}/print
+	${CMAKE_CURRENT_SOURCE_DIR}/sys
 )
 
 LIST(APPEND TARGET_LIB_DIRS

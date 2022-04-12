@@ -3,7 +3,7 @@
 #include <gba_video.h>
 
 #include "itoa.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "tiles.h"
 
 namespace TUI

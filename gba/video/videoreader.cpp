@@ -1,6 +1,6 @@
 #include "videoreader.h"
 
-#include "memory.h"
+#include "memory/memory.h"
 
 namespace Video
 {

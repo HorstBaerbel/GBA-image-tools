@@ -1,10 +1,10 @@
 #include "videodecoder.h"
 
-#include "base.h"
 #include "codec_dxtg.h"
 #include "codec_dxtv.h"
-#include "decompression.h"
-#include "dma.h"
+#include "memory/dma.h"
+#include "sys/base.h"
+#include "sys/decompression.h"
 
 #include "processingtypes.h"
 

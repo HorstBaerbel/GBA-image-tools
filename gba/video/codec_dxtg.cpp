@@ -1,5 +1,7 @@
 #include "codec_dxtg.h"
 
+#include "sys/base.h"
+
 namespace DXTG
 {
 

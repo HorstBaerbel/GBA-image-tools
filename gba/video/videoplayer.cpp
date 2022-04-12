@@ -1,7 +1,7 @@
 #include "videoplayer.h"
 
-#include "base.h"
-#include "memory.h"
+#include "memory/memory.h"
+#include "sys/base.h"
 #include "videodecoder.h"
 #include "videoreader.h"
 
