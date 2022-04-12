@@ -48,12 +48,12 @@ namespace Video
             m_frameRequested = true;
             m_videoFrame = Video::Frame{};
             // set up timer to increase with frame interval
-            irqSet(irqMASKS::IRQ_TIMER3, frameRequest);
-            irqEnable(irqMASKS::IRQ_TIMER3);
+            irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
+            irqEnable(irqMASKS::IRQ_TIMER2);
             // Timer interval = 1 / fps (where 65536 == 1s)
-            REG_TM3CNT_L = 65536 - (65536 / m_videoInfo.fps);
+            REG_TM2CNT_L = 65536 - (65536 / m_videoInfo.fps);
             // Timer divider 2 == 256 -> 16*1024*1024 cycles/s / 256 = 65536/s
-            REG_TM3CNT_H = TIMER_START | TIMER_IRQ | 2;
+            REG_TM2CNT_H = TIMER_START | TIMER_IRQ | 2;
         }
     }
 
@@ -61,8 +61,8 @@ namespace Video
     {
         if (m_playing)
         {
-            REG_TM3CNT_H = 0;
-            irqDisable(irqMASKS::IRQ_TIMER3);
+            REG_TM2CNT_H = 0;
+            irqDisable(irqMASKS::IRQ_TIMER2);
             m_playing = false;
             m_frameRequested = false;
         }

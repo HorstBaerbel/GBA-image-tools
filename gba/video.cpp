@@ -53,13 +53,13 @@ int main()
 	do
 	{
 		// start benchmark timer
-		REG_TM2CNT_L = 0;
-		REG_TM2CNT_H = TIMER_START | 2;
+		REG_TM3CNT_L = 0;
+		REG_TM3CNT_H = TIMER_START | 2;
 		Video::decodeFrame();
 		Video::blitFrameTo((uint32_t *)VRAM);
 		// end benchmark timer
-		REG_TM2CNT_H = 0;
-		auto durationMs = static_cast<int32_t>(REG_TM2CNT_L) * 1000;
+		REG_TM3CNT_H = 0;
+		auto durationMs = static_cast<int32_t>(REG_TM3CNT_L) * 1000;
 		if (maxFrameTimeMs < durationMs)
 		{
 			maxFrameTimeMs = durationMs;
