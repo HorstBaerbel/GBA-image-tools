@@ -8,8 +8,8 @@ namespace Video
     Info GetInfo(const uint32_t *data)
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
-        Info info;
-        Memory::memcpy32(&info, data, sizeof(FileHeader));
+        Info info{};
+        Memory::memcpy32(&info, data, sizeof(FileHeader) / 4);
         info.fileData = data;
         info.colorMapSize = info.colorMapEntries;
         switch (info.bitsInColorMap)
@@ -32,7 +32,7 @@ namespace Video
     {
         static_assert(sizeof(Frame::compressedSize) % 4 == 0);
         static_assert(sizeof(DataChunk) % 4 == 0);
-        Frame frame;
+        Frame frame{};
         if (previous.index < 0 || previous.index >= static_cast<int32_t>(info.nrOfFrames - 1))
         {
             // read first frame

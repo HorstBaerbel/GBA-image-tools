@@ -6,21 +6,12 @@
 #include <gba_video.h>
 
 #include "base.h"
-#include "dma.h"
 #include "memory.h"
 #include "output.h"
 #include "tui.h"
-#include "videodecoder.h"
-#include "videoreader.h"
+#include "videoplayer.h"
 
 #include "data/data.h"
-
-IWRAM_DATA volatile bool frameRequested = true;
-
-IWRAM_FUNC void frameRequest()
-{
-	frameRequested = true;
-}
 
 EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 20148 / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 
@@ -35,7 +26,8 @@ int main()
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
 	// read file header
-	const auto videoInfo = Video::GetInfo(reinterpret_cast<const uint32_t *>(VIDEO_DATA));
+	Video::init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), ScratchPad, sizeof(ScratchPad));
+	const auto &videoInfo = Video::getInfo();
 	// print video info
 	TUI::printf(0, 0, "Frames: %d, Fps: %d", videoInfo.nrOfFrames, videoInfo.fps);
 	TUI::printf(0, 1, "Size: %dx%d", videoInfo.width, videoInfo.height);
@@ -63,39 +55,36 @@ int main()
 	// REG_BG2PA = 256 / 1.5;
 	// REG_BG2PD = 256 / 1.5;
 	// REG_BG2Y = 11 << 8;
-	//  set up timer to increase with frame interval
-	irqSet(irqMASKS::IRQ_TIMER3, frameRequest);
-	irqEnable(irqMASKS::IRQ_TIMER3);
-	// Timer divider 2 == 256 -> 16*1024*1024 cycles/s / 256 = 65536/s
-	REG_TM3CNT_H = TIMER_START | TIMER_IRQ | 2;
-	// Timer interval = 1 / fps (where 65536 == 1s)
-	REG_TM3CNT_L = 65536 - (65536 / videoInfo.fps);
 	// start main loop
 	int32_t maxFrameTimeMs = 0;
-	Video::Frame frame{};
+	Video::play();
 	do
 	{
-		// wait for the timer to signal a frame request
-		while (!frameRequested)
-		{
-		};
-		frameRequested = false;
 		// start benchmark timer
 		REG_TM2CNT_L = 0;
 		REG_TM2CNT_H = TIMER_START | 2;
-		// read next frame from data
-		frame = Video::GetNextFrame(videoInfo, frame);
-		// uncompress frame to backbuffer
-		auto decodedFrame = Video::decode(ScratchPad, sizeof(ScratchPad), videoInfo, frame);
-		// blit to VRAM
-		Memory::memcpy32((uint32_t *)VRAM, decodedFrame, videoInfo.width * videoInfo.height / 2);
+		Video::decodeFrame();
+		Video::blitFrameTo((uint32_t *)VRAM);
 		// end benchmark timer
 		REG_TM2CNT_H = 0;
 		auto durationMs = static_cast<int32_t>(REG_TM2CNT_L) * 1000;
 		if (maxFrameTimeMs < durationMs)
 		{
 			maxFrameTimeMs = durationMs;
-			Debug::printf("Frame %d, Needed: %f ms", frame.index, durationMs);
+			Debug::printf("Max. frame time: %f ms", durationMs);
+		}
+		if (!Video::hasMoreFrames())
+		{
+			Video::stop();
+			do
+			{
+				scanKeys();
+				if (keysDown() & KEY_A)
+				{
+					break;
+				}
+			} while (true);
+			Video::play();
 		}
 	} while (true);
 	return 0;

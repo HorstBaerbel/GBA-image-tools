@@ -28,6 +28,7 @@ LIST(APPEND TARGET_SOURCE_FILES
 	video.cpp
 	videodecoder.cpp
 	videoreader.cpp
+	videoplayer.cpp
 	data/font_8x8.c
 	data/data.s
 )
