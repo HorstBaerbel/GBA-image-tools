@@ -47,14 +47,6 @@ int main()
 	} while (true);
 	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
-	// center video on screen
-	// REG_BG2X = ((videoInfo.width - 240) / 2) << 8;
-	// REG_BG2Y = ((videoInfo.height - 160) / 2) << 8;
-	// switch video mode to 160x128x2
-	// REG_DISPCNT = MODE_5 | BG2_ON;
-	// REG_BG2PA = 256 / 1.5;
-	// REG_BG2PD = 256 / 1.5;
-	// REG_BG2Y = 11 << 8;
 	// start main loop
 	int32_t maxFrameTimeMs = 0;
 	Video::play();
