@@ -71,7 +71,7 @@ add_executable(gimppalette555 gimppalette555.cpp)
 add_executable(hex2gba hex2gba.cpp)
 target_link_libraries(hex2gba PkgConfig::LIBMAGICK)
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
-target_link_libraries(img2h PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX stdc++fs pthread)
+target_link_libraries(img2h PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
 add_executable(vid2h vid2h.cpp ${HELPERS_SRC} videoreader.cpp)
 target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
 
