@@ -1,7 +1,7 @@
 #include "codec_dxtv.h"
 
-#include "memory.h"
-#include "output.h"
+#include "memory/memory.h"
+#include "print/output.h"
 
 namespace DXTV
 {
@@ -153,29 +153,6 @@ namespace DXTV
         1966110, 1966111, 2031647};
 
     IWRAM_DATA ALIGN(4) uint16_t DxtColors[4];
-
-    template <uint32_t BLOCK_DIM>
-    inline IWRAM_FUNC void FillBlock(uint32_t *dst32, uint32_t value, uint32_t LineStride32)
-    {
-        for (uint32_t i = 0; i < BLOCK_DIM; ++i)
-        {
-            dst32[0] = value;
-            dst32[1] = value;
-            if constexpr (BLOCK_DIM >= 8)
-            {
-                dst32[2] = value;
-                dst32[3] = value;
-            }
-            if constexpr (BLOCK_DIM >= 16)
-            {
-                dst32[4] = value;
-                dst32[5] = value;
-                dst32[6] = value;
-                dst32[7] = value;
-            }
-            dst32 += LineStride32;
-        }
-    }
 
     /// @brief Get DXT colors from source, calculate intermediate colors and write to DxtColors array
     /// @return Pointer past DXT colors
