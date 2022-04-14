@@ -2,7 +2,7 @@
 
 #include "codec_dxtg.h"
 #include "codec_dxtv.h"
-#include "memory/dma.h"
+#include "memory/memory.h"
 #include "sys/base.h"
 #include "sys/decompress.h"
 
@@ -31,7 +31,7 @@ namespace Video
             switch (static_cast<Image::ProcessingType>(chunk->processingType & (~Image::ProcessingTypeFinal)))
             {
             case Image::ProcessingType::Uncompressed:
-                DMA::dma_copy32(currentDst, currentSrc, chunk->uncompressedSize / 4);
+                Memory::memcpy32(currentDst, currentSrc, chunk->uncompressedSize / 4);
                 break;
             case Image::ProcessingType::CompressLz10:
                 dstInVRAM ? Decompress::LZ77UnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompReadNormalWrite8bit(currentSrc, currentDst);
