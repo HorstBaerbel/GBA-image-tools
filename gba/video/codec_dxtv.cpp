@@ -426,7 +426,6 @@ namespace DXTV
         if (keepFrame)
         {
             // Debug::printf("Duplicate frame");
-            Memory::memcpy32(dst, prevSrc, width * height / 2);
             return;
         }
         // check if this frame is a key frame
