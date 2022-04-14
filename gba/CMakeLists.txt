@@ -24,6 +24,7 @@ LIST(APPEND TARGET_SOURCE_FILES
 	print/itoa.cpp
 	print/output.cpp
 	sys/decompress.cpp
+	video/lz77.s
 	video/codec_dxtg.cpp
 	video/codec_dxtv.cpp
 	video/videodecoder.cpp

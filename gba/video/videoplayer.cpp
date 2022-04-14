@@ -11,18 +11,19 @@
 namespace Video
 {
 
-    uint32_t *m_scratchPad = nullptr;
-    uint32_t m_scratchPadSize = 0;
-    Video::Info m_videoInfo{};
-    Video::Frame m_videoFrame{};
-    const uint32_t *m_decodedFrame = nullptr;
-    uint32_t m_decodedFrameSize = 0;
-    bool m_playing = false;
+    IWRAM_DATA uint32_t *m_scratchPad = nullptr;
+    IWRAM_DATA uint32_t m_scratchPadSize = 0;
+    IWRAM_DATA Info m_videoInfo;
+    IWRAM_DATA Frame m_videoFrame;
+    IWRAM_DATA bool m_playing = false;
+    IWRAM_DATA const uint32_t *m_decodedFrame = nullptr;
+    IWRAM_DATA uint32_t m_decodedFrameSize = 0;
+    IWRAM_DATA int32_t m_framesDecoded = 0;
 
-    IWRAM_DATA volatile bool m_frameRequested = true;
+    IWRAM_DATA volatile int32_t m_framesRequested = 0;
     IWRAM_FUNC auto frameRequest() -> void
     {
-        m_frameRequested = true;
+        ++m_framesRequested;
     }
 
     auto init(const uint32_t *videoSrc, uint32_t *scratchPad, uint32_t scratchPadSize) -> void
@@ -44,9 +45,13 @@ namespace Video
     {
         if (!m_playing)
         {
+            m_videoFrame.index = -1;
+            m_videoFrame.data = nullptr;
+            m_videoFrame.compressedSize = 0;
+            m_videoFrame.colorMapOffset = 0;
             m_playing = true;
-            m_frameRequested = true;
-            m_videoFrame = Video::Frame{};
+            m_framesDecoded = 0;
+            m_framesRequested = 1;
             // set up timer to increase with frame interval
             irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
             irqEnable(irqMASKS::IRQ_TIMER2);
@@ -64,30 +69,59 @@ namespace Video
             REG_TM2CNT_H = 0;
             irqDisable(irqMASKS::IRQ_TIMER2);
             m_playing = false;
-            m_frameRequested = false;
+            m_framesRequested = 0;
         }
     }
 
-    auto hasMoreFrames() -> bool
+    IWRAM_FUNC auto hasMoreFrames() -> bool
     {
         return m_playing && m_videoFrame.index < static_cast<int32_t>(m_videoInfo.nrOfFrames - 1);
     }
 
-    auto decodeFrame() -> void
+    IWRAM_FUNC auto decodeAndBlitFrame(uint32_t *dst) -> void
     {
-        if (m_playing && m_frameRequested)
+        if (m_playing)
         {
-            m_frameRequested = false;
-            // read next frame from data
-            m_videoFrame = GetNextFrame(m_videoInfo, m_videoFrame);
-            // uncompress frame
-            m_decodedFrame = decode(m_scratchPad, m_scratchPadSize, m_videoInfo, m_videoFrame);
+            if (m_framesDecoded < 1)
+            {
+                ++m_framesDecoded;
+#ifdef DEBUG_PLAYER
+                auto startTime = Time::now();
+#endif
+                // read next frame from data
+                m_videoFrame = GetNextFrame(m_videoInfo, m_videoFrame);
+                // uncompress frame
+                m_decodedFrame = decode(m_scratchPad, m_scratchPadSize, m_videoInfo, m_videoFrame);
+#ifdef DEBUG_PLAYER
+                auto duration = Time::now() * 1000 - startTime * 1000;
+                printf("Decode: %.2f ms", duration);
+#endif
+            }
+            if (m_framesRequested > 0)
+            {
+                --m_framesRequested;
+                if (m_framesDecoded > 0)
+                {
+#ifdef DEBUG_PLAYER
+                    auto startTime = Time::now();
+#endif
+                    // we're waiting for a frame and have one. blit it!
+                    m_framesDecoded = 0;
+                    Memory::memcpy32(dst, m_decodedFrame, m_decodedFrameSize / 4);
+#ifdef DEBUG_PLAYER
+                    auto duration = Time::now() * 1000 - startTime * 1000;
+                    printf("Blit: %.2f ms", duration);
+#endif
+                }
+                if (m_framesRequested > 0)
+                {
+#ifdef DEBUG_PLAYER
+                    printf("Skipping %d frame(s)", m_framesRequested);
+#endif
+                    m_framesRequested = 0;
+                }
+            }
         }
-    }
-
-    auto blitFrameTo(uint32_t *dst) -> void
-    {
-        Memory::memcpy32(dst, m_decodedFrame, m_decodedFrameSize / 4);
     }
 
 }

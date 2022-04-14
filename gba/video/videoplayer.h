@@ -27,10 +27,8 @@ namespace Video
     /// @return True if the video has more frames, false if this is the last frame
     auto hasMoreFrames() -> bool;
 
-    /// @brief Decode a video frame to scratchpad. If not stopped, the video will repeat
-    auto decodeFrame() -> void;
-
-    /// @brief Blit decoded frame to destination
-    auto blitFrameTo(uint32_t *dst) -> void;
+    /// @brief Decode a video frame to scratchpad and blit it to dst. If not stopped, the video will repeat.
+    /// The player will only decode new frames when it needs to due to the frame rate of the video.
+    auto decodeAndBlitFrame(uint32_t *dst) -> void;
 
 }

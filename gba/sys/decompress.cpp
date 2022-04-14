@@ -1,7 +1,7 @@
 #include "decompress.h"
 #include "syscall.h"
 
-namespace Decompress
+namespace BIOS
 {
 
     void LZ77UnCompReadNormalWrite8bit(const void *source, void *dest)

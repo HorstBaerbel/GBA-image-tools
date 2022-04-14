@@ -2,6 +2,7 @@
 
 #include "codec_dxtg.h"
 #include "codec_dxtv.h"
+#include "lz77.h"
 #include "memory/memory.h"
 #include "sys/base.h"
 #include "sys/decompress.h"
@@ -34,10 +35,10 @@ namespace Video
                 Memory::memcpy32(currentDst, currentSrc, chunk->uncompressedSize / 4);
                 break;
             case Image::ProcessingType::CompressLz10:
-                dstInVRAM ? Decompress::LZ77UnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompReadNormalWrite8bit(currentSrc, currentDst);
+                dstInVRAM ? Decompress::LZ77UnCompWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressRLE:
-                dstInVRAM ? Decompress::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : Decompress::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
+                dstInVRAM ? BIOS::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressDXTV:
                 DXTV::UnCompWrite16bit<240>(currentDst, currentSrc, (const uint32_t *)VRAM, info.width, info.height);

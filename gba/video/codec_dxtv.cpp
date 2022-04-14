@@ -6,12 +6,6 @@
 namespace DXTV
 {
 
-    IWRAM_DATA struct FrameHeader
-    {
-        uint16_t flags = 0;     // e.g. FRAME_IS_PFRAME
-        uint16_t nrOfFlags = 0; // # of blocks > MinDim in frame (determines the size of flags block)
-    } ALIGN_PACK(4) frameHeader;
-
     // The image is split into 16x16 pixel blocks which can be futher split into 8x8 and 4x4 blocks.
     //
     // Every 16x16 (block size 0) block has one flag:
@@ -35,6 +29,12 @@ namespace DXTV
     //   Bit 0-13: Reference index into frame [0,16383]
     //             Range [-16384,-1] is used for references to the current frame.
     //             Range [-8191,8192] is used for references to the previous frame.
+    //
+    // Frame header format:
+    // uint16_t flags;     // e.g. FRAME_IS_PFRAME
+    // uint16_t nrOfFlags; // # of blocks > MinDim in frame (determines the size of flags block)
+    //
+    // then follows data
 
     constexpr uint16_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames, 1 for P-frame / inter-frame compression ("predicted frame")
     constexpr uint16_t FRAME_KEEP = 0x40;      // 1 for frames that are considered a direct copy of the previous frame and can be kept
@@ -418,10 +418,11 @@ namespace DXTV
         constexpr uint32_t Block16Stride32 = 8;                                                                              // horizontal stride to next 16x6 block (16 * 2 bytes)
         constexpr uint32_t Block4Offsets32[] = {0, Block4Stride32, Block4LineStride32, Block4LineStride32 + Block4Stride32}; // block pixel offsets from parent 8x8 block
         constexpr uint32_t Block8Offsets32[] = {0, Block8Stride32, Block8LineStride32, Block8LineStride32 + Block8Stride32}; // block pixel offsets from parent 16x16 block
+        auto src16 = reinterpret_cast<const uint16_t *>(src);
         // copy frame header
-        Memory::memcpy32(&frameHeader, src, sizeof(FrameHeader) / 4);
+        uint32_t headerFlags = *src16++;
         // check if we want to keep this duplicate frame
-        const bool keepFrame = (frameHeader.flags & FRAME_KEEP) != 0;
+        const bool keepFrame = (headerFlags & FRAME_KEEP) != 0;
         if (keepFrame)
         {
             // Debug::printf("Duplicate frame");
@@ -429,17 +430,18 @@ namespace DXTV
             return;
         }
         // check if this frame is a key frame
-        /*const bool isKeyFrame = (frameHeader.flags & FRAME_IS_PFRAME) == 0;
+        /*const bool isKeyFrame = (headerFlags & FRAME_IS_PFRAME) == 0;
         if (isKeyFrame)
         {
             Debug::printf("Key frame");
         }*/
         // set up some variables
-        uint32_t splitFlags = 0;                                                                                 // Block split bit flags for blocks
-        uint32_t splitFlagsAvailable = 0;                                                                        // How many bits we have left in flags
-        auto srcSplitFlagPtr = reinterpret_cast<const uint16_t *>(src) + (sizeof(FrameHeader) / 2);              // flags that define encoding state of blocks
-        const uint32_t nrOfFlagHwords = ((static_cast<uint32_t>(frameHeader.nrOfFlags) + 31) & 0xFFFFFFE0) >> 4; // round # of flags up to multiple of 32 and divide by 16
-        auto srcDataPtr = srcSplitFlagPtr + nrOfFlagHwords;                                                      // DXT block data. offset is nrOfRefBlocks bytes
+        uint32_t splitFlags = 0;                                                                     // Block split bit flags for blocks
+        uint32_t splitFlagsAvailable = 0;                                                            // How many bits we have left in flags
+        uint32_t nrOfFlags = *src16++;                                                               // # of 16x16 and 8x8 block flags stored
+        auto srcSplitFlagPtr = src16;                                                                // flags that define encoding state of blocks
+        const uint32_t nrOfFlagHwords = ((static_cast<uint32_t>(nrOfFlags) + 31) & 0xFFFFFFE0) >> 4; // round # of flags up to multiple of 32 and divide by 16
+        auto srcDataPtr = srcSplitFlagPtr + nrOfFlagHwords;                                          // DXT block data. offset is nrOfRefBlocks bytes
         auto currentDst32 = dst;
         for (uint32_t blockY = 0; blockY < height / 16; blockY++)
         {
