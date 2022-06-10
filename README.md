@@ -1,6 +1,6 @@
-# GBA / NDS / DSi image and video conversion tools
+# GBA image and video conversion tools
 
-This folder contains some tools to convert / compress images and videos to GBA and NDS formats:  
+This folder contains some tools to convert / compress images and videos to GBA formats:  
 
 * [colormap555](colormap555.cpp) - Generate the file [colormap555.png](colormap555.png) that can be used to convert images directly to the GBAs RGB555 color-space with good quality.
 * [gimppalette555](gimppalette555.cpp) - Generate the file [GBA.gpl](GBA.gpl) for using / editing / painting with GBA colors in Gimp.
