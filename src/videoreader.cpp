@@ -34,7 +34,7 @@ struct VideoReader::ReaderState
 
     AVFormatContext *formatContext = nullptr;
     AVCodecParameters *codecParameters = nullptr;
-    AVCodec *codec = nullptr;
+    const AVCodec *codec = nullptr;
     std::string codecName;
     int videoStreamIndex = -1;
     int width = 0;

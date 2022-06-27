@@ -13,9 +13,8 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libavutil
     libswscale
 )
-pkg_check_modules(TBB REQUIRED IMPORTED_TARGET
-    tbb
-)
+
+find_package(OpenMP REQUIRED)
 
 #-------------------------------------------------------------------------------
 # Set up compiler flags
@@ -50,7 +49,7 @@ set(TESTS_SRC
 set(TARGET_NAME unit_tests)
  
 add_executable(${TARGET_NAME} main.cpp ${TESTS_SRC})
-target_link_libraries(${TARGET_NAME} PRIVATE Catch PkgConfig::LIBMAGICK PkgConfig::LIBAV PkgConfig::TBB stdc++fs pthread)
+target_link_libraries(${TARGET_NAME} PRIVATE Catch PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX stdc++fs pthread)
 target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/Catch2/single_include)
 
 add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} -o report.xml -r junit)

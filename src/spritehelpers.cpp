@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <map>
+#include <array>
 
 std::vector<uint8_t> convertToWidth(const std::vector<uint8_t> &src, uint32_t width, uint32_t height, uint32_t bitsPerPixel, uint32_t tileWidth)
 {
