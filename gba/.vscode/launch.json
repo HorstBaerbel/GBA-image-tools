@@ -1,0 +1,62 @@
+{
+    // Verwendet IntelliSense zum Ermitteln möglicher Attribute.
+    // Zeigen Sie auf vorhandene Attribute, um die zugehörigen Beschreibungen anzuzeigen.
+    // Weitere Informationen finden Sie unter https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run in mgba",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "build Release",
+            "program": "/usr/local/bin/mgba-qt",
+            "args": [
+                "-3",
+                "${command:cmake.launchTargetPath}"
+            ],
+            "cwd": "${command:cmake.buildDirectory}"
+        },
+        {
+            "name": "Debug in mgba",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "build Debug",
+            "program": "${command:cmake.buildDirectory}/video.elf",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.buildDirectory}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerServerAddress": "localhost:2345",
+            "linux": {
+                "miDebuggerPath": "${env:DEVKITARM}/bin/arm-none-eabi-gdb",
+                "setupCommands": [
+                    {
+                        "text": "set print pretty",
+                        "ignoreFailures": false
+                    },
+                    {
+                        "description": "mGBA",
+                        "text": "shell \"/usr/local/bin/mgba-qt\" -3 -g \"${command:cmake.buildDirectory}/video.elf\" &",
+                        "ignoreFailures": false
+                    }
+                ]
+            },
+            "postDebugTask": "kill mGBA"
+        },
+        {
+            "name": "Run in vba",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "build Release",
+            "program": "/usr/bin/vba",
+            "args": [
+                "${command:cmake.launchTargetPath}",
+                "-3",
+                "--agb-print"
+            ],
+            "cwd": "${command:cmake.buildDirectory}"
+        }
+    ]
+}

@@ -1,0 +1,62 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build Release",
+            "type": "shell",
+            "command": "cmake --build '${workspaceRoot}/build' --config Release --target all -- -j 6",
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build Debug",
+            "type": "shell",
+            "command": "cmake --build '${workspaceRoot}/build' --config Debug --target all -- -j 6",
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "group": "build",
+        },
+        {
+            "label": "kill mGBA",
+            "group": "none",
+            "type": "shell",
+            "command": "killall mgba-qt"
+        },
+        {
+            "label": "Run amap",
+            "group": "none",
+            "type": "shell",
+            "command": "amap",
+            "args": [
+                "${command:cmake.buildDirectory}/video.map"
+            ],
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "presentation": {
+                "reveal": "never"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Show .map file",
+            "group": "none",
+            "dependsOn": [
+                "build Release",
+                "Run amap"
+            ],
+            "presentation": {
+                "reveal": "never"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

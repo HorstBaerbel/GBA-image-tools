@@ -1,3 +1,16 @@
 [submodule "cxxopts"]
 	path = cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+[submodule "glob"]
+	path = glob
+	url = https://github.com/p-ranav/glob.git
+[submodule "gba/3ds-cmake"]
+	path = gba/3ds-cmake
+	url = https://github.com/Xtansia/3ds-cmake.git
+[submodule "Catch2"]
+	path = Catch2
+	url = https://github.com/catchorg/Catch2.git
+	branch = v2.x
+[submodule "eigen"]
+	path = eigen
+	url = https://gitlab.com/libeigen/eigen.git
