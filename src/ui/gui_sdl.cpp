@@ -3,6 +3,8 @@
 #include <SDL_video.h>
 
 #include <cstring>
+#include <stdexcept>
+#include <iostream>
 
 namespace Ui
 {
@@ -10,16 +12,31 @@ namespace Ui
     SDLWindow::SDLWindow(uint32_t width, uint32_t height)
         : m_width(width), m_height(height)
     {
-        SDL_Init(SDL_INIT_VIDEO);
+        SDL_InitSubSystem(SDL_INIT_VIDEO);
         m_mutex = SDL_CreateMutex();
-        m_tread = SDL_CreateThread(MessageLoop, "SDL message loop", this);
+        if (m_mutex == nullptr)
+        {
+            throw std::runtime_error(SDL_GetError());
+        }
+        m_thread = SDL_CreateThread(MessageLoop, "SDL message loop", this);
+        if (m_thread == nullptr)
+        {
+            throw std::runtime_error(SDL_GetError());
+        }
     }
 
     SDLWindow::~SDLWindow()
     {
         m_quit = true;
-        SDL_WaitThread(m_tread, nullptr);
-        SDL_Quit();
+        if (m_thread != nullptr)
+        {
+            SDL_WaitThread(m_thread, nullptr);
+        }
+        if (m_mutex != nullptr)
+        {
+            SDL_DestroyMutex(m_mutex);
+        }
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
     }
 
     auto SDLWindow::MessageLoop(void *object) -> int
@@ -27,16 +44,19 @@ namespace Ui
         SDLWindow *w = reinterpret_cast<SDLWindow *>(object);
         if (w == nullptr)
         {
+            std::cerr << "Bad object pointer" << std::endl;
             return -1;
         }
-        SDL_Window *sdlWindow = SDL_CreateWindow("vid2h", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w->m_width, w->m_height, 0);
+        SDL_Window *sdlWindow = SDL_CreateWindow("vid2h", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w->m_width, w->m_height, SDL_WINDOW_VULKAN);
         if (sdlWindow == nullptr)
         {
+            std::cerr << "Failed to create SDL window" << std::endl;
             return -2;
         }
         SDL_Renderer *renderer = SDL_CreateRenderer(sdlWindow, -1, 0);
         if (renderer == nullptr)
         {
+            std::cerr << "Failed to create SDL renderer" << std::endl;
             SDL_DestroyWindow(sdlWindow);
             return -3;
         }

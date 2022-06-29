@@ -13,7 +13,7 @@
 
 #include "data/video.h"
 
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 20148 / 4 + 1]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
+EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 22000 / 4 + 1]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {
@@ -55,7 +55,7 @@ int main()
 		// start benchmark timer
 		REG_TM3CNT_L = 0;
 		REG_TM3CNT_H = TIMER_START | 2;
-		// dcode and possibly blit new frame from video
+		// decode and possibly blit new frame from video
 		Video::decodeAndBlitFrame((uint32_t *)VRAM);
 		// end benchmark timer
 		REG_TM3CNT_H = 0;

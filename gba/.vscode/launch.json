@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "build Release",
-            "program": "/usr/local/bin/mgba-qt",
+            "program": "/usr/bin/mgba-qt",
             "args": [
                 "-3",
                 "${command:cmake.launchTargetPath}"
@@ -38,7 +38,7 @@
                     },
                     {
                         "description": "mGBA",
-                        "text": "shell \"/usr/local/bin/mgba-qt\" -3 -g \"${command:cmake.buildDirectory}/video.elf\" &",
+                        "text": "shell \"/usr/bin/mgba-qt\" -3 -g \"${command:cmake.buildDirectory}/video.elf\" &",
                         "ignoreFailures": false
                     }
                 ]

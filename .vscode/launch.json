@@ -35,12 +35,10 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "--truecolor=RGB565",
-                "--dxt1",
-                "--rle",
+                "--truecolor=RGB555",
+                "--dxtv=15,0.1",
                 "--lz10",
-                "--vram",
-                "${workspaceFolder}/test_data/videos/bbb_160x128_24fps_part.mp4",
+                "${workspaceFolder}/data/bbb_240x160_15fps_part.mp4",
                 "video"
             ],
             "stopAtEntry": false,

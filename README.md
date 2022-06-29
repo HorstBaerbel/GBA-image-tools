@@ -18,6 +18,7 @@ All of this is under the [MIT License](LICENSE). It uses:
 * [glob](https://github.com/p-ranav/glob) for input file globbing / wildcards.
 * [Eigen](https://gitlab.com/libeigen) for math and video compression.
 * [Catch2](https://github.com/catchorg/Catch2) for unit tests.
+* Part of the the Blender "[Big Buck Bunny](www.bigbuckbunny.org)" movie (c) copyright 2008, Blender Foundation. Licensed as [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
 ## Prequisites
 

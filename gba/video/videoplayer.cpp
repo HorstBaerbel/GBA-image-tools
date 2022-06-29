@@ -8,6 +8,11 @@
 #include <gba_interrupt.h>
 #include <gba_timers.h>
 
+//#define DEBUG_PLAYER
+#ifdef DEBUG_PLAYER
+#include "print/output.h"
+#endif
+
 namespace Video
 {
 
@@ -94,7 +99,7 @@ namespace Video
                 m_decodedFrame = decode(m_scratchPad, m_scratchPadSize, m_videoInfo, m_videoFrame);
 #ifdef DEBUG_PLAYER
                 auto duration = Time::now() * 1000 - startTime * 1000;
-                printf("Decode: %.2f ms", duration);
+                Debug::printf("Decode: %.2f ms", duration);
 #endif
             }
             if (m_framesRequested > 0)
@@ -110,13 +115,13 @@ namespace Video
                     Memory::memcpy32(dst, m_decodedFrame, m_decodedFrameSize / 4);
 #ifdef DEBUG_PLAYER
                     auto duration = Time::now() * 1000 - startTime * 1000;
-                    printf("Blit: %.2f ms", duration);
+                    Debug::printf("Blit: %.2f ms", duration);
 #endif
                 }
                 if (m_framesRequested > 0)
                 {
 #ifdef DEBUG_PLAYER
-                    printf("Skipping %d frame(s)", m_framesRequested);
+                    Debug::printf("Skipping %d frame(s)", m_framesRequested);
 #endif
                     m_framesRequested = 0;
                 }

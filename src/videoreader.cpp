@@ -31,7 +31,6 @@ static AVPixelFormat CorrectDeprecatedPixelFormat(AVPixelFormat format)
 /// @brief FFmpeg state for a video reader
 struct VideoReader::ReaderState
 {
-
     AVFormatContext *formatContext = nullptr;
     AVCodecParameters *codecParameters = nullptr;
     const AVCodec *codec = nullptr;
@@ -41,8 +40,8 @@ struct VideoReader::ReaderState
     int height = 0;
     float fps = 0;
     AVRational timeBase{};
-    int64_t nrOfFrames;
-    int64_t duration;
+    int64_t nrOfFrames = 0;
+    int64_t duration = 0;
     AVCodecContext *codecContext = nullptr;
     AVFrame *frame = nullptr;
     AVPacket *packet = nullptr;
@@ -83,20 +82,23 @@ void VideoReader::open(const std::string &filePath)
     {
         auto stream = m_state->formatContext->streams[i];
         auto codecParams = stream->codecpar;
-        auto codec = avcodec_find_decoder(codecParams->codec_id);
-        if (codec != nullptr && codecParams != nullptr && codecParams->codec_type == AVMEDIA_TYPE_VIDEO)
+        if (codecParams != nullptr && codecParams->codec_type == AVMEDIA_TYPE_VIDEO)
         {
-            m_state->codecParameters = codecParams;
-            m_state->codec = codec;
-            m_state->codecName = avcodec_get_name(codecParams->codec_id);
-            m_state->videoStreamIndex = static_cast<int>(i);
-            m_state->width = codecParams->width;
-            m_state->height = codecParams->height;
-            m_state->fps = av_q2d(stream->r_frame_rate);
-            m_state->timeBase = stream->time_base;
-            m_state->nrOfFrames = stream->nb_frames;
-            m_state->duration = stream->duration;
-            break;
+            auto codec = avcodec_find_decoder(codecParams->codec_id);
+            if (codec != nullptr)
+            {
+                m_state->codecParameters = codecParams;
+                m_state->codec = codec;
+                m_state->codecName = avcodec_get_name(codecParams->codec_id);
+                m_state->videoStreamIndex = static_cast<int>(i);
+                m_state->width = codecParams->width;
+                m_state->height = codecParams->height;
+                m_state->fps = av_q2d(stream->r_frame_rate);
+                m_state->timeBase = stream->time_base;
+                m_state->nrOfFrames = stream->nb_frames;
+                m_state->duration = stream->duration;
+                break;
+            }
         }
     }
     if (m_state->videoStreamIndex == -1)
@@ -182,7 +184,7 @@ std::vector<uint8_t> VideoReader::readFrame() const
         av_packet_unref(m_state->packet);
         break;
     }
-    //auto timeStamp = m_state->frame->pts; // timestamp when the frame should be shown
+    // auto timeStamp = m_state->frame->pts; // timestamp when the frame should be shown
     // set up sw scaler for pixel format conversion
     if (m_state->swsContext == nullptr)
     {

@@ -52,7 +52,6 @@ bool readArguments(int argc, const char *argv[])
     try
     {
         cxxopts::Options opts("vid2h", "Convert and compress a video file to .h / .c files or a binary file");
-        opts.allow_unrecognised_options();
         opts.add_option("", {"h,help", "Print help"});
         opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
@@ -70,14 +69,13 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.delta16.cxxOption);
         opts.add_option("", options.dxtg.cxxOption);
         opts.add_option("", options.dxtv.cxxOption);
-        opts.add_option("", options.gvid.cxxOption);
+        // opts.add_option("", options.gvid.cxxOption);
         opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.lz11.cxxOption);
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
-        opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
-        opts.parse_positional({"infile", "outname", "positional"});
+        opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
         if (result.count("h"))
@@ -172,7 +170,7 @@ void printUsage()
     std::cout << "IMAGE COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.dxtg.helpString() << std::endl;
     std::cout << options.dxtv.helpString() << std::endl;
-    std::cout << options.gvid.helpString() << std::endl;
+    // std::cout << options.gvid.helpString() << std::endl;
     std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
     std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
@@ -209,7 +207,7 @@ int main(int argc, const char *argv[])
         }
         if (m_outFile.empty())
         {
-            std::cerr << "No output file passed. Aborting." << std::endl;
+            std::cerr << "No output name passed. Aborting." << std::endl;
             return 1;
         }
         // fire up ImageMagick

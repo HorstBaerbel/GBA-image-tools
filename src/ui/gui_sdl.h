@@ -6,6 +6,7 @@
 
 #include <deque>
 #include <variant>
+#include <atomic>
 
 namespace Ui
 {
@@ -38,10 +39,10 @@ namespace Ui
 
         static auto MessageLoop(void *object) -> int;
 
-        bool m_quit = false;
-        SDL_mutex *m_mutex = nullptr;
+        std::atomic<bool> m_quit = false;
+        std::atomic<SDL_mutex *> m_mutex = nullptr;
+        std::atomic<SDL_Thread *> m_thread = nullptr;
         std::deque<std::variant<DisplayImage>> m_eventData;
-        SDL_Thread *m_tread = nullptr;
         uint32_t m_width = 0;
         uint32_t m_height = 0;
     };
