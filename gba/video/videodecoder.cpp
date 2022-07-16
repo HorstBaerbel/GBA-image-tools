@@ -7,7 +7,7 @@
 #include "sys/base.h"
 #include "sys/decompress.h"
 
-#include "processingtypes.h"
+#include "processing/processingtypes.h"
 
 namespace Video
 {
