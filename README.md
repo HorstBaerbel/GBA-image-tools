@@ -27,10 +27,6 @@ All of this is under the [MIT License](LICENSE). It uses:
 
   ```apt install libmagick++-dev``` or ```dnf install libmagick++-devel```
 
-* You must have [ImageMagick](https://imagemagick.org/index.php) installed for using the "convert" tool. Install it with:
-
-  ```apt install imagemagick``` or ```dnf install imagemagick```
-
 * You **must** have [OpenMP](https://www.openmp.org/) installed for compiling. Install it with:
 
   ```apt install libomp-dev``` or ```dnf install libomp-devel```
@@ -40,6 +36,10 @@ All of this is under the [MIT License](LICENSE). It uses:
   ```apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev``` or ```dnf install libavcodec-devel libavformat-devel libavutil-devel libswscale-devel```
 
 * For compressing data with LZ77 you need to have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) and the environment variable ```$DEVKITPRO``` set, or the [gbalzss](https://github.com/devkitPro/gba-tools) tool in your ```$PATH```.
+
+* You must have [ImageMagick](https://imagemagick.org/index.php) installed for using the "convert" tool for [image conversion](img2h.md#convert-an-image-to-gba-rgb555-format-with-a-restricted-number-of-colors). Install it with:
+
+  ```apt install imagemagick``` or ```dnf install imagemagick```
 
 ## Building
 
@@ -69,7 +69,7 @@ make package
 * Choose a kit of your choice as your active CMake kit if asked.
 * You should be able to build now using F7 and build + run using F5.
 
-## TODO (general)
+## Todo (general)
 
 * TESTS!
 * More modern C++ constructs

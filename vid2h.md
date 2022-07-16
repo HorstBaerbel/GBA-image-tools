@@ -45,24 +45,24 @@ Some general information:
 
 vid2h will store binary file header fields and frame header fields:
 
-| Field                                      | Size     |                                                                        |
-| ------------------------------------------ | -------- | ---------------------------------------------------------------------- |
+| Field                                      | Size     |                                                                               |
+| ------------------------------------------ | -------- | ----------------------------------------------------------------------------- |
 | *File / Video*                             |
 | Number of frames in file                   | 4 bytes  |
 | Frame width in pixels                      | 2 bytes  |
 | Frame height in pixels                     | 2 bytes  |
-| Frames / s                                 | 1 byte   | No fractions allowed here                                              |
-| Image data bits / pixel                    | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                          |
-| Color map data bits / color                | 1 byte   | Can be 0 (no color map), 15, 16, 24                                    |
-| Color map entries M                        | 1 byte   | Color map stored if M > 0                                              |
-| Max. intermediate memory needed            | 4 bytes  | Maximum intermediate storage needed for decompression (for ALL frames) |
+| Frames / s                                 | 1 byte   | No fractions allowed here                                                     |
+| Image data bits / pixel                    | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                                 |
+| Color map data bits / color                | 1 byte   | Can be 0 (no color map), 15, 16, 24                                           |
+| Color map entries M                        | 1 byte   | Color map stored if M > 0                                                     |
+| Max. intermediate memory needed            | 4 bytes  | Maximum intermediate storage needed for decompression (for ALL frames)        |
 | *Frame #0*                                 |
-| &emsp; Frame data chunk size               | 4 bytes  | Padded size of frame data chunk (NOT including the color map size)     |
+| &emsp; Frame data chunk size               | 4 bytes  | Padded size of frame data chunk (NOT including the color map size)            |
 | &emsp; *Frame data chunk #0*               |
-| &emsp; &emsp; Processing type              | 1 byte   | See following table and [imageprocessing.h](src/imageprocessing.h)     |
+| &emsp; &emsp; Processing type              | 1 byte   | See following table and [imageprocessing.h](src/processing/imageprocessing.h) |
 | &emsp; &emsp; Uncompressed frame data size | 3 bytes  |
-| &emsp; &emsp; Frame data                   | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)    |
-| &emsp; Color map data                      | M colors | Only if M > 0. Padded to multiple of 4                                 |
+| &emsp; &emsp; Frame data                   | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)           |
+| &emsp; Color map data                      | M colors | Only if M > 0. Padded to multiple of 4                                        |
 | *Frame #1*                                 |
 | ...                                        |
 
@@ -83,13 +83,13 @@ Processing type meaning:
 | 71                   | Image data is compressed using DXTV                             |
 | 128 (ORed w/ type)   | Final compression / processing step on data                     |
 
-Thus a processing chain could be `50,65,188` meaning `8-bit deltas, RLE, LZ77 10 (final step)`. A chain of DXVT + LZ10 is a good fit for video.
+Thus a processing chain could be `50, 65, 188` meaning `8-bit deltas, RLE, LZ77 10 (final step)`. A chain of DXVT + LZ10 is a good fit for video.
 
 ## Decompression on GBA
 
 An example for a small video player (no audio) can be found in the [gba](gba) subdirectory.
 
-## TODO
+## Todo
 
 * Much faster DXTV decompression
 * Improve DXTV compression (Cluster-fit DXT block compression + still 2-3 unused bits per block)

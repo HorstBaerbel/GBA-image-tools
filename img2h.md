@@ -143,6 +143,6 @@ If this still does not give you the desired output (too many colors, bad quality
 
 ```convert INFILE -remap colormap555.png -colors NROFCOLORS OUTFILE```
 
-## TODO
+## Todo
 
 * Syntax to apply options to single file only?
