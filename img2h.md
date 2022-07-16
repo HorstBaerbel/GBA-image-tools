@@ -145,9 +145,4 @@ If this still does not give you the desired output (too many colors, bad quality
 
 ## TODO
 
-* TESTS!
-* More modern C++ constructs
-* Do all processing in RGB, store truecolor as BGR in the end
-* Add builtin -remap and +remap option from ImageMagick
 * Syntax to apply options to single file only?
-* Compress with LZSS directly

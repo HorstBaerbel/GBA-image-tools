@@ -91,11 +91,8 @@ An example for a small video player (no audio) can be found in the [gba](gba) su
 
 ## TODO
 
-* TESTS!
-* More modern C++ constructs
 * Much faster DXTV decompression
 * Improve DXTV compression (Cluster-fit DXT block compression + still 2-3 unused bits per block)
 * VQ-based compression using YCgCo. Should yield better compression ratio and decompress faster
-* Clean up and use internal RLE + LZ77 compression
 * Clean up SDLWindow class
 * Better image / video preview (in + out)

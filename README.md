@@ -68,3 +68,11 @@ make package
 * Open the GBA-image-tools folder using "Open folder...".
 * Choose a kit of your choice as your active CMake kit if asked.
 * You should be able to build now using F7 and build + run using F5.
+
+## TODO (general)
+
+* TESTS!
+* More modern C++ constructs
+* Do all processing in RGB, store truecolor as BGR in the end
+* Add builtin -remap and +remap option from ImageMagick
+* Clean up and use internal RLE + LZ77 compression
