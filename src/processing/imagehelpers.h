@@ -15,12 +15,6 @@ std::vector<Magick::Color> getColorMap(const Magick::Image &img);
 /// @brief set color map in an ImageMagick Image
 void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap);
 
-/// @brief Convert RGB888 to RGB555
-std::vector<uint8_t> toRGB555(const std::vector<uint8_t> &imageData);
-
-/// @brief Convert RGB888 to RGB565
-std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData);
-
 /// @brief Convert image index data to 1-bit-sized values. Data must be divisible by 8
 std::vector<uint8_t> convertDataTo1Bit(const std::vector<uint8_t> &indices);
 

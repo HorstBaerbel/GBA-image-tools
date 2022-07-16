@@ -25,6 +25,9 @@ uint16_t colorToBGR555(const Magick::Color &color);
 /// @brief Convert a RGB555 color to a BGR555 color
 uint16_t toBGR555(uint16_t color);
 
+/// @brief Convert RGB888 to RGB555
+std::vector<uint8_t> toRGB555(const std::vector<uint8_t> &imageData);
+
 /// @brief Interpolate between two RGB555 colors
 uint16_t lerpRGB555(uint16_t a, uint16_t b, double t);
 
@@ -39,6 +42,9 @@ uint16_t colorToBGR565(const Magick::Color &color);
 
 /// @brief Convert a RGB565 color to a BGR565 color
 uint16_t toBGR565(uint16_t color);
+
+/// @brief Convert RGB888 to RGB565
+std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData);
 
 /// @brief Interpolate between two RGB565 colors
 uint16_t lerpRGB565(uint16_t a, uint16_t b, double t);

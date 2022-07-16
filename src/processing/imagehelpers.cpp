@@ -1,6 +1,6 @@
 #include "imagehelpers.h"
 
-#include "colorhelpers.h"
+#include "color/colorhelpers.h"
 #include "datahelpers.h"
 #include "exception.h"
 
@@ -64,38 +64,6 @@ void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap)
     {
         img.colorMap(i, colorMap.at(i));
     }
-}
-
-std::vector<uint8_t> toRGB555(const std::vector<uint8_t> &imageData)
-{
-    std::vector<uint16_t> result;
-    // size must be a multiple of 3 for RGB888
-    const auto nrOfComponents = imageData.size();
-    REQUIRE((nrOfComponents % 3) == 0, std::runtime_error, "Number of components must a multiple of 3");
-    for (std::remove_const<decltype(nrOfComponents)>::type i = 0; i < nrOfComponents; i += 3)
-    {
-        uint16_t r = imageData[i] >> 3;
-        uint16_t g = imageData[i + 1] >> 3;
-        uint16_t b = imageData[i + 2] >> 3;
-        result.push_back((r << 10) | (g << 5) | b);
-    }
-    return convertTo<uint8_t>(result);
-}
-
-std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData)
-{
-    std::vector<uint16_t> result;
-    // size must be a multiple of 3 for RGB888
-    const auto nrOfComponents = imageData.size();
-    REQUIRE((nrOfComponents % 3) == 0, std::runtime_error, "Number of components must a multiple of 3");
-    for (std::remove_const<decltype(nrOfComponents)>::type i = 0; i < nrOfComponents; i += 3)
-    {
-        uint16_t r = imageData[i] >> 3;
-        uint16_t g = imageData[i + 1] >> 2;
-        uint16_t b = imageData[i + 2] >> 3;
-        result.push_back((r << 11) | (g << 5) | b);
-    }
-    return convertTo<uint8_t>(result);
 }
 
 std::vector<uint8_t> convertDataTo1Bit(const std::vector<uint8_t> &indices)

@@ -1,11 +1,12 @@
 #pragma once
 
-#include "color_ycgco.h"
-#include "colorhelpers.h"
-#include "linefit.h"
+#include "color/ycgcod.h"
+#include "color/colorhelpers.h"
+#include "math/linefit.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -26,8 +27,7 @@ public:
     {
     }
 
-    /// @brief Copyies encoded DXT block to binary array
-    /// This array can be read in 16-bit chunks
+    /// @brief Copyies encoded DXT block to binary array. This array can be read in 16-bit chunks
     auto toArray() const -> std::array<uint8_t, 4 + (Width * Height * 2) / 8>
     {
         std::array<uint8_t, 4 + (Width * Height * 2) / 8> result;
@@ -50,7 +50,7 @@ public:
         return result;
     }
 
-    /// @brief DXT-encodes one NxN block
+    /// @brief DXT-encodes one NxM block
     /// This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
     static auto encode(const std::array<YCgCoRd, Width * Height> &colors) -> DXTBlock
     {

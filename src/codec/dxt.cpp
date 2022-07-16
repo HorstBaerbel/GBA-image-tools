@@ -1,15 +1,15 @@
-#include "codec_dxt.h"
+#include "dxt.h"
 
-#include "color_rgb.h"
-#include "colorhelpers.h"
+#include "color/rgbd.h"
+#include "color/colorhelpers.h"
 #include "exception.h"
-#include "linefit.h"
+#include "math/linefit.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 #include <array>
 #include <deque>
-
 #include <iostream>
 
 using namespace Color;

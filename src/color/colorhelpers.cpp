@@ -1,5 +1,8 @@
 #include "colorhelpers.h"
 
+#include "exception.h"
+#include "processing/datahelpers.h"
+
 #include <algorithm>
 #include <cmath>
 #include <future>
@@ -55,6 +58,22 @@ uint16_t toBGR555(uint16_t color)
     return ((b << 10) | g | r);
 }
 
+std::vector<uint8_t> toRGB555(const std::vector<uint8_t> &imageData)
+{
+    std::vector<uint16_t> result;
+    // size must be a multiple of 3 for RGB888
+    const auto nrOfComponents = imageData.size();
+    REQUIRE((nrOfComponents % 3) == 0, std::runtime_error, "Number of components must a multiple of 3");
+    for (std::remove_const<decltype(nrOfComponents)>::type i = 0; i < nrOfComponents; i += 3)
+    {
+        uint16_t r = imageData[i] >> 3;
+        uint16_t g = imageData[i + 1] >> 3;
+        uint16_t b = imageData[i + 2] >> 3;
+        result.push_back((r << 10) | (g << 5) | b);
+    }
+    return convertTo<uint8_t>(result);
+}
+
 uint16_t lerpRGB555(uint16_t c0, uint16_t c1, double t)
 {
     if (t <= 0.0)
@@ -103,6 +122,22 @@ uint16_t toBGR565(uint16_t color)
     auto g = (color & 0x7E0);
     auto b = (color & 0x1F);
     return ((b << 11) | g | r);
+}
+
+std::vector<uint8_t> toRGB565(const std::vector<uint8_t> &imageData)
+{
+    std::vector<uint16_t> result;
+    // size must be a multiple of 3 for RGB888
+    const auto nrOfComponents = imageData.size();
+    REQUIRE((nrOfComponents % 3) == 0, std::runtime_error, "Number of components must a multiple of 3");
+    for (std::remove_const<decltype(nrOfComponents)>::type i = 0; i < nrOfComponents; i += 3)
+    {
+        uint16_t r = imageData[i] >> 3;
+        uint16_t g = imageData[i + 1] >> 2;
+        uint16_t b = imageData[i + 2] >> 3;
+        result.push_back((r << 11) | (g << 5) | b);
+    }
+    return convertTo<uint8_t>(result);
 }
 
 uint16_t lerpRGB565(uint16_t c0, uint16_t c1, double t)

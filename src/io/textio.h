@@ -14,9 +14,3 @@ void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, 
 void writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), const std::vector<uint32_t> &mapData = std::vector<uint32_t>(), bool asTiles = false);
 /// @brief Write palette data to a .c file. Use after write writeImageDataToC.
 void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false);
-
-/// @brief Get base name from file path.
-std::string getBaseNameFromFilePath(const std::string &filePath);
-
-/// @brief Get environment variable from system.
-std::string getEnv(const std::string &var);

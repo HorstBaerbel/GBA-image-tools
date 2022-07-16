@@ -55,4 +55,10 @@ namespace Image
         uint32_t maxMemoryNeeded = 0;                              // max. intermediate memory needed to process the image. 0 if it can be directly written to destination (single processing stage)
     };
 
+    /// @brief Return true if the data has a color map, false if not.
+    auto hasColorMap(const Data &frame) -> bool;
+
+    /// @brief Return number of full bytes needed per color map entry.
+    auto bytesPerColorMapEntry(const Data &frame) -> uint32_t;
+
 }

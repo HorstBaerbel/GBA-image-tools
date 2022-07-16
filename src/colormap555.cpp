@@ -1,7 +1,7 @@
 // Generates a map of all 32768 displayable colors in RGB555 color space and as colors grouped by hue
 // You'll need libmagick++-dev installed!
 
-#include "colorhelpers.h"
+#include "color/colorhelpers.h"
 
 #include <Magick++.h>
 

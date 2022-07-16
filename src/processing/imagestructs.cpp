@@ -3,6 +3,43 @@
 namespace Image
 {
 
+    bool hasColorMap(const Data &frame)
+    {
+        switch (frame.colorMapFormat)
+        {
+        case ColorFormat::Unknown:
+            return false;
+            break;
+        case ColorFormat::RGB555:
+        case ColorFormat::RGB565:
+        case ColorFormat::RGB888:
+            return frame.colorMap.size() > 0;
+            break;
+        default:
+            THROW(std::runtime_error, "Unsupported color map format");
+            break;
+        }
+    }
+
+    uint32_t bytesPerColorMapEntry(const Data &frame)
+    {
+        switch (frame.colorMapFormat)
+        {
+        case ColorFormat::Unknown:
+            return 0;
+            break;
+        case ColorFormat::RGB555:
+        case ColorFormat::RGB565:
+            return 2;
+        case ColorFormat::RGB888:
+            return 3;
+            break;
+        default:
+            THROW(std::runtime_error, "Unsupported color map format");
+            break;
+        }
+    }
+
     uint32_t bitsPerPixelForFormat(ColorFormat format)
     {
         switch (format)

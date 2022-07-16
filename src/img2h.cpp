@@ -1,12 +1,12 @@
-#include "colorhelpers.h"
-#include "compresshelpers.h"
-#include "datahelpers.h"
+#include "color/colorhelpers.h"
+#include "compression/lzss.h"
+#include "processing/datahelpers.h"
 #include "exception.h"
-#include "filehelpers.h"
-#include "imagehelpers.h"
-#include "imageprocessing.h"
-#include "processingoptions.h"
-#include "spritehelpers.h"
+#include "io/textio.h"
+#include "processing/imagehelpers.h"
+#include "processing/imageprocessing.h"
+#include "processing/processingoptions.h"
+#include "processing/spritehelpers.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -225,6 +225,14 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         ifIt++;
     }
     return {imgType, imgSize, images};
+}
+
+std::string getBaseNameFromFilePath(const std::string &filePath)
+{
+    std::string baseName = filePath;
+    baseName = baseName.substr(baseName.find_last_of("/\\") + 1);
+    baseName = baseName.substr(0, baseName.find_first_of("."));
+    return baseName;
 }
 
 int main(int argc, const char *argv[])

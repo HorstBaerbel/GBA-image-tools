@@ -4,9 +4,10 @@
 #include "exception.h"
 #include "imagestructs.h"
 #include "processingtypes.h"
-#include "statistics.h"
+#include "statistics/statistics.h"
 
 #include <Magick++.h>
+
 #include <cstdint>
 #include <variant>
 #include <vector>

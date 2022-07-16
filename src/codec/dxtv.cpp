@@ -1,19 +1,19 @@
-#include "codec_dxtv.h"
+#include "dxtv.h"
 
-#include "colorblock.h"
-#include "datahelpers.h"
-#include "dxtblock.h"
+#include "processing/blockview.h"
+#include "processing/datahelpers.h"
+#include "compression/dxtblock.h"
 #include "exception.h"
-#include "linefit.h"
+#include "math/linefit.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 #include <array>
 #include <memory>
 #include <optional>
 #include <type_traits>
 #include <vector>
-
 #include <iomanip>
 #include <iostream>
 

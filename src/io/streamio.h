@@ -1,9 +1,8 @@
 #pragma once
 
 #include "exception.h"
-#include "imagestructs.h"
+#include "processing/imagestructs.h"
 
-#include <Magick++.h>
 #include <cstdint>
 #include <variant>
 #include <vector>

@@ -1,7 +1,6 @@
-#include "compresshelpers.h"
+#include "lzss.h"
 
 #include "exception.h"
-#include "filehelpers.h"
 
 #ifdef _MSC_VER
 #include <process.h>
@@ -9,10 +8,18 @@
 #include <unistd.h>
 #endif
 
+#include <fstream>
 #include <filesystem>
 
 namespace Compression
 {
+
+    /// @brief Get environment variable from system.
+    std::string getEnv(const std::string &var)
+    {
+        const char *value = std::getenv(var.c_str());
+        return value != nullptr ? value : "";
+    }
 
     static std::string GbaLzssPath;
 

@@ -1,4 +1,4 @@
-#include "filehelpers.h"
+#include "textio.h"
 
 #include <iomanip>
 #include <iostream>
@@ -127,18 +127,4 @@ void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const
     writeValues(cFile, data, true);
     cFile << "};" << std::endl
           << std::endl;
-}
-
-std::string getBaseNameFromFilePath(const std::string &filePath)
-{
-    std::string baseName = filePath;
-    baseName = baseName.substr(baseName.find_last_of("/\\") + 1);
-    baseName = baseName.substr(0, baseName.find_first_of("."));
-    return baseName;
-}
-
-std::string getEnv(const std::string &var)
-{
-    const char *value = std::getenv(var.c_str());
-    return value != nullptr ? value : "";
 }

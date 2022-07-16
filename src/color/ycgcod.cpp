@@ -1,4 +1,4 @@
-#include "color_ycgco.h"
+#include "ycgcod.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>

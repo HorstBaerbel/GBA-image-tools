@@ -1,17 +1,17 @@
-#include "codec_gvid.h"
+#include "gvid.h"
 
-#include "color_ycgco.h"
-#include "colorhelpers.h"
+#include "color/ycgcod.h"
+#include "color/colorhelpers.h"
 #include "exception.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 #include <algorithm>
 #include <array>
 #include <deque>
 #include <numeric>
 #include <optional>
-
 #include <iostream>
 
 constexpr float MaxKeyFrameBlockError = 1.0F; // Maximum error allowed for key frame block references [0,6]

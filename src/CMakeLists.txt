@@ -41,36 +41,17 @@ set(CMAKE_C_STANDARD 11)
 #-------------------------------------------------------------------------------
 # Define targets
 
-set(HELPERS_SRC
-    color_rgb.cpp
-    color_ycgco.cpp
-    colorhelpers.cpp
-    codec_dxt.cpp
-    codec_dxtv.cpp
-    codec_gvid.cpp
-    compresshelpers.cpp
-    datahelpers.cpp
-    filehelpers.cpp
-    imagehelpers.cpp
-    imageio.cpp
-    imagestructs.cpp
-    imageprocessing.cpp
-    processingoptions.cpp
-    spritehelpers.cpp
-    statistics.cpp
-    statistics_window.cpp
-    ui/gui_sdl.cpp
-)
+file(GLOB_RECURSE HELPERS_SRC ${PROJECT_SOURCE_DIR}/src/*/*.cpp)
 
-include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/eigen ../)
-add_executable(colormap555 colormap555.cpp colorhelpers.cpp)
+include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/cxxopts ${PROJECT_SOURCE_DIR}/eigen ${PROJECT_SOURCE_DIR}/glob ${PROJECT_SOURCE_DIR}/src)
+add_executable(colormap555 colormap555.cpp color/colorhelpers.cpp)
 target_link_libraries(colormap555 PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX)
 add_executable(gimppalette555 gimppalette555.cpp)
 add_executable(hex2gba hex2gba.cpp)
 target_link_libraries(hex2gba PkgConfig::LIBMAGICK)
 add_executable(img2h img2h.cpp ${HELPERS_SRC})
-target_link_libraries(img2h PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
-add_executable(vid2h vid2h.cpp ${HELPERS_SRC} videoreader.cpp)
+target_link_libraries(img2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+add_executable(vid2h vid2h.cpp ${HELPERS_SRC})
 target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
 
 #-------------------------------------------------------------------------------

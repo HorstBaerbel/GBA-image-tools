@@ -1,4 +1,4 @@
-#include "color_rgb.h"
+#include "rgbd.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>

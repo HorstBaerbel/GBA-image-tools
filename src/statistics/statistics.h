@@ -1,6 +1,6 @@
 #pragma once
 
-#include "imagestructs.h"
+#include "processing/imagestructs.h"
 
 #include <cstdint>
 #include <map>
