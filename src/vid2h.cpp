@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <filesystem>
 
 #include "cxxopts/include/cxxopts.hpp"
 #include <Magick++.h>
@@ -91,7 +92,7 @@ bool readArguments(int argc, const char *argv[])
         if (result.count("infile"))
         {
             m_inFile = result["infile"].as<std::string>();
-            if (!stdfs::exists(m_inFile))
+            if (!std::filesystem::exists(m_inFile))
             {
                 std::cout << "Input file \"" << m_inFile << "\" does not exist!" << std::endl;
                 return false;

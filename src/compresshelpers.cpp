@@ -9,7 +9,7 @@
 #include <unistd.h>
 #endif
 
-//#include <iostream>
+#include <filesystem>
 
 namespace Compression
 {
@@ -63,7 +63,7 @@ namespace Compression
         auto processId = getpid();
 #endif
         // write temporary file
-        const std::string tempFileName = stdfs::temp_directory_path().generic_string() + "/compress_" + std::to_string(processId) + ".tmp";
+        const std::string tempFileName = std::filesystem::temp_directory_path().generic_string() + "/compress_" + std::to_string(processId) + ".tmp";
         std::ofstream outFile(tempFileName, std::ios::binary | std::ios::out);
         if (outFile.is_open())
         {
@@ -95,7 +95,7 @@ namespace Compression
             {
                 THROW(std::runtime_error, "Failed to run compressor");
             }
-            stdfs::remove(tempFileName);
+            std::filesystem::remove(tempFileName);
         }
         else
         {

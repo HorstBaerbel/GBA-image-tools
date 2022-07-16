@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <filesystem>
 
 #include "cxxopts/include/cxxopts.hpp"
 #include "glob/single_include/glob/glob.hpp"
@@ -92,7 +93,7 @@ bool readArguments(int argc, const char *argv[])
             // make sure all input files exist
             for (const auto &fileName : m_inFile)
             {
-                if (!stdfs::exists(fileName))
+                if (!std::filesystem::exists(fileName))
                 {
                     std::cout << "Input file \"" << fileName << "\" does not exist!" << std::endl;
                     return false;

@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <filesystem>
 
 /// @brief Write values as a comma-separated array of hex numbers.
 template <typename T>
