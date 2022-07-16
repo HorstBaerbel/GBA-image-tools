@@ -70,7 +70,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.dxtg.cxxOption);
         opts.add_option("", options.dxtv.cxxOption);
         // opts.add_option("", options.gvid.cxxOption);
-        opts.add_option("", options.rle.cxxOption);
+        // opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.lz11.cxxOption);
         opts.add_option("", options.vram.cxxOption);
@@ -172,7 +172,7 @@ void printUsage()
     std::cout << options.dxtv.helpString() << std::endl;
     // std::cout << options.gvid.helpString() << std::endl;
     std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
-    std::cout << options.rle.helpString() << std::endl;
+    // std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << options.lz11.helpString() << std::endl;
     std::cout << "COMPRESSION modifiers (optional):" << std::endl;
@@ -304,10 +304,10 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::ConvertDelta16, {});
         }
-        if (options.rle)
+        /*if (options.rle)
         {
             processing.addStep(Image::ProcessingType::CompressRLE, {options.vram.isSet}, true);
-        }
+        }*/
         if (options.lz10)
         {
             processing.addStep(Image::ProcessingType::CompressLz10, {options.vram.isSet}, true);

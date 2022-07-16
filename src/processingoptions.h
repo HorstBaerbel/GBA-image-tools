@@ -44,7 +44,7 @@ public:
     static Option delta16;
     static Option lz10;
     static Option lz11;
-    static Option rle;
+    // static Option rle;
     static Option vram;
     static Option dxtg;
     static OptionT<std::vector<double>> dxtv;

@@ -183,9 +183,9 @@ ProcessingOptions::Option ProcessingOptions::lz11{
     false,
     {"lz11", "Use LZ compression variant 11.", cxxopts::value(lz11.isSet)}};
 
-ProcessingOptions::Option ProcessingOptions::rle{
+/*ProcessingOptions::Option ProcessingOptions::rle{
     false,
-    {"rle", "Use RLE compression.", cxxopts::value(rle.isSet)}};
+    {"rle", "Use RLE compression.", cxxopts::value(rle.isSet)}};*/
 
 ProcessingOptions::Option ProcessingOptions::vram{
     false,

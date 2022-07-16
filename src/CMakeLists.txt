@@ -48,8 +48,6 @@ set(HELPERS_SRC
     codec_dxt.cpp
     codec_dxtv.cpp
     codec_gvid.cpp
-    codec_lzss.cpp
-    codec_rle.cpp
     compresshelpers.cpp
     datahelpers.cpp
     filehelpers.cpp

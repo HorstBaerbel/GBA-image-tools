@@ -3,8 +3,6 @@
 #include "codec_dxt.h"
 #include "codec_dxtv.h"
 #include "codec_gvid.h"
-#include "codec_lzss.h"
-#include "codec_rle.h"
 #include "colorhelpers.h"
 #include "compresshelpers.h"
 #include "datahelpers.h"
@@ -34,7 +32,7 @@ namespace Image
             {ProcessingType::ConvertDelta16, {"delta-16", OperationType::Convert, FunctionType(toDelta16)}},
             {ProcessingType::CompressLz10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
             {ProcessingType::CompressLz11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
-            {ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
+            //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXTG, {"compress DXTG", OperationType::Convert, FunctionType(compressDXTG)}},
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
             {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
@@ -303,7 +301,7 @@ namespace Image
         const auto vramCompatible = std::get<bool>(parameters.front());
         // compress data
         auto result = image;
-        result.data = RLE::encodeRLE(image.data, vramCompatible);
+        // result.data = RLE::encodeRLE(image.data, vramCompatible);
         return result;
     }
 
