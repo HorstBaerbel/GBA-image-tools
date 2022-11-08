@@ -233,7 +233,7 @@ namespace Image
         REQUIRE(image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
         REQUIRE(image.colorMap.size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
         auto result = image;
-        uint8_t maxIndex = std::max(*std::max_element(image.data.cbegin(), image.data.cend()), maxIndex);
+        uint8_t maxIndex = *std::max_element(image.data.cbegin(), image.data.cend());
         if (bitDepth == 1)
         {
             REQUIRE(maxIndex == 1, std::runtime_error, "Index pruning to 1 bit only possible with index data <= 1");
@@ -616,8 +616,11 @@ namespace Image
                 processed = batchFunc(processed, stepIt->parameters, stepStatistics);
                 for (auto pIt = processed.begin(); pIt != processed.end(); pIt++)
                 {
-                    const uint32_t inputSize = inputSizes.at(std::distance(processed.begin(), pIt));
-                    *pIt = prependProcessing(*pIt, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
+                    if (stepIt->prependProcessing)
+                    {
+                        const uint32_t inputSize = inputSizes.at(std::distance(processed.begin(), pIt));
+                        *pIt = prependProcessing(*pIt, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
+                    }
                     // record max. memory needed for everything, but the first step
                     auto chunkMemoryNeeded = pIt->data.size() + sizeof(uint32_t);
                     pIt->maxMemoryNeeded = (stepFunc.type != OperationType::Input && pIt->maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : pIt->maxMemoryNeeded;

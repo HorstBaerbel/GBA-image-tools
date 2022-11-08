@@ -29,7 +29,11 @@ std::vector<T> fillUpToMultipleOf(const std::vector<T> &data, uint32_t multipleO
         auto newSize = ((size + multipleOf - 1) / multipleOf) * multipleOf;
         result.resize(newSize, value);
     }
-    assert((result.size() % 4) == 0);
+    if ((result.size() % multipleOf) != 0)
+    {
+        std::string message = "Size not filled up to a multiple of " + std::to_string(multipleOf) + "!";
+        throw std::runtime_error(message);
+    }
     return result;
 }
 
