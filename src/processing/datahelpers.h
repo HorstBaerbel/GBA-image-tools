@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <cstring>
 #include <numeric>
-#include <stdexcept>
-#include <string>
 #include <vector>
+
+#include "exception.h"
 
 /// @brief Fill up the vector with values until its size is a multiple of multipleOf.
 template <typename T>
@@ -29,11 +29,7 @@ std::vector<T> fillUpToMultipleOf(const std::vector<T> &data, uint32_t multipleO
         auto newSize = ((size + multipleOf - 1) / multipleOf) * multipleOf;
         result.resize(newSize, value);
     }
-    if ((result.size() % multipleOf) != 0)
-    {
-        std::string message = "Size not filled up to a multiple of " + std::to_string(multipleOf) + "!";
-        throw std::runtime_error(message);
-    }
+    REQUIRE((result.size() % multipleOf) == 0, std::runtime_error, "Size not filled up to a multiple of " << multipleOf << "!");
     return result;
 }
 
@@ -45,11 +41,7 @@ std::vector<R> combineTo(const std::vector<std::vector<T>> &data)
     size_t combinedSize = 0;
     for (const auto &current : data)
     {
-        if ((current.size() * sizeof(T)) % sizeof(R) != 0)
-        {
-            std::string message = "Size must be a multiple of " + std::to_string(sizeof(R)) + "!";
-            throw std::runtime_error(message);
-        }
+        REQUIRE((current.size() * sizeof(T)) % sizeof(R) == 0, std::runtime_error, "Size must be a multiple of " << sizeof(R) << "!");
         combinedSize += (current.size() * sizeof(T)) / sizeof(R);
     }
     std::vector<R> result(combinedSize);
@@ -67,11 +59,7 @@ std::vector<R> combineTo(const std::vector<std::vector<T>> &data)
 template <typename R, typename T>
 std::vector<R> convertTo(const std::vector<T> &data)
 {
-    if ((data.size() * sizeof(T)) % sizeof(R) != 0)
-    {
-        std::string message = "Size must be a multiple of " + std::to_string(sizeof(R)) + "!";
-        throw std::runtime_error(message);
-    }
+    REQUIRE((data.size() * sizeof(T)) % sizeof(R) == 0, std::runtime_error, "Size must be a multiple of " << sizeof(R) << "!");
     std::vector<R> result((data.size() * sizeof(T)) / sizeof(R));
     std::memcpy(result.data(), data.data(), data.size() * sizeof(T));
     return result;

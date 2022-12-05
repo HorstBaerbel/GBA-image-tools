@@ -5,18 +5,12 @@ std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, u
     // make sure all vectors have the same sizes
     for (const auto &d : data)
     {
-        if (d.size() != data.front().size())
-        {
-            throw std::runtime_error("All images must have the same number of pixels!");
-        }
+        REQUIRE(d.size() == data.front().size(), std::runtime_error, "All images must have the same number of pixels!");
     }
     std::vector<uint8_t> result;
     if (bitsPerPixel == 4)
     {
-        if ((data.size() & 1) != 0)
-        {
-            throw std::runtime_error("If bits per pixel is 4, an even number of images must me passed!");
-        }
+        REQUIRE((data.size() & 1) == 0, std::runtime_error, "If bits per pixel is 4, an even number of images must me passed!");
         for (uint32_t pi = 0; pi < data.front().size(); pi++)
         {
             uint32_t shift = ((pi & 1) == 0) ? 0 : 4;
@@ -39,10 +33,7 @@ std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, u
     }
     else if (bitsPerPixel == 15 || bitsPerPixel == 16)
     {
-        if ((data.front().size() & 1) != 0)
-        {
-            throw std::runtime_error("If bits per pixel is 16, an even number of pixels must be passed!");
-        }
+        REQUIRE((data.front().size() & 1) == 0, std::runtime_error, "If bits per pixel is 16, an even number of pixels must be passed!");
         for (uint32_t pi = 0; pi < data.front().size(); pi += 2)
         {
             for (const auto &d : data)
@@ -54,7 +45,7 @@ std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, u
     }
     else
     {
-        throw std::runtime_error("Bits per pixel must be 4, 8 or 16!");
+        THROW(std::runtime_error, "Bits per pixel must be 4, 8 or 16!");
     }
     return result;
 }
