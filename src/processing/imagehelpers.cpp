@@ -4,9 +4,9 @@
 #include "datahelpers.h"
 #include "exception.h"
 
-std::vector<uint8_t> getImageData(const Magick::Image &img)
+std::pair<std::vector<uint8_t>, Color::Format> getImageData(const Magick::Image &img)
 {
-    std::vector<uint8_t> data;
+    std::pair<std::vector<uint8_t>, Color::Format> result;
     if (img.type() == Magick::ImageType::PaletteType)
     {
         const auto nrOfColors = img.colorMapSize();
@@ -17,13 +17,14 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
         {
             for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
             {
-                data.push_back(indices[i]);
+                result.first.push_back(indices[i]);
             }
         }
         else
         {
             throw std::runtime_error("Only up to 256 colors supported in color map!");
         }
+        result.second = Color::Format::Paletted8;
     }
     else if (img.type() == Magick::ImageType::TrueColorType)
     {
@@ -33,10 +34,11 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
         for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
         {
             auto pixel = pixels[i];
-            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red))));
-            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green))));
-            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))));
+            result.first.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red))));
+            result.first.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green))));
+            result.first.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))));
         }
+        result.second = Color::Format::RGB888;
     }
     else
     {
@@ -45,7 +47,7 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
     /*std::ofstream of("dump.hex", std::ios::binary | std::ios::out);
     of.write(reinterpret_cast<const char *>(data.data()), data.size());
     of.close();*/
-    return data;
+    return result;
 }
 
 std::vector<Magick::Color> getColorMap(const Magick::Image &img)

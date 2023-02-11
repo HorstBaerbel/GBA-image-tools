@@ -270,7 +270,7 @@ int main(int argc, const char *argv[])
             {
                 processing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMap, {Image::ColorFormat::RGB555});
+            processing.addStep(Image::ProcessingType::ConvertColorMap, {Color::Format::RGB555});
             processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)

@@ -220,7 +220,10 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        Image::Data entry{static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, imgType, imgSize, Image::DataType::Bitmap, (isPaletted ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), {}, (isPaletted ? getImageData(img) : toRGB555(getImageData(img))), (isPaletted ? getColorMap(img) : std::vector<Magick::Color>())};
+        auto imageFormat = isPaletted ? Color::Format::Paletted8 : Color::Format::RGB555;
+        auto imageData = isPaletted ? getImageData(img).first : toRGB555(getImageData(img).first);
+        auto imageColorMap = isPaletted ? getColorMap(img) : std::vector<Magick::Color>();
+        Image::Data entry{static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, imgType, imgSize, Image::DataType::Bitmap, imageFormat, {}, imageData, imageColorMap};
         images.push_back(entry);
         ifIt++;
     }
@@ -284,7 +287,7 @@ int main(int argc, const char *argv[])
             {
                 processing.addStep(Image::ProcessingType::EqualizeColorMaps, {});
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMap, {Image::ColorFormat::RGB555});
+            processing.addStep(Image::ProcessingType::ConvertColorMap, {Color::Format::RGB555});
             processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.pruneIndices)

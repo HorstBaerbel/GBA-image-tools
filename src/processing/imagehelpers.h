@@ -1,13 +1,15 @@
 // some image utility functions used by the tools
 #pragma once
 
+#include "color/colorformat.h"
+
 #include <cstdint>
 #include <vector>
 #include <Magick++.h>
 
 /// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes
-/// The format returned are Palette8 for paletted images and RGB888 for truecolor images
-std::vector<uint8_t> getImageData(const Magick::Image &img);
+/// The format returned are Color::Format::Palettes8 for paletted images and Color::Format::RGB888 for truecolor images
+std::pair<std::vector<uint8_t>, Color::Format> getImageData(const Magick::Image &img);
 
 /// @brief Get color map from ImageMagick Image
 std::vector<Magick::Color> getColorMap(const Magick::Image &img);

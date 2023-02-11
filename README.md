@@ -73,6 +73,7 @@ make package
 
 * TESTS!
 * More modern C++ constructs
-* Do all processing in RGB, store truecolor as BGR in the end
+* Do all processing in RGB or YCgCo double true-color, store as BGR in the very end
 * Add builtin -remap and +remap option from ImageMagick
+* Get rid of ImageMagick altogether
 * Clean up and use internal RLE + LZ77 compression

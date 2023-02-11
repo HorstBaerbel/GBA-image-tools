@@ -21,10 +21,10 @@ namespace Statistics
             const auto &data = image.second;
             switch (data.colorFormat)
             {
-            case Image::ColorFormat::RGB888:
+            case Color::Format::RGB888:
                 displayImageRGB888(data.image, data.width, data.height);
                 break;
-            case Image::ColorFormat::RGB555:
+            case Color::Format::RGB555:
                 displayImageRGB555(data.image, data.width, data.height);
                 break;
             }

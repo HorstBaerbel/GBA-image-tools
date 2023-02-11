@@ -56,7 +56,7 @@ namespace Image
         temp.quantizeColors(2);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, Color::Format::Paletted8, {}, getImageData(temp).first, getColorMap(temp), Color::Format::Unknown, {}};
     }
 
     Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
@@ -66,16 +66,39 @@ namespace Image
         const auto nrOfcolors = std::get<uint32_t>(parameters.back());
         REQUIRE(nrOfcolors >= 2 && nrOfcolors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
         const auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
-        // map image to GBA color map, no dithering
+        // map image to input color map, no dithering
         Magick::Image temp = image;
         temp.map(colorSpaceMap, false);
-        // convert image to paletted
+        // convert image to paletted using dithering
         temp.quantizeDither(true);
         temp.quantizeDitherMethod(Magick::DitherMethod::RiemersmaDitherMethod);
         temp.quantizeColors(nrOfcolors);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, Color::Format::Paletted8, {}, getImageData(temp).first, getColorMap(temp), Color::Format::Unknown, {}};
+    }
+
+    std::vector<Data> Processing::toCommonPalette(const std::vector<Data> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    {
+        // get parameter(s)
+        REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toPaletted expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
+        const auto nrOfcolors = std::get<uint32_t>(parameters.back());
+        REQUIRE(nrOfcolors >= 2 && nrOfcolors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
+        const auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
+        // map images to input color map, no dithering
+        std::vector<Data> result;
+        /*std::transform(images.cbegin(), images.cend(), std::back_inserter(result), [&colorSpaceMap](const auto &image)
+                       {
+                        Data temp = image;
+                        // get RGB888 image data
+                        Magick::Image temp = image;
+                        temp.data = getImageData(temp);
+                            temp.map(colorSpaceMap, false);
+                        return temp; });
+        // build histogram of colors used
+        std::map<Magick::Color, double> histogram;
+        std::for_each(result.cbegin(), result.cend(), [&histogram](const auto &image) {});*/
+        return result;
     }
 
     Data Processing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
@@ -83,33 +106,33 @@ namespace Image
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<std::string>(parameters.front()), std::runtime_error, "toTruecolor expects a single std::string parameter");
         const auto formatString = std::get<std::string>(parameters.front());
-        ColorFormat format = ColorFormat::Unknown;
+        Color::Format format = Color::Format::Unknown;
         if (formatString == "RGB888")
         {
-            format = ColorFormat::RGB888;
+            format = Color::Format::RGB888;
         }
         else if (formatString == "RGB565")
         {
-            format = ColorFormat::RGB565;
+            format = Color::Format::RGB565;
         }
         else if (formatString == "RGB555")
         {
-            format = ColorFormat::RGB555;
+            format = Color::Format::RGB555;
         }
-        REQUIRE(format == ColorFormat::RGB555 || format == ColorFormat::RGB565 || format == ColorFormat::RGB888, std::runtime_error, "Color format must be in [RGB555, RGB565, RGB888]");
+        REQUIRE(format == Color::Format::RGB555 || format == Color::Format::RGB565 || format == Color::Format::RGB888, std::runtime_error, "Color format must be in [RGB555, RGB565, RGB888]");
         // get image data
         Magick::Image temp = image;
-        auto imageData = getImageData(temp);
+        auto imageData = getImageData(temp).first;
         // convert colors if needed
-        if (format == ColorFormat::RGB555)
+        if (format == Color::Format::RGB555)
         {
             imageData = toRGB555(imageData);
         }
-        else if (format == ColorFormat::RGB565)
+        else if (format == Color::Format::RGB565)
         {
             imageData = toRGB565(imageData);
         }
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, format, {}, imageData, {}, ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, format, {}, imageData, {}, Color::Format::Unknown, {}};
     }
 
     // ----------------------------------------------------------------------------
@@ -156,7 +179,7 @@ namespace Image
     Data Processing::addColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "addColor0 expects bitmaps as input data");
-        REQUIRE(image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Adding a color can only be done for paletted images");
+        REQUIRE(image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Adding a color can only be done for paletted images");
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<Magick::Color>(parameters.front()), std::runtime_error, "addColor0 expects a single Color parameter");
         const auto color0 = std::get<Magick::Color>(parameters.front());
@@ -166,7 +189,7 @@ namespace Image
         auto result = image;
         result.data = incImageIndicesBy1(image.data);
         result.colorMap = addColorAtIndex0(image.colorMap, color0);
-        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapFormat = Color::Format::Unknown;
         result.colorMapData = {};
         return result;
     }
@@ -174,7 +197,7 @@ namespace Image
     Data Processing::moveColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "moveColor0 expects bitmaps as input data");
-        REQUIRE(image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Moving a color can only be done for paletted images");
+        REQUIRE(image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Moving a color can only be done for paletted images");
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<Magick::Color>(parameters.front()), std::runtime_error, "moveColor0 expects a single Color parameter");
         const auto color0 = std::get<Magick::Color>(parameters.front());
@@ -186,7 +209,7 @@ namespace Image
         if (oldIndex != 0)
         {
             auto result = image;
-            result.colorMapFormat = ColorFormat::Unknown;
+            result.colorMapFormat = Color::Format::Unknown;
             result.colorMapData = {};
             // move index in color map and image data
             std::swap(result.colorMap[oldIndex], result.colorMap[0]);
@@ -199,12 +222,12 @@ namespace Image
     Data Processing::reorderColors(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "reorderColors expects bitmaps as input data");
-        REQUIRE(image.colorFormat == ColorFormat::Paletted4 || image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Reordering colors can only be done for paletted images");
+        REQUIRE(image.colorFormat == Color::Format::Paletted4 || image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Reordering colors can only be done for paletted images");
         const auto newOrder = minimizeColorDistance(image.colorMap);
         auto result = image;
         result.data = swapIndices(image.data, newOrder);
         result.colorMap = swapColors(image.colorMap, newOrder);
-        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapFormat = Color::Format::Unknown;
         result.colorMapData = {};
         return result;
     }
@@ -230,26 +253,26 @@ namespace Image
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "pruneIndices expects a single uint32_t bit depth parameter");
         const auto bitDepth = std::get<uint32_t>(parameters.front());
         REQUIRE(bitDepth == 1 || bitDepth == 2 || bitDepth == 4, std::runtime_error, "Bit depth must be in [1, 2, 4]");
-        REQUIRE(image.colorFormat == ColorFormat::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
+        REQUIRE(image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
         REQUIRE(image.colorMap.size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
         auto result = image;
         uint8_t maxIndex = *std::max_element(image.data.cbegin(), image.data.cend());
         if (bitDepth == 1)
         {
             REQUIRE(maxIndex == 1, std::runtime_error, "Index pruning to 1 bit only possible with index data <= 1");
-            result.colorFormat = ColorFormat::Paletted1;
+            result.colorFormat = Color::Format::Paletted1;
             result.data = convertDataTo1Bit(image.data);
         }
         else if (bitDepth == 2)
         {
             REQUIRE(maxIndex < 4, std::runtime_error, "Index pruning to 2 bit only possible with index data <= 3");
-            result.colorFormat = ColorFormat::Paletted2;
+            result.colorFormat = Color::Format::Paletted2;
             result.data = convertDataTo2Bit(image.data);
         }
         else
         {
             REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning to 4 bit only possible with index data <= 15");
-            result.colorFormat = ColorFormat::Paletted4;
+            result.colorFormat = Color::Format::Paletted4;
             result.data = convertDataTo4Bit(image.data);
         }
         return result;
@@ -308,21 +331,21 @@ namespace Image
     Data Processing::compressDXTG(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTG expects bitmaps as input data");
-        REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTG compression is only possible for RGB888 and RGB555 truecolor images");
+        REQUIRE(image.colorFormat == Color::Format::RGB888 || image.colorFormat == Color::Format::RGB555, std::runtime_error, "DXTG compression is only possible for RGB888 and RGB555 truecolor images");
         REQUIRE(image.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
         REQUIRE(image.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
         // convert RGB888 to RGB565
         auto data = image.data;
-        if (image.colorFormat == ColorFormat::RGB888)
+        if (image.colorFormat == Color::Format::RGB888)
         {
             data = toRGB555(data);
         }
         auto result = image;
-        result.colorFormat = ColorFormat::RGB555;
+        result.colorFormat = Color::Format::RGB555;
         result.mapData = {};
         result.data = DXT::encodeDXTG(convertTo<uint16_t>(data), image.size.width(), image.size.height());
         result.colorMap = {};
-        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapFormat = Color::Format::Unknown;
         result.colorMapData = {};
         return result;
     }
@@ -330,7 +353,7 @@ namespace Image
     Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTV expects bitmaps as input data");
-        REQUIRE(image.colorFormat == ColorFormat::RGB888 || image.colorFormat == ColorFormat::RGB555, std::runtime_error, "DXTV compression is only possible for RGB888 and RGB555 truecolor images");
+        REQUIRE(image.colorFormat == Color::Format::RGB888 || image.colorFormat == Color::Format::RGB555, std::runtime_error, "DXTV compression is only possible for RGB888 and RGB555 truecolor images");
         REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXT compression");
         REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXT compression");
         // get parameter(s)
@@ -343,7 +366,7 @@ namespace Image
         REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01,1]");
         // convert RGB888 to RGB555
         auto data = image.data;
-        if (image.colorFormat == ColorFormat::RGB888)
+        if (image.colorFormat == Color::Format::RGB888)
         {
             data = toRGB555(data);
         }
@@ -351,12 +374,12 @@ namespace Image
         const bool isKeyFrame = keyFrameInterval > 0 ? ((image.index % keyFrameInterval) == 0 || state.empty()) : false;
         // compress data
         auto result = image;
-        result.colorFormat = ColorFormat::RGB555;
+        result.colorFormat = Color::Format::RGB555;
         result.mapData = {};
         auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), state.empty() ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), isKeyFrame, maxBlockError);
         result.data = dxtData.first;
         result.colorMap = {};
-        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapFormat = Color::Format::Unknown;
         result.colorMapData = {};
         // store decompressed image as state
         state = convertTo<uint8_t>(dxtData.second);
@@ -371,15 +394,15 @@ namespace Image
     Data Processing::compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
         REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressGVID expects bitmaps as input data");
-        REQUIRE(image.colorFormat == ColorFormat::RGB888, std::runtime_error, "GVID compression is only possible for RGB888 truecolor images");
+        REQUIRE(image.colorFormat == Color::Format::RGB888, std::runtime_error, "GVID compression is only possible for RGB888 truecolor images");
         REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for GVID compression");
         REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for GVID compression");
         auto result = image;
-        result.colorFormat = ColorFormat::RGB888;
+        result.colorFormat = Color::Format::RGB888;
         result.mapData = {};
         result.data = GVID::encodeGVID(image.data, image.size.width(), image.size.height(), true);
         result.colorMap = {};
-        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapFormat = Color::Format::Unknown;
         result.colorMapData = {};
         return result;
     }
@@ -406,7 +429,7 @@ namespace Image
         // pad data
         auto result = image;
         result.colorMap = fillUpToMultipleOf(image.colorMap, multipleOf);
-        result.colorMapFormat = ColorFormat::Unknown;
+        result.colorMapFormat = Color::Format::Unknown;
         result.colorMapData = {};
         return result;
     }
@@ -414,22 +437,22 @@ namespace Image
     Data Processing::convertColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<ColorFormat>(parameters.front()), std::runtime_error, "convertColorMap expects a single ColorFormat parameter");
-        auto format = std::get<ColorFormat>(parameters.front());
-        REQUIRE(format == ColorFormat::RGB555 || format == ColorFormat::RGB565 || format == ColorFormat::RGB888, std::runtime_error, "convertColorMap expects 15, 16 or 24 bit color formats");
+        REQUIRE(parameters.size() == 1 && std::holds_alternative<Color::Format>(parameters.front()), std::runtime_error, "convertColorMap expects a single Color::Format parameter");
+        auto format = std::get<Color::Format>(parameters.front());
+        REQUIRE(format == Color::Format::RGB555 || format == Color::Format::RGB565 || format == Color::Format::RGB888, std::runtime_error, "convertColorMap expects 15, 16 or 24 bit color formats");
         // convert colormap
         auto result = image;
         result.colorMapFormat = format;
         result.colorMapData = {};
         switch (format)
         {
-        case ColorFormat::RGB555:
+        case Color::Format::RGB555:
             result.colorMapData = convertTo<uint8_t>(convertToBGR555(image.colorMap));
             break;
-        case ColorFormat::RGB565:
+        case Color::Format::RGB565:
             result.colorMapData = convertTo<uint8_t>(convertToBGR565(image.colorMap));
             break;
-        case ColorFormat::RGB888:
+        case Color::Format::RGB888:
             result.colorMapData = convertToBGR888(image.colorMap);
             break;
         default:
@@ -536,7 +559,7 @@ namespace Image
                 result += std::holds_alternative<uint32_t>(p) ? std::to_string(std::get<uint32_t>(p)) : "";
                 result += std::holds_alternative<double>(p) ? std::to_string(std::get<double>(p)) : "";
                 result += std::holds_alternative<Magick::Color>(p) ? asHex(std::get<Magick::Color>(p)) : "";
-                result += std::holds_alternative<ColorFormat>(p) ? to_string(std::get<ColorFormat>(p)) : "";
+                result += std::holds_alternative<Color::Format>(p) ? to_string(std::get<Color::Format>(p)) : "";
                 result += std::holds_alternative<std::string>(p) ? std::get<std::string>(p) : "";
                 result += (pi < (step.parameters.size() - 1) ? " " : "");
             }
@@ -679,5 +702,4 @@ namespace Image
         }
         return processed;
     }
-
 }

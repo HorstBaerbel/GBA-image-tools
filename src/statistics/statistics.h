@@ -19,16 +19,16 @@ namespace Statistics
         struct ImageData
         {
             std::vector<uint8_t> image;
-            Image::ColorFormat colorFormat = Image::ColorFormat::Unknown;
+            Color::Format colorFormat = Color::Format::Unknown;
             uint32_t width = 0;
             uint32_t height = 0;
         };
 
         auto addValue(const std::string &id, double v) -> void;
 
-        auto addImage(const std::string &id, const std::vector<uint8_t> &image, Image::ColorFormat colorFormat, uint32_t width, uint32_t height) -> void;
+        auto addImage(const std::string &id, const std::vector<uint8_t> &image, Color::Format colorFormat, uint32_t width, uint32_t height) -> void;
 
-        auto addImage(const std::string &id, std::vector<uint8_t> &&image, Image::ColorFormat colorFormat, uint32_t width, uint32_t height) -> void;
+        auto addImage(const std::string &id, std::vector<uint8_t> &&image, Color::Format colorFormat, uint32_t width, uint32_t height) -> void;
 
         auto getValues() const -> const std::map<std::string, std::vector<double>> &;
         auto getImages() const -> const std::map<std::string, ImageData> &;

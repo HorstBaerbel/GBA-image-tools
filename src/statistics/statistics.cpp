@@ -8,12 +8,12 @@ namespace Statistics
         m_values[id].push_back(v);
     }
 
-    auto Container::addImage(const std::string &id, const std::vector<uint8_t> &image, Image::ColorFormat colorFormat, uint32_t width, uint32_t height) -> void
+    auto Container::addImage(const std::string &id, const std::vector<uint8_t> &image, Color::Format colorFormat, uint32_t width, uint32_t height) -> void
     {
         m_images[id] = {image, colorFormat, width, height};
     }
 
-    auto Container::addImage(const std::string &id, std::vector<uint8_t> &&image, Image::ColorFormat colorFormat, uint32_t width, uint32_t height) -> void
+    auto Container::addImage(const std::string &id, std::vector<uint8_t> &&image, Color::Format colorFormat, uint32_t width, uint32_t height) -> void
     {
         m_images[id] = {std::move(image), colorFormat, width, height};
     }
