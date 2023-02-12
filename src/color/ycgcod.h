@@ -32,8 +32,11 @@ namespace Color
         /// @brief Return color with all components normalized to [0,1]
         auto normalized() const -> YCgCoRd;
 
-        /// @brief YCgCoR color from raw 24bit RGB888 data
+        /// @brief YCgCoR color from raw 24-bit RGB888 data
         static auto fromRGB888(const uint8_t *rgb888) -> YCgCoRd;
+
+        /// @brief YCgCoR color from raw 32-bit XRGB888 data
+        static auto fromXRGB888(const uint32_t *xrgb888) -> YCgCoRd;
 
         /// @brief YCgCoR color from raw RGB555 uint16_t
         static auto fromRGB555(uint16_t color) -> YCgCoRd;

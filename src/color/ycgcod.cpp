@@ -24,6 +24,20 @@ namespace Color
         return result;
     }
 
+    auto YCgCoRd::fromXRGB888(const uint32_t *xrgb888) -> YCgCoRd
+    {
+        uint32_t color = *xrgb888;
+        double R = static_cast<double>(color & 0xFF) / 255.0;
+        double G = static_cast<double>((color >> 8) & 0xFF) / 255.0;
+        double B = static_cast<double>((color >> 16) & 0xFF) / 255.0;
+        YCgCoRd result;
+        result.Co() = R - B;
+        double tmp = B + result.Co() / 2.0;
+        result.Cg() = G - tmp;
+        result.Y() = tmp + result.Cg() / 2.0;
+        return result;
+    }
+
     auto YCgCoRd::fromRGB555(uint16_t color) -> YCgCoRd
     {
         double R = static_cast<double>((color & 0x7C00) >> 10) / 31.0;

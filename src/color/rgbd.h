@@ -24,8 +24,11 @@ namespace Color
         inline auto B() const -> const double & { return z(); }
         inline auto B() -> double & { return z(); }
 
-        /// @brief RGB color from raw 24bit RGB888 data
+        /// @brief RGB color from raw 24-bit RGB888 data
         static auto fromRGB888(const uint8_t *rgb888) -> RGBd;
+
+        /// @brief RGB color from raw 32-bit XRGB888 data
+        static auto fromXRGB888(const uint32_t *xrgb888) -> RGBd;
 
         /// @brief RGB color from raw RGB555 uint16_t
         static auto fromRGB555(uint16_t color) -> RGBd;
