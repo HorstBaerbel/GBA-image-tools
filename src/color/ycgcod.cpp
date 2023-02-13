@@ -11,11 +11,8 @@ namespace Color
         return {Y(), 0.5 * (Cg() + 1.0), 0.5 * (Co() + 1.0)};
     }
 
-    auto YCgCoRd::fromRGB888(const uint8_t *rgb888) -> YCgCoRd
+    auto YCgCoRd::fromRGB(double R, double G, double B) -> YCgCoRd
     {
-        double R = static_cast<double>(rgb888[0]) / 255.0;
-        double G = static_cast<double>(rgb888[1]) / 255.0;
-        double B = static_cast<double>(rgb888[2]) / 255.0;
         YCgCoRd result;
         result.Co() = R - B;
         double tmp = B + result.Co() / 2.0;
@@ -24,18 +21,20 @@ namespace Color
         return result;
     }
 
-    auto YCgCoRd::fromXRGB888(const uint32_t *xrgb888) -> YCgCoRd
+    auto YCgCoRd::fromRGB888(const uint8_t *rgb888) -> YCgCoRd
     {
-        uint32_t color = *xrgb888;
-        double R = static_cast<double>(color & 0xFF) / 255.0;
-        double G = static_cast<double>((color >> 8) & 0xFF) / 255.0;
-        double B = static_cast<double>((color >> 16) & 0xFF) / 255.0;
-        YCgCoRd result;
-        result.Co() = R - B;
-        double tmp = B + result.Co() / 2.0;
-        result.Cg() = G - tmp;
-        result.Y() = tmp + result.Cg() / 2.0;
-        return result;
+        double R = static_cast<double>(rgb888[0]) / 255.0;
+        double G = static_cast<double>(rgb888[1]) / 255.0;
+        double B = static_cast<double>(rgb888[2]) / 255.0;
+        return fromRGB(R, G, B);
+    }
+
+    auto YCgCoRd::fromXRGB888(uint32_t xrgb888) -> YCgCoRd
+    {
+        double R = static_cast<double>(xrgb888 & 0xFF) / 255.0;
+        double G = static_cast<double>((xrgb888 >> 8) & 0xFF) / 255.0;
+        double B = static_cast<double>((xrgb888 >> 16) & 0xFF) / 255.0;
+        return fromRGB(R, G, B);
     }
 
     auto YCgCoRd::fromRGB555(uint16_t color) -> YCgCoRd
@@ -43,12 +42,7 @@ namespace Color
         double R = static_cast<double>((color & 0x7C00) >> 10) / 31.0;
         double G = static_cast<double>((color & 0x3E0) >> 5) / 31.0;
         double B = static_cast<double>(color & 0x1F) / 31.0;
-        YCgCoRd result;
-        result.Co() = R - B;
-        double tmp = B + result.Co() / 2.0;
-        result.Cg() = G - tmp;
-        result.Y() = tmp + result.Cg() / 2.0;
-        return result;
+        return fromRGB(R, G, B);
     }
 
     auto YCgCoRd::toRGB555() const -> uint16_t
