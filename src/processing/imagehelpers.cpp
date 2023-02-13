@@ -10,25 +10,19 @@ std::pair<std::vector<uint8_t>, Color::Format> getImageData(const Magick::Image 
     if (img.type() == Magick::ImageType::PaletteType)
     {
         const auto nrOfColors = img.colorMapSize();
+        REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
         const auto nrOfIndices = img.columns() * img.rows();
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getIndices to work...
         auto indices = img.getConstIndexes();
-        if (nrOfColors <= 256)
+        for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
         {
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
-            {
-                result.first.push_back(indices[i]);
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Only up to 256 colors supported in color map!");
+            result.first.push_back(indices[i]);
         }
         result.second = Color::Format::Paletted8;
     }
     else if (img.type() == Magick::ImageType::TrueColorType)
     {
-        // get pixel colors aas RGB888
+        // get pixel colors as RGB888
         const auto nrOfPixels = img.columns() * img.rows();
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
         for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
@@ -42,11 +36,63 @@ std::pair<std::vector<uint8_t>, Color::Format> getImageData(const Magick::Image 
     }
     else
     {
-        throw std::runtime_error("Unsupported image type!");
+        THROW(std::runtime_error, "Unsupported image type");
     }
     /*std::ofstream of("dump.hex", std::ios::binary | std::ios::out);
     of.write(reinterpret_cast<const char *>(data.data()), data.size());
     of.close();*/
+    return result;
+}
+
+std::pair<std::vector<uint32_t>, Color::Format> getImageDataXRGB888(const Magick::Image &img)
+{
+    std::pair<std::vector<uint32_t>, Color::Format> result;
+    if (img.type() == Magick::ImageType::TrueColorType)
+    {
+        // get pixel colors as RGB888
+        const auto nrOfPixels = img.columns() * img.rows();
+        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
+        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
+        {
+            auto pixel = pixels[i];
+            uint32_t color = 0;
+            color |= static_cast<uint32_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red)));
+            color |= static_cast<uint32_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green))) << 8;
+            color |= static_cast<uint32_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))) << 16;
+            result.first.push_back(color);
+        }
+        result.second = Color::Format::XRGB888;
+    }
+    else
+    {
+        THROW(std::runtime_error, "Unsupported image type");
+    }
+    return result;
+}
+
+std::pair<std::vector<Color::RGBd>, Color::Format> getImageDataRGBd(const Magick::Image &img)
+{
+    std::pair<std::vector<Color::RGBd>, Color::Format> result;
+    if (img.type() == Magick::ImageType::TrueColorType)
+    {
+        // get pixel colors as RGB888
+        const auto nrOfPixels = img.columns() * img.rows();
+        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
+        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
+        {
+            auto pixel = pixels[i];
+            Color::RGBd color;
+            color.R() = Magick::Color::scaleQuantumToDouble(pixel.red);
+            color.G() = Magick::Color::scaleQuantumToDouble(pixel.green);
+            color.B() = Magick::Color::scaleQuantumToDouble(pixel.blue);
+            result.first.push_back(color);
+        }
+        result.second = Color::Format::RGBd;
+    }
+    else
+    {
+        THROW(std::runtime_error, "Unsupported image type");
+    }
     return result;
 }
 

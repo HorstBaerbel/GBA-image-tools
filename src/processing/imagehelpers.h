@@ -2,6 +2,7 @@
 #pragma once
 
 #include "color/colorformat.h"
+#include "color/rgbd.h"
 
 #include <cstdint>
 #include <vector>
@@ -10,6 +11,14 @@
 /// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes
 /// The format returned are Color::Format::Palettes8 for paletted images and Color::Format::RGB888 for truecolor images
 std::pair<std::vector<uint8_t>, Color::Format> getImageData(const Magick::Image &img);
+
+/// @brief Get ImageMagick truecolor image data as raw data words
+/// The format returned is Color::Format::XRGB888. It will fail for paletted images
+std::pair<std::vector<uint32_t>, Color::Format> getImageDataXRGB888(const Magick::Image &img);
+
+/// @brief Get ImageMagick truecolor image data as RGBd structs
+/// The format returned is Color::Format::RGBd. It will fail for paletted images
+std::pair<std::vector<Color::RGBd>, Color::Format> getImageDataRGBd(const Magick::Image &img);
 
 /// @brief Get color map from ImageMagick Image
 std::vector<Magick::Color> getColorMap(const Magick::Image &img);
