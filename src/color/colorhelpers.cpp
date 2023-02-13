@@ -28,6 +28,15 @@ std::vector<Magick::Color> addColorAtIndex0(const std::vector<Magick::Color> &co
     return tempMap;
 }
 
+Magick::Color toMagick(const Color::RGBd &color)
+{
+    Magick::Color result;
+    result.redQuantum(Magick::Color::scaleDoubleToQuantum(color.R()));
+    result.greenQuantum(Magick::Color::scaleDoubleToQuantum(color.G()));
+    result.blueQuantum(Magick::Color::scaleDoubleToQuantum(color.B()));
+    return result;
+}
+
 std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Magick::Color>> &colors)
 {
     std::vector<std::vector<uint16_t>> result;

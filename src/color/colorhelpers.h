@@ -1,6 +1,8 @@
 // some color / color map utility functions used by the tools
 #pragma once
 
+#include "rgbd.h"
+
 #include <Magick++.h>
 #include <array>
 #include <cstdint>
@@ -13,13 +15,16 @@ std::string asHex(const Magick::Color &color);
 /// @brief Add color to color map and shift all other colors towards the end by one
 std::vector<Magick::Color> addColorAtIndex0(const std::vector<Magick::Color> &colorMap, const Magick::Color &color0);
 
-/// @brief Convert ImageMagick Colors to BGR555 colors for GBA
+/// @brief Convert a RGB double color to and ImageMagick color
+Magick::Color toMagick(const Color::RGBd &color);
+
+/// @brief Convert ImageMagick colors to BGR555 colors for GBA
 std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Magick::Color>> &colors);
 
-/// @brief Convert ImageMagick Colors to BGR555 colors for GBA
+/// @brief Convert ImageMagick colors to BGR555 colors for GBA
 std::vector<uint16_t> convertToBGR555(const std::vector<Magick::Color> &colors);
 
-/// @brief Convert a ImageMagick Color to a BGR555 color for GBA
+/// @brief Convert a ImageMagick color to a BGR555 color for GBA
 uint16_t colorToBGR555(const Magick::Color &color);
 
 /// @brief Convert a RGB555 color to a BGR555 color
