@@ -12,7 +12,7 @@ namespace Image
         InputBlackWhite = 10,    // Input image and convert to 2-color paletted image
         InputPaletted = 11,      // Input image and convert to paletted image
         InputTruecolor = 12,     // Input image and convert to RGB888 truecolor
-        InputCommonPalette = 13, // Remap colors of all input images to a common palette
+        InputCommonPalette = 13, // Input images and remap colors of all images to a common palette
         ConvertTiles = 20,       // Convert data to 8 x 8 pixel tiles
         ConvertSprites = 21,     // Convert data to w x h pixel sprites
         BuildTileMap = 22,       // Convert data to 8 x 8 pixel tiles and build optimized screen and tile map

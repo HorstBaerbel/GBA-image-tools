@@ -67,13 +67,13 @@ namespace Image
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
         static Data toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
-        /// @brief Convert all input images to paletted image by:
+        /// @brief Convert all input images to paletted images by:
         /// - Mapping colors to colorSpaceMap (ImageMagicks -remap option)
         /// - Finding a common palette of all images with nrOfColors
         /// - Dithering to nrOfColors (ImageMagicks -colors option)
         /// @param parameters Magick::Image containing all colors of the target color space, e.g. RGB555 and
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
-        static std::vector<Data> toCommonPalette(const std::vector<Data> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static std::vector<Data> toCommonPalette(const std::vector<Magick::Image> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert input image to RGB55, RGB565 or RGB888
         /// @param parameters Truecolor format to convert image to as std::string

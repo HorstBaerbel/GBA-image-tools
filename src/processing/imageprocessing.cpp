@@ -3,6 +3,7 @@
 #include "codec/dxt.h"
 #include "codec/dxtv.h"
 #include "codec/gvid.h"
+#include "color/rgbd.h"
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
 #include "datahelpers.h"
@@ -56,7 +57,9 @@ namespace Image
         temp.quantizeColors(2);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, Color::Format::Paletted8, {}, getImageData(temp).first, getColorMap(temp), Color::Format::Unknown, {}};
+        auto imageData = getImageData(temp);
+        REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
     }
 
     Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
@@ -75,29 +78,109 @@ namespace Image
         temp.quantizeColors(nrOfcolors);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, Color::Format::Paletted8, {}, getImageData(temp).first, getColorMap(temp), Color::Format::Unknown, {}};
+        auto imageData = getImageData(temp);
+        REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
     }
 
-    std::vector<Data> Processing::toCommonPalette(const std::vector<Data> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    std::vector<Data> Processing::toCommonPalette(const std::vector<Magick::Image> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toPaletted expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
+        REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toCommonPalette expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
         const auto nrOfcolors = std::get<uint32_t>(parameters.back());
         REQUIRE(nrOfcolors >= 2 && nrOfcolors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
         const auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
-        // map images to input color map, no dithering
+        REQUIRE(colorSpaceMap.size().width() > 0 && colorSpaceMap.size().height() > 0, std::runtime_error, "colorSpaceMap can not be empty");
+        REQUIRE(images.size() > 1, std::runtime_error, "Number of input images must be > 1");
+        // build histogram of colors used in all input images
+        std::map<uint32_t, uint64_t> histogram;
+        std::for_each(images.cbegin(), images.cend(), [&histogram](const auto &image)
+                      {
+            auto imageData = getImageDataXRGB888(image).first;
+            std::for_each(imageData.cbegin(), imageData.cend(), [&histogram](auto pixel)
+                { histogram[pixel]++; }); });
+        // create as many preliminary clusters as colors in colorSpaceMap
+        struct Cluster
+        {
+            Color::RGBd center;
+            std::vector<std::pair<Color::RGBd, double>> colors;
+            double importance = 0.0;
+        };
+        std::vector<Cluster> clusters;
+        auto colorSpace = getImageDataRGBd(colorSpaceMap).first;
+        std::transform(colorSpace.cbegin(), colorSpace.cend(), std::back_inserter(clusters), [](auto color)
+                       { return Cluster{color, {}}; });
+        // sort histogram colors into closest clusters
+        std::for_each(histogram.cbegin(), histogram.cend(), [&clusters](auto entry)
+                      {
+            auto color = Color::RGBd::fromXRGB888(entry.first);
+            // find cluster closest to color
+            double minDistance = std::numeric_limits<double>::max();
+            std::size_t clusterIndex = 0;
+            for (std::size_t i = 0; i < clusters.size(); ++i)
+            {
+                auto distance = Color::RGBd::distance(color, clusters[i].center);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    clusterIndex = i;
+                }
+            }
+            // insert color and increase importance of cluster
+            clusters[clusterIndex].colors.emplace_back(std::make_pair(color, static_cast<double>(entry.second)));
+            clusters[clusterIndex].importance += entry.second; });
+        // remove unimportant clusters until we have only nrOfColors clusters left
+        while (clusters.size() > nrOfcolors)
+        {
+            // sort clusters by importance
+            std::sort(clusters.begin(), clusters.end(), [](const auto &a, const auto &b)
+                      { return a.importance < b.importance; });
+            // redistribute colors of last cluster to closest clusters
+            auto &colors = clusters.back().colors;
+            std::for_each(colors.cbegin(), std::prev(colors.cend()), [&clusters](auto entry)
+                          {
+                // find cluster closest to color
+                double minDistance = std::numeric_limits<double>::max();
+                std::size_t clusterIndex = 0;
+                for (std::size_t i = 0; i < clusters.size(); ++i)
+                {
+                    auto distance = Color::RGBd::distance(entry.first, clusters[i].center);
+                    if (distance < minDistance)
+                    {
+                        minDistance = distance;
+                        clusterIndex = i;
+                    }
+                }
+                // insert color into cluster and increase its importance
+                clusters[clusterIndex].colors.emplace_back(entry);
+                clusters[clusterIndex].importance += entry.second; });
+            // remove last cluster
+            clusters.pop_back();
+        }
+        // convert clusters to color map
+        Magick::Image colorMap(Magick::Geometry(clusters.size(), 1), "black");
+        colorMap.type(Magick::ImageType::TrueColorType);
+        colorMap.modifyImage();
+        auto colorMapPixels = colorMap.getPixels(0, 0, colorMap.columns(), colorMap.rows());
+        for (uint32_t i = 0; i < clusters.size(); ++i)
+        {
+            *colorMapPixels++ = toMagick(clusters[i].center);
+        }
+        colorMap.syncPixels();
+        // apply color map to all images
         std::vector<Data> result;
-        /*std::transform(images.cbegin(), images.cend(), std::back_inserter(result), [&colorSpaceMap](const auto &image)
+        std::transform(images.cbegin(), images.cend(), std::back_inserter(result), [&colorMap](auto image)
                        {
-                        Data temp = image;
-                        // get RGB888 image data
-                        Magick::Image temp = image;
-                        temp.data = getImageData(temp);
-                            temp.map(colorSpaceMap, false);
-                        return temp; });
-        // build histogram of colors used
-        std::map<Magick::Color, double> histogram;
-        std::for_each(result.cbegin(), result.cend(), [&histogram](const auto &image) {});*/
+            // convert image to paletted using dithering
+            Magick::Image temp = image;
+            temp.quantizeDither(true);
+            temp.quantizeDitherMethod(Magick::DitherMethod::RiemersmaDitherMethod);
+            temp.map(colorMap, true);
+            temp.type(Magick::ImageType::PaletteType);
+            // get image data and color map
+            auto imageData = getImageData(temp);
+            REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
+            return Data{0, "", temp.type(), image.size(), DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}}; });
         return result;
     }
 
@@ -122,17 +205,19 @@ namespace Image
         REQUIRE(format == Color::Format::RGB555 || format == Color::Format::RGB565 || format == Color::Format::RGB888, std::runtime_error, "Color format must be in [RGB555, RGB565, RGB888]");
         // get image data
         Magick::Image temp = image;
-        auto imageData = getImageData(temp).first;
+        auto imageData = getImageData(temp);
+        REQUIRE(imageData.second == Color::Format::RGB888, std::runtime_error, "Expected RGB888 image");
+        auto colorData = imageData.first;
         // convert colors if needed
         if (format == Color::Format::RGB555)
         {
-            imageData = toRGB555(imageData);
+            colorData = toRGB555(colorData);
         }
         else if (format == Color::Format::RGB565)
         {
-            imageData = toRGB565(imageData);
+            colorData = toRGB565(colorData);
         }
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, format, {}, imageData, {}, Color::Format::Unknown, {}};
+        return {0, "", temp.type(), image.size(), DataType::Bitmap, format, {}, colorData, {}, Color::Format::Unknown, {}};
     }
 
     // ----------------------------------------------------------------------------
