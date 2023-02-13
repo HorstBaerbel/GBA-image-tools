@@ -28,7 +28,7 @@ namespace Color
         static auto fromRGB888(const uint8_t *rgb888) -> RGBd;
 
         /// @brief RGB color from raw 32-bit XRGB888 data
-        static auto fromXRGB888(const uint32_t *xrgb888) -> RGBd;
+        static auto fromXRGB888(uint32_t xrgb888) -> RGBd;
 
         /// @brief RGB color from raw RGB555 uint16_t
         static auto fromRGB555(uint16_t color) -> RGBd;

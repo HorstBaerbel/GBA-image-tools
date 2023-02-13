@@ -15,13 +15,12 @@ namespace Color
         return result;
     }
 
-    auto RGBd::fromXRGB888(const uint32_t *xrgb888) -> RGBd
+    auto RGBd::fromXRGB888(uint32_t xrgb888) -> RGBd
     {
         RGBd result;
-        uint32_t color = *xrgb888;
-        result.R() = static_cast<double>(color & 0xFF) / 255.0;
-        result.G() = static_cast<double>((color >> 8) & 0xFF) / 255.0;
-        result.B() = static_cast<double>((color >> 16) & 0xFF) / 255.0;
+        result.R() = static_cast<double>(xrgb888 & 0xFF) / 255.0;
+        result.G() = static_cast<double>((xrgb888 >> 8) & 0xFF) / 255.0;
+        result.B() = static_cast<double>((xrgb888 >> 16) & 0xFF) / 255.0;
         return result;
     }
 
