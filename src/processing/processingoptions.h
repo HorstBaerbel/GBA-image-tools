@@ -30,6 +30,7 @@ public:
 
     static OptionT<double> blackWhite;
     static OptionT<uint32_t> paletted;
+    static OptionT<uint32_t> commonPalette;
     static OptionT<std::string> truecolor;
     static Option reorderColors;
     static OptionT<Magick::Color> addColor0;

@@ -28,7 +28,7 @@ ProcessingOptions::OptionT<double> ProcessingOptions::blackWhite{
 
 ProcessingOptions::OptionT<uint32_t> ProcessingOptions::paletted{
     false,
-    {"paletted", "Convert images to paletted image with N colors using dithering. N must be in [2, 256].", cxxopts::value(paletted.value)},
+    {"paletted", "Convert images to paletted images with N colors using dithering. N must be in [2, 256].", cxxopts::value(paletted.value)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -37,6 +37,20 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::paletted{
         {
             REQUIRE(paletted.value >= 1 && paletted.value <= 256, std::runtime_error, "Number of palette colors must be in [2, 256]");
             paletted.isSet = true;
+        }
+    }};
+
+ProcessingOptions::OptionT<uint32_t> ProcessingOptions::commonPalette{
+    false,
+    {"commonpalette", "Convert images to a paletted images with a common palette of N colors using dithering. N must be in [2, 256].", cxxopts::value(commonPalette.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(commonPalette.cxxOption.opts_))
+        {
+            REQUIRE(commonPalette.value >= 1 && commonPalette.value <= 256, std::runtime_error, "Number of palette colors must be in [2, 256]");
+            commonPalette.isSet = true;
         }
     }};
 
