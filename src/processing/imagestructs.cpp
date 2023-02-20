@@ -3,7 +3,31 @@
 namespace Image
 {
 
-    bool hasColorMap(const Data &frame)
+    auto isPaletted(const Data &frame) -> bool
+    {
+        switch (frame.colorFormat)
+        {
+        case Color::Format::Unknown:
+        case Color::Format::RGB555:
+        case Color::Format::RGB565:
+        case Color::Format::RGB888:
+        case Color::Format::RGBf:
+        case Color::Format::YCgCod:
+            return false;
+            break;
+        case Color::Format::Paletted1:
+        case Color::Format::Paletted2:
+        case Color::Format::Paletted4:
+        case Color::Format::Paletted8:
+            return true;
+            break;
+        default:
+            THROW(std::runtime_error, "Unsupported color map format");
+            break;
+        }
+    }
+
+    auto hasColorMap(const Data &frame) -> bool
     {
         switch (frame.colorMapFormat)
         {
@@ -13,7 +37,7 @@ namespace Image
         case Color::Format::RGB555:
         case Color::Format::RGB565:
         case Color::Format::RGB888:
-        case Color::Format::RGBd:
+        case Color::Format::RGBf:
         case Color::Format::YCgCod:
             return frame.colorMap.size() > 0;
             break;
@@ -23,7 +47,7 @@ namespace Image
         }
     }
 
-    uint32_t bytesPerColorMapEntry(const Data &frame)
+    auto bytesPerColorMapEntry(const Data &frame) -> uint32_t
     {
         switch (frame.colorMapFormat)
         {
@@ -35,7 +59,8 @@ namespace Image
             return 2;
         case Color::Format::RGB888:
             return 3;
-        case Color::Format::RGBd:
+        case Color::Format::RGBf:
+            return 12;
         case Color::Format::YCgCod:
             return 24;
             break;

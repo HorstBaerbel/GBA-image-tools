@@ -3,7 +3,7 @@
 #include "codec/dxt.h"
 #include "codec/dxtv.h"
 #include "codec/gvid.h"
-#include "color/rgbd.h"
+#include "color/rgbf.h"
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
 #include "datahelpers.h"
@@ -59,7 +59,7 @@ namespace Image
         // get image data and color map
         auto imageData = getImageData(temp);
         REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
+        return {0, "", temp.type(), {image.size().width(), image.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
     }
 
     Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
@@ -80,7 +80,7 @@ namespace Image
         // get image data and color map
         auto imageData = getImageData(temp);
         REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
+        return {0, "", temp.type(), {image.size().width(), image.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
     }
 
     std::vector<Data> Processing::toCommonPalette(const std::vector<Magick::Image> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
@@ -102,24 +102,24 @@ namespace Image
         // create as many preliminary clusters as colors in colorSpaceMap
         struct Cluster
         {
-            Color::RGBd center;
-            std::vector<std::pair<Color::RGBd, double>> colors;
+            Color::RGBf center;
+            std::vector<std::pair<Color::RGBf, double>> colors;
             double importance = 0.0;
         };
         std::vector<Cluster> clusters;
-        auto colorSpace = getImageDataRGBd(colorSpaceMap).first;
+        auto colorSpace = getImageDataRGBf(colorSpaceMap).first;
         std::transform(colorSpace.cbegin(), colorSpace.cend(), std::back_inserter(clusters), [](auto color)
                        { return Cluster{color, {}}; });
         // sort histogram colors into closest clusters
         std::for_each(histogram.cbegin(), histogram.cend(), [&clusters](auto entry)
                       {
-            auto color = Color::RGBd::fromXRGB888(entry.first);
+            auto color = Color::RGBf::fromXRGB888(entry.first);
             // find cluster closest to color
             double minDistance = std::numeric_limits<double>::max();
             std::size_t clusterIndex = 0;
             for (std::size_t i = 0; i < clusters.size(); ++i)
             {
-                auto distance = Color::RGBd::distance(color, clusters[i].center);
+                auto distance = Color::RGBf::distance(color, clusters[i].center);
                 if (distance < minDistance)
                 {
                     minDistance = distance;
@@ -144,7 +144,7 @@ namespace Image
                 std::size_t clusterIndex = 0;
                 for (std::size_t i = 0; i < clusters.size(); ++i)
                 {
-                    auto distance = Color::RGBd::distance(entry.first, clusters[i].center);
+                    auto distance = Color::RGBf::distance(entry.first, clusters[i].center);
                     if (distance < minDistance)
                     {
                         minDistance = distance;
@@ -180,7 +180,7 @@ namespace Image
             // get image data and color map
             auto imageData = getImageData(temp);
             REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
-            return Data{0, "", temp.type(), image.size(), DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}}; });
+            return Data{0, "", temp.type(), {image.size().width(), image.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}}; });
         return result;
     }
 
@@ -217,7 +217,7 @@ namespace Image
         {
             colorData = toRGB565(colorData);
         }
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, format, {}, colorData, {}, Color::Format::Unknown, {}};
+        return {0, "", temp.type(), {image.size().width(), image.size().height()}, DataType::Bitmap, format, {}, colorData, {}, Color::Format::Unknown, {}};
     }
 
     // ----------------------------------------------------------------------------
@@ -255,7 +255,7 @@ namespace Image
         {
             auto result = image;
             result.data = convertToWidth(image.data, result.size.width(), result.size.height(), bitsPerPixelForFormat(result.colorFormat), spriteWidth);
-            result.size = Magick::Geometry(spriteWidth, (result.size.width() * result.size.height()) / spriteWidth);
+            result.size = {spriteWidth, (result.size.width() * result.size.height()) / spriteWidth};
             return result;
         }
         return image;

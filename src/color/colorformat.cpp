@@ -25,7 +25,8 @@ namespace Color
             return 24;
         case Format::XRGB888:
             return 32;
-        case Format::RGBd:
+        case Format::RGBf:
+            return 96;
         case Format::YCgCod:
             return 192;
         default:
@@ -53,8 +54,8 @@ namespace Color
             return "RGB888";
         case Format::XRGB888:
             return "XRGB888";
-        case Format::RGBd:
-            return "RGB double";
+        case Format::RGBf:
+            return "RGB float";
         case Format::YCgCod:
             return "YCgCo double";
         default:

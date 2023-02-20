@@ -18,8 +18,8 @@ namespace Color
         RGB565 = 16,   // R5G6B5 16-bit format for NDS, DXT
         RGB888 = 24,   // R8G8B8 24-bit straight truecolor format
         XRGB888 = 32,  // X8R8G8B8 32-bit straight truecolor format
-        RGBd = 192,    // RGB double truecolor format
-        YCgCod = 193   // YCgCo double truecolor format
+        RGBf = 96,     // RGB float truecolor format
+        YCgCod = 192   // YCgCo double truecolor format
     };
 
     /// @brief Return bits per pixel for input color format
