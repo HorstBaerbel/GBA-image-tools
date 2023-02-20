@@ -151,14 +151,15 @@ bool readArguments(int argc, const char *argv[])
 
 void printUsage()
 {
-    std::cout << "Converts an compresses a video file to a .c and .h file to compile it into a" << std::endl;
+    // 80 chars:  --------------------------------------------------------------------------------
+    std::cout << "Converts and compresses a video file to a .c and .h file to compile it into a" << std::endl;
     std::cout << "GBA executable." << std::endl;
-    std::cout << "Usage: vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [COMPRESSION] INFILE OUTNAME" << std::endl;
+    std::cout << "Usage: vid2h FORMAT [CONVERT] [IMAGE COMPRESS] [COMPRESS] INFILE OUTNAME" << std::endl;
     std::cout << "FORMAT options (mutually exclusive):" << std::endl;
     std::cout << options.blackWhite.helpString() << std::endl;
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
-    std::cout << "CONVERSION options (all optional):" << std::endl;
+    std::cout << "CONVERT options (all optional):" << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
     std::cout << options.moveColor0.helpString() << std::endl;
     std::cout << options.shiftIndices.helpString() << std::endl;
@@ -168,15 +169,15 @@ void printUsage()
     std::cout << options.deltaImage.helpString() << std::endl;
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
-    std::cout << "IMAGE COMPRESSION options (mutually exclusive):" << std::endl;
+    std::cout << "IMAGE COMPRESS options (mutually exclusive):" << std::endl;
     std::cout << options.dxtg.helpString() << std::endl;
     std::cout << options.dxtv.helpString() << std::endl;
     // std::cout << options.gvid.helpString() << std::endl;
-    std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
+    std::cout << "COMPRESS options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << options.lz11.helpString() << std::endl;
-    std::cout << "COMPRESSION modifiers (optional):" << std::endl;
+    std::cout << "COMPRESS modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: Input video file to convert, e.g. \"foo.avi\"" << std::endl;
@@ -186,6 +187,7 @@ void printUsage()
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
+    std::cout << "help: Show this help." << std::endl;
     std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites, tiles," << std::endl;
     std::cout << "deltaimage, dxtg / dtxv / gvid, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
 }
