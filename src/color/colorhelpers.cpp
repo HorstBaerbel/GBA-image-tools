@@ -28,7 +28,7 @@ std::vector<Magick::Color> addColorAtIndex0(const std::vector<Magick::Color> &co
     return tempMap;
 }
 
-Magick::Color toMagick(const Color::RGBd &color)
+Magick::Color toMagick(const Color::RGBf &color)
 {
     Magick::Color result;
     result.redQuantum(Magick::Color::scaleDoubleToQuantum(color.R()));
