@@ -48,6 +48,10 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", {"h,help", "Print help"});
         opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
+        opts.add_option("", options.blackWhite.cxxOption);
+        opts.add_option("", options.paletted.cxxOption);
+        opts.add_option("", options.commonPalette.cxxOption);
+        opts.add_option("", options.truecolor.cxxOption);
         opts.add_option("", options.reorderColors.cxxOption);
         opts.add_option("", options.addColor0.cxxOption);
         opts.add_option("", options.moveColor0.cxxOption);
@@ -109,6 +113,20 @@ bool readArguments(int argc, const char *argv[])
             return false;
         }
         // check if exclusive options set
+        options.blackWhite.parse(result);
+        options.paletted.parse(result);
+        options.commonPalette.parse(result);
+        options.truecolor.parse(result);
+        if ((options.blackWhite + options.paletted + options.commonPalette + options.truecolor) == 0)
+        {
+            std::cerr << "One format option is needed." << std::endl;
+            return false;
+        }
+        if ((options.blackWhite + options.paletted + options.commonPalette + options.truecolor) > 1)
+        {
+            std::cerr << "Only a single format option is allowed." << std::endl;
+            return false;
+        }
         if (options.lz10 && options.lz11)
         {
             std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
@@ -138,14 +156,15 @@ void printUsage()
 {
     // 80 chars:  --------------------------------------------------------------------------------
     std::cout << "Convert a (list of) image files to a .c and .h file to compile them into a" << std::endl;
-    std::cout << "GBA executable. Optionally compress data with GBA-compatible LZSS/LZ77." << std::endl;
-    std::cout << "Will either save indices and a palette or truecolor data. All color values" << std::endl;
-    std::cout << "will be converted to RGB555 directly." << std::endl;
-    std::cout << "You might want to use ImageMagicks \"convert +remap\" before." << std::endl;
-    std::cout << "Usage: img2h [GENERAL] [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME" << std::endl;
-    std::cout << "GENERAL options (mutually exclusive):" << std::endl;
-    std::cout << "help: Show this help." << std::endl;
-    std::cout << "CONVERSION options (all optional):" << std::endl;
+    std::cout << "GBA executable." << std::endl;
+    std::cout << "Will either save indices and a palette or truecolor data." << std::endl;
+    std::cout << "Usage: img2h FORMAT [GENERAL] [CONVERT] [COMPRESS] INFILE [INFILEn...] OUTNAME" << std::endl;
+    std::cout << "FORMAT options (mutually exclusive):" << std::endl;
+    std::cout << options.blackWhite.helpString() << std::endl;
+    std::cout << options.paletted.helpString() << std::endl;
+    std::cout << options.commonPalette.helpString() << std::endl;
+    std::cout << options.truecolor.helpString() << std::endl;
+    std::cout << "CONVERT options (all optional):" << std::endl;
     std::cout << options.reorderColors.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
     std::cout << options.moveColor0.helpString() << std::endl;
@@ -157,11 +176,11 @@ void printUsage()
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << options.interleavePixels.helpString() << std::endl;
-    std::cout << "COMPRESSION options (mutually exclusive):" << std::endl;
+    std::cout << "COMPRESS options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << options.lz11.helpString() << std::endl;
-    std::cout << "COMPRESSION modifiers (optional):" << std::endl;
+    std::cout << "COMPRESS modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
     std::cout << "Valid combinations are e.g. \"--rle --lz10\" or \"--lz11 --vram\"." << std::endl;
     std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
@@ -174,6 +193,7 @@ void printUsage()
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << options.dumpResults.helpString() << std::endl;
+    std::cout << "help: Show this help." << std::endl;
     std::cout << "ORDER: input, reordercolors, addcolor0, movecolor0, shift, prune, sprites" << std::endl;
     std::cout << "tiles, tilemap, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
@@ -272,8 +292,27 @@ int main(int argc, const char *argv[])
         Magick::InitializeMagick(*argv);
         // read image(s) from disk
         auto [imgType, imgSize, images] = readImages(m_inFile, options);
-        // build processing pipeline
+        // build processing pipeline - input
         Image::Processing processing;
+        if (options.blackWhite)
+        {
+            processing.addStep(Image::ProcessingType::InputBlackWhite, {options.blackWhite.value});
+        }
+        else if (options.paletted)
+        {
+            // add palette conversion using GBA RGB555 reference color map
+            processing.addStep(Image::ProcessingType::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
+        }
+        else if (options.commonPalette)
+        {
+            // add common palette conversion using GBA RGB555 reference color map
+            processing.addStep(Image::ProcessingType::InputCommonPalette, {buildColorMapRGB555(), options.commonPalette.value});
+        }
+        else if (options.truecolor)
+        {
+            processing.addStep(Image::ProcessingType::InputTruecolor, {options.truecolor.value});
+        }
+        // build processing pipeline - conversion
         if (options.reorderColors)
         {
             processing.addStep(Image::ProcessingType::ReorderColors, {});
