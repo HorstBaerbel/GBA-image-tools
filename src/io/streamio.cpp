@@ -1,9 +1,9 @@
 #include "streamio.h"
 
-namespace Image
+namespace IO
 {
 
-    auto IO::writeFrame(std::ostream &os, const Data &frame) -> std::ostream &
+    auto Stream::writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &
     {
         REQUIRE((frame.data.size() & 3) == 0, std::runtime_error, "Frame data size is not a multiple of 4");
         REQUIRE((frame.colorMapData.size() & 3) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
@@ -20,7 +20,7 @@ namespace Image
         return os;
     }
 
-    auto IO::writeFrames(std::ostream &os, const std::vector<Data> &frames) -> std::ostream &
+    auto Stream::writeFrames(std::ostream &os, const std::vector<Image::Data> &frames) -> std::ostream &
     {
         for (const auto &f : frames)
         {
@@ -29,16 +29,16 @@ namespace Image
         return os;
     }
 
-    auto IO::writeFileHeader(std::ostream &os, const std::vector<Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &
+    auto Stream::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &
     {
         REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
         // check if we're using a color map
-        const bool frameHasColorMap = hasColorMap(frames.front());
+        const bool frameHasColorMap = Image::hasColorMap(frames.front());
         // generate file header and store it
         FileHeader fileHeader;
         fileHeader.nrOfFrames = frames.size();
-        fileHeader.width = frames.front().size.width();
-        fileHeader.height = frames.front().size.height();
+        fileHeader.width = static_cast<uint16_t>(frames.front().size.width());
+        fileHeader.height = static_cast<uint16_t>(frames.front().size.height());
         fileHeader.fps = fps;
         fileHeader.bitsPerPixel = bitsPerPixelForFormat(frames.front().colorFormat);
         fileHeader.bitsPerColor = frameHasColorMap ? bitsPerPixelForFormat(frames.front().colorMapFormat) : 0;

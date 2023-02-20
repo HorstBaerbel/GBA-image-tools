@@ -7,10 +7,10 @@
 #include <variant>
 #include <vector>
 
-namespace Image
+namespace IO
 {
 
-    class IO
+    class Stream
     {
     public:
         struct FileHeader
@@ -26,13 +26,13 @@ namespace Image
         } __attribute__((aligned(4), packed));
 
         /// @brief Write frame data to output stream, adding compressed size as 3 byte value at the front
-        static auto writeFrame(std::ostream &os, const Data &frames) -> std::ostream &;
+        static auto writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &;
 
         /// @brief Write frame data to output stream, adding compressed size as 3 byte value at the front
-        static auto writeFrames(std::ostream &os, const std::vector<Data> &frames) -> std::ostream &;
+        static auto writeFrames(std::ostream &os, const std::vector<Image::Data> &frames) -> std::ostream &;
 
         /// @brief Write frames to output stream. Will get width / height / color format from first frame in vector
-        static auto writeFileHeader(std::ostream &os, const std::vector<Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &;
+        static auto writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &;
     };
 
 }
