@@ -73,9 +73,9 @@ constexpr std::pair<int32_t, int32_t> PrevRefOffset = {-8191, 8192}; // Block se
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto distance(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b) -> double
+static auto distance(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b) -> float
 {
-    double dist = 0.0;
+    float dist = 0.0F;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
         dist += YCgCoRf::distance(*aIt, *bIt);
@@ -85,10 +85,10 @@ static auto distance(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCg
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto distanceBelowThreshold(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b, double threshold) -> std::pair<bool, double>
+static auto distanceBelowThreshold(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
 {
     bool belowThreshold = true;
-    double dist = 0.0;
+    float dist = 0.0F;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
         auto colorDist = YCgCoRf::distance(*aIt, *bIt);
@@ -309,9 +309,9 @@ public:
     }
 
     /// @brief Calculate perceived pixel difference between codebooks
-    auto distance(const CodeBook &b) -> double
+    auto distance(const CodeBook &b) -> float
     {
-        double sum = 0;
+        float sum = 0.0F;
         auto aIt = m_colors.cbegin();
         auto bIt = b.m_colors.cbegin();
         while (aIt != m_colors.cend() && bIt != b.m_colors.cend())
@@ -336,9 +336,9 @@ private:
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, entry index) if usable entry found or empty optional, if not
 template <std::size_t BLOCK_DIM>
-auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::value_type, BLOCK_DIM> &block, double maxAllowedError, int32_t offsetMin, int32_t offsetMax) -> std::optional<std::pair<double, BlockView<CodeBook::value_type, BLOCK_DIM>>>
+auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::value_type, BLOCK_DIM> &block, float maxAllowedError, int32_t offsetMin, int32_t offsetMax) -> std::optional<std::pair<float, BlockView<CodeBook::value_type, BLOCK_DIM>>>
 {
-    using return_type = std::pair<double, BlockView<CodeBook::value_type, BLOCK_DIM>>;
+    using return_type = std::pair<float, BlockView<CodeBook::value_type, BLOCK_DIM>>;
     if (codeBook.empty<BLOCK_DIM>())
     {
         return std::optional<return_type>();
@@ -356,7 +356,7 @@ auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::v
         return std::optional<return_type>();
     }
     // find blocks that are already encoded in codebook and calculate distance to block
-    std::vector<std::pair<double, int32_t>> candidates;
+    std::vector<std::pair<float, int32_t>> candidates;
     auto cIt = std::next(codeBook.cbegin<BLOCK_DIM>(), minIndex);
     auto cEnd = std::next(codeBook.cbegin<BLOCK_DIM>(), maxIndex);
     for (int32_t index = minIndex; cIt != cEnd; ++cIt, ++index)
@@ -426,7 +426,7 @@ auto storeRefBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BL
 }
 
 template <std::size_t BLOCK_DIM>
-auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, BlockView<CodeBook::value_type, BLOCK_DIM> &block, CompressionState &state, double maxAllowedError) -> void
+auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, BlockView<CodeBook::value_type, BLOCK_DIM> &block, CompressionState &state, float maxAllowedError) -> void
 {
     static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook::BlockMaxDim) - std::log2(BLOCK_DIM);
     // Try to reference block from the previous code book (if available) within error
@@ -490,7 +490,7 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
     }
 }
 
-auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &previousImage, uint32_t width, uint32_t height, bool keyFrame, double maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>
+auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>
 {
     static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
     REQUIRE(width % CodeBook::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
@@ -502,7 +502,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     auto currentCodeBook = CodeBook(image, width, height, false);
     const CodeBook previousCodeBook = previousImage.empty() || keyFrame ? CodeBook() : CodeBook(previousImage, width, height, true);
     // calculate perceived frame distance
-    const double frameDistance = previousCodeBook.empty<CodeBook::BlockMaxDim>() ? INT_MAX : currentCodeBook.distance(previousCodeBook);
+    const float frameDistance = previousCodeBook.empty<CodeBook::BlockMaxDim>() ? INT_MAX : currentCodeBook.distance(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
     if (!keyFrame && frameDistance < 0.001)
     {
@@ -534,9 +534,9 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     }
     // print statistics
     const auto nrOfMinBlocks = width / CodeBook::BlockMinDim * height / CodeBook::BlockMinDim;
-    double refPercentCurr = static_cast<double>((statistics.refBlocksCurr[0] * 16 + statistics.refBlocksCurr[1] * 4 + statistics.refBlocksCurr[2]) * 100) / nrOfMinBlocks;
-    double refPercentPrev = static_cast<double>((statistics.refBlocksPrev[0] * 16 + statistics.refBlocksPrev[1] * 4 + statistics.refBlocksPrev[2]) * 100) / nrOfMinBlocks;
-    double dxtPercent = static_cast<double>((statistics.dxtBlocks[0] * 16 + statistics.dxtBlocks[1] * 4 + statistics.dxtBlocks[2]) * 100) / nrOfMinBlocks;
+    auto refPercentCurr = static_cast<float>((statistics.refBlocksCurr[0] * 16 + statistics.refBlocksCurr[1] * 4 + statistics.refBlocksCurr[2]) * 100) / nrOfMinBlocks;
+    auto refPercentPrev = static_cast<float>((statistics.refBlocksPrev[0] * 16 + statistics.refBlocksPrev[1] * 4 + statistics.refBlocksPrev[2]) * 100) / nrOfMinBlocks;
+    auto dxtPercent = static_cast<float>((statistics.dxtBlocks[0] * 16 + statistics.dxtBlocks[1] * 4 + statistics.dxtBlocks[2]) * 100) / nrOfMinBlocks;
     std::cout << "Curr (16/8/4): " << statistics.refBlocksCurr[0] << "/" << statistics.refBlocksCurr[1] << "/" << statistics.refBlocksCurr[2] << " " << std::fixed << std::setprecision(1) << refPercentCurr << "%";
     std::cout << ", Prev (16/8/4): " << statistics.refBlocksPrev[0] << "/" << statistics.refBlocksPrev[1] << "/" << statistics.refBlocksPrev[2] << " " << std::fixed << std::setprecision(1) << refPercentPrev << "%";
     std::cout << ", DXT: " << statistics.dxtBlocks[0] << "/" << statistics.dxtBlocks[1] << "/" << statistics.dxtBlocks[2] << " " << std::fixed << std::setprecision(1) << dxtPercent << "%" << std::endl;

@@ -33,7 +33,7 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     // calculate line fit through RGB color space
     auto originAndAxis = lineFit(colors);
     // calculate signed distance from origin
-    std::vector<double> distanceFromOrigin(16);
+    std::vector<float> distanceFromOrigin(16);
     std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
                    { return color.dot(axis); });
     // get the distance of endpoints c0 and c1 on line
@@ -57,7 +57,7 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     for (uint32_t ci = 0; ci < 16; ++ci)
     {
         // calculate minimum distance for each index for this color
-        double bestColorDistance = std::numeric_limits<double>::max();
+        float bestColorDistance = std::numeric_limits<float>::max();
         for (uint32_t ei = 0; ei < 4; ++ei)
         {
             auto indexDistance = RGBf::distance(colors[ci], endpoints[ei]);
@@ -87,7 +87,7 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
 
 /*using Cluster = std::pair<RGBf, std::vector<RGBf>>;
 
-double DistanceSqr(const std::array<Cluster, 4> &clusters)
+float DistanceSqr(const std::array<Cluster, 4> &clusters)
 {
     auto dist = 0.0;
     for (auto clusterIt = clusters.begin(); clusterIt != clusters.end(); ++clusterIt)
@@ -111,13 +111,13 @@ std::vector<uint8_t> DXT::encodeBlockDXTG3(const uint16_t *start, uint32_t pixel
     for (int y = 0; y < 4; y++)
     {
         *c16It++ = pixel[0];
-        *cIt++ = toVector<double>(pixel[0]);
+        *cIt++ = toVector<float>(pixel[0]);
         *c16It++ = pixel[1];
-        *cIt++ = toVector<double>(pixel[1]);
+        *cIt++ = toVector<float>(pixel[1]);
         *c16It++ = pixel[2];
-        *cIt++ = toVector<double>(pixel[2]);
+        *cIt++ = toVector<float>(pixel[2]);
         *c16It++ = pixel[3];
-        *cIt++ = toVector<double>(pixel[3]);
+        *cIt++ = toVector<float>(pixel[3]);
         pixel += pixelsPerScanline;
     }
     // calculate line fit through RGB color space
@@ -127,7 +127,7 @@ std::vector<uint8_t> DXT::encodeBlockDXTG3(const uint16_t *start, uint32_t pixel
     std::transform(colors.cbegin(), colors.cend(), colorsOnLine.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
                    { return origin + (color - origin).dot(axis) / axis.dot(axis) * axis; });
     // calculate signed distance from origin
-    std::array<double, 16> distanceFromOrigin;
+    std::array<float, 16> distanceFromOrigin;
     std::transform(colorsOnLine.cbegin(), colorsOnLine.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
                    { return color.norm() * axis.dot(color); });
     // get the min/max point indices
@@ -145,7 +145,7 @@ std::vector<uint8_t> DXT::encodeBlockDXTG3(const uint16_t *start, uint32_t pixel
     for (const auto &color : colors)
     {
         // find cluster with minimal color-distance
-        auto minDist = std::numeric_limits<double>::max();
+        auto minDist = std::numeric_limits<float>::max();
         auto minIt = clusters.begin();
         for (auto clusterIt = clusters.begin(); clusterIt != clusters.end(); ++clusterIt)
         {

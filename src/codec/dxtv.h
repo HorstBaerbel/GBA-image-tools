@@ -14,7 +14,7 @@ public:
     /// @param keyframe If true B-frame will be output, else a P-frame
     /// @param maxBlockError Max. allowed error for block references, if above a verbatim block will be stored. Range [0.1,1]
     /// @return Returns (compressed data, decompressed frame)
-    static auto encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &previousImage, uint32_t width, uint32_t height, bool keyFrame, double maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>;
+    static auto encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>;
 
     /// @brief Decompress from DXTV format
     static auto decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint16_t>;
