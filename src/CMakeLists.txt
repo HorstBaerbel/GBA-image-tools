@@ -41,7 +41,7 @@ set(CMAKE_C_STANDARD 11)
 #-------------------------------------------------------------------------------
 # Define targets
 
-file(GLOB_RECURSE HELPERS_SRC ${PROJECT_SOURCE_DIR}/src/*/*.cpp)
+file(GLOB_RECURSE HELPERS_SRC CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*/*.cpp ${PROJECT_SOURCE_DIR}/src/*/*.h)
 
 include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/cxxopts ${PROJECT_SOURCE_DIR}/eigen ${PROJECT_SOURCE_DIR}/glob ${PROJECT_SOURCE_DIR}/src)
 add_executable(colormap555 colormap555.cpp color/colorhelpers.cpp)
