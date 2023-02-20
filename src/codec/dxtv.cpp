@@ -73,25 +73,25 @@ constexpr std::pair<int32_t, int32_t> PrevRefOffset = {-8191, 8192}; // Block se
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto distance(const BlockView<YCgCoRd, BLOCK_DIM> &a, const BlockView<YCgCoRd, BLOCK_DIM> &b) -> double
+static auto distance(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b) -> double
 {
     double dist = 0.0;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
-        dist += YCgCoRd::distance(*aIt, *bIt);
+        dist += YCgCoRf::distance(*aIt, *bIt);
     }
     return dist / (BLOCK_DIM * BLOCK_DIM);
 }
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto distanceBelowThreshold(const BlockView<YCgCoRd, BLOCK_DIM> &a, const BlockView<YCgCoRd, BLOCK_DIM> &b, double threshold) -> std::pair<bool, double>
+static auto distanceBelowThreshold(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b, double threshold) -> std::pair<bool, double>
 {
     bool belowThreshold = true;
     double dist = 0.0;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
-        auto colorDist = YCgCoRd::distance(*aIt, *bIt);
+        auto colorDist = YCgCoRf::distance(*aIt, *bIt);
         if (belowThreshold)
         {
             belowThreshold = colorDist < threshold;
@@ -105,7 +105,7 @@ static auto distanceBelowThreshold(const BlockView<YCgCoRd, BLOCK_DIM> &a, const
 class CodeBook
 {
 public:
-    using value_type = YCgCoRd;
+    using value_type = YCgCoRf;
     using state_type = bool;
     static constexpr std::size_t BlockMaxDim = 16;
     static constexpr std::size_t BlockMinDim = 4;
@@ -121,7 +121,7 @@ public:
         : m_width(width), m_height(height)
     {
         std::transform(image.cbegin(), image.cend(), std::back_inserter(m_colors), [](const auto &pixel)
-                       { return YCgCoRd::fromRGB555(pixel); });
+                       { return YCgCoRf::fromRGB555(pixel); });
         for (uint32_t y = 0; y < m_height; y += BlockMaxDim)
         {
             for (uint32_t x = 0; x < m_width; x += BlockMaxDim)
@@ -257,7 +257,7 @@ public:
     }
 
     template <std::size_t BLOCK_DIM>
-    auto isEncoded(const BlockView<YCgCoRd, BLOCK_DIM> &block) const
+    auto isEncoded(const BlockView<YCgCoRf, BLOCK_DIM> &block) const
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
@@ -274,7 +274,7 @@ public:
     }
 
     template <std::size_t BLOCK_DIM>
-    auto setEncoded(const BlockView<YCgCoRd, BLOCK_DIM> &block, bool encoded = true)
+    auto setEncoded(const BlockView<YCgCoRf, BLOCK_DIM> &block, bool encoded = true)
     {
         auto index = block.index();
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -316,7 +316,7 @@ public:
         auto bIt = b.m_colors.cbegin();
         while (aIt != m_colors.cend() && bIt != b.m_colors.cend())
         {
-            sum += YCgCoRd::distance(*aIt++, *bIt++);
+            sum += YCgCoRf::distance(*aIt++, *bIt++);
         }
         return sum / m_blocks2.size();
     }
@@ -324,7 +324,7 @@ public:
 private:
     uint32_t m_width = 0;
     uint32_t m_height = 0;
-    std::vector<YCgCoRd> m_colors;
+    std::vector<YCgCoRf> m_colors;
     std::vector<block_type0> m_blocks0;
     std::vector<block_type1> m_blocks1;
     std::vector<block_type2> m_blocks2;
@@ -392,7 +392,7 @@ struct CompressionState
 };
 
 template <std::size_t BLOCK_DIM>
-auto storeDxtBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BLOCK_DIM> &block, const DXTBlock<BLOCK_DIM, BLOCK_DIM> &encodedBlock, const std::array<YCgCoRd, BLOCK_DIM * BLOCK_DIM> &decodedBlock, CompressionState &state) -> void
+auto storeDxtBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BLOCK_DIM> &block, const DXTBlock<BLOCK_DIM, BLOCK_DIM> &encodedBlock, const std::array<YCgCoRf, BLOCK_DIM * BLOCK_DIM> &decodedBlock, CompressionState &state) -> void
 {
     static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook::BlockMaxDim) - std::log2(BLOCK_DIM);
     auto dxtData = encodedBlock.toArray();
@@ -470,7 +470,7 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
         else if constexpr (BLOCK_DIM > CodeBook::BlockMinDim)
         {
             // check if encoded block is below allowed error or we want to split the block
-            auto encodedBlockDist = YCgCoRd::distance(rawBlock, decodedBlock);
+            auto encodedBlockDist = YCgCoRf::distance(rawBlock, decodedBlock);
             if (encodedBlockDist < maxAllowedError)
             {
                 // Threshold ok. Store full DXT block

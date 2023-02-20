@@ -1,6 +1,6 @@
 #pragma once
 
-#include "color/ycgcod.h"
+#include "color/ycgcof.h"
 #include "color/colorhelpers.h"
 #include "math/linefit.h"
 
@@ -52,7 +52,7 @@ public:
 
     /// @brief DXT-encodes one NxM block
     /// This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-    static auto encode(const std::array<YCgCoRd, Width * Height> &colors) -> DXTBlock
+    static auto encode(const std::array<YCgCoRf, Width * Height> &colors) -> DXTBlock
     {
         // calculate line fit through RGB color space
         auto originAndAxis = lineFit(colors);
@@ -67,15 +67,15 @@ public:
         // get colors c0 and c1 on line and round to grid
         auto c0 = colors[indexC0];
         auto c1 = colors[indexC1];
-        YCgCoRd endpoints[4] = {c0, c1, {}, {}};
+        YCgCoRf endpoints[4] = {c0, c1, {}, {}};
         /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
         {
             std::swap(c0, c1);
             std::swap(endpoints[0], endpoints[1]);
         }*/
         // calculate intermediate colors c2 and c3 (rounded like in decoder)
-        endpoints[2] = YCgCoRd::roundToRGB555((c0.cwiseProduct(YCgCoRd(2, 2, 2)) + c1).cwiseQuotient(YCgCoRd(3, 3, 3)));
-        endpoints[3] = YCgCoRd::roundToRGB555((c0 + c1.cwiseProduct(YCgCoRd(2, 2, 2))).cwiseQuotient(YCgCoRd(3, 3, 3)));
+        endpoints[2] = YCgCoRf::roundToRGB555((c0.cwiseProduct(YCgCoRf(2, 2, 2)) + c1).cwiseQuotient(YCgCoRf(3, 3, 3)));
+        endpoints[3] = YCgCoRf::roundToRGB555((c0 + c1.cwiseProduct(YCgCoRf(2, 2, 2))).cwiseQuotient(YCgCoRf(3, 3, 3)));
         // calculate minimum distance for all colors to endpoints
         std::array<uint8_t, Width *Height> bestIndices = {0};
         for (uint32_t ci = 0; ci < Width * Height; ++ci)
@@ -84,7 +84,7 @@ public:
             double bestColorDistance = std::numeric_limits<double>::max();
             for (uint32_t ei = 0; ei < 4; ++ei)
             {
-                auto indexDistance = YCgCoRd::distance(colors[ci], endpoints[ei]);
+                auto indexDistance = YCgCoRf::distance(colors[ci], endpoints[ei]);
                 // check if result improved
                 if (bestColorDistance > indexDistance)
                 {
@@ -96,15 +96,15 @@ public:
         return {toBGR555(c0.toRGB555()), toBGR555(c1.toRGB555()), bestIndices};
     }
 
-    static auto decode(const DXTBlock &block) -> std::array<YCgCoRd, Width * Height>
+    static auto decode(const DXTBlock &block) -> std::array<YCgCoRf, Width * Height>
     {
-        std::array<YCgCoRd, 4> colors;
-        colors[0] = YCgCoRd::fromRGB555(block.m_color0);
-        colors[1] = YCgCoRd::fromRGB555(block.m_color1);
-        colors[2] = YCgCoRd::roundToRGB555((colors[0].cwiseProduct(YCgCoRd(2, 2, 2)) + colors[1]).cwiseQuotient(YCgCoRd(3, 3, 3)));
-        colors[3] = YCgCoRd::roundToRGB555((colors[0] + colors[1].cwiseProduct(YCgCoRd(2, 2, 2))).cwiseQuotient(YCgCoRd(3, 3, 3)));
+        std::array<YCgCoRf, 4> colors;
+        colors[0] = YCgCoRf::fromRGB555(block.m_color0);
+        colors[1] = YCgCoRf::fromRGB555(block.m_color1);
+        colors[2] = YCgCoRf::roundToRGB555((colors[0].cwiseProduct(YCgCoRf(2, 2, 2)) + colors[1]).cwiseQuotient(YCgCoRf(3, 3, 3)));
+        colors[3] = YCgCoRf::roundToRGB555((colors[0] + colors[1].cwiseProduct(YCgCoRf(2, 2, 2))).cwiseQuotient(YCgCoRf(3, 3, 3)));
         uint32_t shift = 0;
-        std::array<YCgCoRd, Width * Height> result;
+        std::array<YCgCoRf, Width * Height> result;
         for (uint32_t i = 0; i < Width * Height; ++i)
         {
             result[i] = colors[(block.m_indices[i] & 0x3)];

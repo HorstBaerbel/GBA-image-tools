@@ -1,6 +1,6 @@
 #include "gvid.h"
 
-#include "color/ycgcod.h"
+#include "color/ycgcof.h"
 #include "color/colorhelpers.h"
 #include "exception.h"
 
@@ -135,7 +135,7 @@ auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_
     std::vector<uint8_t> flags;            // block flags store flags for 16 blocks (16*2 bits = 4 bytes)
     std::vector<uint8_t> blocks;           // blocks store verbatim codebook entries or references
     CodeBook codebook;                     // code book storing all codebook entries (when finished this equals the frame in YCgCo format)
-    std::array<Color::YCgCoRd, 16> colors; // current set of colors in 4x4 block
+    std::array<Color::YCgCoRf, 16> colors; // current set of colors in 4x4 block
     // loop through source images blocks
     for (uint32_t y = 0; y < height; y += 4)
     {
@@ -146,13 +146,13 @@ auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_
             auto cIt = colors.begin();
             for (int by = 0; by < 4; by++)
             {
-                *cIt++ = Color::YCgCoRd::fromRGB888(pixels);
+                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
                 pixels += 3;
-                *cIt++ = Color::YCgCoRd::fromRGB888(pixels);
+                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
                 pixels += 3;
-                *cIt++ = Color::YCgCoRd::fromRGB888(pixels);
+                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
                 pixels += 3;
-                *cIt++ = Color::YCgCoRd::fromRGB888(pixels);
+                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
                 pixels += pixelsPerScanline - 3 * 3;
             }
             // convert block to codebook
