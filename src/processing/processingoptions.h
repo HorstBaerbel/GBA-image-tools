@@ -52,5 +52,6 @@ public:
     static Option gvid;
     static Option interleavePixels;
     static Option dryRun;
+    static Option dumpResults;
     static Option binary;
 };

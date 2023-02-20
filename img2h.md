@@ -22,6 +22,9 @@ Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn..
   * [```--lz11```](#compressing-data) - Use LZ77 compression ["variant 11"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
+* ```OPTIONS``` are optional:
+  * ```--dryrun``` - Process data, but do not write output files.
+  * ```--dump``` - Dump image conversion result before output to result/*.png.
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here, e.g. "dir/file\*.png".
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 

@@ -239,6 +239,10 @@ ProcessingOptions::Option ProcessingOptions::dryRun{
     false,
     {"dryrun", "Process data, but do not write output files.", cxxopts::value(dryRun.isSet)}};
 
+ProcessingOptions::Option ProcessingOptions::dumpResults{
+    false,
+    {"dump", "Dump image conversion result before output (to \"result/*.png\").", cxxopts::value(dumpResults.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::binary{
     false,
     {"binary", "Output data as binary blob .bin file instead of .h / .c files.", cxxopts::value(binary.isSet)}};

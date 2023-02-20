@@ -23,8 +23,6 @@
 
 std::vector<std::string> m_inFile;
 std::string m_outFile;
-bool m_dumpResults = false;
-bool m_dryrun = false;
 ProcessingOptions options;
 
 std::string getCommandLine(int argc, const char *argv[])
@@ -48,8 +46,6 @@ bool readArguments(int argc, const char *argv[])
         cxxopts::Options opts("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
         opts.allow_unrecognised_options();
         opts.add_option("", {"h,help", "Print help"});
-        opts.add_option("", {"dump", "Dump image conversion result before output (to \"result.png\").", cxxopts::value<bool>(m_dumpResults)});
-        opts.add_option("", {"dryrun", "Only do image conversion (and dump), but do not write .c files.", cxxopts::value<bool>(m_dryrun)});
         opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
         opts.add_option("", options.reorderColors.cxxOption);
@@ -66,6 +62,8 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.lz11.cxxOption);
         opts.add_option("", options.vram.cxxOption);
+        opts.add_option("", options.dryRun.cxxOption);
+        opts.add_option("", options.dumpResults.cxxOption);
         opts.add_option("", options.interleavePixels.cxxOption);
         opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
         opts.parse_positional({"infile", "outname", "positional"});
@@ -147,8 +145,6 @@ void printUsage()
     std::cout << "Usage: img2h [GENERAL] [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME" << std::endl;
     std::cout << "GENERAL options (mutually exclusive):" << std::endl;
     std::cout << "help: Show this help." << std::endl;
-    std::cout << "dump: Dump image conversion result before output (to \"result.png\")." << std::endl;
-    std::cout << "dryrun: Only do image conversion (and dump), but do not write .c files." << std::endl;
     std::cout << "CONVERSION options (all optional):" << std::endl;
     std::cout << options.reorderColors.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
@@ -175,6 +171,9 @@ void printUsage()
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
+    std::cout << "MISC options (all optional):" << std::endl;
+    std::cout << options.dryRun.helpString() << std::endl;
+    std::cout << options.dumpResults.helpString() << std::endl;
     std::cout << "ORDER: input, reordercolors, addcolor0, movecolor0, shift, prune, sprites" << std::endl;
     std::cout << "tiles, tilemap, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
@@ -361,13 +360,13 @@ int main(int argc, const char *argv[])
             std::cout << "Saving " << (allColorMapsSame ? 1 : images.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
         }
         // now dump conversion results
-        if (m_dumpResults)
+        if (options.dumpResults)
         {
             auto dumpPath = std::filesystem::current_path() / "result";
             IO::File::writeImages(dumpPath.c_str(), images);
         }
         // open output files
-        if (!m_dryrun)
+        if (!options.dryRun)
         {
             std::ofstream hFile(m_outFile + ".h", std::ios::out);
             std::ofstream cFile(m_outFile + ".c", std::ios::out);
