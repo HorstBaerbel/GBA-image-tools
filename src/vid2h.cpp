@@ -388,8 +388,8 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    Image::IO::writeFileHeader(binFile, images, static_cast<uint8_t>(videoInfo.fps), maxMemoryNeeded);
-                    Image::IO::writeFrames(binFile, images);
+                    IO::Stream::writeFileHeader(binFile, images, static_cast<uint8_t>(videoInfo.fps), maxMemoryNeeded);
+                    IO::Stream::writeFrames(binFile, images);
                 }
                 catch (const std::runtime_error &e)
                 {

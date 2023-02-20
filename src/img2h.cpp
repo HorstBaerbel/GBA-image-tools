@@ -3,6 +3,7 @@
 #include "processing/datahelpers.h"
 #include "exception.h"
 #include "io/textio.h"
+#include "io/imageio.h"
 #include "processing/imagehelpers.h"
 #include "processing/imageprocessing.h"
 #include "processing/processingoptions.h"
@@ -22,6 +23,8 @@
 
 std::vector<std::string> m_inFile;
 std::string m_outFile;
+bool m_dumpResults = false;
+bool m_dryrun = false;
 ProcessingOptions options;
 
 std::string getCommandLine(int argc, const char *argv[])
@@ -45,6 +48,8 @@ bool readArguments(int argc, const char *argv[])
         cxxopts::Options opts("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
         opts.allow_unrecognised_options();
         opts.add_option("", {"h,help", "Print help"});
+        opts.add_option("", {"dump", "Dump image conversion result before output (to \"result.png\").", cxxopts::value<bool>(m_dumpResults)});
+        opts.add_option("", {"dryrun", "Only do image conversion (and dump), but do not write .c files.", cxxopts::value<bool>(m_dryrun)});
         opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
         opts.add_option("", options.reorderColors.cxxOption);
@@ -133,12 +138,17 @@ bool readArguments(int argc, const char *argv[])
 
 void printUsage()
 {
+    // 80 chars:  --------------------------------------------------------------------------------
     std::cout << "Convert a (list of) image files to a .c and .h file to compile them into a" << std::endl;
     std::cout << "GBA executable. Optionally compress data with GBA-compatible LZSS/LZ77." << std::endl;
     std::cout << "Will either save indices and a palette or truecolor data. All color values" << std::endl;
     std::cout << "will be converted to RGB555 directly." << std::endl;
     std::cout << "You might want to use ImageMagicks \"convert +remap\" before." << std::endl;
-    std::cout << "Usage: img2h [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME" << std::endl;
+    std::cout << "Usage: img2h [GENERAL] [CONVERSION] [COMPRESSION] INFILE [INFILEn...] OUTNAME" << std::endl;
+    std::cout << "GENERAL options (mutually exclusive):" << std::endl;
+    std::cout << "help: Show this help." << std::endl;
+    std::cout << "dump: Dump image conversion result before output (to \"result.png\")." << std::endl;
+    std::cout << "dryrun: Only do image conversion (and dump), but do not write .c files." << std::endl;
     std::cout << "CONVERSION options (all optional):" << std::endl;
     std::cout << options.reorderColors.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
@@ -169,10 +179,10 @@ void printUsage()
     std::cout << "tiles, tilemap, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
-std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
+std::tuple<Magick::ImageType, Image::DataSize, std::vector<Image::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
     Magick::ImageType imgType = Magick::ImageType::UndefinedType;
-    Magick::Geometry imgSize;
+    Image::DataSize imgSize;
     std::vector<Image::Data> images;
     // open first image and store type
     auto ifIt = fileNames.cbegin();
@@ -188,7 +198,7 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         {
             THROW(std::runtime_error, "Failed to read image: " << ex.what());
         }
-        imgSize = img.size();
+        imgSize = {img.size().width(), img.size().height()};
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
         imgType = img.type();
         const bool isPaletted = img.classType() == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
@@ -350,90 +360,99 @@ int main(int argc, const char *argv[])
             }
             std::cout << "Saving " << (allColorMapsSame ? 1 : images.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
         }
-        // open output files
-        std::ofstream hFile(m_outFile + ".h", std::ios::out);
-        std::ofstream cFile(m_outFile + ".c", std::ios::out);
-        if (hFile.is_open() && cFile.is_open())
+        // now dump conversion results
+        if (m_dumpResults)
         {
-            std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
-            try
+            auto dumpPath = std::filesystem::current_path() / "result";
+            IO::File::writeImages(dumpPath.c_str(), images);
+        }
+        // open output files
+        if (!m_dryrun)
+        {
+            std::ofstream hFile(m_outFile + ".h", std::ios::out);
+            std::ofstream cFile(m_outFile + ".c", std::ios::out);
+            if (hFile.is_open() && cFile.is_open())
             {
-                // build output file / variable name
-                std::string baseName = getBaseNameFromFilePath(m_outFile);
-                std::string varName = baseName;
-                std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
-                               { return std::toupper(c, std::locale()); });
-                // output header
-                hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
-                hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
-                      << std::endl;
-                // output image and palette info
-                const bool storeTileOrSpriteWise = (images.size() == 1) && (options.tiles || options.sprites);
-                uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
-                uint32_t nrOfImagesOrSprites = images.size();
-                if (nrOfImagesOrSprites == 1)
+                std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
+                try
                 {
-                    // if we have a single input image, store data per tile or sprite
-                    if (options.sprites)
+                    // build output file / variable name
+                    std::string baseName = getBaseNameFromFilePath(m_outFile);
+                    std::string varName = baseName;
+                    std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
+                                   { return std::toupper(c, std::locale()); });
+                    // output header
+                    hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
+                    hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
+                          << std::endl;
+                    // output image and palette info
+                    const bool storeTileOrSpriteWise = (images.size() == 1) && (options.tiles || options.sprites);
+                    uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
+                    uint32_t nrOfImagesOrSprites = images.size();
+                    if (nrOfImagesOrSprites == 1)
                     {
-                        // calculate number of w*h sprites
-                        auto spriteWidth = options.sprites.value.front();
-                        auto spriteHeight = options.sprites.value.back();
-                        nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (spriteWidth * spriteHeight);
-                        nrOfBytesPerImageOrSprite = spriteWidth * spriteHeight;
-                        imgSize = Magick::Geometry(spriteWidth, spriteHeight);
+                        // if we have a single input image, store data per tile or sprite
+                        if (options.sprites)
+                        {
+                            // calculate number of w*h sprites
+                            auto spriteWidth = options.sprites.value.front();
+                            auto spriteHeight = options.sprites.value.back();
+                            nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (spriteWidth * spriteHeight);
+                            nrOfBytesPerImageOrSprite = spriteWidth * spriteHeight;
+                            imgSize = {spriteWidth, spriteHeight};
+                        }
+                        else if (options.tiles)
+                        {
+                            // calculate number of 8*8 pixel tiles
+                            nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
+                            nrOfBytesPerImageOrSprite = 64;
+                            imgSize = {8, 8};
+                        }
                     }
-                    else if (options.tiles)
+                    nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
+                    // convert image data to uint32_ts and palette to BGR555 uint16_ts
+                    auto [imageData32, imageOrSpriteStartIndices] = Image::Processing::combineImageData<uint32_t>(images, options.interleavePixels);
+                    // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
+                    nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
+                    // output image and palette data
+                    if (options.tilemap)
                     {
-                        // calculate number of 8*8 pixel tiles
-                        nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
-                        nrOfBytesPerImageOrSprite = 64;
-                        imgSize = Magick::Geometry(8, 8);
+                        // convert map data to uint32_ts
+                        auto [mapData32, mapStartIndices] = Image::Processing::combineMapData<uint32_t>(images);
+                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, mapData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                        IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, mapData32, storeTileOrSpriteWise);
                     }
+                    else
+                    {
+                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, {}, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                        IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, {}, storeTileOrSpriteWise);
+                    }
+                    if (imgType == Magick::ImageType::PaletteType)
+                    {
+                        auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(images, [](auto cm)
+                                                                                                                                                                                                                            { return convertToBGR555(cm); }));
+                        IO::Text::writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
+                        IO::Text::writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
+                    }
+                    hFile << std::endl;
+                    hFile.close();
+                    cFile.close();
                 }
-                nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
-                // convert image data to uint32_ts and palette to BGR555 uint16_ts
-                auto [imageData32, imageOrSpriteStartIndices] = Image::Processing::combineImageData<uint32_t>(images, options.interleavePixels);
-                // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
-                nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
-                // output image and palette data
-                if (options.tilemap)
+                catch (const std::runtime_error &e)
                 {
-                    // convert map data to uint32_ts
-                    auto [mapData32, mapStartIndices] = Image::Processing::combineMapData<uint32_t>(images);
-                    writeImageInfoToH(hFile, varName, imageData32, mapData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                    writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, mapData32, storeTileOrSpriteWise);
+                    hFile.close();
+                    cFile.close();
+                    std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
+                    return 1;
                 }
-                else
-                {
-                    writeImageInfoToH(hFile, varName, imageData32, {}, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                    writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, {}, storeTileOrSpriteWise);
-                }
-                if (imgType == Magick::ImageType::PaletteType)
-                {
-                    auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(images, [](auto cm)
-                                                                                                                                                                                                                        { return convertToBGR555(cm); }));
-                    writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
-                    writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
-                }
-                hFile << std::endl;
-                hFile.close();
-                cFile.close();
             }
-            catch (const std::runtime_error &e)
+            else
             {
                 hFile.close();
                 cFile.close();
-                std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
+                std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
                 return 1;
             }
-        }
-        else
-        {
-            hFile.close();
-            cFile.close();
-            std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
-            return 1;
         }
         std::cout << "Done" << std::endl;
     }
