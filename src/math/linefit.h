@@ -21,7 +21,7 @@ auto lineFit(const std::array<T, N> &p) -> std::pair<T, T>
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> points(3, NrOfAtoms);
     for (std::size_t i = 0; i < NrOfAtoms; ++i)
     {
-        points.col(i) = p[i];
+        points.col(i) = Eigen::Vector3d(p[i].x(), p[i].y(), p[i].z());
     }
     // center on mean
     Eigen::Vector3d mean = points.rowwise().mean();
@@ -29,5 +29,5 @@ auto lineFit(const std::array<T, N> &p) -> std::pair<T, T>
     // calculate SVD and first eigenvector
     auto svd = centered.jacobiSvd(Eigen::DecompositionOptions::ComputeFullU);
     Eigen::Vector3d axis = svd.matrixU().col(0).transpose().normalized();
-    return {T(mean), T(axis)};
+    return {T(mean.x(), mean.y(), mean.z()), T(axis.x(), axis.y(), axis.z())};
 }
