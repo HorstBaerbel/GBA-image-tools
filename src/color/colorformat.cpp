@@ -1,6 +1,6 @@
 #include "colorformat.h"
 
-#include <stdexcept>
+#include "exception.h"
 
 namespace Color
 {
@@ -27,10 +27,10 @@ namespace Color
             return 32;
         case Format::RGBf:
             return 96;
-        case Format::YCgCod:
-            return 192;
+        case Format::YCgCof:
+            return 96;
         default:
-            throw std::runtime_error("Bad color format");
+            THROW(std::runtime_error, "Bad color format");
         }
     }
 
@@ -56,10 +56,10 @@ namespace Color
             return "XRGB888";
         case Format::RGBf:
             return "RGB float";
-        case Format::YCgCod:
-            return "YCgCo double";
+        case Format::YCgCof:
+            return "YCgCo float";
         default:
-            throw std::runtime_error("Bad color format");
+            THROW(std::runtime_error, "Bad color format");
         }
     }
 

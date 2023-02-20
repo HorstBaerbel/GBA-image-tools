@@ -12,18 +12,15 @@ namespace Image
         case Color::Format::RGB565:
         case Color::Format::RGB888:
         case Color::Format::RGBf:
-        case Color::Format::YCgCod:
+        case Color::Format::YCgCof:
             return false;
-            break;
         case Color::Format::Paletted1:
         case Color::Format::Paletted2:
         case Color::Format::Paletted4:
         case Color::Format::Paletted8:
             return true;
-            break;
         default:
             THROW(std::runtime_error, "Unsupported color map format");
-            break;
         }
     }
 
@@ -33,17 +30,14 @@ namespace Image
         {
         case Color::Format::Unknown:
             return false;
-            break;
         case Color::Format::RGB555:
         case Color::Format::RGB565:
         case Color::Format::RGB888:
         case Color::Format::RGBf:
-        case Color::Format::YCgCod:
+        case Color::Format::YCgCof:
             return frame.colorMap.size() > 0;
-            break;
         default:
             THROW(std::runtime_error, "Unsupported color map format");
-            break;
         }
     }
 
@@ -53,20 +47,16 @@ namespace Image
         {
         case Color::Format::Unknown:
             return 0;
-            break;
         case Color::Format::RGB555:
         case Color::Format::RGB565:
             return 2;
         case Color::Format::RGB888:
             return 3;
         case Color::Format::RGBf:
+        case Color::Format::YCgCof:
             return 12;
-        case Color::Format::YCgCod:
-            return 24;
-            break;
         default:
             THROW(std::runtime_error, "Unsupported color map format");
-            break;
         }
     }
 
