@@ -144,7 +144,7 @@ bool readArguments(int argc, const char *argv[])
             options.tiles.isSet = true;
         }
     }
-    catch (const cxxopts::OptionException &e)
+    catch (const cxxopts::exceptions::parsing &e)
     {
         std::cerr << "Argument error: " << e.what() << std::endl;
         return false;

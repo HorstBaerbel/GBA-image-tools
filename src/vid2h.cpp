@@ -141,7 +141,7 @@ bool readArguments(int argc, const char *argv[])
         options.sprites.parse(result);
         options.dxtv.parse(result);
     }
-    catch (const cxxopts::OptionException &e)
+    catch (const cxxopts::exceptions::parsing &e)
     {
         std::cerr << "Argument error: " << e.what() << std::endl;
         return false;
