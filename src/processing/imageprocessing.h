@@ -44,9 +44,8 @@ namespace Image
         std::string getProcessingDescription(const std::string &seperator = ", ");
 
         /// @brief Run processing steps in pipeline on data. Used for processing a batch of images
-        /// @param images Input data
-        /// @note Will silently ignore OperationType::Input operations
-        std::vector<Data> processBatch(const std::vector<Data> &images);
+        /// @param images Input images and file names
+        std::vector<Data> processBatch(const std::vector<InputData> &images);
 
         /// @brief Run processing steps in pipeline on single image. Used for processing a stream of images / video frames
         /// @param image Input image
@@ -58,14 +57,14 @@ namespace Image
 
         /// @brief Binarize image using threshold. Everything < threshold will be black everything > threshold white
         /// @param parameters Binarization threshold as double. Must be in [0.0, 1.0]
-        static Data toBlackWhite(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data toBlackWhite(const InputData &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert input image to paletted image by:
         /// - Mapping colors to colorSpaceMap (ImageMagicks -remap option)
         /// - Dithering to nrOfColors (ImageMagicks -colors option)
         /// @param parameters Magick::Image containing all colors of the target color space, e.g. RGB555 and
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
-        static Data toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data toPaletted(const InputData &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert all input images to paletted images by:
         /// - Mapping colors to colorSpaceMap (ImageMagicks -remap option)
@@ -73,11 +72,11 @@ namespace Image
         /// - Dithering to nrOfColors (ImageMagicks -colors option)
         /// @param parameters Magick::Image containing all colors of the target color space, e.g. RGB555 and
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
-        static std::vector<Data> toCommonPalette(const std::vector<Magick::Image> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static std::vector<Data> toCommonPalette(const std::vector<InputData> &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert input image to RGB55, RGB565 or RGB888
         /// @param parameters Truecolor format to convert image to as std::string
-        static Data toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data toTruecolor(const InputData &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         // --- data conversion functions ------------------------------------
 
@@ -247,18 +246,20 @@ namespace Image
         enum class OperationType
         {
             Input,        // Converts image input into 1 data output
+            BatchInput,   // Converts N image inputs into N data outputs
             Convert,      // Converts 1 data input into 1 data output
             ConvertState, // Converts 1 data input + state into 1 data output
             BatchConvert, // Converts N data inputs into N data outputs
             Reduce        // Converts N data inputs into 1 data output
         };
 
-        using InputFunc = std::function<Data(const Magick::Image &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
+        using InputFunc = std::function<Data(const InputData &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
+        using BatchInputFunc = std::function<std::vector<Data>(const std::vector<InputData> &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
         using ConvertFunc = std::function<Data(const Data &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
         using ConvertStateFunc = std::function<Data(const Data &, const std::vector<Parameter> &, std::vector<uint8_t> &, Statistics::Container::SPtr statistics)>;
         using BatchConvertFunc = std::function<std::vector<Data>(const std::vector<Data> &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
         using ReduceFunc = std::function<Data(const std::vector<Data> &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
-        using FunctionType = std::variant<InputFunc, ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc>;
+        using FunctionType = std::variant<InputFunc, BatchInputFunc, ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc>;
 
         struct ProcessingFunc
         {

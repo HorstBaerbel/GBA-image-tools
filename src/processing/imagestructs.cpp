@@ -5,23 +5,7 @@ namespace Image
 
     auto isPaletted(const Data &frame) -> bool
     {
-        switch (frame.colorFormat)
-        {
-        case Color::Format::Unknown:
-        case Color::Format::RGB555:
-        case Color::Format::RGB565:
-        case Color::Format::RGB888:
-        case Color::Format::RGBf:
-        case Color::Format::YCgCof:
-            return false;
-        case Color::Format::Paletted1:
-        case Color::Format::Paletted2:
-        case Color::Format::Paletted4:
-        case Color::Format::Paletted8:
-            return true;
-        default:
-            THROW(std::runtime_error, "Unsupported color map format");
-        }
+        return isPaletted(frame.colorFormat);
     }
 
     auto hasColorMap(const Data &frame) -> bool

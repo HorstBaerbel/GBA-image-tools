@@ -198,11 +198,11 @@ void printUsage()
     std::cout << "tiles, tilemap, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
-std::tuple<Magick::ImageType, Image::DataSize, std::vector<Image::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
+std::vector<Image::InputData> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
-    Magick::ImageType imgType = Magick::ImageType::UndefinedType;
-    Image::DataSize imgSize;
-    std::vector<Image::Data> images;
+    Magick::ImageType commonImgType = Magick::ImageType::UndefinedType;
+    Image::DataSize commonImgSize = {0, 0};
+    std::vector<Image::InputData> images;
     // open first image and store type
     auto ifIt = fileNames.cbegin();
     while (ifIt != fileNames.cend())
@@ -217,9 +217,9 @@ std::tuple<Magick::ImageType, Image::DataSize, std::vector<Image::Data>> readIma
         {
             THROW(std::runtime_error, "Failed to read image: " << ex.what());
         }
-        imgSize = {img.size().width(), img.size().height()};
+        Image::DataSize imgSize = {img.size().width(), img.size().height()};
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        imgType = img.type();
+        Magick::ImageType imgType = img.type();
         const bool isPaletted = img.classType() == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
         if (isPaletted)
         {
@@ -234,11 +234,17 @@ std::tuple<Magick::ImageType, Image::DataSize, std::vector<Image::Data>> readIma
             THROW(std::runtime_error, "Unsupported image format");
         }
         // compare size and type to first image to make sure all images have the same format
-        if (images.size() > 0)
+        if (images.size() == 0)
+        {
+            // set type and size of first image
+            commonImgType = imgType;
+            commonImgSize = imgSize;
+        }
+        else
         {
             // check type and size
-            REQUIRE(images.front().type == imgType, std::runtime_error, "Image types do not match");
-            REQUIRE(images.front().size == imgSize, std::runtime_error, "Image sizes do not match");
+            REQUIRE(commonImgType == imgType, std::runtime_error, "Image types do not match");
+            REQUIRE(commonImgSize == imgSize, std::runtime_error, "Image sizes do not match");
         }
         // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
         if ((options.sprites || options.tiles) && (!isPaletted || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
@@ -249,14 +255,10 @@ std::tuple<Magick::ImageType, Image::DataSize, std::vector<Image::Data>> readIma
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        auto imageFormat = isPaletted ? Color::Format::Paletted8 : Color::Format::RGB555;
-        auto imageData = isPaletted ? getImageData(img).first : toRGB555(getImageData(img).first);
-        auto imageColorMap = isPaletted ? getColorMap(img) : std::vector<Magick::Color>();
-        Image::Data entry{static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, imgType, imgSize, Image::DataType::Bitmap, imageFormat, {}, imageData, imageColorMap};
-        images.push_back(entry);
+        images.push_back({static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, img});
         ifIt++;
     }
-    return {imgType, imgSize, images};
+    return images;
 }
 
 std::string getBaseNameFromFilePath(const std::string &filePath)
@@ -291,7 +293,7 @@ int main(int argc, const char *argv[])
         // fire up ImageMagick
         Magick::InitializeMagick(*argv);
         // read image(s) from disk
-        auto [imgType, imgSize, images] = readImages(m_inFile, options);
+        auto images = readImages(m_inFile, options);
         // build processing pipeline - input
         Image::Processing processing;
         if (options.blackWhite)
@@ -329,7 +331,7 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
         }
-        if (imgType == Magick::ImageType::PaletteType)
+        if (options.paletted || options.commonPalette)
         {
             if (images.size() > 1)
             {
@@ -378,31 +380,34 @@ int main(int argc, const char *argv[])
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;
-        images = processing.processBatch(images);
+        auto data = processing.processBatch(images);
+        // get info from data
+        auto dataSize = data.front().size;
+        const bool dataIsPaletted = Image::isPaletted(data.front());
         // check if all color maps are the same
         bool allColorMapsSame = true;
         uint32_t maxColorMapColors = 0;
-        if (imgType == Magick::ImageType::PaletteType)
+        if (dataIsPaletted)
         {
-            if (images.size() == 1)
+            if (data.size() == 1)
             {
-                maxColorMapColors = images.front().colorMap.size();
+                maxColorMapColors = data.front().colorMap.size();
             }
             else
             {
-                allColorMapsSame = std::find_if_not(images.cbegin(), images.cend(), [&refColorMap = images.front().colorMap](const auto &img)
-                                                    { return img.colorMap == refColorMap; }) == images.cend();
-                maxColorMapColors = std::max_element(images.cbegin(), images.cend(), [](const auto &imgA, const auto &imgB)
+                allColorMapsSame = std::find_if_not(data.cbegin(), data.cend(), [&refColorMap = data.front().colorMap](const auto &img)
+                                                    { return img.colorMap == refColorMap; }) == data.cend();
+                maxColorMapColors = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
                                                      { return imgA.colorMap.size() < imgB.colorMap.size(); })
                                         ->colorMap.size();
             }
-            std::cout << "Saving " << (allColorMapsSame ? 1 : images.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
+            std::cout << "Saving " << (allColorMapsSame ? 1 : data.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
         }
         // now dump conversion results
         if (options.dumpResults)
         {
             auto dumpPath = std::filesystem::current_path() / "result";
-            IO::File::writeImages(dumpPath.c_str(), images);
+            IO::File::writeImages(dumpPath.c_str(), data);
         }
         // open output files
         if (!options.dryRun)
@@ -424,9 +429,9 @@ int main(int argc, const char *argv[])
                     hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
                           << std::endl;
                     // output image and palette info
-                    const bool storeTileOrSpriteWise = (images.size() == 1) && (options.tiles || options.sprites);
-                    uint32_t nrOfBytesPerImageOrSprite = imgSize.width() * imgSize.height();
-                    uint32_t nrOfImagesOrSprites = images.size();
+                    const bool storeTileOrSpriteWise = (data.size() == 1) && (options.tiles || options.sprites);
+                    uint32_t nrOfBytesPerImageOrSprite = dataSize.width() * dataSize.height();
+                    uint32_t nrOfImagesOrSprites = data.size();
                     if (nrOfImagesOrSprites == 1)
                     {
                         // if we have a single input image, store data per tile or sprite
@@ -435,40 +440,40 @@ int main(int argc, const char *argv[])
                             // calculate number of w*h sprites
                             auto spriteWidth = options.sprites.value.front();
                             auto spriteHeight = options.sprites.value.back();
-                            nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / (spriteWidth * spriteHeight);
+                            nrOfImagesOrSprites = (dataSize.width() * dataSize.height()) / (spriteWidth * spriteHeight);
                             nrOfBytesPerImageOrSprite = spriteWidth * spriteHeight;
-                            imgSize = {spriteWidth, spriteHeight};
+                            dataSize = {spriteWidth, spriteHeight};
                         }
                         else if (options.tiles)
                         {
                             // calculate number of 8*8 pixel tiles
-                            nrOfImagesOrSprites = (imgSize.width() * imgSize.height()) / 64;
+                            nrOfImagesOrSprites = (dataSize.width() * dataSize.height()) / 64;
                             nrOfBytesPerImageOrSprite = 64;
-                            imgSize = {8, 8};
+                            dataSize = {8, 8};
                         }
                     }
-                    nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
+                    nrOfBytesPerImageOrSprite = dataIsPaletted ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
                     // convert image data to uint32_ts and palette to BGR555 uint16_ts
-                    auto [imageData32, imageOrSpriteStartIndices] = Image::Processing::combineImageData<uint32_t>(images, options.interleavePixels);
+                    auto [imageData32, imageOrSpriteStartIndices] = Image::Processing::combineImageData<uint32_t>(data, options.interleavePixels);
                     // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
                     nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
                     // output image and palette data
                     if (options.tilemap)
                     {
                         // convert map data to uint32_ts
-                        auto [mapData32, mapStartIndices] = Image::Processing::combineMapData<uint32_t>(images);
-                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, mapData32, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                        auto [mapData32, mapStartIndices] = Image::Processing::combineMapData<uint32_t>(data);
+                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, mapData32, dataSize.width(), dataSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
                         IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, mapData32, storeTileOrSpriteWise);
                     }
                     else
                     {
-                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, {}, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, {}, dataSize.width(), dataSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
                         IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, {}, storeTileOrSpriteWise);
                     }
-                    if (imgType == Magick::ImageType::PaletteType)
+                    if (dataIsPaletted)
                     {
-                        auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(images, [](auto cm)
-                                                                                                                                                                                                                            { return convertToBGR555(cm); }));
+                        auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(data.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(data, [](auto cm)
+                                                                                                                                                                                                                          { return convertToBGR555(cm); }));
                         IO::Text::writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
                         IO::Text::writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
                     }

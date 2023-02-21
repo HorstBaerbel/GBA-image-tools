@@ -5,7 +5,28 @@
 namespace Color
 {
 
-    uint32_t bitsPerPixelForFormat(Format format)
+    auto isPaletted(Format format) -> bool
+    {
+        switch (format)
+        {
+        case Color::Format::Unknown:
+        case Color::Format::RGB555:
+        case Color::Format::RGB565:
+        case Color::Format::RGB888:
+        case Color::Format::RGBf:
+        case Color::Format::YCgCof:
+            return false;
+        case Color::Format::Paletted1:
+        case Color::Format::Paletted2:
+        case Color::Format::Paletted4:
+        case Color::Format::Paletted8:
+            return true;
+        default:
+            THROW(std::runtime_error, "Unsupported color map format");
+        }
+    }
+
+    auto bitsPerPixelForFormat(Format format) -> uint32_t
     {
         switch (format)
         {
@@ -34,7 +55,7 @@ namespace Color
         }
     }
 
-    std::string to_string(Format format)
+    auto to_string(Format format) -> std::string
     {
         switch (format)
         {

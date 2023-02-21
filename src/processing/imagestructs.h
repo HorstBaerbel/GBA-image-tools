@@ -21,6 +21,14 @@ namespace Image
         Tilemap // tilemap data
     };
 
+    /// @brief Stores input data for image processing
+    struct InputData
+    {
+        uint32_t index = 0;   // input file index counter
+        std::string fileName; // input file name
+        Magick::Image image;  // input image
+    };
+
     /// @brief Stores data for an image
     struct Data
     {

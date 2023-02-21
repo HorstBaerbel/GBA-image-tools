@@ -22,10 +22,13 @@ namespace Color
         YCgCof = 97    // YCgCo float truecolor format
     };
 
+    /// @brief Return true if color format is indexed / paletted
+    auto isPaletted(Format format) -> bool;
+
     /// @brief Return bits per pixel for input color format
-    uint32_t bitsPerPixelForFormat(Format format);
+    auto bitsPerPixelForFormat(Format format) -> uint32_t;
 
     /// @brief Return color format as string
-    std::string to_string(Format format);
+    auto to_string(Format format) -> std::string;
 
 }
