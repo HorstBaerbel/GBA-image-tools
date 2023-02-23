@@ -3,15 +3,17 @@
 #include "codec/dxt.h"
 #include "codec/dxtv.h"
 #include "codec/gvid.h"
-#include "color/rgbf.h"
+#include "color/xrgb888.h"
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
+#include "math/colorfit.h"
 #include "datahelpers.h"
 #include "exception.h"
 #include "imagehelpers.h"
 #include "spritehelpers.h"
 
 #include <iostream>
+#include <memory>
 
 namespace Image
 {
@@ -88,100 +90,58 @@ namespace Image
     {
         // get parameter(s)
         REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toCommonPalette expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
-        const auto nrOfcolors = std::get<uint32_t>(parameters.back());
-        REQUIRE(nrOfcolors >= 2 && nrOfcolors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
+        const auto nrOfColors = std::get<uint32_t>(parameters.back());
+        REQUIRE(nrOfColors >= 2 && nrOfColors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
         const auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
         REQUIRE(colorSpaceMap.size().width() > 0 && colorSpaceMap.size().height() > 0, std::runtime_error, "colorSpaceMap can not be empty");
         REQUIRE(data.size() > 1, std::runtime_error, "Number of input images must be > 1");
+        // set up number of cores for parallel processing
+        const auto nrOfProcessors = omp_get_num_procs();
+        omp_set_num_threads(nrOfProcessors);
         // build histogram of colors used in all input images
-        std::map<uint32_t, uint64_t> histogram;
+        std::cout << "Building histogram..." << std::endl;
+        std::map<Color::XRGB888, uint64_t> histogram;
         std::for_each(data.cbegin(), data.cend(), [&histogram](const auto &d)
                       {
             auto imageData = getImageDataXRGB888(d.image).first;
             std::for_each(imageData.cbegin(), imageData.cend(), [&histogram](auto pixel)
                 { histogram[pixel]++; }); });
+        std::cout << histogram.size() << " unique colors in images" << std::endl;
         // create as many preliminary clusters as colors in colorSpaceMap
-        struct Cluster
-        {
-            Color::RGBf center;
-            std::vector<std::pair<Color::RGBf, double>> colors;
-            double importance = 0.0;
-        };
-        std::vector<Cluster> clusters;
-        auto colorSpace = getImageDataRGBf(colorSpaceMap).first;
-        std::transform(colorSpace.cbegin(), colorSpace.cend(), std::back_inserter(clusters), [](auto color)
-                       { return Cluster{color, {}}; });
-        // sort histogram colors into closest clusters
-        std::for_each(histogram.cbegin(), histogram.cend(), [&clusters](auto entry)
-                      {
-            auto color = Color::RGBf::fromXRGB888(entry.first);
-            // find cluster closest to color
-            double minDistance = std::numeric_limits<double>::max();
-            std::size_t clusterIndex = 0;
-            for (std::size_t i = 0; i < clusters.size(); ++i)
-            {
-                auto distance = Color::RGBf::distance(color, clusters[i].center);
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    clusterIndex = i;
-                }
-            }
-            // insert color and increase importance of cluster
-            clusters[clusterIndex].colors.emplace_back(std::make_pair(color, static_cast<double>(entry.second)));
-            clusters[clusterIndex].importance += entry.second; });
-        // remove unimportant clusters until we have only nrOfColors clusters left
-        while (clusters.size() > nrOfcolors)
-        {
-            // sort clusters by importance
-            std::sort(clusters.begin(), clusters.end(), [](const auto &a, const auto &b)
-                      { return a.importance < b.importance; });
-            // redistribute colors of last cluster to closest clusters
-            auto &colors = clusters.back().colors;
-            std::for_each(colors.cbegin(), std::prev(colors.cend()), [&clusters](auto entry)
-                          {
-                // find cluster closest to color
-                double minDistance = std::numeric_limits<double>::max();
-                std::size_t clusterIndex = 0;
-                for (std::size_t i = 0; i < clusters.size(); ++i)
-                {
-                    auto distance = Color::RGBf::distance(entry.first, clusters[i].center);
-                    if (distance < minDistance)
-                    {
-                        minDistance = distance;
-                        clusterIndex = i;
-                    }
-                }
-                // insert color into cluster and increase its importance
-                clusters[clusterIndex].colors.emplace_back(entry);
-                clusters[clusterIndex].importance += entry.second; });
-            // remove last cluster
-            clusters.pop_back();
-        }
+        auto colorSpace = getImageDataXRGB888(colorSpaceMap).first;
+        ColorFit<Color::XRGB888> colorFit(colorSpace, Color::XRGB888(0xFFFFFFFF));
+        std::cout << "Color space has " << colorSpace.size() << " colors" << std::endl;
+        // sort histogram colors into closest clusters in parallel
+        std::cout << "Sorting colors into clusters... (this might take some time)" << std::endl;
+        auto colorMap = colorFit.reduceColors(histogram, nrOfColors);
         // convert clusters to color map
-        Magick::Image colorMap(Magick::Geometry(clusters.size(), 1), "black");
-        colorMap.type(Magick::ImageType::TrueColorType);
-        colorMap.modifyImage();
-        auto colorMapPixels = colorMap.getPixels(0, 0, colorMap.columns(), colorMap.rows());
-        for (uint32_t i = 0; i < clusters.size(); ++i)
+        std::cout << "Building color table..." << std::endl;
+        Magick::Image colorMapImage(Magick::Geometry(colorMap.size(), 1), "black");
+        colorMapImage.type(Magick::ImageType::TrueColorType);
+        colorMapImage.modifyImage();
+        auto colorMapPixels = colorMapImage.getPixels(0, 0, colorMapImage.columns(), colorMapImage.rows());
+        for (std::size_t i = 0; i < colorMap.size(); ++i)
         {
-            *colorMapPixels++ = toMagick(clusters[i].center);
+            *colorMapPixels++ = toMagick(colorMap[i]);
         }
-        colorMap.syncPixels();
+        colorMapImage.syncPixels();
         // apply color map to all images
+        std::cout << "Converting images..." << std::endl;
         std::vector<Data> result;
-        std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [&colorMap](auto d)
+        std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [&colorMapImage](const auto &d)
                        {
             // convert image to paletted using dithering
             auto temp = d.image;
             temp.quantizeDither(true);
             temp.quantizeDitherMethod(Magick::DitherMethod::RiemersmaDitherMethod);
-            temp.map(colorMap, true);
+            temp.map(colorMapImage, true);
             temp.type(Magick::ImageType::PaletteType);
             // get image data and color map
             auto imageData = getImageData(temp);
             REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
-            return Data{d.index, d.fileName, temp.type(), {temp.size().width(), temp.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}}; });
+            //auto dumpPath = std::filesystem::current_path() / "result" / (std::to_string(d.index) + ".png");
+            //temp.write(dumpPath.c_str());
+            return Data{d.index, d.fileName, temp.type(), DataSize{temp.size().width(), temp.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}}; });
         return result;
     }
 
@@ -640,14 +600,41 @@ namespace Image
             for (std::size_t pi = 0; pi < step.parameters.size(); pi++)
             {
                 const auto &p = step.parameters[pi];
-                result += std::holds_alternative<bool>(p) ? (std::get<bool>(p) ? "true" : "false") : "";
-                result += std::holds_alternative<int32_t>(p) ? std::to_string(std::get<int32_t>(p)) : "";
-                result += std::holds_alternative<uint32_t>(p) ? std::to_string(std::get<uint32_t>(p)) : "";
-                result += std::holds_alternative<double>(p) ? std::to_string(std::get<double>(p)) : "";
-                result += std::holds_alternative<Magick::Color>(p) ? asHex(std::get<Magick::Color>(p)) : "";
-                result += std::holds_alternative<Color::Format>(p) ? to_string(std::get<Color::Format>(p)) : "";
-                result += std::holds_alternative<std::string>(p) ? std::get<std::string>(p) : "";
-                result += (pi < (step.parameters.size() - 1) ? " " : "");
+                if (std::holds_alternative<bool>(p))
+                {
+                    result += std::get<bool>(p) ? "true" : "false";
+                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                }
+                else if (std::holds_alternative<int32_t>(p))
+                {
+                    result += std::to_string(std::get<int32_t>(p));
+                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                }
+                else if (std::holds_alternative<uint32_t>(p))
+                {
+                    result += std::to_string(std::get<uint32_t>(p));
+                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                }
+                else if (std::holds_alternative<double>(p))
+                {
+                    result += std::to_string(std::get<double>(p));
+                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                }
+                else if (std::holds_alternative<Magick::Color>(p))
+                {
+                    result += asHex(std::get<Magick::Color>(p));
+                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                }
+                else if (std::holds_alternative<Color::Format>(p))
+                {
+                    result += to_string(std::get<Color::Format>(p));
+                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                }
+                else if (std::holds_alternative<std::string>(p))
+                {
+                    result += std::get<std::string>(p);
+                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                }
             }
             result += (si < (m_steps.size() - 1) ? seperator : "");
         }

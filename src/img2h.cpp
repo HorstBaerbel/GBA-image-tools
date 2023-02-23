@@ -44,7 +44,6 @@ bool readArguments(int argc, const char *argv[])
     try
     {
         cxxopts::Options opts("img2h", "Convert and compress a list images to a .h / .c file to compile it into a program");
-        opts.allow_unrecognised_options();
         opts.add_option("", {"h,help", "Print help"});
         opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
@@ -69,8 +68,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.dryRun.cxxOption);
         opts.add_option("", options.dumpResults.cxxOption);
         opts.add_option("", options.interleavePixels.cxxOption);
-        opts.add_option("", {"positional", "", cxxopts::value<std::vector<std::string>>()});
-        opts.parse_positional({"infile", "outname", "positional"});
+        opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
         if (result.count("h"))
@@ -146,6 +144,7 @@ bool readArguments(int argc, const char *argv[])
     }
     catch (const cxxopts::exceptions::parsing &e)
     {
+        std::cerr << "In command line: " << getCommandLine(argc, argv) << std::endl;
         std::cerr << "Argument error: " << e.what() << std::endl;
         return false;
     }
@@ -259,14 +258,6 @@ std::vector<Image::InputData> readImages(const std::vector<std::string> &fileNam
         ifIt++;
     }
     return images;
-}
-
-std::string getBaseNameFromFilePath(const std::string &filePath)
-{
-    std::string baseName = filePath;
-    baseName = baseName.substr(baseName.find_last_of("/\\") + 1);
-    baseName = baseName.substr(0, baseName.find_first_of("."));
-    return baseName;
 }
 
 int main(int argc, const char *argv[])
@@ -420,7 +411,7 @@ int main(int argc, const char *argv[])
                 try
                 {
                     // build output file / variable name
-                    std::string baseName = getBaseNameFromFilePath(m_outFile);
+                    std::string baseName = std::filesystem::path(m_outFile).filename().replace_extension("");
                     std::string varName = baseName;
                     std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
                                    { return std::toupper(c, std::locale()); });
