@@ -1,4 +1,5 @@
 build/*
+result*/*
 .vscode/ipch/*
 *.code-workspace
 CMakeCache.txt
