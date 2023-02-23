@@ -58,9 +58,9 @@ namespace Color
         cg = cg < 0.0F ? 0.0F : (cg > 31.0F ? 31.0F : cg);
         cb = cb < 0.0F ? 0.0F : (cb > 31.0F ? 31.0F : cb);
         // round to grid point
-        cr = std::trunc(cr + 0.5);
-        cg = std::trunc(cg + 0.5);
-        cb = std::trunc(cb + 0.5);
+        cr = std::trunc(cr + 0.5F);
+        cg = std::trunc(cg + 0.5F);
+        cb = std::trunc(cb + 0.5F);
         RGBf result;
         result.R() = cr / 31.0F;
         result.G() = cg / 31.0F;
@@ -76,12 +76,12 @@ namespace Color
         }
         float ra = color0.R();
         float rb = color1.R();
-        float r = 0.5 * (ra + rb);
+        float rMean = 0.5F * (ra + rb);
         float dR = ra - rb;
         float dG = color0.G() - color1.G();
         float dB = color0.B() - color1.B();
-        return ((2.0F + r) * dR * dR + 4.0F * dG * dG + (3.0F - r) * dB * dB) / 9.0F;
-    } // max:  (2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1 = 2.5 + 4 + 2.5 = 9 / 9 = 1
+        return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (3.0F - rMean) * dB * dB) / 9.0F;
+    } // max:   (2    +   0.5) *  1 *  1 + 4    *  1 *  1 + (3 -      0.5) *  1 *  1 = 2.5 + 4 + 2.5 = 9 / 9 = 1
 
     auto RGBf::distance(const std::array<RGBf, 16> &colors0, const std::array<RGBf, 16> &colors1) -> float
     {
