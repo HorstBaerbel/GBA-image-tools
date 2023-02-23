@@ -2,14 +2,19 @@
 
 #include <Magick++.h>
 
+#include <filesystem>
+
 namespace IO
 {
 
     auto writePaletted(Magick::Image &dst, const Image::Data &src) -> void
     {
         // write index data
+        MagickCore::PixelPacket *pixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
         MagickCore::IndexPacket *indices = dst.getIndexes();
-        for (uint32_t i = 0; i < src.data.size(); i++)
+        REQUIRE(indices != nullptr, std::runtime_error, "Bad indices pointer");
+        const auto nrOfPixels = dst.columns() * dst.rows();
+        for (std::size_t i = 0; i < nrOfPixels; i++)
         {
             *indices++ = src.data[i];
         }
@@ -17,7 +22,7 @@ namespace IO
         double maxR = 0.0;
         double maxG = 0.0;
         double maxB = 0.0;
-        switch (src.colorFormat)
+        switch (src.colorMapFormat)
         {
         case Color::Format::RGB555:
             maxR = 31.0;
@@ -37,12 +42,14 @@ namespace IO
         default:
             THROW(std::runtime_error, "Unsupported image format");
         }
-        for (uint32_t i = 0; i < src.colorMapData.size(); i += 3)
+        const auto nrOfColors = src.colorMapData.size() / 3;
+        for (std::size_t i = 0; i < nrOfColors; i++)
         {
+            const auto index = i * 3;
             Magick::Color color;
-            color.redQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.colorMapData[i]) / maxR));
-            color.greenQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.colorMapData[i + 1]) / maxG));
-            color.blueQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.colorMapData[i + 2]) / maxB));
+            color.redQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.colorMapData[index]) / maxR));
+            color.greenQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.colorMapData[index + 1]) / maxG));
+            color.blueQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.colorMapData[index + 2]) / maxB));
             dst.colorMap(i, color);
         }
     }
@@ -73,12 +80,14 @@ namespace IO
             THROW(std::runtime_error, "Unsupported image format");
         }
         MagickCore::PixelPacket *pixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
-        for (uint32_t i = 0; i < src.data.size(); i += 3)
+        const auto nrOfPixels = dst.columns() * dst.rows();
+        for (std::size_t i = 0; i < nrOfPixels; i++)
         {
+            const auto index = i * 3;
             Magick::Color color;
-            color.redQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.data[i]) / maxR));
-            color.greenQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.data[i + 1]) / maxG));
-            color.blueQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.data[i + 2]) / maxB));
+            color.redQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.data[index]) / maxR));
+            color.greenQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.data[index + 1]) / maxG));
+            color.blueQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(src.data[index + 2]) / maxB));
             *pixels++ = color;
         }
     }
@@ -100,7 +109,7 @@ namespace IO
             writeTruecolor(temp, image);
         }
         temp.syncPixels();
-        temp.write(folder + "result_" + image.fileName);
+        temp.write(std::filesystem::path(folder) / std::filesystem::path(image.fileName).filename());
     }
 
     auto File::writeImages(const std::string &folder, const std::vector<Image::Data> &images) -> void
