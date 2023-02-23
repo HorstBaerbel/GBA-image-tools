@@ -2,6 +2,7 @@
 #pragma once
 
 #include "rgbf.h"
+#include "xrgb888.h"
 
 #include <Magick++.h>
 #include <array>
@@ -15,8 +16,11 @@ std::string asHex(const Magick::Color &color);
 /// @brief Add color to color map and shift all other colors towards the end by one
 std::vector<Magick::Color> addColorAtIndex0(const std::vector<Magick::Color> &colorMap, const Magick::Color &color0);
 
-/// @brief Convert a RGB double color to and ImageMagick color
+/// @brief Convert a RGB float color to and ImageMagick color
 Magick::Color toMagick(const Color::RGBf &color);
+
+/// @brief Convert a XRGB888 color to and ImageMagick color
+Magick::Color toMagick(const Color::XRGB888 &color);
 
 /// @brief Convert ImageMagick colors to BGR555 colors for GBA
 std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Magick::Color>> &colors);

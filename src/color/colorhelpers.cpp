@@ -37,6 +37,15 @@ Magick::Color toMagick(const Color::RGBf &color)
     return result;
 }
 
+Magick::Color toMagick(const Color::XRGB888 &color)
+{
+    Magick::Color result;
+    result.redQuantum(Magick::Color::scaleDoubleToQuantum(color.R() / 255.0));
+    result.greenQuantum(Magick::Color::scaleDoubleToQuantum(color.G() / 255.0));
+    result.blueQuantum(Magick::Color::scaleDoubleToQuantum(color.B() / 255.0));
+    return result;
+}
+
 std::vector<std::vector<uint16_t>> convertToBGR555(const std::vector<std::vector<Magick::Color>> &colors)
 {
     std::vector<std::vector<uint16_t>> result;
