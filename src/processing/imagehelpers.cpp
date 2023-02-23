@@ -44,9 +44,9 @@ std::pair<std::vector<uint8_t>, Color::Format> getImageData(const Magick::Image 
     return result;
 }
 
-std::pair<std::vector<uint32_t>, Color::Format> getImageDataXRGB888(const Magick::Image &img)
+std::pair<std::vector<Color::XRGB888>, Color::Format> getImageDataXRGB888(const Magick::Image &img)
 {
-    std::pair<std::vector<uint32_t>, Color::Format> result;
+    std::pair<std::vector<Color::XRGB888>, Color::Format> result;
     if (img.type() == Magick::ImageType::TrueColorType)
     {
         // get pixel colors as RGB888
