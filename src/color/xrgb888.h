@@ -34,6 +34,12 @@ namespace Color
 
         inline operator uint32_t() const { return c; }
 
+        /// @brief XRGB888 color from float RGB data
+        static auto fromRGBf(float R, float G, float B) -> XRGB888;
+
+        /// @brief XRGB888 color from double RGB data
+        static auto fromRGBf(double R, double G, double B) -> XRGB888;
+
         /// @brief Calculate square of perceived distance between colors
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
         /// @return Returns a value in [0,1]

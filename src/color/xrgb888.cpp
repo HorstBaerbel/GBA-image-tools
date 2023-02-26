@@ -3,6 +3,30 @@
 namespace Color
 {
 
+    auto XRGB888::fromRGBf(float R, float G, float B) -> XRGB888
+    {
+        float rf = R * 255.0F;
+        float gf = G * 255.0F;
+        float bf = B * 255.0F;
+        // clamp to [0,255]
+        uint8_t r = rf < 0.0F ? 0 : (rf > 255.0F ? 255 : static_cast<uint8_t>(rf));
+        uint8_t g = gf < 0.0F ? 0 : (gf > 255.0F ? 255 : static_cast<uint8_t>(gf));
+        uint8_t b = bf < 0.0F ? 0 : (bf > 255.0F ? 255 : static_cast<uint8_t>(bf));
+        return XRGB888(r, g, b);
+    }
+
+    auto fromRGBf(double R, double G, double B) -> XRGB888
+    {
+        double rf = R * 255.0;
+        double gf = G * 255.0;
+        double bf = B * 255.0;
+        // clamp to [0,255]
+        uint8_t r = rf < 0.0 ? 0 : (rf > 255.0 ? 255 : static_cast<uint8_t>(rf));
+        uint8_t g = gf < 0.0 ? 0 : (gf > 255.0 ? 255 : static_cast<uint8_t>(gf));
+        uint8_t b = bf < 0.0 ? 0 : (bf > 255.0 ? 255 : static_cast<uint8_t>(bf));
+        return XRGB888(r, g, b);
+    }
+
     auto XRGB888::distance(const XRGB888 &color0, const XRGB888 &color1) -> float
     {
         if (color0.c == color1.c)
