@@ -81,7 +81,7 @@ namespace Color
         float dG = color0.G() - color1.G();
         float dB = color0.B() - color1.B();
         return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (3.0F - rMean) * dB * dB) / 9.0F;
-    } // max:   (2    +   0.5) *  1 *  1 + 4    *  1 *  1 + (3 -      0.5) *  1 *  1 = 2.5 + 4 + 2.5 = 9 / 9 = 1
+    } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (3    -     1) *  1 *  1 = 3 + 4 + 2 = 9 / 9 = 1
 
     auto RGBf::distance(const std::array<RGBf, 16> &colors0, const std::array<RGBf, 16> &colors1) -> float
     {
