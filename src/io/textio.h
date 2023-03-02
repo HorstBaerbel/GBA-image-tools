@@ -1,4 +1,3 @@
-// some utility functions used by the tools
 #pragma once
 
 #include <cstdint>
