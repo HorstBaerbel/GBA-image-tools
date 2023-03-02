@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace Color
 {
@@ -40,6 +41,12 @@ namespace Color
         /// @brief XRGB888 color from double RGB data
         static auto fromRGBf(double R, double G, double B) -> XRGB888;
 
+        /// @brief XRGB888 to hex color string
+        auto toHex() const -> std::string;
+
+        /// @brief XRGB888 to hex color string
+        static auto toHex(const XRGB888 &color) -> std::string;
+
         /// @brief Calculate square of perceived distance between colors
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
         /// @return Returns a value in [0,1]
@@ -52,9 +59,9 @@ namespace Color
         {
             struct
             {
-                uint8_t b;
-                uint8_t g;
                 uint8_t r;
+                uint8_t g;
+                uint8_t b;
                 uint8_t x;
             } __attribute__((aligned(4), packed));
             uint32_t c = 0;

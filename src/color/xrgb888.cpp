@@ -1,5 +1,8 @@
 #include "xrgb888.h"
 
+#include <sstream>
+#include <iomanip>
+
 namespace Color
 {
 
@@ -15,7 +18,7 @@ namespace Color
         return XRGB888(r, g, b);
     }
 
-    auto fromRGBf(double R, double G, double B) -> XRGB888
+    auto XRGB888::fromRGBf(double R, double G, double B) -> XRGB888
     {
         double rf = R * 255.0;
         double gf = G * 255.0;
@@ -25,6 +28,18 @@ namespace Color
         uint8_t g = gf < 0.0 ? 0 : (gf > 255.0 ? 255 : static_cast<uint8_t>(gf));
         uint8_t b = bf < 0.0 ? 0 : (bf > 255.0 ? 255 : static_cast<uint8_t>(bf));
         return XRGB888(r, g, b);
+    }
+
+    auto XRGB888::toHex() const -> std::string
+    {
+        return toHex(*this);
+    }
+
+    auto XRGB888::toHex(const XRGB888 &color) -> std::string
+    {
+        std::stringstream ss;
+        ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint32_t>(color.r) << std::setw(2) << static_cast<uint32_t>(color.g) << std::setw(2) << static_cast<uint32_t>(color.b);
+        return ss.str();
     }
 
     auto XRGB888::distance(const XRGB888 &color0, const XRGB888 &color1) -> float
