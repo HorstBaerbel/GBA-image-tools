@@ -35,6 +35,9 @@ namespace Color
 
         inline operator uint32_t() const { return c; }
 
+        static const XRGB888 Min;
+        static const XRGB888 Max;
+
         /// @brief XRGB888 color from float RGB data
         static auto fromRGBf(float R, float G, float B) -> XRGB888;
 

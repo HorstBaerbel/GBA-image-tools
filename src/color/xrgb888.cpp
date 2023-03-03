@@ -6,6 +6,9 @@
 namespace Color
 {
 
+    const XRGB888 XRGB888::Min{0, 0, 0};
+    const XRGB888 XRGB888::Max{255, 255, 255};
+
     auto XRGB888::fromRGBf(float R, float G, float B) -> XRGB888
     {
         float rf = R * 255.0F;

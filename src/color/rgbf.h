@@ -10,7 +10,7 @@ namespace Color
     class RGBf : public Eigen::Vector3f
     {
     public:
-        RGBf() : Eigen::Vector3f() {}
+        RGBf() = default;
         RGBf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
         template <class... Types>
         RGBf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
@@ -23,6 +23,9 @@ namespace Color
         inline auto G() -> float & { return y(); }
         inline auto B() const -> const float & { return z(); }
         inline auto B() -> float & { return z(); }
+
+        static const RGBf Min;
+        static const RGBf Max;
 
         /// @brief RGB color from raw 24-bit RGB888 data
         static auto fromRGB888(const uint8_t *rgb888) -> RGBf;

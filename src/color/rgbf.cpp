@@ -6,6 +6,9 @@
 namespace Color
 {
 
+    const RGBf RGBf::Min{0.0F, 0.0F, 0.0F};
+    const RGBf RGBf::Max{1.0F, 1.0F, 1.0F};
+
     auto RGBf::fromRGB888(const uint8_t *rgb888) -> RGBf
     {
         RGBf result;

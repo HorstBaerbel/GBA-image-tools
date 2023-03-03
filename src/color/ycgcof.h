@@ -29,6 +29,9 @@ namespace Color
         inline auto Co() const -> const float & { return z(); }
         inline auto Co() -> float & { return z(); }
 
+        static const YCgCoRf Min;
+        static const YCgCoRf Max;
+
         /// @brief Return color with all components normalized to [0,1]
         auto normalized() const -> YCgCoRf;
 

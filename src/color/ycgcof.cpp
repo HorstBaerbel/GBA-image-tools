@@ -6,6 +6,9 @@
 namespace Color
 {
 
+    const YCgCoRf YCgCoRf::Min{0.0F, -1.0F, -1.0F};
+    const YCgCoRf YCgCoRf::Max{1.0F, 1.0F, 1.0F};
+
     auto YCgCoRf::normalized() const -> YCgCoRf
     {
         return {Y(), 0.5F * (Cg() + 1.0F), 0.5F * (Co() + 1.0F)};
