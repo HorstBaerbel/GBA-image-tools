@@ -50,7 +50,7 @@ namespace Color
         /// @brief Calculate square of distance between colors (scalar product)
         /// @return Returns block color distance in [0,1]
         template <std::size_t N>
-        friend auto distance(const std::array<RGBf, N> &colors0, const std::array<RGBf, N> &colors1) -> float
+        static auto distance(const std::array<RGBf, N> &colors0, const std::array<RGBf, N> &colors1) -> float
         {
             float dist = 0.0F;
             for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)

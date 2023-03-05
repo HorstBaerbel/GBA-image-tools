@@ -70,7 +70,7 @@ namespace Color
         /// @brief Calculate square of distance between colors (scalar product)
         /// @return Returns block color distance in [0,1]
         template <std::size_t N>
-        friend auto distance(const std::array<YCgCoRf, N> &colors0, const std::array<YCgCoRf, N> &colors1) -> float
+        static auto distance(const std::array<YCgCoRf, N> &colors0, const std::array<YCgCoRf, N> &colors1) -> float
         {
             float dist = 0.0F;
             for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
@@ -83,7 +83,7 @@ namespace Color
         /// @brief Calculate square of distance between colors (scalar product) and if there are are outliers above a threshold
         /// @return Returns (allColorsBelowThreshold?, block color distance in [0,1])
         template <std::size_t N>
-        friend auto distanceBelowThreshold(const std::array<YCgCoRf, N> &colors0, const std::array<YCgCoRf, N> &colors1, float threshold) -> std::pair<bool, float>
+        static auto distanceBelowThreshold(const std::array<YCgCoRf, N> &colors0, const std::array<YCgCoRf, N> &colors1, float threshold) -> std::pair<bool, float>
         {
             bool belowThreshold = true;
             float dist = 0.0F;
