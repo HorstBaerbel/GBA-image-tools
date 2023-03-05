@@ -86,14 +86,4 @@ namespace Color
         return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (3.0F - rMean) * dB * dB) / 9.0F;
     } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (3    -     1) *  1 *  1 = 3 + 4 + 2 = 9 / 9 = 1
 
-    auto RGBf::distance(const std::array<RGBf, 16> &colors0, const std::array<RGBf, 16> &colors1) -> float
-    {
-        float dist = 0.0F;
-        for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend(); ++c0It, ++c1It)
-        {
-            dist += distance(*c0It, *c1It);
-        }
-        return dist / 16.0F;
-    }
-
 }

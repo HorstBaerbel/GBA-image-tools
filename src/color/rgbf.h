@@ -47,10 +47,18 @@ namespace Color
         /// @return Returns a value in [0,1]
         static auto distance(const RGBf &color0, const RGBf &color1) -> float;
 
-        /// @brief Calculate sum of square of perceived distance between colors
-        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
-        /// @return Returns a value in [0,1]
-        static auto distance(const std::array<RGBf, 16> &colors0, const std::array<RGBf, 16> &colors1) -> float;
+        /// @brief Calculate square of distance between colors (scalar product)
+        /// @return Returns block color distance in [0,1]
+        template <std::size_t N>
+        friend auto distance(const std::array<RGBf, N> &colors0, const std::array<RGBf, N> &colors1) -> float
+        {
+            float dist = 0.0F;
+            for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
+            {
+                dist += distance(*c0It, *c1It);
+            }
+            return dist / (N * N);
+        }
     };
 
 }
