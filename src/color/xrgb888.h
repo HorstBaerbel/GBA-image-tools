@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 
@@ -11,7 +12,7 @@ namespace Color
     {
     public:
         XRGB888() = default;
-        constexpr XRGB888(uint8_t R, uint8_t G, uint8_t B) : r(R), g(G), b(B) {}
+        constexpr XRGB888(uint8_t R, uint8_t G, uint8_t B) : v({R, G, B, 0}) {}
         constexpr XRGB888(uint32_t color) : c(color) {}
 
         inline XRGB888 &operator=(const XRGB888 &other)
@@ -26,12 +27,19 @@ namespace Color
             return *this;
         }
 
-        inline auto R() const -> const uint8_t { return r; }
-        inline auto R() -> uint8_t { return r; }
-        inline auto G() const -> const uint8_t { return g; }
-        inline auto G() -> uint8_t { return g; }
-        inline auto B() const -> const uint8_t { return b; }
-        inline auto B() -> uint8_t { return b; }
+        inline auto R() const -> const uint8_t & { return v[0]; }
+        inline auto R() -> uint8_t & { return v[0]; }
+        inline auto G() const -> const uint8_t & { return v[1]; }
+        inline auto G() -> uint8_t & { return v[1]; }
+        inline auto B() const -> const uint8_t & { return v[2]; }
+        inline auto B() -> uint8_t & { return v[2]; }
+
+        inline auto x() const -> const uint8_t & { return v[0]; }
+        inline auto x() -> uint8_t & { return v[0]; }
+        inline auto y() const -> const uint8_t & { return v[1]; }
+        inline auto y() -> uint8_t & { return v[1]; }
+        inline auto z() const -> const uint8_t & { return v[2]; }
+        inline auto z() -> uint8_t & { return v[2]; }
 
         inline operator uint32_t() const { return c; }
 
@@ -60,14 +68,8 @@ namespace Color
 #pragma GCC diagnostic ignored "-Wpedantic"
         union
         {
-            struct
-            {
-                uint8_t r;
-                uint8_t g;
-                uint8_t b;
-                uint8_t x;
-            } __attribute__((aligned(4), packed));
-            uint32_t c = 0;
+            uint32_t c = 0;           // XBGR
+            std::array<uint8_t, 4> v; // RGBX
         } __attribute__((aligned(4), packed));
 #pragma GCC diagnostic pop
     };

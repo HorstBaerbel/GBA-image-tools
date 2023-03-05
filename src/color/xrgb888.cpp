@@ -41,7 +41,7 @@ namespace Color
     auto XRGB888::toHex(const XRGB888 &color) -> std::string
     {
         std::stringstream ss;
-        ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint32_t>(color.r) << std::setw(2) << static_cast<uint32_t>(color.g) << std::setw(2) << static_cast<uint32_t>(color.b);
+        ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint32_t>(color.v[0]) << std::setw(2) << static_cast<uint32_t>(color.v[1]) << std::setw(2) << static_cast<uint32_t>(color.v[2]);
         return ss.str();
     }
 
