@@ -14,6 +14,7 @@
 
 #include <iostream>
 #include <memory>
+// #include <filesystem>
 
 namespace Image
 {
@@ -106,10 +107,10 @@ namespace Image
             auto imageData = getImageDataXRGB888(d.image).first;
             std::for_each(imageData.cbegin(), imageData.cend(), [&histogram](auto pixel)
                 { histogram[pixel]++; }); });
-        std::cout << histogram.size() << " unique colors in images" << std::endl;
+        std::cout << histogram.size() << " unique colors in " << data.size() << " images" << std::endl;
         // create as many preliminary clusters as colors in colorSpaceMap
         auto colorSpace = getImageDataXRGB888(colorSpaceMap).first;
-        ColorFit<Color::XRGB888> colorFit(colorSpace, Color::XRGB888(0xFFFFFFFF));
+        ColorFit<Color::XRGB888> colorFit(colorSpace);
         std::cout << "Color space has " << colorSpace.size() << " colors" << std::endl;
         // sort histogram colors into closest clusters in parallel
         std::cout << "Sorting colors into clusters... (this might take some time)" << std::endl;
@@ -133,15 +134,16 @@ namespace Image
             // convert image to paletted using dithering
             auto temp = d.image;
             temp.quantizeDither(true);
-            temp.quantizeDitherMethod(Magick::DitherMethod::RiemersmaDitherMethod);
+            temp.quantizeDitherMethod(Magick::DitherMethod::FloydSteinbergDitherMethod);
             temp.map(colorMapImage, true);
-            temp.type(Magick::ImageType::PaletteType);
+            //temp.type(Magick::ImageType::PaletteType);
             // get image data and color map
             auto imageData = getImageData(temp);
-            REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
+            auto imageColorMap = getColorMap(temp);
+            //REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
             //auto dumpPath = std::filesystem::current_path() / "result" / (std::to_string(d.index) + ".png");
             //temp.write(dumpPath.c_str());
-            return Data{d.index, d.fileName, temp.type(), DataSize{temp.size().width(), temp.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}}; });
+            return Data{d.index, d.fileName, temp.type(), DataSize{temp.size().width(), temp.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, imageColorMap, Color::Format::Unknown, {}}; });
         return result;
     }
 
