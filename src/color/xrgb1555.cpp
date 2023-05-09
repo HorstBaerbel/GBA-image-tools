@@ -1,17 +1,17 @@
-#include "xrgb555.h"
+#include "xrgb1555.h"
 
 namespace Color
 {
 
-    auto XRGB555::swappedRB() const -> XRGB555
+    auto XRGB1555::swappedRB() const -> XRGB1555
     {
-        return XRGB555(b, g, r);
+        return XRGB1555(v.b, v.g, v.r);
     }
 
-    auto XRGB555::distance(const XRGB555 &color0, const XRGB555 &color1) -> float
+    auto XRGB1555::distance(const XRGB1555 &color0, const XRGB1555 &color1) -> float
     {
         static constexpr float OneOver31 = 1.0F / 31.0F;
-        if (color0.c == color1.c)
+        if (color0.R() == color1.R() && color0.G() == color1.G() && color0.B() == color1.B())
         {
             return 0.0F;
         }

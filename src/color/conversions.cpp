@@ -2,7 +2,7 @@
 
 #include "lchf.h"
 #include "rgbf.h"
-#include "xrgb555.h"
+#include "xrgb1555.h"
 #include "rgb565.h"
 #include "xrgb888.h"
 #include "ycgcof.h"
@@ -17,16 +17,16 @@ namespace Color
     constexpr float WHITEPOINT_Y = 1.0F;
     constexpr float WHITEPOINT_Z = 1.088754F;
 
-    // ----- XRGB555 --------------------------------------------------------------
+    // ----- XRGB1555 --------------------------------------------------------------
 
     template <>
-    auto convertTo(const uint16_t &color) -> XRGB555
+    auto convertTo(const uint16_t &color) -> XRGB1555
     {
-        return XRGB555(color);
+        return XRGB1555(color);
     }
 
     template <>
-    auto convertTo(const XRGB888 &color) -> XRGB555
+    auto convertTo(const XRGB888 &color) -> XRGB1555
     {
         // bring into range
         auto R = static_cast<uint32_t>(color.R()) >> 3;
@@ -36,11 +36,11 @@ namespace Color
         R = R > 31 ? 31 : R;
         G = G > 31 ? 31 : G;
         B = B > 31 ? 31 : B;
-        return XRGB555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
+        return XRGB1555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
     }
 
     template <>
-    auto convertTo(const RGB565 &color) -> XRGB555
+    auto convertTo(const RGB565 &color) -> XRGB1555
     {
         // bring into range
         auto R = static_cast<uint32_t>(color.R());
@@ -48,11 +48,11 @@ namespace Color
         auto B = static_cast<uint32_t>(color.B());
         // clamp to [0,31]
         G = G > 31 ? 31 : G;
-        return XRGB555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
+        return XRGB1555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
     }
 
     template <>
-    auto convertTo(const RGBf &color) -> XRGB555
+    auto convertTo(const RGBf &color) -> XRGB1555
     {
         // bring into range
         auto R = color.R() * 31.0F;
@@ -62,18 +62,18 @@ namespace Color
         R = R < 0.0F ? 0.0F : (R > 31.0F ? 31.0F : R);
         G = G < 0.0F ? 0.0F : (G > 31.0F ? 31.0F : G);
         B = B < 0.0F ? 0.0F : (B > 31.0F ? 31.0F : B);
-        return XRGB555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
+        return XRGB1555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
     }
 
     template <>
-    auto convertTo(const YCgCoRf &color) -> XRGB555
+    auto convertTo(const YCgCoRf &color) -> XRGB1555
     {
         // convert to float RGB in [0,1]
         float tmp = color.Y() - color.Cg() / 2.0F;
         float G = color.Cg() + tmp;
         float B = tmp - color.Co() / 2.0F;
         float R = B + color.Co();
-        return convertTo<XRGB555>(RGBf(R, G, B));
+        return convertTo<XRGB1555>(RGBf(R, G, B));
     }
 
     // ----- RGB565 --------------------------------------------------------------
@@ -85,7 +85,7 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const XRGB555 &color) -> RGB565
+    auto convertTo(const XRGB1555 &color) -> RGB565
     {
         // bring into range
         auto R = static_cast<uint32_t>(color.R());
@@ -144,7 +144,7 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const XRGB555 &color) -> XRGB888
+    auto convertTo(const XRGB1555 &color) -> XRGB888
     {
         uint32_t c = static_cast<uint16_t>(color);
         uint32_t R = (c & 0x7C00) << 9;
@@ -190,7 +190,7 @@ namespace Color
     // ----- RGBf -----------------------------------------------------------------
 
     template <>
-    auto convertTo(const XRGB555 &color) -> RGBf
+    auto convertTo(const XRGB1555 &color) -> RGBf
     {
         uint16_t c = color;
         auto R = static_cast<float>((c & 0x7C00) >> 10);
@@ -271,7 +271,7 @@ namespace Color
     // ----- YCgCoRf --------------------------------------------------------------
 
     template <>
-    auto convertTo(const XRGB555 &color) -> YCgCoRf
+    auto convertTo(const XRGB1555 &color) -> YCgCoRf
     {
         // convert to float RGB in [0,1]
         uint16_t c = color;

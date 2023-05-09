@@ -9,7 +9,7 @@
 namespace Color
 {
 
-    /// @brief Linear XRGB888 32-bit color in range [0,255]
+    /// @brief Linear XRGB8888 32-bit color in range [0,255]
     class XRGB888
     {
     public:

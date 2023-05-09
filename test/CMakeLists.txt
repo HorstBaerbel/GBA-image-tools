@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 
 #-------------------------------------------------------------------------------
 # Add required libraries
@@ -6,12 +6,6 @@ cmake_minimum_required(VERSION 3.16)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBMAGICK REQUIRED IMPORTED_TARGET
     Magick++
-)
-pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
-    libavcodec
-    libavformat
-    libavutil
-    libswscale
 )
 
 find_package(OpenMP REQUIRED)
@@ -31,25 +25,33 @@ if(MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP") #multi-processor compilation
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 11)
 
 #-------------------------------------------------------------------------------
-# Create a library target for the Catch header-only test framework
+# Create a library target for the Catch2 test framework
 
-add_library(Catch INTERFACE)
-target_include_directories(Catch INTERFACE test/)
+set(CATCH_CONFIG_PREFIX_ALL ON)
+add_subdirectory(Catch2)
 
 #-------------------------------------------------------------------------------
-#define targets
+# Define targets
+
+set(SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/xrgb1555.cpp
+)
 
 set(TESTS_SRC
+    test_xrgb1555.cpp
 )
 
 set(TARGET_NAME unit_tests)
- 
-add_executable(${TARGET_NAME} main.cpp ${TESTS_SRC})
-target_link_libraries(${TARGET_NAME} PRIVATE Catch PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX stdc++fs pthread)
-target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/Catch2/single_include)
 
-add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} -o report.xml -r junit)
+add_executable(${TARGET_NAME} ${SRC} ${TESTS_SRC})
+target_link_libraries(${TARGET_NAME} PRIVATE Catch2::Catch2WithMain pthread)
+target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+include(CTest)
+include(Catch)
+catch_discover_tests(${TARGET_NAME})

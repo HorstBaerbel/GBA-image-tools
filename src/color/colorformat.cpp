@@ -2,7 +2,7 @@
 
 #include "lchf.h"
 #include "rgbf.h"
-#include "xrgb555.h"
+#include "xrgb1555.h"
 #include "rgb565.h"
 #include "xrgb888.h"
 #include "ycgcof.h"
@@ -16,7 +16,7 @@ namespace Color
         switch (format)
         {
         case Color::Format::Unknown:
-        case Color::Format::XRGB555:
+        case Color::Format::XRGB1555:
         case Color::Format::RGB565:
         case Color::Format::Lchf:
         case Color::Format::RGBf:
@@ -36,7 +36,7 @@ namespace Color
     {
         switch (format)
         {
-        case Color::Format::XRGB555:
+        case Color::Format::XRGB1555:
         case Color::Format::RGB565:
         case Color::Format::Lchf:
         case Color::Format::RGBf:
@@ -64,7 +64,7 @@ namespace Color
             return 4;
         case Format::Paletted8:
             return 8;
-        case Format::XRGB555:
+        case Format::XRGB1555:
             return 15;
         case Format::RGB565:
             return 16;
@@ -85,7 +85,7 @@ namespace Color
         {
         case Color::Format::Unknown:
             return 0;
-        case Color::Format::XRGB555:
+        case Color::Format::XRGB1555:
         case Color::Format::RGB565:
             return 2;
         case Color::Format::XRGB888:
@@ -111,8 +111,8 @@ namespace Color
             return "Paletted 4-bit";
         case Format::Paletted8:
             return "Paletted 8-bit";
-        case Format::XRGB555:
-            return "XRGB555";
+        case Format::XRGB1555:
+            return "XRGB1555";
         case Format::RGB565:
             return "RGB565";
         case Format::XRGB888:
@@ -135,9 +135,9 @@ namespace Color
     }
 
     template <>
-    auto toFormat<XRGB555>() -> Format
+    auto toFormat<XRGB1555>() -> Format
     {
-        return Format::XRGB555;
+        return Format::XRGB1555;
     }
 
     template <>

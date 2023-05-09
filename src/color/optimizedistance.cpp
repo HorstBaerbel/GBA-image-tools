@@ -1,4 +1,4 @@
-#include "distance.h"
+#include "optimizedistance.h"
 
 namespace Color
 {
