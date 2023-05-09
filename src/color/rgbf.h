@@ -1,64 +1,71 @@
 #pragma once
 
+#include "colorformat.h"
+
 #include <Eigen/Core>
+#include <array>
 #include <cstdint>
 
 namespace Color
 {
 
-    /// @brief Floating point RGB color in range [0,1]
+    /// @brief Linear floating point RGB color in range [0,1]
     class RGBf : public Eigen::Vector3f
     {
     public:
+        static constexpr Color::Format ColorFormat = Format::RGBf;
+        using pixel_type = Eigen::Vector3f; // pixel value type
+        using value_type = float;           // color channel value type
+
         RGBf() = default;
         RGBf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
         template <class... Types>
         RGBf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
-        RGBf(const std::initializer_list<float> &other) : Eigen::Vector3f({other}) {}
+        RGBf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
         RGBf(float R, float G, float B) : Eigen::Vector3f(R, G, B) {}
 
-        inline auto R() const -> const float & { return x(); }
-        inline auto R() -> float & { return x(); }
-        inline auto G() const -> const float & { return y(); }
-        inline auto G() -> float & { return y(); }
-        inline auto B() const -> const float & { return z(); }
-        inline auto B() -> float & { return z(); }
+        inline auto R() const -> const value_type & { return x(); }
+        inline auto R() -> value_type & { return x(); }
+        inline auto G() const -> const value_type & { return y(); }
+        inline auto G() -> value_type & { return y(); }
+        inline auto B() const -> const value_type & { return z(); }
+        inline auto B() -> value_type & { return z(); }
 
-        static const RGBf Min;
-        static const RGBf Max;
+        inline auto raw() const -> pixel_type { return *this; }
 
-        /// @brief RGB color from raw 24-bit RGB888 data
-        static auto fromRGB888(const uint8_t *rgb888) -> RGBf;
+        static constexpr std::array<value_type, 3> Min{0.0F, 0.0F, 0.0F};
+        static constexpr std::array<value_type, 3> Max{1.0F, 1.0F, 1.0F};
 
-        /// @brief RGB color from raw 32-bit XRGB888 data
-        static auto fromXRGB888(uint32_t xrgb888) -> RGBf;
+        /// @brief Return swapped red and blue color channel
+        auto swappedRB() const -> RGBf;
 
-        /// @brief RGB color from raw RGB555 uint16_t
-        static auto fromRGB555(uint16_t color) -> RGBf;
-
-        /// @brief Convert color to raw RGB555 uint16_t by truncating and clamping
-        auto toRGB555() const -> uint16_t;
-
-        /// @brief Round and clamp RGB values to RGB555 grid positions. The values themselves will stay in [0,1]
-        static auto roundToRGB555(const RGBf &color) -> RGBf;
+        /// @brief Round and clamp RGB values to grid positions. The values themselves will stay in [0,1]
+        template <typename T>
+        static auto roundTo(const RGBf &color, const std::array<T, 3> &gridMax) -> RGBf
+        {
+            // scale to grid
+            float R = color.R() * gridMax[0];
+            float G = color.G() * gridMax[1];
+            float B = color.B() * gridMax[2];
+            // clamp to [0, gridMax]
+            R = R < 0.0F ? 0.0F : (R > gridMax[0] ? gridMax[0] : R);
+            G = G < 0.0F ? 0.0F : (G > gridMax[1] ? gridMax[1] : G);
+            B = B < 0.0F ? 0.0F : (B > gridMax[2] ? gridMax[2] : B);
+            // round to grid point
+            R = std::trunc(R + 0.5F);
+            G = std::trunc(G + 0.5F);
+            B = std::trunc(B + 0.5F);
+            // convert to result
+            R /= gridMax[0];
+            G /= gridMax[1];
+            B /= gridMax[2];
+            return RGBf(R, G, B);
+        }
 
         /// @brief Calculate square of perceived distance between colors
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
         /// @return Returns a value in [0,1]
         static auto distance(const RGBf &color0, const RGBf &color1) -> float;
-
-        /// @brief Calculate square of distance between colors (scalar product)
-        /// @return Returns block color distance in [0,1]
-        template <std::size_t N>
-        static auto distance(const std::array<RGBf, N> &colors0, const std::array<RGBf, N> &colors1) -> float
-        {
-            float dist = 0.0F;
-            for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
-            {
-                dist += distance(*c0It, *c1It);
-            }
-            return dist / (N * N);
-        }
     };
 
 }

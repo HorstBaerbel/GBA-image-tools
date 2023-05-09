@@ -1,5 +1,7 @@
 #pragma once
 
+#include "colorformat.h"
+
 #include <array>
 #include <cstdint>
 #include <string>
@@ -7,10 +9,14 @@
 namespace Color
 {
 
-    /// @brief XRGB888 color in range [0,255]
+    /// @brief Linear XRGB888 32-bit color in range [0,255]
     class XRGB888
     {
     public:
+        static constexpr Color::Format ColorFormat = Format::XRGB888;
+        using pixel_type = uint16_t; // pixel value type
+        using value_type = uint8_t;  // color channel value type
+
         XRGB888() = default;
         constexpr XRGB888(uint8_t R, uint8_t G, uint8_t B) : v({R, G, B, 0}) {}
         constexpr XRGB888(uint32_t color) : c(color) {}
@@ -34,28 +40,23 @@ namespace Color
         inline auto B() const -> const uint8_t & { return v[2]; }
         inline auto B() -> uint8_t & { return v[2]; }
 
-        inline auto x() const -> const uint8_t & { return v[0]; }
-        inline auto x() -> uint8_t & { return v[0]; }
-        inline auto y() const -> const uint8_t & { return v[1]; }
-        inline auto y() -> uint8_t & { return v[1]; }
-        inline auto z() const -> const uint8_t & { return v[2]; }
-        inline auto z() -> uint8_t & { return v[2]; }
+        inline auto raw() const -> pixel_type { return c; }
 
         inline operator uint32_t() const { return c; }
 
-        static const XRGB888 Min;
-        static const XRGB888 Max;
+        static constexpr std::array<uint8_t, 3> Min{0, 0, 0};
+        static constexpr std::array<uint8_t, 3> Max{255, 255, 255};
 
-        /// @brief XRGB888 color from float RGB data
-        static auto fromRGBf(float R, float G, float B) -> XRGB888;
+        /// @brief Return swapped red and blue color channel
+        auto swappedRB() const -> XRGB888;
 
-        /// @brief XRGB888 color from double RGB data
-        static auto fromRGBf(double R, double G, double B) -> XRGB888;
+        /// @brief Convert from 24-bit hex color string, with or w/o a prefix: RRGGBB or #RRGGBB
+        static auto fromHex(const std::string &hex) -> XRGB888;
 
-        /// @brief XRGB888 to hex color string
+        /// @brief Convert to 24-bit hex color string, excluding a prefix: RRGGBB
         auto toHex() const -> std::string;
 
-        /// @brief XRGB888 to hex color string
+        /// @brief Convert to 24-bit hex color string, excluding a prefix: RRGGBB
         static auto toHex(const XRGB888 &color) -> std::string;
 
         /// @brief Calculate square of perceived distance between colors

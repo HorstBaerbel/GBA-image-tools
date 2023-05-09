@@ -6,69 +6,9 @@
 namespace Color
 {
 
-    const RGBf RGBf::Min{0.0F, 0.0F, 0.0F};
-    const RGBf RGBf::Max{1.0F, 1.0F, 1.0F};
-
-    auto RGBf::fromRGB888(const uint8_t *rgb888) -> RGBf
+    auto RGBf::swappedRB() const -> RGBf
     {
-        RGBf result;
-        result.R() = static_cast<float>(rgb888[0]) / 255.0F;
-        result.G() = static_cast<float>(rgb888[1]) / 255.0F;
-        result.B() = static_cast<float>(rgb888[2]) / 255.0F;
-        return result;
-    }
-
-    auto RGBf::fromXRGB888(uint32_t xrgb888) -> RGBf
-    {
-        RGBf result;
-        result.R() = static_cast<float>(xrgb888 & 0xFF) / 255.0F;
-        result.G() = static_cast<float>((xrgb888 >> 8) & 0xFF) / 255.0F;
-        result.B() = static_cast<float>((xrgb888 >> 16) & 0xFF) / 255.0F;
-        return result;
-    }
-
-    auto RGBf::fromRGB555(uint16_t color) -> RGBf
-    {
-        RGBf result;
-        result.R() = static_cast<float>((color & 0x7C00) >> 10) / 31.0F;
-        result.G() = static_cast<float>((color & 0x3E0) >> 5) / 31.0F;
-        result.B() = static_cast<float>(color & 0x1F) / 31.0F;
-        return result;
-    }
-
-    auto RGBf::toRGB555() const -> uint16_t
-    {
-        // bring into range
-        auto cr = R() * 31.0F;
-        auto cg = G() * 31.0F;
-        auto cb = B() * 31.0F;
-        // clamp to [0,31]
-        cr = cr < 0.0F ? 0.0F : (cr > 31.0F ? 31.0F : cr);
-        cg = cg < 0.0F ? 0.0F : (cg > 31.0F ? 31.0F : cg);
-        cb = cb < 0.0F ? 0.0F : (cb > 31.0F ? 31.0F : cb);
-        // convert to RGB555
-        return (static_cast<uint16_t>(cr) << 10) | (static_cast<uint16_t>(cg) << 5) | static_cast<uint16_t>(cb);
-    }
-
-    auto RGBf::roundToRGB555(const RGBf &color) -> RGBf
-    {
-        // bring into range
-        auto cr = color.R() * 31.0F;
-        auto cg = color.G() * 31.0F;
-        auto cb = color.B() * 31.0F;
-        // clamp to [0, GRID_MAX]
-        cr = cr < 0.0F ? 0.0F : (cr > 31.0F ? 31.0F : cr);
-        cg = cg < 0.0F ? 0.0F : (cg > 31.0F ? 31.0F : cg);
-        cb = cb < 0.0F ? 0.0F : (cb > 31.0F ? 31.0F : cb);
-        // round to grid point
-        cr = std::trunc(cr + 0.5F);
-        cg = std::trunc(cg + 0.5F);
-        cb = std::trunc(cb + 0.5F);
-        RGBf result;
-        result.R() = cr / 31.0F;
-        result.G() = cg / 31.0F;
-        result.B() = cb / 31.0F;
-        return result;
+        return RGBf(z(), y(), x());
     }
 
     auto RGBf::distance(const RGBf &color0, const RGBf &color1) -> float

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "colorformat.h"
+
 #include <Eigen/Core>
 #include <array>
 #include <cstdint>
@@ -7,94 +9,75 @@
 namespace Color
 {
 
-    /// @brief Floating point YCgCoR color in range
+    /// @brief Linear floating point YCgCoR color in range
     /// Y [0,1] Luma
     /// Cg [-1,1] Chroma green
     /// Co [-1,1] Chroma orange
-    // See: https://en.wikipedia.org/wiki/YCoCg#The_lifting-based_YCoCg-R_variation
+    /// See: https://en.wikipedia.org/wiki/YCoCg#The_lifting-based_YCoCg-R_variation
     class YCgCoRf : public Eigen::Vector3f
     {
     public:
+        static constexpr Color::Format ColorFormat = Format::YCgCoRf;
+        using pixel_type = Eigen::Vector3f; // pixel value type
+        using value_type = float;           // color channel value type
+
         YCgCoRf() : Eigen::Vector3f() {}
         YCgCoRf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
         template <class... Types>
         YCgCoRf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
-        YCgCoRf(const std::initializer_list<float> &other) : Eigen::Vector3f({other}) {}
+        YCgCoRf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
         YCgCoRf(float Y, float Cg, float Co) : Eigen::Vector3f(Y, Cg, Co) {}
 
-        inline auto Y() const -> const float & { return x(); }
-        inline auto Y() -> float & { return x(); }
-        inline auto Cg() const -> const float & { return y(); }
-        inline auto Cg() -> float & { return y(); }
-        inline auto Co() const -> const float & { return z(); }
-        inline auto Co() -> float & { return z(); }
+        inline auto Y() const -> const value_type & { return x(); }
+        inline auto Y() -> value_type & { return x(); }
+        inline auto Cg() const -> const value_type & { return y(); }
+        inline auto Cg() -> value_type & { return y(); }
+        inline auto Co() const -> const value_type & { return z(); }
+        inline auto Co() -> value_type & { return z(); }
 
-        static const YCgCoRf Min;
-        static const YCgCoRf Max;
+        inline auto raw() const -> pixel_type { return *this; }
 
-        /// @brief Return color with all components normalized to [0,1]
+        static constexpr std::array<value_type, 3> Min{0.0F, -1.0F, -1.0F};
+        static constexpr std::array<value_type, 3> Max{1.0F, 1.0F, 1.0F};
+
+        /// @brief Return color with all components normalized to [0,1]. This is NOT a conversion to RGB!
         auto normalized() const -> YCgCoRf;
 
-        /// @brief YCgCoR color from RGB values in [0,1]
-        static auto fromRGB(float R, float G, float B) -> YCgCoRf;
-
-        /// @brief YCgCoR color from raw 24-bit RGB888 data
-        static auto fromRGB888(const uint8_t *rgb888) -> YCgCoRf;
-
-        /// @brief YCgCoR color from raw 32-bit XRGB888 data
-        static auto fromXRGB888(uint32_t xrgb888) -> YCgCoRf;
-
-        /// @brief YCgCoR color from raw RGB555 uint16_t
-        static auto fromRGB555(uint16_t color) -> YCgCoRf;
-
-        /// @brief Convert color to raw RGB555 uint16_t by truncating and clamping
-        auto toRGB555() const -> uint16_t;
-
-        /// @brief Convert colors to raw RGB555 uint16_t by truncating and clamping
-        template <std::size_t N>
-        static auto toRGB555(const std::array<YCgCoRf, N> &colors) -> std::array<uint16_t, N>
+        /// @brief Round and clamp YCgCoR values to grid positions. The values themselves will stay in their respective ranges
+        template <typename T>
+        static auto roundTo(const YCgCoRf &color, const std::array<T, 3> &gridMax) -> YCgCoRf
         {
-            std::array<uint16_t, N> result;
-            std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
-                           { return c.toRGB555(); });
-            return result;
+            // convert to float RGB
+            float tmp = color.Y() - color.Cg() / 2.0F;
+            float G = color.Cg() + tmp;
+            float B = tmp - color.Co() / 2.0F;
+            float R = B + color.Co();
+            // scale to grid
+            R *= gridMax[0];
+            G *= gridMax[1];
+            B *= gridMax[2];
+            // clamp to [0, gridMax]
+            R = R < 0.0F ? 0.0F : (R > gridMax[0] ? gridMax[0] : R);
+            G = G < 0.0F ? 0.0F : (G > gridMax[1] ? gridMax[1] : G);
+            B = B < 0.0F ? 0.0F : (B > gridMax[2] ? gridMax[2] : B);
+            // round to grid point
+            R = std::trunc(R + 0.5F);
+            G = std::trunc(G + 0.5F);
+            B = std::trunc(B + 0.5F);
+            // convert to result
+            R /= gridMax[0];
+            G /= gridMax[1];
+            B /= gridMax[2];
+            float Co = R - B;
+            tmp = B + Co / 2.0F;
+            float Cg = G - tmp;
+            float Y = tmp + Cg / 2.0F;
+            return YCgCoRf(Y, Cg, Co);
         }
-
-        /// @brief Round and clamp YCgCoR values to RGB555 grid positions. The values themselves will stay in their ranges
-        static auto roundToRGB555(const YCgCoRf &color) -> YCgCoRf;
 
         /// @brief Calculate square of distance between colors (scalar product)
         /// @return Returns color distance in [0,1]
         static auto distance(const YCgCoRf &color0, const YCgCoRf &color1) -> float;
-
-        /// @brief Calculate square of distance between colors (scalar product)
-        /// @return Returns block color distance in [0,1]
-        template <std::size_t N>
-        static auto distance(const std::array<YCgCoRf, N> &colors0, const std::array<YCgCoRf, N> &colors1) -> float
-        {
-            float dist = 0.0F;
-            for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
-            {
-                dist += distance(*c0It, *c1It);
-            }
-            return dist / (N * N);
-        }
-
-        /// @brief Calculate square of distance between colors (scalar product) and if there are are outliers above a threshold
-        /// @return Returns (allColorsBelowThreshold?, block color distance in [0,1])
-        template <std::size_t N>
-        static auto distanceBelowThreshold(const std::array<YCgCoRf, N> &colors0, const std::array<YCgCoRf, N> &colors1, float threshold) -> std::pair<bool, float>
-        {
-            bool belowThreshold = true;
-            float dist = 0.0F;
-            for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
-            {
-                auto colorDist = distance(*c0It, *c1It);
-                belowThreshold = belowThreshold ? colorDist < threshold : belowThreshold;
-                dist += colorDist;
-            }
-            return {belowThreshold, dist / (N * N)};
-        }
     };
 
 }

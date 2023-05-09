@@ -1,36 +1,39 @@
 #include "xrgb888.h"
 
-#include <sstream>
+#include "exception.h"
+
 #include <iomanip>
 
 namespace Color
 {
 
-    const XRGB888 XRGB888::Min{0, 0, 0};
-    const XRGB888 XRGB888::Max{255, 255, 255};
-
-    auto XRGB888::fromRGBf(float R, float G, float B) -> XRGB888
+    auto XRGB888::swappedRB() const -> XRGB888
     {
-        float rf = R * 255.0F;
-        float gf = G * 255.0F;
-        float bf = B * 255.0F;
-        // clamp to [0,255]
-        uint8_t r = rf < 0.0F ? 0 : (rf > 255.0F ? 255 : static_cast<uint8_t>(rf));
-        uint8_t g = gf < 0.0F ? 0 : (gf > 255.0F ? 255 : static_cast<uint8_t>(gf));
-        uint8_t b = bf < 0.0F ? 0 : (bf > 255.0F ? 255 : static_cast<uint8_t>(bf));
-        return XRGB888(r, g, b);
+        return XRGB888(v[2], v[1], v[0]);
     }
 
-    auto XRGB888::fromRGBf(double R, double G, double B) -> XRGB888
+    auto XRGB888::fromHex(const std::string &hex) -> XRGB888
     {
-        double rf = R * 255.0;
-        double gf = G * 255.0;
-        double bf = B * 255.0;
-        // clamp to [0,255]
-        uint8_t r = rf < 0.0 ? 0 : (rf > 255.0 ? 255 : static_cast<uint8_t>(rf));
-        uint8_t g = gf < 0.0 ? 0 : (gf > 255.0 ? 255 : static_cast<uint8_t>(gf));
-        uint8_t b = bf < 0.0 ? 0 : (bf > 255.0 ? 255 : static_cast<uint8_t>(bf));
-        return XRGB888(r, g, b);
+        REQUIRE(hex.length() >= 6, std::runtime_error, "Hex color string must have format RRGGBB or #RRGGBB");
+        auto temp = hex;
+        // remove # if it exists
+        if (temp.front() == '#')
+        {
+            temp = temp.erase(0, 1);
+        }
+        REQUIRE(temp.length() == 6, std::runtime_error, "Hex color string must have format RRGGBB or #RRGGBB");
+        // extract RGB values
+        try
+        {
+            auto R = std::stoi(temp.substr(0, 2), nullptr, 16);
+            auto G = std::stoi(temp.substr(2, 2), nullptr, 16);
+            auto B = std::stoi(temp.substr(4, 2), nullptr, 16);
+            return XRGB888(R, G, B);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            THROW(std::runtime_error, "Hex color conversion failed: " << e.what());
+        }
     }
 
     auto XRGB888::toHex() const -> std::string
@@ -41,7 +44,7 @@ namespace Color
     auto XRGB888::toHex(const XRGB888 &color) -> std::string
     {
         std::stringstream ss;
-        ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint32_t>(color.v[0]) << std::setw(2) << static_cast<uint32_t>(color.v[1]) << std::setw(2) << static_cast<uint32_t>(color.v[2]);
+        ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint32_t>(color.R()) << std::setw(2) << static_cast<uint32_t>(color.G()) << std::setw(2) << static_cast<uint32_t>(color.B());
         return ss.str();
     }
 
