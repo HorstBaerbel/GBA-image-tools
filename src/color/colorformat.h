@@ -16,7 +16,7 @@ namespace Color
         Paletted8 = 8, // 8bit paletted format
         XRGB1555 = 15, // X1R5G5B5 16-bit format for GBA
         RGB565 = 16,   // R5G6B5 16-bit format for NDS, DXT
-        XRGB888 = 32,  // X8R8G8B8 32-bit straight truecolor format
+        XRGB8888 = 32, // X8R8G8B8 32-bit straight truecolor format
         Lchf = 96,     // Lch float truecolor format
         RGBf = 97,     // RGB float truecolor format
         YCgCoRf = 98   // YCgCoR float truecolor format

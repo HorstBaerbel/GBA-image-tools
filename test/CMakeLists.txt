@@ -40,6 +40,7 @@ add_subdirectory(Catch2)
 set(SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/rgb565.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/xrgb1555.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/xrgb8888.cpp
 )
 
 file(GLOB TESTS_SRC CONFIGURE_DEPENDS "*.cpp")

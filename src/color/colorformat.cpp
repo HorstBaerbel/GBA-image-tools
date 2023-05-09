@@ -4,7 +4,7 @@
 #include "rgbf.h"
 #include "xrgb1555.h"
 #include "rgb565.h"
-#include "xrgb888.h"
+#include "xrgb8888.h"
 #include "ycgcof.h"
 #include "exception.h"
 
@@ -68,7 +68,7 @@ namespace Color
             return 15;
         case Format::RGB565:
             return 16;
-        case Format::XRGB888:
+        case Format::XRGB8888:
             return 32;
         case Format::Lchf:
         case Format::RGBf:
@@ -88,7 +88,7 @@ namespace Color
         case Color::Format::XRGB1555:
         case Color::Format::RGB565:
             return 2;
-        case Color::Format::XRGB888:
+        case Color::Format::XRGB8888:
             return 4;
         case Color::Format::Lchf:
         case Color::Format::RGBf:
@@ -115,8 +115,8 @@ namespace Color
             return "XRGB1555";
         case Format::RGB565:
             return "RGB565";
-        case Format::XRGB888:
-            return "XRGB888";
+        case Format::XRGB8888:
+            return "XRGB8888";
         case Format::Lchf:
             return "Lch float";
         case Format::RGBf:
@@ -147,9 +147,9 @@ namespace Color
     }
 
     template <>
-    auto toFormat<XRGB888>() -> Format
+    auto toFormat<XRGB8888>() -> Format
     {
-        return Format::XRGB888;
+        return Format::XRGB8888;
     }
 
     template <>
