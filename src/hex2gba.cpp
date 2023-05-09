@@ -1,4 +1,4 @@
-// Convert a RGB888 color value to RGB555 for GBA
+// Convert a RGB888 color value to RGB555, RGB565 and BGR555, BGR565 for GBA / NDS
 // See also: http://www.budmelvin.com/dev/15bitconverter.html
 // and: https://en.wikipedia.org/wiki/High_color
 
@@ -6,14 +6,15 @@
 #include <iostream>
 #include <string>
 
-#include <Magick++.h>
 #include <cxxopts/include/cxxopts.hpp>
 
-Magick::Color m_color;
+#include "color/xrgb8888.h"
+
+Color::XRGB8888 m_color;
 
 bool readArguments(int argc, const char *argv[])
 {
-    cxxopts::Options options("hextogba", "Convert a RGB888 color value to RGB555 and BGR555 for GBA");
+    cxxopts::Options options("hextogba", "Convert a RGB888 color value to RGB555, RGB565 and BGR555, BGR565 for GBA / NDS");
     options.allow_unrecognised_options();
     options.add_options()("h,help", "Print help")("c,color", "Color must be a RGB888 hex value like \"abc012\" or \"#abc012\"", cxxopts::value<std::string>())("positional", "", cxxopts::value<std::vector<std::string>>());
     options.parse_positional({"color", "positional"});
@@ -27,15 +28,14 @@ bool readArguments(int argc, const char *argv[])
     if (result.count("color"))
     {
         // try converting argument to a color
-        auto colorArg = result["color"].as<std::string>();
-        auto colorString = colorArg.front() == '#' ? colorArg : (std::string("#") + colorArg);
+        auto colorString = result["color"].as<std::string>();
         try
         {
-            m_color = Magick::Color(colorString);
+            m_color = Color::XRGB8888::fromHex(colorString);
         }
-        catch (const Magick::Exception &ex)
+        catch (const std::runtime_error &e)
         {
-            std::cerr << colorArg << " is not a valid color. Format must be \"abc012\" or \"#abc012\". Aborting. " << std::endl;
+            std::cerr << colorString << " is not a valid color: " << e.what() << ". Format must be \"abc012\" or \"#abc012\". Aborting. " << std::endl;
             return false;
         }
     }
@@ -44,9 +44,16 @@ bool readArguments(int argc, const char *argv[])
 
 void printUsage()
 {
-    std::cout << "Convert a RGB888 color value to RGB555 and BGR555 for GBA" << std::endl;
+    std::cout << "Convert a RGB888 color value to RGB555, RGB565 and BGR555, BGR565 for GBA / NDS" << std::endl;
     std::cout << "Usage: hex2gba COLOR" << std::endl;
     std::cout << "COLOR must be a RGB888 hex value like \"abc012\" or \"#abc012\"" << std::endl;
+}
+
+auto printColor(const std::string &format, uint32_t color32, uint32_t color16) -> void
+{
+    std::cout << format << std::hex << std::setfill('0') << std::setw(4) << color32 << ", ";
+    std::cout << std::hex << std::setfill('0') << std::setw(4) << color16 << "h, ";
+    std::cout << std::dec << color16 << "d" << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -58,16 +65,13 @@ int main(int argc, const char *argv[])
         return 2;
     }
     // convert color
-    auto b = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.blueQuantum())));
-    auto g = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.greenQuantum())));
-    auto r = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.redQuantum())));
-    uint16_t rgb = (r << 10 | g << 5 | b);
-    std::cout << "RGB555 = #" << std::hex << std::setfill('0') << std::setw(4) << rgb << ", ";
-    std::cout << std::hex << std::setfill('0') << std::setw(4) << rgb << "h, ";
-    std::cout << std::dec << rgb << "d" << std::endl;
-    uint16_t bgr = (b << 10 | g << 5 | r);
-    std::cout << "BGR555 = #" << std::hex << std::setfill('0') << std::setw(4) << bgr << ", ";
-    std::cout << std::hex << std::setfill('0') << std::setw(4) << bgr << "h, ";
-    std::cout << std::dec << bgr << "d" << std::endl;
+    auto b5 = static_cast<uint32_t>(m_color.R() >> 3);
+    auto g5 = static_cast<uint32_t>(m_color.G() >> 3);
+    auto g6 = static_cast<uint32_t>(m_color.G() >> 2);
+    auto r5 = static_cast<uint32_t>(m_color.B() >> 3);
+    printColor("RGB555 = #", (b5 << 19) | (g5 << 11) | (r5 << 3), (b5 << 10) | (g5 << 5) | r5);
+    printColor("BGR555 = #", (r5 << 19) | (g5 << 11) | (b5 << 3), (r5 << 10) | (g5 << 5) | b5);
+    printColor("RGB565 = #", (b5 << 19) | (g6 << 10) | (r5 << 3), (b5 << 11) | (g6 << 5) | r5);
+    printColor("BGR565 = #", (r5 << 19) | (g6 << 10) | (b5 << 3), (r5 << 11) | (g6 << 5) | b5);
     return 0;
 }
