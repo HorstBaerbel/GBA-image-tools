@@ -19,7 +19,7 @@ namespace Color
         using pixel_type = uint32_t; // pixel value type
         using value_type = uint8_t;  // color channel value type
 
-        XRGB8888() = default;
+        XRGB8888() : v(std::bit_cast<std::array<uint8_t, 4>>(uint32_t(0))){};
 
         constexpr XRGB8888(uint8_t R, uint8_t G, uint8_t B) : v({B, G, R, 0}) {}
 

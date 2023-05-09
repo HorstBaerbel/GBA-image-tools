@@ -11,7 +11,7 @@ auto addColorAtIndex0(const std::vector<Color::XRGB8888> &colorMap, const Color:
 /// @brief Build an image with the RGB555 color space the GBA uses
 auto buildColorMapRGB555() -> std::vector<Color::XRGB8888>;
 
-/// @brief Build an image with the RGB565 color space the NDS or DXT
+/// @brief Build an image with the RGB565 color space the NDS or DXT use
 auto buildColorMapRGB565() -> std::vector<Color::XRGB8888>;
 
 /// @brief Swap colors in palette according to index table

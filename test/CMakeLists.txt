@@ -38,9 +38,11 @@ add_subdirectory(Catch2)
 # Define targets
 
 set(SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/rgb565.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/xrgb1555.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/xrgb8888.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/rgb565.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/rgbf.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/xrgb1555.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/xrgb8888.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/ycgcorf.cpp
 )
 
 file(GLOB TESTS_SRC CONFIGURE_DEPENDS "*.cpp")
@@ -49,7 +51,7 @@ set(TARGET_NAME unit_tests)
 
 add_executable(${TARGET_NAME} ${SRC} ${TESTS_SRC})
 target_link_libraries(${TARGET_NAME} PRIVATE Catch2::Catch2WithMain pthread)
-target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/eigen)
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(CTest)

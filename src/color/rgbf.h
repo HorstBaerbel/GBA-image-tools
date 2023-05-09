@@ -17,7 +17,7 @@ namespace Color
         using pixel_type = Eigen::Vector3f; // pixel value type
         using value_type = float;           // color channel value type
 
-        RGBf() = default;
+        RGBf() : Eigen::Vector3f(0, 0, 0) {}
         RGBf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
         template <class... Types>
         RGBf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
@@ -40,6 +40,9 @@ namespace Color
         auto swappedRB() const -> RGBf;
 
         /// @brief Round and clamp RGB values to grid positions. The values themselves will stay in [0,1]
+        /// Rounding (0.1,0.5,0.9) to (31,31,31) will result in (0.097,0.516,0.903) -> (int ((x * 31) + 0.5)) / 31
+        /// @param color Input color
+        /// @param gridMax Max. grid position. Grid min. will always be (0,0,0)
         template <typename T>
         static auto roundTo(const RGBf &color, const std::array<T, 3> &gridMax) -> RGBf
         {

@@ -1,4 +1,4 @@
-#include "ycgcof.h"
+#include "ycgcorf.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>

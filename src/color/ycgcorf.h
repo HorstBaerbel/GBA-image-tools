@@ -21,7 +21,7 @@ namespace Color
         using pixel_type = Eigen::Vector3f; // pixel value type
         using value_type = float;           // color channel value type
 
-        YCgCoRf() : Eigen::Vector3f() {}
+        YCgCoRf() : Eigen::Vector3f(0, 0, 0) {}
         YCgCoRf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
         template <class... Types>
         YCgCoRf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
@@ -44,34 +44,33 @@ namespace Color
         auto normalized() const -> YCgCoRf;
 
         /// @brief Round and clamp YCgCoR values to grid positions. The values themselves will stay in their respective ranges
+        /// @param color Input color
+        /// @param gridMax Max. grid position. Grid min. will always be (0,0,0)
         template <typename T>
         static auto roundTo(const YCgCoRf &color, const std::array<T, 3> &gridMax) -> YCgCoRf
         {
-            // convert to float RGB
-            float tmp = color.Y() - color.Cg() / 2.0F;
-            float G = color.Cg() + tmp;
-            float B = tmp - color.Co() / 2.0F;
-            float R = B + color.Co();
+            // get normalized values
+            auto Y = color.Y();
+            auto Cg = 0.5F * (color.Cg() + 1.0F);
+            auto Co = 0.5F * (color.Co() + 1.0F);
             // scale to grid
-            R *= gridMax[0];
-            G *= gridMax[1];
-            B *= gridMax[2];
+            Y *= gridMax[0];
+            Cg *= gridMax[1];
+            Co *= gridMax[2];
             // clamp to [0, gridMax]
-            R = R < 0.0F ? 0.0F : (R > gridMax[0] ? gridMax[0] : R);
-            G = G < 0.0F ? 0.0F : (G > gridMax[1] ? gridMax[1] : G);
-            B = B < 0.0F ? 0.0F : (B > gridMax[2] ? gridMax[2] : B);
+            Y = Y < 0.0F ? 0.0f : (Y > gridMax[0] ? gridMax[0] : Y);
+            Cg = Cg < 0.0F ? 0.0F : (Cg > gridMax[1] ? gridMax[1] : Cg);
+            Co = Co < 0.0F ? 0.0F : (Co > gridMax[2] ? gridMax[2] : Co);
             // round to grid point
-            R = std::trunc(R + 0.5F);
-            G = std::trunc(G + 0.5F);
-            B = std::trunc(B + 0.5F);
+            Y = std::trunc(Y + 0.5F);
+            Cg = std::trunc(Cg + 0.5F);
+            Co = std::trunc(Co + 0.5F);
             // convert to result
-            R /= gridMax[0];
-            G /= gridMax[1];
-            B /= gridMax[2];
-            float Co = R - B;
-            tmp = B + Co / 2.0F;
-            float Cg = G - tmp;
-            float Y = tmp + Cg / 2.0F;
+            Y /= gridMax[0];
+            Cg /= gridMax[1];
+            Co /= gridMax[2];
+            Cg = (2.0F * Cg) - 1.0f;
+            Co = (2.0F * Co) - 1.0f;
             return YCgCoRf(Y, Cg, Co);
         }
 

@@ -1,5 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "testmacros.h"
 
 #include "color/xrgb8888.h"

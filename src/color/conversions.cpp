@@ -5,7 +5,7 @@
 #include "xrgb1555.h"
 #include "rgb565.h"
 #include "xrgb8888.h"
-#include "ycgcof.h"
+#include "ycgcorf.h"
 
 #include <cmath>
 
