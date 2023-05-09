@@ -18,7 +18,7 @@ namespace Color
         using pixel_type = uint16_t; // pixel value type
         using value_type = uint8_t;  // color channel value type
 
-        XRGB1555() = default;
+        XRGB1555() : v(std::bit_cast<Value>(uint16_t(0))) {}
 
         XRGB1555(uint8_t R, uint8_t G, uint8_t B)
         {
