@@ -14,7 +14,7 @@ Color::XRGB8888 m_color;
 
 bool readArguments(int argc, const char *argv[])
 {
-    cxxopts::Options options("hextogba", "Convert a RGB888 color value to RGB555, RGB565 and BGR555, BGR565 for GBA / NDS");
+    cxxopts::Options options("hex2gba", "Convert a RGB888 color value to RGB555, RGB565 and BGR555, BGR565 for GBA / NDS");
     options.allow_unrecognised_options();
     options.add_options()("h,help", "Print help")("c,color", "Color must be a RGB888 hex value like \"abc012\" or \"#abc012\"", cxxopts::value<std::string>())("positional", "", cxxopts::value<std::vector<std::string>>());
     options.parse_positional({"color", "positional"});
