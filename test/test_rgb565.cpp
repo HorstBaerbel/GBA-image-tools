@@ -2,12 +2,12 @@
 
 #include "testmacros.h"
 
-#include "color/xrgb1555.h"
+#include "color/rgb565.h"
 #include "color/distance.h"
 
-using ColorType = Color::XRGB1555;
+using ColorType = Color::RGB565;
 
-TEST_SUITE("XRGB1555")
+TEST_SUITE("RGB565")
 
 CATCH_TEST_CASE("DefaultConstruction", TEST_SUITE_TAG)
 {
@@ -24,13 +24,13 @@ CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
     CATCH_REQUIRE(c1.R() == 1);
     CATCH_REQUIRE(c1.G() == 2);
     CATCH_REQUIRE(c1.B() == 3);
-    CATCH_REQUIRE(c1.raw() == uint16_t(0b0000010001000011)); // raw is XRGB
+    CATCH_REQUIRE(c1.raw() == uint16_t(0b0000100001000011)); // raw is RGB
     CATCH_REQUIRE(((decltype(c1)::pixel_type)c1) == c1.raw());
-    ColorType c2(uint16_t(0b0101000010001100));
+    ColorType c2(uint16_t(0b1010000010001100));
     CATCH_REQUIRE(c2.R() == 20);
     CATCH_REQUIRE(c2.G() == 4);
     CATCH_REQUIRE(c2.B() == 12);
-    CATCH_REQUIRE(c2.raw() == uint16_t(0b0101000010001100)); // raw is XRGB
+    CATCH_REQUIRE(c2.raw() == uint16_t(0b1010000010001100)); // raw is RGB
     ColorType c3(c1);
     CATCH_REQUIRE(c3.R() == c1.R());
     CATCH_REQUIRE(c3.G() == c1.G());
@@ -42,9 +42,6 @@ CATCH_TEST_CASE("OutOfRangeValuesThrow", TEST_SUITE_TAG)
     CATCH_REQUIRE_THROWS(ColorType(ColorType::Max[0] + 1, 2, 3));
     CATCH_REQUIRE_THROWS(ColorType(1, ColorType::Max[1] + 1, 3));
     CATCH_REQUIRE_THROWS(ColorType(1, 2, ColorType::Max[2] + 1));
-    CATCH_REQUIRE_THROWS(ColorType(uint16_t(0x9753)));
-    ColorType c5;
-    CATCH_REQUIRE_THROWS(c5 = uint16_t(0x9753));
 }
 
 CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
@@ -56,8 +53,8 @@ CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.G() == c1.G());
     CATCH_REQUIRE(c2.B() == c1.B());
     c2 = uint16_t(0x1753);
-    CATCH_REQUIRE(c2.R() == 5);
-    CATCH_REQUIRE(c2.G() == 26);
+    CATCH_REQUIRE(c2.R() == 2);
+    CATCH_REQUIRE(c2.G() == 58);
     CATCH_REQUIRE(c2.B() == 19);
 }
 

@@ -1,10 +1,11 @@
 #pragma once
 
 #include "colorformat.h"
+#include "exception.h"
 
 #include <array>
+#include <bit>
 #include <cstdint>
-#include <string>
 
 namespace Color
 {
@@ -18,28 +19,42 @@ namespace Color
         using value_type = uint8_t;  // color channel value type
 
         RGB565() = default;
-        constexpr RGB565(uint8_t R, uint8_t G, uint8_t B) : r(R), g(G), b(B) {}
-        constexpr RGB565(uint16_t color) : c(color) {}
+
+        RGB565(uint8_t R, uint8_t G, uint8_t B)
+        {
+            REQUIRE(R <= Max[0], std::runtime_error, "Red color out of range [0, 31]");
+            REQUIRE(G <= Max[1], std::runtime_error, "Green color out of range [0, 63]");
+            REQUIRE(B <= Max[2], std::runtime_error, "Blue color out of range [0, 31]");
+            v.r = R;
+            v.g = G;
+            v.b = B;
+        }
+
+        /// @brief Construct color using raw RGB565 value
+        constexpr RGB565(uint16_t rgb) : v(std::bit_cast<Value>(rgb)) {}
 
         inline RGB565 &operator=(const RGB565 &other)
         {
-            c = other.c;
+            v = other.v;
             return *this;
         }
 
-        inline RGB565 &operator=(uint16_t color)
+        /// @brief Set color using raw RGB565 value
+        inline RGB565 &operator=(uint16_t rgb)
         {
-            c = color;
+            v = std::bit_cast<Value>(rgb);
             return *this;
         }
 
-        inline auto R() const -> const uint8_t { return r; }
-        inline auto G() const -> const uint8_t { return g; }
-        inline auto B() const -> const uint8_t { return b; }
+        inline auto R() const -> const uint8_t { return v.r; }
+        inline auto G() const -> const uint8_t { return v.g; }
+        inline auto B() const -> const uint8_t { return v.b; }
 
-        inline auto raw() const -> pixel_type { return c; }
+        /// @brief Return raw RGB565 value
+        inline auto raw() const -> pixel_type { return std::bit_cast<uint16_t>(v); }
 
-        inline operator uint16_t() const { return c; }
+        /// @brief Return raw RGB565 value
+        inline operator uint16_t() const { return std::bit_cast<uint16_t>(v); }
 
         static constexpr std::array<uint8_t, 3> Min{0, 0, 0};
         static constexpr std::array<uint8_t, 3> Max{31, 63, 31};
@@ -53,19 +68,12 @@ namespace Color
         static auto distance(const RGB565 &color0, const RGB565 &color1) -> float;
 
     private:
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-        union
+        struct Value
         {
-            struct
-            {
-                uint8_t r : 5;
-                uint8_t g : 6;
-                uint8_t b : 5;
-            };              // RGB
-            uint16_t c = 0; // BGR
-        } __attribute__((aligned(2), packed));
-#pragma GCC diagnostic pop
+            uint16_t b : 5;
+            uint16_t g : 6;
+            uint16_t r : 5;
+        } __attribute__((aligned(2), packed)) v; // RGB in memory
     };
 
 }

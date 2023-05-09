@@ -11,7 +11,7 @@ namespace Color
     auto XRGB1555::distance(const XRGB1555 &color0, const XRGB1555 &color1) -> float
     {
         static constexpr float OneOver31 = 1.0F / 31.0F;
-        if (color0.R() == color1.R() && color0.G() == color1.G() && color0.B() == color1.B())
+        if (color0.raw() == color1.raw())
         {
             return 0.0F;
         }

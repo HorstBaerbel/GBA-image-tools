@@ -5,14 +5,14 @@ namespace Color
 
     auto RGB565::swappedRB() const -> RGB565
     {
-        return RGB565(b, g, r);
+        return RGB565(v.b, v.g, v.r);
     }
 
     auto RGB565::distance(const RGB565 &color0, const RGB565 &color1) -> float
     {
         static constexpr float OneOver31 = 1.0F / 31.0F;
         static constexpr float OneOver63 = 1.0F / 63.0F;
-        if (color0.c == color1.c)
+        if (color0.raw() == color1.raw())
         {
             return 0.0F;
         }

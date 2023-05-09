@@ -6,7 +6,6 @@
 #include <array>
 #include <bit>
 #include <cstdint>
-#include <string>
 
 namespace Color
 {

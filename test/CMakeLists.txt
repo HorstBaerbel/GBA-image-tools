@@ -38,12 +38,11 @@ add_subdirectory(Catch2)
 # Define targets
 
 set(SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/rgb565.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/color/xrgb1555.cpp
 )
 
-set(TESTS_SRC
-    test_xrgb1555.cpp
-)
+file(GLOB TESTS_SRC CONFIGURE_DEPENDS "*.cpp")
 
 set(TARGET_NAME unit_tests)
 
