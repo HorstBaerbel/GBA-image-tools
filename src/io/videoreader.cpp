@@ -58,7 +58,7 @@ VideoReader::~VideoReader()
     close();
 }
 
-void VideoReader::open(const std::string &filePath)
+auto VideoReader::open(const std::string &filePath) -> void
 {
     REQUIRE(!filePath.empty(), std::runtime_error, "Empty file path passed");
     REQUIRE(m_state->formatContext == nullptr, std::runtime_error, "Reader already open. Call close() first");
@@ -138,14 +138,14 @@ void VideoReader::open(const std::string &filePath)
     }
 }
 
-VideoReader::VideoInfo VideoReader::getInfo() const
+auto VideoReader::getInfo() const -> VideoReader::VideoInfo
 {
     REQUIRE(m_state->formatContext != nullptr, std::runtime_error, "Reader not open. Call open() first");
     auto duration = static_cast<float>(static_cast<double>(m_state->duration) * static_cast<double>(m_state->timeBase.num) / static_cast<double>(m_state->timeBase.den));
     return {m_state->codecName, static_cast<uint32_t>(m_state->videoStreamIndex), static_cast<uint32_t>(m_state->width), static_cast<uint32_t>(m_state->height), m_state->fps, static_cast<uint64_t>(m_state->nrOfFrames), duration};
 }
 
-std::vector<uint8_t> VideoReader::readFrame() const
+auto VideoReader::readFrame() const -> std::vector<uint32_t>
 {
     while (true)
     {
@@ -190,24 +190,24 @@ std::vector<uint8_t> VideoReader::readFrame() const
     {
         auto sourcePixelFormat = CorrectDeprecatedPixelFormat(m_state->codecContext->pix_fmt);
         m_state->swsContext = sws_getContext(m_state->width, m_state->height, sourcePixelFormat,
-                                             m_state->width, m_state->height, AV_PIX_FMT_RGB24,
-                                             SWS_BILINEAR, nullptr, nullptr, nullptr);
+                                             m_state->width, m_state->height, AV_PIX_FMT_0RGB32,
+                                             SWS_POINT, nullptr, nullptr, nullptr);
         if (m_state->swsContext == nullptr)
         {
             THROW(std::runtime_error, "Failed to create sw scaler");
         }
     }
     // convert pixel format using sw scaler
-    std::vector<uint8_t> frame(m_state->width * m_state->height * 3);
-    uint8_t *const dst[4] = {frame.data(), nullptr, nullptr, nullptr};
-    int const dstStride[4] = {m_state->width * 3, 0, 0, 0};
+    std::vector<uint32_t> frame(m_state->width * m_state->height);
+    uint8_t *const dst[4] = {reinterpret_cast<uint8_t *>(frame.data()), nullptr, nullptr, nullptr};
+    int const dstStride[4] = {m_state->width * 4, 0, 0, 0};
     sws_scale(m_state->swsContext, m_state->frame->data, m_state->frame->linesize, 0, m_state->frame->height, dst, dstStride);
     // release FFmpeg frame
     av_frame_unref(m_state->frame);
     return frame;
 }
 
-void VideoReader::close()
+auto VideoReader::close() -> void
 {
     if (m_state->packet)
     {

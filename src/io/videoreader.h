@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-/// @brief Video reader class that uses FFmpeg and returns data in RGB888 format
+/// @brief Video reader class that uses FFmpeg and returns data in XRGB8888 format
 class VideoReader
 {
 public:
@@ -29,16 +29,16 @@ public:
 
     /// @brief Open FFmpeg reader on a file so you can later getFrame() from it
     /// @throw Throws a std::runtime_errror if anything goes wrong
-    void open(const std::string &filePath);
+    auto open(const std::string &filePath) -> void;
 
     /// @brief Get information about opened video file
-    VideoInfo getInfo() const;
+    auto getInfo() const -> VideoInfo;
 
-    /// @brief Read next RGB888 frame from video. Will return empty data if EOF
-    std::vector<uint8_t> readFrame() const;
+    /// @brief Read next XRGB8888 frame from video. Will return empty data if EOF
+    auto readFrame() const -> std::vector<uint32_t>;
 
     /// @brief Open FFmpeg reader opened with open()
-    void close();
+    auto close() -> void;
 
 private:
     struct ReaderState;
