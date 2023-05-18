@@ -18,7 +18,7 @@ namespace Color
         case Color::Format::Unknown:
         case Color::Format::XRGB1555:
         case Color::Format::RGB565:
-        case Color::Format::Lchf:
+        case Color::Format::LChf:
         case Color::Format::RGBf:
         case Color::Format::YCgCoRf:
             return false;
@@ -38,7 +38,7 @@ namespace Color
         {
         case Color::Format::XRGB1555:
         case Color::Format::RGB565:
-        case Color::Format::Lchf:
+        case Color::Format::LChf:
         case Color::Format::RGBf:
         case Color::Format::YCgCoRf:
             return true;
@@ -70,7 +70,7 @@ namespace Color
             return 16;
         case Format::XRGB8888:
             return 32;
-        case Format::Lchf:
+        case Format::LChf:
         case Format::RGBf:
         case Format::YCgCoRf:
             return 96;
@@ -90,7 +90,7 @@ namespace Color
             return 2;
         case Color::Format::XRGB8888:
             return 4;
-        case Color::Format::Lchf:
+        case Color::Format::LChf:
         case Color::Format::RGBf:
         case Color::Format::YCgCoRf:
             return 12;
@@ -117,8 +117,8 @@ namespace Color
             return "RGB565";
         case Format::XRGB8888:
             return "XRGB8888";
-        case Format::Lchf:
-            return "Lch float";
+        case Format::LChf:
+            return "LCh float";
         case Format::RGBf:
             return "RGB float";
         case Format::YCgCoRf:
@@ -159,9 +159,9 @@ namespace Color
     }
 
     template <>
-    auto toFormat<Lchf>() -> Format
+    auto toFormat<LChf>() -> Format
     {
-        return Format::Lchf;
+        return Format::LChf;
     }
 
     template <>

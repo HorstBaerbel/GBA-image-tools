@@ -17,6 +17,100 @@ namespace Color
     constexpr float WHITEPOINT_Y = 1.0F;
     constexpr float WHITEPOINT_Z = 1.088754F;
 
+    // ----- RGBf -----------------------------------------------------------------
+
+    template <>
+    auto convertTo(const XRGB1555 &color) -> RGBf
+    {
+        uint16_t c = color;
+        auto R = static_cast<float>((c & 0x7C00) >> 10);
+        auto G = static_cast<float>((c & 0x3E0) >> 5);
+        auto B = static_cast<float>(c & 0x1F);
+        R /= 31.0F;
+        G /= 31.0F;
+        B /= 31.0F;
+        return RGBf(R, G, B);
+    }
+
+    template <>
+    auto convertTo(const RGB565 &color) -> RGBf
+    {
+        uint16_t c = color;
+        auto R = static_cast<float>((c & 0xF800) >> 11);
+        auto G = static_cast<float>((c & 0x7E0) >> 5);
+        auto B = static_cast<float>(c & 0x1F);
+        R /= 31.0F;
+        G /= 63.0F;
+        B /= 31.0F;
+        return RGBf(R, G, B);
+    }
+
+    template <>
+    auto convertTo(const XRGB8888 &color) -> RGBf
+    {
+        uint32_t c = color;
+        auto R = static_cast<float>((c & 0xFF0000) >> 16);
+        auto G = static_cast<float>((c & 0xFF00) >> 8);
+        auto B = static_cast<float>(c & 0xFF);
+        R /= 255.0F;
+        G /= 255.0F;
+        B /= 255.0F;
+        return RGBf(R, G, B);
+    }
+
+    template <>
+    auto convertTo(const YCgCoRf &color) -> RGBf
+    {
+        // convert to float RGB in [0,1]
+        float tmp = color.Y() - color.Cg() / 2.0F;
+        float G = color.Cg() + tmp;
+        float B = tmp - color.Co() / 2.0F;
+        float R = B + color.Co();
+        return RGBf(R, G, B);
+    }
+
+    auto LABINVF(float v) -> float
+    {
+        constexpr float EPSILON = 6.0 / 29.0;
+        return v >= EPSILON ? v * v * v : (108.0F / 841.0F) * (v - (4.0F / 29.0F));
+    }
+
+    // See: https://mina86.com/2021/srgb-lab-lchab-conversions/
+    // and: https://getreuer.info/posts/colorspace/
+    // and: https://github.com/lucasb-eyer/go-colorful/blob/master/colors.go
+    template <>
+    auto convertTo(const LChf &color) -> RGBf
+    {
+        // convert to Lab
+        float L = color.L();
+        float a = color.C() * std::cos(color.H() * float(M_PI / 180.0));
+        float b = color.C() * std::sin(color.H() * float(M_PI / 180.0));
+        // convert to XYZ
+        L = (L + 16.0F) / 116.0F;
+        a = L + a / 500.0F;
+        b = L - b / 200.0F;
+        float X = WHITEPOINT_X * LABINVF(a);
+        float Y = WHITEPOINT_Y * LABINVF(L);
+        float Z = WHITEPOINT_Z * LABINVF(b);
+        // convert to RGB
+        float R = 3.2406F * X - 1.5372F * Y - 0.4986F * Z;
+        float G = -0.9689F * X + 1.8758F * Y + 0.0415F * Z;
+        float B = 0.0557F * X - 0.2040F * Y + 1.0570F * Z;
+        float minC = R < G ? (R < B ? R : B) : (G < B ? G : B);
+        // Force non-negative values so that gamma correction is well-defined
+        if (minC < 0.0F)
+        {
+            R -= minC;
+            G -= minC;
+            B -= minC;
+        }
+        // clamp to range, because LCh / conversion result can have much bigger range
+        R = R > 1.0F ? 1.0F : R;
+        G = G > 1.0F ? 1.0F : G;
+        B = B > 1.0F ? 1.0F : B;
+        return RGBf(R, G, B);
+    }
+
     // ----- XRGB1555 --------------------------------------------------------------
 
     template <>
@@ -29,26 +123,20 @@ namespace Color
     auto convertTo(const XRGB8888 &color) -> XRGB1555
     {
         // bring into range
-        auto R = static_cast<uint32_t>(color.R()) >> 3;
-        auto G = static_cast<uint32_t>(color.G()) >> 3;
-        auto B = static_cast<uint32_t>(color.B()) >> 3;
-        // clamp to [0,31]
-        R = R > 31 ? 31 : R;
-        G = G > 31 ? 31 : G;
-        B = B > 31 ? 31 : B;
-        return XRGB1555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
+        auto R = static_cast<uint16_t>(color.R()) >> 3;
+        auto G = static_cast<uint16_t>(color.G()) >> 3;
+        auto B = static_cast<uint16_t>(color.B()) >> 3;
+        return XRGB1555(R << 10) | (G << 5) | B;
     }
 
     template <>
     auto convertTo(const RGB565 &color) -> XRGB1555
     {
         // bring into range
-        auto R = static_cast<uint32_t>(color.R());
-        auto G = static_cast<uint32_t>(color.G()) >> 1;
-        auto B = static_cast<uint32_t>(color.B());
-        // clamp to [0,31]
-        G = G > 31 ? 31 : G;
-        return XRGB1555(static_cast<uint16_t>(R) << 10) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
+        auto R = static_cast<uint16_t>(color.R());
+        auto G = static_cast<uint16_t>(color.G()) >> 1;
+        auto B = static_cast<uint16_t>(color.B());
+        return XRGB1555(R << 10) | (G << 5) | B;
     }
 
     template <>
@@ -68,12 +156,13 @@ namespace Color
     template <>
     auto convertTo(const YCgCoRf &color) -> XRGB1555
     {
-        // convert to float RGB in [0,1]
-        float tmp = color.Y() - color.Cg() / 2.0F;
-        float G = color.Cg() + tmp;
-        float B = tmp - color.Co() / 2.0F;
-        float R = B + color.Co();
-        return convertTo<XRGB1555>(RGBf(R, G, B));
+        return convertTo<XRGB1555>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    auto convertTo(const LChf &color) -> XRGB1555
+    {
+        return convertTo<XRGB1555>(convertTo<RGBf>(color));
     }
 
     // ----- RGB565 --------------------------------------------------------------
@@ -91,8 +180,6 @@ namespace Color
         auto R = static_cast<uint32_t>(color.R());
         auto G = static_cast<uint32_t>(color.G()) << 1;
         auto B = static_cast<uint32_t>(color.B());
-        // clamp to [0,31] resp. [0,63]
-        G = G > 63 ? 63 : G;
         return RGB565(static_cast<uint16_t>(R) << 11) | (static_cast<uint16_t>(G) << 5) | static_cast<uint16_t>(B);
     }
 
@@ -127,12 +214,13 @@ namespace Color
     template <>
     auto convertTo(const YCgCoRf &color) -> RGB565
     {
-        // convert to float RGB in [0,1]
-        float tmp = color.Y() - color.Cg() / 2.0F;
-        float G = color.Cg() + tmp;
-        float B = tmp - color.Co() / 2.0F;
-        float R = B + color.Co();
-        return convertTo<RGB565>(RGBf(R, G, B));
+        return convertTo<RGB565>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    auto convertTo(const LChf &color) -> RGB565
+    {
+        return convertTo<RGB565>(convertTo<RGBf>(color));
     }
 
     // ----- XRGB8888 --------------------------------------------------------------
@@ -179,124 +267,16 @@ namespace Color
     template <>
     auto convertTo(const YCgCoRf &color) -> XRGB8888
     {
-        // convert to float RGB in [0,1]
-        float tmp = color.Y() - color.Cg() / 2.0F;
-        float G = color.Cg() + tmp;
-        float B = tmp - color.Co() / 2.0F;
-        float R = B + color.Co();
-        return convertTo<XRGB8888>(RGBf(R, G, B));
-    }
-
-    // ----- RGBf -----------------------------------------------------------------
-
-    template <>
-    auto convertTo(const XRGB1555 &color) -> RGBf
-    {
-        uint16_t c = color;
-        auto R = static_cast<float>((c & 0x7C00) >> 10);
-        auto G = static_cast<float>((c & 0x3E0) >> 5);
-        auto B = static_cast<float>(c & 0x1F);
-        R *= 31.0F;
-        G *= 31.0F;
-        B *= 31.0F;
-        return RGBf(R, G, B);
+        return convertTo<XRGB8888>(convertTo<RGBf>(color));
     }
 
     template <>
-    auto convertTo(const XRGB8888 &color) -> RGBf
+    auto convertTo(const LChf &color) -> XRGB8888
     {
-        uint32_t c = color;
-        auto R = static_cast<float>((c & 0xFF0000) >> 16);
-        auto G = static_cast<float>((c & 0xFF00) >> 8);
-        auto B = static_cast<float>(c & 0xFF);
-        R *= 255.0F;
-        G *= 255.0F;
-        B *= 255.0F;
-        return RGBf(R, G, B);
-    }
-
-    template <>
-    auto convertTo(const YCgCoRf &color) -> RGBf
-    {
-        // convert to float RGB in [0,1]
-        float tmp = color.Y() - color.Cg() / 2.0F;
-        float G = color.Cg() + tmp;
-        float B = tmp - color.Co() / 2.0F;
-        float R = B + color.Co();
-        return RGBf(R, G, B);
-    }
-
-    auto LABINVF(float v) -> float
-    {
-        constexpr float EPSILON = 6.0 / 29.0;
-        return v >= EPSILON ? v * v * v : (108.0F / 841.0F) * (v - (4.0F / 29.0F));
-    }
-
-    // See: https://mina86.com/2021/srgb-lab-lchab-conversions/
-    // and: https://getreuer.info/posts/colorspace/
-    // and: https://github.com/lucasb-eyer/go-colorful/blob/master/colors.go
-    template <>
-    auto convertTo(const Lchf &color) -> RGBf
-    {
-        // convert to Lab
-        float L = color.L();
-        float a = color.C() * std::cos(color.H() * float(M_PI / 180.0));
-        float b = color.C() * std::sin(color.H() * float(M_PI / 180.0));
-        // convert to XYZ
-        L = (L + 16.0F) / 116.0F;
-        a = L + a / 500.0F;
-        b = L - b / 200.0F;
-        float X = WHITEPOINT_X * LABINVF(a);
-        float Y = WHITEPOINT_Y * LABINVF(L);
-        float Z = WHITEPOINT_Z * LABINVF(b);
-        // convert to RGB
-        float R = 3.2406F * X - 1.5372F * Y - 0.4986F * Z;
-        float G = -0.9689F * X + 1.8758F * Y + 0.0415F * Z;
-        float B = 0.0557F * X - 0.2040F * Y + 1.0570F * Z;
-        float minC = R < G ? (R < B ? R : B) : (G < B ? G : B);
-        // Force non-negative values so that gamma correction is well-defined
-        if (minC < 0.0F)
-        {
-            R -= minC;
-            G -= minC;
-            B -= minC;
-        }
-        // clamp to range, because Lch / conversion result can have much bigger range
-        R = R > 1.0F ? 1.0F : R;
-        G = G > 1.0F ? 1.0F : G;
-        B = B > 1.0F ? 1.0F : B;
-        return RGBf(R, G, B);
+        return convertTo<XRGB8888>(convertTo<RGBf>(color));
     }
 
     // ----- YCgCoRf --------------------------------------------------------------
-
-    template <>
-    auto convertTo(const XRGB1555 &color) -> YCgCoRf
-    {
-        // convert to float RGB in [0,1]
-        uint16_t c = color;
-        auto R = static_cast<float>((c & 0x7C00) >> 10);
-        auto G = static_cast<float>((c & 0x3E0) >> 5);
-        auto B = static_cast<float>(c & 0x1F);
-        R *= 31.0F;
-        G *= 31.0F;
-        B *= 31.0F;
-        return convertTo<YCgCoRf>(RGBf(R, G, B));
-    }
-
-    template <>
-    auto convertTo(const XRGB8888 &color) -> YCgCoRf
-    {
-        // convert to float RGB in [0,1]
-        uint32_t c = color;
-        auto R = static_cast<float>((c & 0xFF0000) >> 16);
-        auto G = static_cast<float>((c & 0xFF00) >> 8);
-        auto B = static_cast<float>(c & 0xFF);
-        R *= 255.0F;
-        G *= 255.0F;
-        B *= 255.0F;
-        return convertTo<YCgCoRf>(RGBf(R, G, B));
-    }
 
     template <>
     auto convertTo(const RGBf &color) -> YCgCoRf
@@ -306,6 +286,24 @@ namespace Color
         float Cg = color.G() - tmp;
         float Y = tmp + Cg / 2.0F;
         return YCgCoRf(Y, Cg, Co);
+    }
+
+    template <>
+    auto convertTo(const XRGB1555 &color) -> YCgCoRf
+    {
+        return convertTo<YCgCoRf>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    auto convertTo(const RGB565 &color) -> YCgCoRf
+    {
+        return convertTo<YCgCoRf>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    auto convertTo(const XRGB8888 &color) -> YCgCoRf
+    {
+        return convertTo<YCgCoRf>(convertTo<RGBf>(color));
     }
 
     // ----- LCHf --------------------------------------------------------------
@@ -321,7 +319,7 @@ namespace Color
     // and: https://getreuer.info/posts/colorspace/
     // and: https://github.com/lucasb-eyer/go-colorful/blob/master/colors.go
     template <>
-    auto convertTo(const RGBf &color) -> Lchf
+    auto convertTo(const RGBf &color) -> LChf
     {
         // convert to XYZ
         auto X = color.R() * 0.4124108464885388 + color.G() * 0.3575845678529519 + color.B() * 0.18045380393360833;
@@ -337,14 +335,32 @@ namespace Color
         auto L = 116.0F * fy - 16.0F;
         auto a = 500.0F * (fx - fy);
         auto b = 200.0F * (fy - fz);
-        // convert to Lch
+        // convert to LCh
         auto C = std::sqrt(a * a + b * b);
         auto H = std::atan2(b, a) * float(180.0 / M_PI);
         if (H < 0.0F)
         {
             H += 360.0F;
         }
-        return Lchf(L, C, H);
+        return LChf(L, C, H);
+    }
+
+    template <>
+    auto convertTo(const XRGB1555 &color) -> LChf
+    {
+        return convertTo<LChf>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    auto convertTo(const RGB565 &color) -> LChf
+    {
+        return convertTo<LChf>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    auto convertTo(const XRGB8888 &color) -> LChf
+    {
+        return convertTo<LChf>(convertTo<RGBf>(color));
     }
 
 }

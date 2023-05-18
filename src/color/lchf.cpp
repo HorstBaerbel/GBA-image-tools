@@ -6,7 +6,7 @@
 namespace Color
 {
 
-    auto Lchf::distance(const Lchf &color0, const Lchf &color1) -> float
+    auto LChf::distance(const LChf &color0, const LChf &color1) -> float
     {
         constexpr float OneOver360 = 1.0 / 360.0;
         if (color0 == color1)
