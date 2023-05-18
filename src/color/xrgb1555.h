@@ -20,15 +20,26 @@ namespace Color
 
         XRGB1555() : v(std::bit_cast<Value>(uint16_t(0))) {}
 
-        XRGB1555(uint8_t R, uint8_t G, uint8_t B)
+        XRGB1555(value_type R, value_type G, value_type B)
         {
             REQUIRE(R <= Max[0], std::runtime_error, "Red color out of range [0, 31]");
             REQUIRE(G <= Max[1], std::runtime_error, "Green color out of range [0, 31]");
             REQUIRE(B <= Max[2], std::runtime_error, "Blue color out of range [0, 31]");
+            v.x = 0;
             v.r = R;
             v.g = G;
             v.b = B;
+        }
+
+        XRGB1555(const std::array<value_type, 3> &rgb)
+        {
+            REQUIRE(rgb[0] <= Max[0], std::runtime_error, "Red color out of range [0, 31]");
+            REQUIRE(rgb[1] <= Max[1], std::runtime_error, "Green color out of range [0, 31]");
+            REQUIRE(rgb[2] <= Max[2], std::runtime_error, "Blue color out of range [0, 31]");
             v.x = 0;
+            v.r = rgb[0];
+            v.g = rgb[1];
+            v.b = rgb[2];
         }
 
         /// @brief Construct color using raw XRGB1555 value
@@ -54,9 +65,9 @@ namespace Color
             return *this;
         }
 
-        inline auto R() const -> const uint8_t { return v.r; }
-        inline auto G() const -> const uint8_t { return v.g; }
-        inline auto B() const -> const uint8_t { return v.b; }
+        inline auto R() const -> const value_type { return v.r; }
+        inline auto G() const -> const value_type { return v.g; }
+        inline auto B() const -> const value_type { return v.b; }
 
         /// @brief Return raw XRGB1555 value
         inline auto raw() const -> pixel_type { return std::bit_cast<uint16_t>(v); }
@@ -64,8 +75,8 @@ namespace Color
         /// @brief Return raw XRGB1555 value
         inline operator uint16_t() const { return std::bit_cast<uint16_t>(v); }
 
-        static constexpr std::array<uint8_t, 3> Min{0, 0, 0};
-        static constexpr std::array<uint8_t, 3> Max{31, 31, 31};
+        static constexpr std::array<value_type, 3> Min{0, 0, 0};
+        static constexpr std::array<value_type, 3> Max{31, 31, 31};
 
         /// @brief Return swapped red and blue color channel
         auto swappedRB() const -> XRGB1555;
@@ -82,7 +93,7 @@ namespace Color
             uint16_t g : 5;
             uint16_t r : 5;
             uint16_t x : 1;
-        } __attribute__((aligned(2), packed)) v; // XRGB in memory
+        } __attribute__((aligned(2), packed)) v; // low to high bits, XRGB in memory
     };
 
 }

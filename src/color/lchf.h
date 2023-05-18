@@ -9,9 +9,9 @@
 namespace Color
 {
 
-    /// @brief Linear floating point CIE LCh color in range
-    /// L [0,1] Luma
-    /// c [0,1] Chroma
+    /// @brief Linear floating point CIE LCh / LCh(ab) color in range (NOT HCL)
+    /// L [0,100] Luma
+    /// C [0,200] Chroma (theoretically chroma is unbounded in LCh)
     /// h [0,360] Hue
     class LChf : public Eigen::Vector3f
     {
@@ -37,7 +37,7 @@ namespace Color
         inline auto raw() const -> pixel_type { return *this; }
 
         static constexpr std::array<value_type, 3> Min{0.0F, 0.0F, 0.0F};
-        static constexpr std::array<value_type, 3> Max{1.0F, 1.0F, 360.0F};
+        static constexpr std::array<value_type, 3> Max{100.0F, 200.0F, 360.0F};
 
         /// @brief Simple euclidian distance color metric (CIE76). Ideally we would use DistanceCIEDE2000, but it is too expensive and complicated...
         /// See: https://en.wikipedia.org/wiki/Color_difference

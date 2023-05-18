@@ -21,7 +21,7 @@ namespace Color
         float dR = ra - rb;
         float dG = (static_cast<float>(color0.G()) - static_cast<float>(color1.G())) * OneOver31;
         float dB = (static_cast<float>(color0.B()) - static_cast<float>(color1.B())) * OneOver31;
-        return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (3.0F - rMean) * dB * dB) / 9.0F;
-    } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (3    -     1) *  1 *  1 = 3 + 4 + 2 = 9 / 9 = 1
+        return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (2.0F + (1.0F - rMean) * dB * dB)) / 9.0F;
+    } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (2    +  1    -     1) *  1 *  1) = 3 + 4 + 2 = 9 / 9 = 1
 
 }

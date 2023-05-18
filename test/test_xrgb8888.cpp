@@ -33,6 +33,12 @@ CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
     CATCH_REQUIRE(c3.R() == c1.R());
     CATCH_REQUIRE(c3.G() == c1.G());
     CATCH_REQUIRE(c3.B() == c1.B());
+    ColorType c4(std::array<ColorType::value_type, 3>({1, 2, 3}));
+    CATCH_REQUIRE(c4.R() == 1);
+    CATCH_REQUIRE(c4.G() == 2);
+    CATCH_REQUIRE(c4.B() == 3);
+    ColorType c5(ColorType::Max);
+    CATCH_REQUIRE(static_cast<ColorType::pixel_type>(c5) == 0xFFFFFF);
 }
 
 CATCH_TEST_CASE("OutOfRangeValuesThrow", TEST_SUITE_TAG)
