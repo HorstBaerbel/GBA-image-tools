@@ -59,7 +59,7 @@ auto compare(const std::array<A, N> &a, const std::array<Color::LChf, N> &b) -> 
     }
 }
 
-// Cacluate: https://coliru.stacked-crooked.com/a/a6f3ec31d820dada
+// Calculate: https://coliru.stacked-crooked.com/a/a6f3ec31d820dada
 
 CATCH_TEST_CASE("RGB565", TEST_SUITE_TAG)
 {
@@ -110,5 +110,31 @@ CATCH_TEST_CASE("XRGB1555", TEST_SUITE_TAG)
     compare(c, c4);
     // LChf
     std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.64899, 67.9604, 302.32974)};
+    compare(c, c5);
+}
+
+CATCH_TEST_CASE("XRGB8888", TEST_SUITE_TAG)
+{
+    std::array<Color::XRGB8888, 6> c = {
+        Color::XRGB8888(0, 0, 0),
+        Color::XRGB8888(255, 255, 255),
+        Color::XRGB8888(255, 0, 0),
+        Color::XRGB8888(0, 255, 0),
+        Color::XRGB8888(0, 0, 255),
+        Color::XRGB8888(82, 57, 247)};
+    // RGB565
+    std::array<Color::RGB565, 6> c1 = {Color::RGB565(0, 0, 0), Color::RGB565(31, 63, 31), Color::RGB565(31, 0, 0), Color::RGB565(0, 63, 0), Color::RGB565(0, 0, 31), Color::RGB565(10, 14, 30)};
+    compare(c, c1);
+    // XRGB1555
+    std::array<Color::XRGB1555, 6> c2 = {Color::XRGB1555(0, 0, 0), Color::XRGB1555(31, 31, 31), Color::XRGB1555(31, 0, 0), Color::XRGB1555(0, 31, 0), Color::XRGB1555(0, 0, 31), Color::XRGB1555(10, 7, 30)};
+    compare(c, c2);
+    // RGBf
+    std::array<Color::RGBf, 6> c3 = {Color::RGBf(0, 0, 0), Color::RGBf(1, 1, 1), Color::RGBf(1, 0, 0), Color::RGBf(0, 1, 0), Color::RGBf(0, 0, 1), Color::RGBf(82.0 / 255, 57.0 / 255, 247.0 / 255)};
+    compare(c, c3);
+    // YCgCoRf
+    std::array<Color::YCgCoRf, 6> c4 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.43431, -0.42157, -0.64706)};
+    compare(c, c4);
+    // LChf
+    std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38783, 302.42209)};
     compare(c, c5);
 }
