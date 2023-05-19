@@ -9,7 +9,7 @@
 namespace Color
 {
 
-    /// @brief Linear floating point CIE LCh / LCh(ab) color in range (NOT HCL)
+    /// @brief Linear floating point CIE LCh / LCh(ab) color in range (NOT HCL or HSL)
     /// L [0,100] Luma
     /// C [0,200] Chroma (theoretically chroma is unbounded in LCh)
     /// h [0,360] Hue
@@ -25,6 +25,7 @@ namespace Color
         template <class... Types>
         LChf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
         LChf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
+        LChf(const std::array<value_type, 3> &other) : Eigen::Vector3f(other[0], other[1], other[2]) {}
         LChf(float L, float C, float H) : Eigen::Vector3f(L, C, H) {}
 
         inline auto L() const -> const value_type & { return x(); }

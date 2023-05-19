@@ -22,6 +22,7 @@ namespace Color
         template <class... Types>
         RGBf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
         RGBf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
+        RGBf(const std::array<value_type, 3> &other) : Eigen::Vector3f(other[0], other[1], other[2]) {}
         RGBf(float R, float G, float B) : Eigen::Vector3f(R, G, B) {}
 
         inline auto R() const -> const value_type & { return x(); }

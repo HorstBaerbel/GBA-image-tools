@@ -26,6 +26,7 @@ namespace Color
         template <class... Types>
         YCgCoRf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
         YCgCoRf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
+        YCgCoRf(const std::array<value_type, 3> &other) : Eigen::Vector3f(other[0], other[1], other[2]) {}
         YCgCoRf(float Y, float Cg, float Co) : Eigen::Vector3f(Y, Cg, Co) {}
 
         inline auto Y() const -> const value_type & { return x(); }
