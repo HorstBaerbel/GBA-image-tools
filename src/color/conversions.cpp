@@ -144,12 +144,14 @@ namespace Color
         return XRGB1555(R << 10) | (G << 5) | B;
     }
 
+    // See: https://stackoverflow.com/a/9069480/1121150
+    // Test: https://coliru.stacked-crooked.com/a/90829ec6fc2f95c3
     template <>
     auto convertTo(const RGB565 &color) -> XRGB1555
     {
         // bring into range
         auto R = static_cast<uint16_t>(color.R());
-        auto G = static_cast<uint16_t>(color.G()) >> 1;
+        auto G = static_cast<uint16_t>(color.G() * 31 + 31) >> 6;
         auto B = static_cast<uint16_t>(color.B());
         return XRGB1555(R << 10) | (G << 5) | B;
     }
@@ -188,12 +190,14 @@ namespace Color
         return RGB565(color);
     }
 
+    // See: https://stackoverflow.com/a/9069480/1121150
+    // Test: https://coliru.stacked-crooked.com/a/90829ec6fc2f95c3
     template <>
     auto convertTo(const XRGB1555 &color) -> RGB565
     {
         // bring into range
         auto R = static_cast<uint16_t>(color.R());
-        auto G = static_cast<uint16_t>(color.G()) << 1;
+        auto G = static_cast<uint16_t>(color.G() * 130 + 33) >> 6;
         auto B = static_cast<uint16_t>(color.B());
         return RGB565((R << 11) | (G << 5) | B);
     }
@@ -245,7 +249,7 @@ namespace Color
     }
 
     // See: https://stackoverflow.com/a/9069480/1121150
-    // Test: https://coliru.stacked-crooked.com/a/9ab8887d2cb48685
+    // Test: https://coliru.stacked-crooked.com/a/90829ec6fc2f95c3
     template <>
     auto convertTo(const XRGB1555 &color) -> XRGB8888
     {
@@ -257,7 +261,7 @@ namespace Color
     }
 
     // See: https://stackoverflow.com/a/9069480/1121150
-    // Test: https://coliru.stacked-crooked.com/a/9ab8887d2cb48685
+    // Test: https://coliru.stacked-crooked.com/a/90829ec6fc2f95c3
     template <>
     auto convertTo(const RGB565 &color) -> XRGB8888
     {
