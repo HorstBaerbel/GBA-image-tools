@@ -46,6 +46,22 @@ CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
     CATCH_REQUIRE(c1.Co() == 9);
 }
 
+CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
+{
+    ColorType c1(26, 43, 60);
+    ColorType c2(1, 2, 3);
+    c2 = c1;
+    CATCH_REQUIRE(c2[0] == c1.Y());
+    CATCH_REQUIRE(c2[1] == c1.Cg());
+    CATCH_REQUIRE(c2[2] == c1.Co());
+    c1[0] = 5;
+    c1[1] = 7;
+    c1[2] = 9;
+    CATCH_REQUIRE(c1[0] == 5);
+    CATCH_REQUIRE(c1[1] == 7);
+    CATCH_REQUIRE(c1[2] == 9);
+}
+
 CATCH_TEST_CASE("Normalize", TEST_SUITE_TAG)
 {
     ColorType c1(0.25, -0.5, 1);

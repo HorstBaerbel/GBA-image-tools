@@ -62,6 +62,20 @@ CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.B() == 19);
 }
 
+CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
+{
+    ColorType c1(15, 7, 22);
+    ColorType c2(uint16_t(0x6178));
+    c2 = c1;
+    CATCH_REQUIRE(c2[0] == c1.R());
+    CATCH_REQUIRE(c2[1] == c1.G());
+    CATCH_REQUIRE(c2[2] == c1.B());
+    c2 = uint16_t(0x1753);
+    CATCH_REQUIRE(c2[0] == 2);
+    CATCH_REQUIRE(c2[1] == 58);
+    CATCH_REQUIRE(c2[2] == 19);
+}
+
 CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
 {
     ColorType c1(15, 7, 22);

@@ -65,9 +65,11 @@ namespace Color
             return *this;
         }
 
-        inline auto R() const -> const value_type { return v.r; }
-        inline auto G() const -> const value_type { return v.g; }
-        inline auto B() const -> const value_type { return v.b; }
+        inline auto R() const -> value_type { return v.r; }
+        inline auto G() const -> value_type { return v.g; }
+        inline auto B() const -> value_type { return v.b; }
+
+        inline auto operator[](std::size_t pos) const -> value_type { return pos == 0 ? v.r : (pos == 1 ? v.g : v.b); }
 
         /// @brief Return raw XRGB1555 value
         inline auto raw() const -> pixel_type { return std::bit_cast<uint16_t>(v); }

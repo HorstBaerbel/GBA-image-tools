@@ -53,6 +53,9 @@ namespace Color
         inline auto B() const -> const value_type & { return v[0]; }
         inline auto B() -> value_type & { return v[0]; }
 
+        inline auto operator[](std::size_t pos) const -> const value_type & { return pos == 0 ? v[2] : (pos == 1 ? v[1] : v[0]); }
+        inline auto operator[](std::size_t pos) -> value_type & { return pos == 0 ? v[2] : (pos == 1 ? v[1] : v[0]); }
+
         /// @brief Return raw XRGB8888 value
         inline auto raw() const -> pixel_type { return std::bit_cast<uint32_t>(v); }
 

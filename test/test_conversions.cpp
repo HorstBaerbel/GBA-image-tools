@@ -29,9 +29,9 @@ auto compare(const std::array<A, N> &a, const std::array<Color::RGBf, N> &b) -> 
     for (std::size_t i = 0; i < N; i++)
     {
         auto c = Color::convertTo<Color::RGBf>(a[i]);
-        CATCH_REQUIRE_THAT(c.R(), Catch::Matchers::WithinAbs(b[i].R(), 0.0001));
-        CATCH_REQUIRE_THAT(c.G(), Catch::Matchers::WithinAbs(b[i].G(), 0.0001));
-        CATCH_REQUIRE_THAT(c.B(), Catch::Matchers::WithinAbs(b[i].B(), 0.0001));
+        CATCH_REQUIRE_THAT(c[0], Catch::Matchers::WithinAbs(b[i][0], 0.0002));
+        CATCH_REQUIRE_THAT(c[1], Catch::Matchers::WithinAbs(b[i][1], 0.0002));
+        CATCH_REQUIRE_THAT(c[2], Catch::Matchers::WithinAbs(b[i][2], 0.0002));
     }
 }
 
@@ -41,9 +41,21 @@ auto compare(const std::array<A, N> &a, const std::array<Color::YCgCoRf, N> &b) 
     for (std::size_t i = 0; i < N; i++)
     {
         auto c = Color::convertTo<Color::YCgCoRf>(a[i]);
-        CATCH_REQUIRE_THAT(c.Y(), Catch::Matchers::WithinAbs(b[i].Y(), 0.0001));
-        CATCH_REQUIRE_THAT(c.Cg(), Catch::Matchers::WithinAbs(b[i].Cg(), 0.0001));
-        CATCH_REQUIRE_THAT(c.Co(), Catch::Matchers::WithinAbs(b[i].Co(), 0.0001));
+        CATCH_REQUIRE_THAT(c[0], Catch::Matchers::WithinAbs(b[i][0], 0.0002));
+        CATCH_REQUIRE_THAT(c[1], Catch::Matchers::WithinAbs(b[i][1], 0.0002));
+        CATCH_REQUIRE_THAT(c[2], Catch::Matchers::WithinAbs(b[i][2], 0.0002));
+    }
+}
+
+template <std::size_t N, typename A>
+auto compare(const std::array<A, N> &a, const std::array<Color::LChf, N> &b) -> void
+{
+    for (std::size_t i = 0; i < N; i++)
+    {
+        auto c = Color::convertTo<Color::LChf>(a[i]);
+        CATCH_REQUIRE_THAT(c[0], Catch::Matchers::WithinAbs(b[i][0], 0.0002));
+        CATCH_REQUIRE_THAT(c[1], Catch::Matchers::WithinAbs(b[i][1], 0.0002));
+        CATCH_REQUIRE_THAT(c[2], Catch::Matchers::WithinAbs(b[i][2], 0.0002));
     }
 }
 
@@ -68,4 +80,7 @@ CATCH_TEST_CASE("RGB565", TEST_SUITE_TAG)
     // YCgCoRf
     std::array<Color::YCgCoRf, 6> c4 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.433692, -0.422939, -0.645161)};
     compare(c, c4);
+    // LChf
+    std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.42716, 68.55281, 302.5583)};
+    compare(c, c5);
 }

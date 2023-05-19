@@ -58,6 +58,32 @@ CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.R() == 19);
     CATCH_REQUIRE(c2.G() == 87);
     CATCH_REQUIRE(c2.B() == 144);
+    c2.R() = 5;
+    c2.G() = 7;
+    c2.B() = 9;
+    CATCH_REQUIRE(c2.R() == 5);
+    CATCH_REQUIRE(c2.G() == 7);
+    CATCH_REQUIRE(c2.B() == 9);
+}
+
+CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
+{
+    ColorType c1(26, 43, 60);
+    ColorType c2(0x001A2B3C);
+    c2 = c1;
+    CATCH_REQUIRE(c2[0] == c1.R());
+    CATCH_REQUIRE(c2[1] == c1.G());
+    CATCH_REQUIRE(c2[2] == c1.B());
+    c2 = 0x00135790;
+    CATCH_REQUIRE(c2[0] == 19);
+    CATCH_REQUIRE(c2[1] == 87);
+    CATCH_REQUIRE(c2[2] == 144);
+    c2[0] = 5;
+    c2[1] = 7;
+    c2[2] = 9;
+    CATCH_REQUIRE(c2[0] == 5);
+    CATCH_REQUIRE(c2[1] == 7);
+    CATCH_REQUIRE(c2[2] == 9);
 }
 
 CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
