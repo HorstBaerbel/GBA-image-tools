@@ -89,6 +89,8 @@ std::vector<T> divideBy(const std::vector<T> &data, T divideBy)
 }
 
 /// @brief Interleave data: A012... + B012... -> A0B0A1B1A2B2...
+/// Interleaving for nibbles is done by getting the lower nibble first, then the higher nibble.
+/// @param bitsPerPixel Bits per pixel contained in data. Only 4, 8, 15, 16 is allowed here! 15 bpp is treated as 16.
 std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, uint32_t bitsPerPixel);
 
 /// @brief Delta-encode data. First value is stored verbatim. All other values are stored as difference to previous value
@@ -97,6 +99,25 @@ std::vector<T> deltaEncode(const std::vector<T> &data)
 {
     std::vector<T> result;
     std::adjacent_difference(data.cbegin(), data.cend(), std::back_inserter(result));
+    return result;
+}
+
+/// @brief Decode delta-encoded data. First value is stored verbatim. All other values are stored as difference to previous value
+template <typename T>
+std::vector<T> deltaDecode(const std::vector<T> &data)
+{
+    if (data.empty())
+    {
+        return {};
+    }
+    std::vector<T> result;
+    T previous = 0;
+    for (auto v : data)
+    {
+        auto decoded = previous + v;
+        result.push_back(decoded);
+        previous = decoded;
+    }
     return result;
 }
 
