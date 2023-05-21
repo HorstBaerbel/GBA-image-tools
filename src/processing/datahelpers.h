@@ -1,4 +1,3 @@
-// some data conversion utility functions used by the tools
 #pragma once
 
 #include <algorithm>
@@ -81,7 +80,7 @@ std::vector<uint32_t> getStartIndices(const std::vector<std::vector<T>> &data)
 
 /// @brief Divide every element in the vector by a certain value.
 template <typename T>
-std::vector<T> divideBy(const std::vector<T> &data, T divideBy = 1)
+std::vector<T> divideBy(const std::vector<T> &data, T divideBy)
 {
     std::vector<T> result;
     std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [divideBy](auto t)
@@ -89,7 +88,7 @@ std::vector<T> divideBy(const std::vector<T> &data, T divideBy = 1)
     return result;
 }
 
-/// @brief Interleave all pixel data: D0P0, D1P0, D0P1, D1P1...
+/// @brief Interleave data: A012... + B012... -> A0B0A1B1A2B2...
 std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, uint32_t bitsPerPixel);
 
 /// @brief Delta-encode data. First value is stored verbatim. All other values are stored as difference to previous value

@@ -10,7 +10,7 @@ std::vector<uint8_t> interleave(const std::vector<std::vector<uint8_t>> &data, u
     std::vector<uint8_t> result;
     if (bitsPerPixel == 4)
     {
-        REQUIRE((data.size() & 1) == 0, std::runtime_error, "If bits per pixel is 4, an even number of images must me passed!");
+        REQUIRE((data.size() & 1) == 0, std::runtime_error, "If bits per pixel is 4, an even number of images must be passed!");
         for (uint32_t pi = 0; pi < data.front().size(); pi++)
         {
             uint32_t shift = ((pi & 1) == 0) ? 0 : 4;
