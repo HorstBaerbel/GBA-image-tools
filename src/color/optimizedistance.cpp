@@ -3,6 +3,7 @@
 namespace Color
 {
 
+    /// @brief Calculate RMS distance for color index constellation
     auto calculateDistanceRMS(const std::vector<uint8_t> &indices, const std::map<uint8_t, std::vector<float>> &distancesSqrMap) -> float
     {
         float sumOfSquares = 0.0F;

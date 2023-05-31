@@ -12,13 +12,12 @@
 namespace Color
 {
 
-    /// @brief Calculate RMS distance for color index constellation
-    auto calculateDistanceRMS(const std::vector<uint8_t> &indices, const std::map<uint8_t, std::vector<float>> &distancesSqrMap) -> float;
-
     /// @brief Find optimal insertion position for color according to color distance map
     auto insertIndexOptimal(const std::vector<uint8_t> &indices, const std::map<uint8_t, std::vector<float>> &distancesSqrMap, uint8_t indexToInsert) -> std::vector<uint8_t>;
 
     /// @brief Reorder colors to optimize / minimize preceived color distance using LCh color space distance
+    /// Sorts by hue, then by chroma, then by lightness
+    /// @return Returns the new order of indices - old_index -> new_index
     template <typename T>
     auto optimizeColorDistance(const std::vector<T> &colors) -> std::vector<uint8_t>
     {
