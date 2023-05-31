@@ -4,230 +4,105 @@
 #include "datahelpers.h"
 #include "exception.h"
 
-std::pair<std::vector<uint8_t>, Color::Format> getImageData(const Magick::Image &img)
-{
-    std::pair<std::vector<uint8_t>, Color::Format> result;
-    if (img.type() == Magick::ImageType::PaletteType)
-    {
-        const auto nrOfColors = img.colorMapSize();
-        REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
-        const auto nrOfIndices = img.columns() * img.rows();
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getIndices to work...
-        auto indices = img.getConstIndexes();
-        for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
-        {
-            result.first.push_back(indices[i]);
-        }
-        result.second = Color::Format::Paletted8;
-    }
-    else if (img.type() == Magick::ImageType::TrueColorType)
-    {
-        // get pixel colors as RGB888
-        const auto nrOfPixels = img.columns() * img.rows();
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
-        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
-        {
-            auto pixel = pixels[i];
-            result.first.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red))));
-            result.first.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green))));
-            result.first.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))));
-        }
-        result.second = Color::Format::RGB888;
-    }
-    else
-    {
-        THROW(std::runtime_error, "Unsupported image type");
-    }
-    /*std::ofstream of("dump.hex", std::ios::binary | std::ios::out);
-    of.write(reinterpret_cast<const char *>(data.data()), data.size());
-    of.close();*/
-    return result;
-}
-
-std::pair<std::vector<Color::XRGB888>, Color::Format> getImageDataXRGB888(const Magick::Image &img)
-{
-    std::pair<std::vector<Color::XRGB888>, Color::Format> result;
-    if (img.type() == Magick::ImageType::TrueColorType)
-    {
-        // get pixel colors as RGB888
-        const auto nrOfPixels = img.columns() * img.rows();
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
-        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
-        {
-            auto pixel = pixels[i];
-            uint32_t color = 0;
-            color |= static_cast<uint32_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red)));
-            color |= static_cast<uint32_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green))) << 8;
-            color |= static_cast<uint32_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))) << 16;
-            result.first.push_back(color);
-        }
-        result.second = Color::Format::XRGB888;
-    }
-    else
-    {
-        THROW(std::runtime_error, "Unsupported image type");
-    }
-    return result;
-}
-
-std::pair<std::vector<Color::RGBf>, Color::Format> getImageDataRGBf(const Magick::Image &img)
-{
-    std::pair<std::vector<Color::RGBf>, Color::Format> result;
-    if (img.type() == Magick::ImageType::TrueColorType)
-    {
-        // get pixel colors as RGB888
-        const auto nrOfPixels = img.columns() * img.rows();
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
-        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
-        {
-            auto pixel = pixels[i];
-            Color::RGBf color;
-            color.R() = Magick::Color::scaleQuantumToDouble(pixel.red);
-            color.G() = Magick::Color::scaleQuantumToDouble(pixel.green);
-            color.B() = Magick::Color::scaleQuantumToDouble(pixel.blue);
-            result.first.push_back(color);
-        }
-        result.second = Color::Format::RGBf;
-    }
-    else
-    {
-        THROW(std::runtime_error, "Unsupported image type");
-    }
-    return result;
-}
-
-std::vector<Magick::Color> getColorMap(const Magick::Image &img)
-{
-    std::vector<Magick::Color> colorMap(img.colorMapSize());
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
-    {
-        colorMap[i] = img.colorMap(i);
-    }
-    return colorMap;
-}
-
-void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap)
-{
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
-    {
-        img.colorMap(i, colorMap.at(i));
-    }
-}
-
-std::vector<uint8_t> convertDataTo1Bit(const std::vector<uint8_t> &indices)
+std::vector<uint8_t> convertDataTo1Bit(const std::vector<uint8_t> &data)
 {
     std::vector<uint8_t> result;
     // size must be a multiple of 8
-    const auto nrOfIndices = indices.size();
+    const auto nrOfIndices = data.size();
     REQUIRE((nrOfIndices & 7) == 0, std::runtime_error, "Number of indices must be divisible by 8");
     for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 8)
     {
-        REQUIRE(indices[i] <= 1 || indices[i + 1] <= 1 || indices[i + 2] <= 1 || indices[i + 3] <= 1 || indices[i + 4] <= 1 || indices[i + 5] <= 1 || indices[i + 6] <= 1 || indices[i + 7] <= 1, std::runtime_error, "Index values must be < 4");
-        uint8_t v = (((indices[i + 7]) & 0x01) << 7);
-        v |= (((indices[i + 6]) & 0x01) << 6);
-        v |= (((indices[i + 5]) & 0x01) << 5);
-        v |= (((indices[i + 4]) & 0x01) << 4);
-        v |= (((indices[i + 3]) & 0x01) << 3);
-        v |= (((indices[i + 2]) & 0x01) << 2);
-        v |= (((indices[i + 1]) & 0x01) << 1);
-        v |= ((indices[i]) & 0x01);
+        REQUIRE(data[i] <= 1 && data[i + 1] <= 1 && data[i + 2] <= 1 && data[i + 3] <= 1 && data[i + 4] <= 1 && data[i + 5] <= 1 && data[i + 6] <= 1 && data[i + 7] <= 1, std::runtime_error, "Index values must be < 2");
+        uint8_t v = (((data[i + 7]) & 0x01) << 7);
+        v |= (((data[i + 6]) & 0x01) << 6);
+        v |= (((data[i + 5]) & 0x01) << 5);
+        v |= (((data[i + 4]) & 0x01) << 4);
+        v |= (((data[i + 3]) & 0x01) << 3);
+        v |= (((data[i + 2]) & 0x01) << 2);
+        v |= (((data[i + 1]) & 0x01) << 1);
+        v |= ((data[i]) & 0x01);
         result.push_back(v);
     }
     return result;
 }
 
-std::vector<uint8_t> convertDataTo2Bit(const std::vector<uint8_t> &indices)
+std::vector<uint8_t> convertDataTo2Bit(const std::vector<uint8_t> &data)
 {
     std::vector<uint8_t> result;
     // size must be a multiple of 4
-    const auto nrOfIndices = indices.size();
+    const auto nrOfIndices = data.size();
     REQUIRE((nrOfIndices & 3) == 0, std::runtime_error, "Number of indices must be divisible by 4");
     for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 4)
     {
-        REQUIRE(indices[i] <= 3 || indices[i + 1] <= 3 || indices[i + 2] <= 3 || indices[i + 3] <= 3, std::runtime_error, "Index values must be < 4");
-        uint8_t v = (((indices[i + 3]) & 0x03) << 6);
-        v |= (((indices[i + 2]) & 0x03) << 4);
-        v |= (((indices[i + 1]) & 0x03) << 2);
-        v |= ((indices[i]) & 0x03);
+        REQUIRE(data[i] <= 3 && data[i + 1] <= 3 && data[i + 2] <= 3 && data[i + 3] <= 3, std::runtime_error, "Index values must be < 4");
+        uint8_t v = (((data[i + 3]) & 0x03) << 6);
+        v |= (((data[i + 2]) & 0x03) << 4);
+        v |= (((data[i + 1]) & 0x03) << 2);
+        v |= ((data[i]) & 0x03);
         result.push_back(v);
     }
     return result;
 }
 
-std::vector<uint8_t> convertDataTo4Bit(const std::vector<uint8_t> &indices)
+std::vector<uint8_t> convertDataTo4Bit(const std::vector<uint8_t> &data)
 {
     std::vector<uint8_t> result;
     // size must be a multiple of 2
-    const auto nrOfIndices = indices.size();
+    const auto nrOfIndices = data.size();
     REQUIRE((nrOfIndices & 1) == 0, std::runtime_error, "Number of indices must be even");
     for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i += 2)
     {
-        REQUIRE(indices[i] <= 15 || indices[i + 1] <= 15, std::runtime_error, "Index values must be < 16");
-        uint8_t v = (((indices[i + 1]) & 0x0F) << 4);
-        v |= ((indices[i]) & 0x0F);
+        REQUIRE(data[i] <= 15 && data[i + 1] <= 15, std::runtime_error, "Index values must be < 16");
+        uint8_t v = (((data[i + 1]) & 0x0F) << 4);
+        v |= ((data[i]) & 0x0F);
         result.push_back(v);
     }
     return result;
 }
 
-std::vector<uint8_t> incImageIndicesBy1(const std::vector<uint8_t> &imageData)
+std::vector<uint8_t> incValuesBy1(const std::vector<uint8_t> &data)
 {
-    auto tempData = imageData;
+    auto tempData = data;
     std::for_each(tempData.begin(), tempData.end(), [](auto &index)
-                  { index++; });
+                  { REQUIRE(index < 255, std::runtime_error, "Indices must be < 255"); index++; });
     return tempData;
 }
 
-std::vector<uint8_t> swapIndexToIndex0(const std::vector<uint8_t> &imageData, uint8_t oldIndex)
+std::vector<uint8_t> swapValueWith0(const std::vector<uint8_t> &data, uint8_t value)
 {
-    auto tempData = imageData;
+    auto tempData = data;
     for (size_t i = 0; i < tempData.size(); ++i)
     {
-        if (tempData[i] == oldIndex)
+        if (tempData[i] == value)
         {
             tempData[i] = 0;
         }
         else if (tempData[i] == 0)
         {
-            tempData[i] = oldIndex;
+            tempData[i] = value;
         }
     }
     return tempData;
 }
 
-std::vector<uint8_t> swapIndices(const std::vector<uint8_t> &imageData, const std::vector<uint8_t> &newIndices)
+std::vector<uint8_t> swapValues(const std::vector<uint8_t> &data, const std::vector<uint8_t> &newValues)
 {
-    std::vector<uint8_t> reverseIndices(newIndices.size(), 0);
-    for (uint32_t i = 0; i < newIndices.size(); i++)
+    if (data.empty() || newValues.empty())
     {
-        reverseIndices[newIndices[i]] = i;
+        return data;
     }
-    auto tempData = imageData;
-    std::for_each(tempData.begin(), tempData.end(), [&reverseIndices](auto &i)
-                  { i = reverseIndices[i]; });
+    // find max value in data and make sure the new values table has an entry for it
+    auto maxValue = *std::max_element(data.cbegin(), data.cend());
+    REQUIRE(newValues.size() > maxValue, std::runtime_error, "Size of new values table must be >= max. value in data");
+    // reverse new value table
+    /*std::vector<uint8_t> reverseValues(newValues.size(), 0);
+    for (uint32_t i = 0; i < newValues.size(); i++)
+    {
+        reverseValues[newValues[i]] = i;
+    }*/
+    // apply mapping to data
+    auto tempData = data;
+    std::for_each(tempData.begin(), tempData.end(), [&newValues](auto &i)
+                  { i = newValues[i]; });
     return tempData;
-}
-
-uint32_t getMaxNrOfColors(Magick::ImageType imgType, const std::vector<std::vector<Magick::Color>> &colorMaps)
-{
-    REQUIRE(imgType == Magick::ImageType::PaletteType, std::runtime_error, "Paletted images required");
-    REQUIRE(!colorMaps.empty(), std::runtime_error, "No color maps passed");
-    const auto &refColorMap = colorMaps.front();
-    uint32_t maxColorMapColors = refColorMap.size();
-    for (const auto &cm : colorMaps)
-    {
-        if (cm.size() > maxColorMapColors)
-        {
-            maxColorMapColors = cm.size();
-        }
-    }
-    return maxColorMapColors;
-}
-
-std::vector<Magick::Color> padColorMap(const std::vector<Magick::Color> &colorMap, uint32_t nrOfColors)
-{
-    REQUIRE(!colorMap.empty(), std::runtime_error, "Empty color map passed");
-    REQUIRE(nrOfColors <= 256, std::runtime_error, "Can't padd color map to more than 256 colors");
-    // padd all color maps to max color count
-    return fillUpToMultipleOf(colorMap, nrOfColors);
 }

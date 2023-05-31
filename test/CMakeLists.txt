@@ -45,6 +45,7 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/color/xrgb8888.cpp
     ${PROJECT_SOURCE_DIR}/src/color/ycgcorf.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/datahelpers.cpp
+    ${PROJECT_SOURCE_DIR}/src/processing/imagehelpers.cpp
 )
 
 set(TARGET_INCLUDES
