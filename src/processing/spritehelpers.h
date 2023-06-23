@@ -6,7 +6,7 @@
 #include <vector>
 
 /// @brief Cut data to tileWidth * height pixel wide tiles. Width and height and tileWidth MUST be a multiple of 8!
-auto convertToWidth(const std::vector<Color::XRGB8888> &data, uint32_t width, uint32_t height, uint32_t tileWidth) -> std::vector<Color::XRGB8888>;
+auto convertToWidth(const std::vector<Color::XRGB8888> &data, uint32_t width, uint32_t height, uint32_t tileWidth = 8) -> std::vector<Color::XRGB8888>;
 
 /// @brief Cut data to 8x8 pixel wide tiles and store per tile instead of per scanline.
 /// Width and height MUST be a multiple of 8!
