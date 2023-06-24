@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 
 #-------------------------------------------------------------------------------
 # Add required libraries
@@ -35,23 +35,52 @@ if(MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP") #multi-processor compilation
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 11)
+
+#-------------------------------------------------------------------------------
+# Define sources
+
+list(APPEND COLORMAP555_SRC
+    colormap555.cpp
+    color/colorhelpers.cpp
+    color/lchf.cpp
+    color/xrgb8888.cpp
+)
+
+list(APPEND HEX2GBA_SRC
+    hex2gba.cpp
+    color/xrgb8888.cpp
+)
+
+list(APPEND GIMPPALETTE555_SRC
+    gimppalette555.cpp
+)
+
+file(GLOB_RECURSE HELPERS_SRC CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*/*.cpp ${PROJECT_SOURCE_DIR}/src/*/*.h)
+
+list(APPEND IMG2H_SRC
+    img2h.cpp
+    ${HELPERS_SRC}
+)
+
+list(APPEND VID2H_SRC
+    vid2h.cpp
+    ${HELPERS_SRC}
+)
 
 #-------------------------------------------------------------------------------
 # Define targets
 
-file(GLOB_RECURSE HELPERS_SRC CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*/*.cpp ${PROJECT_SOURCE_DIR}/src/*/*.h)
-
 include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/cxxopts ${PROJECT_SOURCE_DIR}/eigen ${PROJECT_SOURCE_DIR}/glob ${PROJECT_SOURCE_DIR}/src)
-add_executable(colormap555 colormap555.cpp color/colorhelpers.cpp)
+add_executable(colormap555 ${COLORMAP555_SRC})
 target_link_libraries(colormap555 PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX)
-add_executable(gimppalette555 gimppalette555.cpp)
-add_executable(hex2gba hex2gba.cpp)
-target_link_libraries(hex2gba PkgConfig::LIBMAGICK)
-add_executable(img2h img2h.cpp ${HELPERS_SRC})
+add_executable(gimppalette555 ${GIMPPALETTE555_SRC})
+add_executable(hex2gba ${HEX2GBA_SRC})
+target_link_libraries(hex2gba)
+add_executable(img2h ${IMG2H_SRC})
 target_link_libraries(img2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
-add_executable(vid2h vid2h.cpp ${HELPERS_SRC})
+add_executable(vid2h ${VID2H_SRC})
 target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
 
 #-------------------------------------------------------------------------------
