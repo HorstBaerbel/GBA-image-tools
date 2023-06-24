@@ -2,42 +2,40 @@
 // You'll need libmagick++-dev installed!
 
 #include "color/colorhelpers.h"
+#include "color/lchf.h"
+#include "io/imageio.h"
 
-#include <Magick++.h>
-
-bool isLessThan(const Magick::Color &a, const Magick::Color &b)
+bool isLessThan(const Color::XRGB8888 &a, const Color::XRGB8888 &b)
 {
-    Magick::ColorHSL hsla = a;
-    Magick::ColorHSL hslb = b;
-    return (hsla.hue() < hslb.hue()) ||
-           (hsla.hue() == hslb.hue() && (hsla.luminosity() * hsla.saturation()) < (hslb.luminosity() * hslb.saturation()));
+    auto lcha = Color::convertTo<Color::LChf>(a);
+    auto lchb = Color::convertTo<Color::LChf>(b);
+    return (lcha.H() < lchb.H()) ||
+           (lcha.H() < lchb.H() && (lcha.L() * lcha.C()) < (lchb.L() * lchb.C()));
 }
 
 int main(int argc, char *argv[])
 {
-    Magick::InitializeMagick(*argv);
-    buildColorMapRGB555().write("colormap555.png");
-    std::vector<Magick::Color> colors;
+    // Generate colors
+    std::vector<Color::XRGB8888> colors;
     for (uint8_t r = 0; r < 32; ++r)
     {
         for (uint8_t g = 0; g < 32; ++g)
         {
             for (uint8_t b = 0; b < 32; ++b)
             {
-                colors.push_back(Magick::ColorRGB(r / 31.0, g / 31.0, b / 31.0));
+                colors.push_back(Color::XRGB8888(r / 31.0, g / 31.0, b / 31.0));
             }
         }
     }
+    Image::ImageData pixelsRGB(colors);
+    Image::Data data;
+    data.size = {256, 128};
+    data.imageData = pixelsRGB;
+    IO::File::writeImage("colormap555.png", data);
+    // Sort colors
     std::sort(colors.begin(), colors.end(), isLessThan);
-    Magick::Image image2(Magick::Geometry(256, 128), "black");
-    image2.type(Magick::ImageType::TrueColorType);
-    image2.modifyImage();
-    auto pixels2 = image2.getPixels(0, 0, image2.columns(), image2.rows());
-    for (uint32_t i = 0; i < image2.columns() * image2.rows(); ++i)
-    {
-        *pixels2++ = colors[i];
-    }
-    image2.syncPixels();
-    image2.write("colormap555_hsl.png");
+    Image::ImageData pixelsLCH(colors);
+    data.imageData = pixelsLCH;
+    IO::File::writeImage("colormap555_lchf.png", data);
     return 0;
 }
