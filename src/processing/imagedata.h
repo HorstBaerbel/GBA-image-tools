@@ -93,7 +93,7 @@ namespace Image
             THROW(std::runtime_error, "Unsupported pixel format");
         }
 
-        auto convertToRaw() const -> std::vector<uint8_t>
+        auto convertDataToRaw() const -> std::vector<uint8_t>
         {
             if (std::holds_alternative<std::vector<uint8_t>>(m_data))
             {
