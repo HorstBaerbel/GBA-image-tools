@@ -3,6 +3,7 @@
 #include "exception.h"
 
 #include <Magick++.h>
+#include <Magick++/Color.h>
 
 #include <filesystem>
 
@@ -14,10 +15,10 @@ namespace IO
         std::vector<Color::XRGB8888> colorMap(img.colorMapSize());
         for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
         {
-            auto color = img.colorMap(i);
-            auto r = static_cast<uint8_t>(255.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum()));
-            auto g = static_cast<uint8_t>(255.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum()));
-            auto b = static_cast<uint8_t>(255.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum()));
+            auto color = Magick::ColorRGB(img.colorMap(i));
+            auto r = static_cast<uint8_t>(255.0 * color.red());
+            auto g = static_cast<uint8_t>(255.0 * color.green());
+            auto b = static_cast<uint8_t>(255.0 * color.blue());
             colorMap.emplace_back(Color::XRGB8888(r, g, b));
         }
         return colorMap;
@@ -35,7 +36,7 @@ namespace IO
             REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
             const auto nrOfIndices = linearImg.columns() * linearImg.rows();
             auto srcPixels = linearImg.getConstPixels(0, 0, linearImg.columns(), linearImg.rows()); // we need to call this first for getIndices to work...
-            auto srcIndices = linearImg.getConstIndexes();
+            auto srcIndices = static_cast<const uint8_t *>(linearImg.getConstMetacontent());
             std::vector<uint8_t> dstIndices;
             for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
             {
@@ -52,12 +53,11 @@ namespace IO
             // get pixel colors as RGBf
             const auto nrOfPixels = linearImg.columns() * linearImg.rows();
             auto srcPixels = linearImg.getConstPixels(0, 0, linearImg.columns(), linearImg.rows());
-            for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
+            for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
             {
-                auto pixel = srcPixels[i];
-                auto r = static_cast<uint8_t>(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red));
-                auto g = static_cast<uint8_t>(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green));
-                auto b = static_cast<uint8_t>(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue));
+                auto r = static_cast<uint8_t>((255.0F * *srcPixels++) / QuantumRange);
+                auto g = static_cast<uint8_t>((255.0F * *srcPixels++) / QuantumRange);
+                auto b = static_cast<uint8_t>((255.0F * *srcPixels++) / QuantumRange);
                 dstPixels.emplace_back(Color::XRGB8888(r, g, b));
             }
             return Image::ImageData(dstPixels);
@@ -85,49 +85,47 @@ namespace IO
     auto writePaletted(Magick::Image &dst, const Image::ImageData &src) -> void
     {
         // write index data
-        MagickCore::PixelPacket *dstPixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
-        MagickCore::IndexPacket *dstIndices = dst.getIndexes();
+        auto dstPixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
+        auto dstIndices = static_cast<uint8_t *>(dst.getMetacontent());
         REQUIRE(dstIndices != nullptr, std::runtime_error, "Bad indices pointer");
         const auto nrOfPixels = dst.columns() * dst.rows();
-        auto srcIndices = src.getPixels<uint8_t>();
+        auto srcIndices = src.pixels().convertDataToRaw();
         for (std::size_t i = 0; i < nrOfPixels; i++)
         {
             *dstIndices++ = srcIndices[i];
         }
         // write color map
-        auto srcColors = src.convertColorMap<Color::XRGB8888>();
+        auto srcColors = src.colorMap().convertData<Color::XRGB8888>();
         const auto nrOfColors = srcColors.size() / 3;
         for (std::size_t i = 0; i < nrOfColors; i++)
         {
-            Magick::Color color;
-            color.redQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(srcColors[i].R()) / 255.0));
-            color.greenQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(srcColors[i].G()) / 255.0));
-            color.blueQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(srcColors[i].B()) / 255.0));
+            Magick::ColorRGB color;
+            color.red(static_cast<double>(srcColors[i].R()) / 255.0);
+            color.green(static_cast<double>(srcColors[i].G()) / 255.0);
+            color.blue(static_cast<double>(srcColors[i].B()) / 255.0);
             dst.colorMap(i, color);
         }
     }
 
     auto writeTrueColor(Magick::Image &dst, const Image::ImageData &src) -> void
     {
-        auto srcPixels = src.convertPixels<Color::XRGB8888>();
-        MagickCore::PixelPacket *dstPixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
+        auto srcPixels = src.pixels().convertData<Color::XRGB8888>();
+        auto dstPixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
         const auto nrOfPixels = dst.columns() * dst.rows();
         for (std::size_t i = 0; i < nrOfPixels; i++)
         {
-            Magick::Color color;
-            color.redQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(srcPixels[i].R()) / 255.0));
-            color.greenQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(srcPixels[i].G()) / 255.0));
-            color.blueQuantum(Magick::Color::scaleDoubleToQuantum(static_cast<double>(srcPixels[i].B()) / 255.0));
-            *dstPixels++ = color;
+            *dstPixels++ = (QuantumRange * static_cast<float>(srcPixels[i].R())) / 255.0F;
+            *dstPixels++ = (QuantumRange * static_cast<float>(srcPixels[i].G())) / 255.0F;
+            *dstPixels++ = (QuantumRange * static_cast<float>(srcPixels[i].B())) / 255.0F;
         }
     }
 
     auto File::writeImage(const std::string &folder, const Image::Data &image) -> void
     {
-        REQUIRE(image.imageData.pixelFormat() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(image.imageData.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
         REQUIRE(image.size.width() > 0 && image.size.height() > 0, std::runtime_error, "Bad image size");
         Magick::Image temp({image.size.width(), image.size.height()}, "black");
-        const bool isIndexed = image.imageData.isIndexed();
+        const bool isIndexed = !image.imageData.colorMap().empty();
         temp.type(isIndexed ? Magick::ImageType::PaletteType : Magick::ImageType::TrueColorType);
         temp.modifyImage();
         if (isIndexed)
