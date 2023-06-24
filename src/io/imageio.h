@@ -13,6 +13,10 @@ namespace IO
     class File
     {
     public:
+        /// @brief Read image from disk and return as linear XRGB8888 color data
+        /// @note Does NOT set the index or file name part of Data
+        static auto readImage(const std::string &filePath) -> Image::Data;
+
         /// @brief Write image data to image file
         static auto writeImage(const std::string &folder, const Image::Data &image) -> void;
 
