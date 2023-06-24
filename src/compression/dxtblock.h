@@ -1,6 +1,7 @@
 #pragma once
 
-#include "color/ycgcof.h"
+#include "color/ycgcorf.h"
+#include "color/xrgb1555.h"
 #include "color/colorhelpers.h"
 #include "math/linefit.h"
 
@@ -74,8 +75,8 @@ public:
             std::swap(endpoints[0], endpoints[1]);
         }*/
         // calculate intermediate colors c2 and c3 (rounded like in decoder)
-        endpoints[2] = YCgCoRf::roundToRGB555((c0.cwiseProduct(YCgCoRf(2, 2, 2)) + c1).cwiseQuotient(YCgCoRf(3, 3, 3)));
-        endpoints[3] = YCgCoRf::roundToRGB555((c0 + c1.cwiseProduct(YCgCoRf(2, 2, 2))).cwiseQuotient(YCgCoRf(3, 3, 3)));
+        endpoints[2] = YCgCoRf::roundTo((c0.cwiseProduct(YCgCoRf(2, 2, 2)) + c1).cwiseQuotient(YCgCoRf(3, 3, 3)), Color::XRGB1555::Max);
+        endpoints[3] = YCgCoRf::roundTo((c0 + c1.cwiseProduct(YCgCoRf(2, 2, 2))).cwiseQuotient(YCgCoRf(3, 3, 3)), Color::XRGB1555::Max);
         // calculate minimum distance for all colors to endpoints
         std::array<uint8_t, Width *Height> bestIndices = {0};
         for (uint32_t ci = 0; ci < Width * Height; ++ci)
@@ -99,10 +100,10 @@ public:
     static auto decode(const DXTBlock &block) -> std::array<YCgCoRf, Width * Height>
     {
         std::array<YCgCoRf, 4> colors;
-        colors[0] = YCgCoRf::fromRGB555(block.m_color0);
-        colors[1] = YCgCoRf::fromRGB555(block.m_color1);
-        colors[2] = YCgCoRf::roundToRGB555((colors[0].cwiseProduct(YCgCoRf(2, 2, 2)) + colors[1]).cwiseQuotient(YCgCoRf(3, 3, 3)));
-        colors[3] = YCgCoRf::roundToRGB555((colors[0] + colors[1].cwiseProduct(YCgCoRf(2, 2, 2))).cwiseQuotient(YCgCoRf(3, 3, 3)));
+        colors[0] = Color::convertTo<YCgCoRf>(Color::XRGB1555(block.m_color0));
+        colors[1] = Color::convertTo<YCgCoRf>(Color::XRGB1555(block.m_color1));
+        colors[2] = Color::YCgCoRf::roundTo((colors[0].cwiseProduct(Eigen::Vector3f(2, 2, 2)) + colors[1]).cwiseQuotient(Eigen::Vector3f(3, 3, 3)), Color::XRGB1555::Max);
+        colors[3] = Color::YCgCoRf::roundTo((colors[0] + colors[1].cwiseProduct(Eigen::Vector3f(2, 2, 2))).cwiseQuotient(Eigen::Vector3f(3, 3, 3)), Color::XRGB1555::Max);
         uint32_t shift = 0;
         std::array<YCgCoRf, Width * Height> result;
         for (uint32_t i = 0; i < Width * Height; ++i)
