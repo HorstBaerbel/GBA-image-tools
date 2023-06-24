@@ -32,6 +32,8 @@ namespace Color
             v = std::bit_cast<std::array<value_type, 4>>(xrgb);
         }
 
+        constexpr XRGB8888(const XRGB8888 &other) : v(other.v) {}
+
         inline XRGB8888 &operator=(const XRGB8888 &other)
         {
             v = other.v;

@@ -43,6 +43,8 @@ namespace Color
         /// @brief Construct color using raw RGB565 value
         constexpr RGB565(uint16_t rgb) : v(std::bit_cast<Value>(rgb)) {}
 
+        constexpr RGB565(const RGB565 &other) : v(other.v) {}
+
         inline RGB565 &operator=(const RGB565 &other)
         {
             v = other.v;
