@@ -18,7 +18,7 @@ jobs:
     
     - uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: libmagick++-dev libomp-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+        packages: libmagick++-dev libomp-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libsdl2-dev
         version: 1.0
 
     - name: Configure CMake
