@@ -1,4 +1,4 @@
-name: CMake
+name: Build
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
         packages: libmagick++-dev libomp-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libsdl2-dev
         version: 1.0
 
-    - name: Configure CMake
+    - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
