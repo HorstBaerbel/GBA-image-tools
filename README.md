@@ -36,7 +36,7 @@ All of this is under the [MIT License](LICENSE). It uses:
 
   ```apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev``` or ```dnf install libavcodec-devel libavformat-devel libavutil-devel libswscale-devel```
 
-  * You **must** have [SDL2](https://www.libsdl.org/) installed for compiling vid2h. Install it with:
+* You **must** have [SDL2](https://www.libsdl.org/) installed for compiling vid2h. Install it with:
 
   ```apt install libsdl2-dev``` or ```dnf install SDL2-devel```
 
