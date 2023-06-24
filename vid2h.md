@@ -22,11 +22,11 @@ Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COM
   * ```--dxtg``` - Use DXT1-ish RGB555 intra-frame compression on video.
   * ```--dxtv=KEYFRAME_INTERVAL,ALLOWED_ERROR``` - Use DXT1-ish RGB555 intra- and inter-frame compression on video. KEYFRAME_INTERVAL is the interval at which key frames are inserted [0, 60]. 0 means no key frames. ALLOWED_ERROR is a quality factor where higher values mean higher allowed error == worse quality, but better compression [0.01, 1].
 * ```DATA COMPRESSION``` is optional:
-  * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--rle```](#compressing-data) - Use RLE compression (http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--lz10```](#compressing-data) - Use LZ77 compression ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--lz11```](#compressing-data) - Use LZ77 compression ["variant 11"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--rle```](#compressing-data) - Use RLE compression ["RLUnComp"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--lz10```](#compressing-data) - Use LZ77 compression ["LZ77UnComp variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--lz11```](#compressing-data) - Use LZ77 compression ["LZ77UnComp variant 11"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
 * ```OPTIONS``` are optional:
@@ -93,6 +93,6 @@ An example for a small video player (no audio) can be found in the [gba](gba) su
 
 * Much faster DXTV decompression
 * Improve DXTV compression (Cluster-fit DXT block compression + still 2-3 unused bits per block)
-* VQ-based compression using YCgCo. Should yield better compression ratio and decompress faster
+* VQ-based compression using YCgCoR. Should yield better compression ratio and decompress faster
 * Clean up SDLWindow class
 * Better image / video preview (in + out)
