@@ -1,6 +1,6 @@
 #include "gvid.h"
 
-#include "color/ycgcof.h"
+#include "color/ycgcorf.h"
 #include "color/colorhelpers.h"
 #include "exception.h"
 
@@ -34,7 +34,7 @@ struct BlockReferencePFrame
     uint8_t index : 7;         // negative relative index of code book entry / frame block to use [0,127]->[1-128]
 };
 
-/// @brief YCgCo 4:2:0 verbatim block
+/// @brief YCgCoR 4:2:0 verbatim block
 struct BlockCodeBookEntry
 {
     unsigned Y0 : 5;
@@ -50,7 +50,7 @@ struct BlockCodeBookEntry
     }
 };
 
-/// @brief YCgCo 4:2:0 block. Layout:
+/// @brief YCgCoR 4:2:0 block. Layout:
 /// y0 Cg Co, y1 Cg Co
 /// y2 Cg Co, y3 Cg Co
 struct CodeBookEntry
@@ -134,7 +134,7 @@ auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_
     uint32_t blockFlags = 0;               // flags for current 16 blocks
     std::vector<uint8_t> flags;            // block flags store flags for 16 blocks (16*2 bits = 4 bytes)
     std::vector<uint8_t> blocks;           // blocks store verbatim codebook entries or references
-    CodeBook codebook;                     // code book storing all codebook entries (when finished this equals the frame in YCgCo format)
+    CodeBook codebook;                     // code book storing all codebook entries (when finished this equals the frame in YCgCoR format)
     std::array<Color::YCgCoRf, 16> colors; // current set of colors in 4x4 block
     // loop through source images blocks
     for (uint32_t y = 0; y < height; y += 4)
