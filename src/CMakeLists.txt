@@ -46,6 +46,8 @@ list(APPEND COLORMAP555_SRC
     color/colorhelpers.cpp
     color/lchf.cpp
     color/xrgb8888.cpp
+    color/conversions.cpp
+    io/imageio.cpp
 )
 
 list(APPEND HEX2GBA_SRC
