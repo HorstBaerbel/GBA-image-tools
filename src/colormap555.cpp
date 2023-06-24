@@ -29,13 +29,16 @@ int main(int argc, char *argv[])
     }
     Image::ImageData pixelsRGB(colors);
     Image::Data data;
+    data.fileName = "colormap555.png";
     data.size = {256, 128};
     data.imageData = pixelsRGB;
-    IO::File::writeImage("colormap555.png", data);
+    IO::File::writeImage(".", data);
     // Sort colors
     std::sort(colors.begin(), colors.end(), isLessThan);
     Image::ImageData pixelsLCH(colors);
+    data.fileName = "colormap555_lchf.png";
+    data.size = {256, 128};
     data.imageData = pixelsLCH;
-    IO::File::writeImage("colormap555_lchf.png", data);
+    IO::File::writeImage(".", data);
     return 0;
 }
