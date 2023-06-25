@@ -18,6 +18,7 @@ namespace Color
         case Color::Format::Unknown:
         case Color::Format::XRGB1555:
         case Color::Format::RGB565:
+        case Color::Format::XRGB8888:
         case Color::Format::LChf:
         case Color::Format::RGBf:
         case Color::Format::YCgCoRf:
@@ -38,6 +39,7 @@ namespace Color
         {
         case Color::Format::XRGB1555:
         case Color::Format::RGB565:
+        case Color::Format::XRGB8888:
         case Color::Format::LChf:
         case Color::Format::RGBf:
         case Color::Format::YCgCoRf:
