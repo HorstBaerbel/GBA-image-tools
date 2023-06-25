@@ -2,10 +2,12 @@
 
 #include "color/colorformat.h"
 #include "color/conversions.h"
+#include "color/lchf.h"
 #include "color/rgb565.h"
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
 #include "color/xrgb8888.h"
+#include "color/ycgcorf.h"
 #include "datahelpers.h"
 #include "datasize.h"
 #include "exception.h"
@@ -34,7 +36,10 @@ namespace Image
             }
             else
             {
-                REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 || m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf, std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888 or RGBf");
+                REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
+                            m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf ||
+                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf,
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf");
             }
         }
 
@@ -48,7 +53,10 @@ namespace Image
             }
             else
             {
-                REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 || m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf, std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888 or RGBf");
+                REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
+                            m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf ||
+                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf,
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf");
             }
             m_data = std::move(data);
         }
@@ -90,6 +98,14 @@ namespace Image
             {
                 return Color::convertTo<T>(std::get<std::vector<Color::RGBf>>(m_data));
             }
+            else if (std::holds_alternative<std::vector<Color::LChf>>(m_data))
+            {
+                return Color::convertTo<T>(std::get<std::vector<Color::LChf>>(m_data));
+            }
+            else if (std::holds_alternative<std::vector<Color::YCgCoRf>>(m_data))
+            {
+                return Color::convertTo<T>(std::get<std::vector<Color::YCgCoRf>>(m_data));
+            }
             THROW(std::runtime_error, "Unsupported pixel format");
         }
 
@@ -111,20 +127,34 @@ namespace Image
             {
                 return getAsRaw<Color::XRGB8888>();
             }
+            else if (std::holds_alternative<std::vector<Color::LChf>>(m_data))
+            {
+                return getAsRaw<Color::LChf>();
+            }
+            else if (std::holds_alternative<std::vector<Color::YCgCoRf>>(m_data))
+            {
+                return getAsRaw<Color::YCgCoRf>();
+            }
             THROW(std::runtime_error, "Unsupported pixel format");
         }
 
         auto empty() const -> bool
         {
             return std::visit([](auto arg)
-                              { return arg.empty(); },
+                              { if constexpr(std::is_same<decltype(arg), std::monostate>()) {
+                                 return true;
+                               }
+                               else { return arg.empty(); } },
                               m_data);
         }
 
         auto size() const -> std::size_t
         {
             return std::visit([](auto arg)
-                              { return arg.size(); },
+                              { if constexpr(std::is_same<decltype(arg), std::monostate>()) {
+                                 return std::size_t(0);
+                               }
+                               else { return arg.size(); } },
                               m_data);
         }
 
@@ -135,17 +165,17 @@ namespace Image
 
         auto isIndexed() const -> bool
         {
-            return Color::isIndexed(m_dataFormat) && std::holds_alternative<std::vector<uint8_t>>(m_data);
+            return !std::holds_alternative<std::monostate>(m_data) && Color::isIndexed(m_dataFormat) && std::holds_alternative<std::vector<uint8_t>>(m_data);
         }
 
         auto isTruecolor() const -> bool
         {
-            return Color::isTruecolor(m_dataFormat) && (!std::holds_alternative<std::vector<uint8_t>>(m_data));
+            return !std::holds_alternative<std::monostate>(m_data) && Color::isTruecolor(m_dataFormat) && (!std::holds_alternative<std::vector<uint8_t>>(m_data));
         }
 
         auto isRaw() const -> bool
         {
-            return m_dataFormat == Color::Format::Unknown && std::holds_alternative<std::vector<uint8_t>>(m_data);
+            return !std::holds_alternative<std::monostate>(m_data) && m_dataFormat == Color::Format::Unknown && std::holds_alternative<std::vector<uint8_t>>(m_data);
         }
 
     private:
@@ -163,7 +193,7 @@ namespace Image
         }
 
         Color::Format m_dataFormat = Color::Format::Unknown;
-        std::variant<std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>> m_data;
+        std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::LChf>, std::vector<Color::YCgCoRf>> m_data;
     };
 
     /// @brief Stores indexed images with a color map, true color images or raw / compressed image data
@@ -179,7 +209,10 @@ namespace Image
         {
             auto colorMapFormat = Color::toFormat<COLORMAP_FORMAT>();
             REQUIRE(pixelFormat == Color::Format::Paletted1 || pixelFormat == Color::Format::Paletted2 || pixelFormat == Color::Format::Paletted4 || pixelFormat == Color::Format::Paletted8, std::runtime_error, "Pixel format must be paletted");
-            REQUIRE(colorMapFormat == Color::Format::XRGB1555 || colorMapFormat == Color::Format::RGB565 || colorMapFormat == Color::Format::XRGB8888 || colorMapFormat == Color::Format::RGBf, std::runtime_error, "Color map format must be XRGB1555, RGB565, XRGB8888 or RGBf");
+            REQUIRE(colorMapFormat == Color::Format::XRGB1555 || colorMapFormat == Color::Format::RGB565 ||
+                        colorMapFormat == Color::Format::XRGB8888 || colorMapFormat == Color::Format::RGBf ||
+                        colorMapFormat == Color::Format::LChf || colorMapFormat == Color::Format::YCgCoRf,
+                    std::runtime_error, "Color map format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf");
         }
 
         template <typename COLORMAP_FORMAT>
@@ -187,7 +220,10 @@ namespace Image
         {
             auto colorMapFormat = Color::toFormat<COLORMAP_FORMAT>();
             REQUIRE(pixelFormat == Color::Format::Paletted1 || pixelFormat == Color::Format::Paletted2 || pixelFormat == Color::Format::Paletted4 || pixelFormat == Color::Format::Paletted8, std::runtime_error, "Pixel format must be paletted");
-            REQUIRE(colorMapFormat == Color::Format::XRGB1555 || colorMapFormat == Color::Format::RGB565 || colorMapFormat == Color::Format::XRGB8888 || colorMapFormat == Color::Format::RGBf, std::runtime_error, "Color map format must be XRGB1555, RGB565, XRGB8888 or RGBf");
+            REQUIRE(colorMapFormat == Color::Format::XRGB1555 || colorMapFormat == Color::Format::RGB565 ||
+                        colorMapFormat == Color::Format::XRGB8888 || colorMapFormat == Color::Format::RGBf ||
+                        colorMapFormat == Color::Format::LChf || colorMapFormat == Color::Format::YCgCoRf,
+                    std::runtime_error, "Color map format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf");
             m_pixels = PixelData(std::move(indices), pixelFormat);
             m_colorMap = PixelData(std::move(colorMap), colorMapFormat);
         }
@@ -202,7 +238,7 @@ namespace Image
                         pixelFormat == Color::Format::RGBf ||
                         pixelFormat == Color::Format::LChf ||
                         pixelFormat == Color::Format::YCgCoRf,
-                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, RGB888, RGBf, LChf or YCgCoRf");
+                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf");
             m_pixels = PixelData(pixels, pixelFormat);
         }
 
@@ -216,7 +252,7 @@ namespace Image
                         pixelFormat == Color::Format::RGBf ||
                         pixelFormat == Color::Format::LChf ||
                         pixelFormat == Color::Format::YCgCoRf,
-                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, RGB888, RGBf, LChf or YCgCoRf");
+                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf");
             m_pixels = PixelData(std::move(pixels), pixelFormat);
         }
 

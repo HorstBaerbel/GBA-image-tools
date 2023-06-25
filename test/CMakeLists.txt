@@ -39,6 +39,7 @@ add_subdirectory(Catch2)
 
 set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/color/conversions.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/colorformat.cpp
     ${PROJECT_SOURCE_DIR}/src/color/rgb565.cpp
     ${PROJECT_SOURCE_DIR}/src/color/rgbf.cpp
     ${PROJECT_SOURCE_DIR}/src/color/xrgb1555.cpp
