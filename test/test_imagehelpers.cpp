@@ -8,7 +8,7 @@
 
 TEST_SUITE("Image helpers")
 
-CATCH_TEST_CASE("convertDataTo1Bit", TEST_SUITE_TAG)
+TEST_CASE("convertDataTo1Bit")
 {
     std::vector<uint8_t> v0;
     v0 = convertDataTo1Bit(v0);
@@ -39,7 +39,7 @@ CATCH_TEST_CASE("convertDataTo1Bit", TEST_SUITE_TAG)
     CATCH_REQUIRE(v3 == std::vector<uint8_t>{0xDD, 0x29});
 }
 
-CATCH_TEST_CASE("convertDataTo2Bit", TEST_SUITE_TAG)
+TEST_CASE("convertDataTo2Bit")
 {
     std::vector<uint8_t> v0;
     v0 = convertDataTo2Bit(v0);
@@ -62,7 +62,7 @@ CATCH_TEST_CASE("convertDataTo2Bit", TEST_SUITE_TAG)
     CATCH_REQUIRE(v3 == std::vector<uint8_t>{0xE4, 0x49, 0x1B});
 }
 
-CATCH_TEST_CASE("convertDataTo4Bit", TEST_SUITE_TAG)
+TEST_CASE("convertDataTo4Bit")
 {
     std::vector<uint8_t> v0;
     v0 = convertDataTo4Bit(v0);
@@ -81,7 +81,7 @@ CATCH_TEST_CASE("convertDataTo4Bit", TEST_SUITE_TAG)
     CATCH_REQUIRE(v3 == std::vector<uint8_t>{0xF0, 0x73, 0xAB, 0x04});
 }
 
-CATCH_TEST_CASE("incValuesBy1", TEST_SUITE_TAG)
+TEST_CASE("incValuesBy1")
 {
     std::vector<uint8_t> v0;
     v0 = incValuesBy1(v0);
@@ -93,7 +93,7 @@ CATCH_TEST_CASE("incValuesBy1", TEST_SUITE_TAG)
     CATCH_REQUIRE(v2 == std::vector<uint8_t>{0x02, 0xFF, 0x0B, 0x14, 0x01});
 }
 
-CATCH_TEST_CASE("swapValueWith0", TEST_SUITE_TAG)
+TEST_CASE("swapValueWith0")
 {
     std::vector<uint8_t> v0;
     v0 = swapValueWith0(v0, 5);
@@ -106,7 +106,7 @@ CATCH_TEST_CASE("swapValueWith0", TEST_SUITE_TAG)
     CATCH_REQUIRE(v2 == std::vector<uint8_t>{0x01, 0xFE, 0x0A, 0x13, 0x02});
 }
 
-CATCH_TEST_CASE("swapValues", TEST_SUITE_TAG)
+TEST_CASE("swapValues")
 {
     std::vector<uint8_t> v0;
     v0 = swapValues(v0, {0x00});

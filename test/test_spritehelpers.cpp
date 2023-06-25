@@ -11,7 +11,7 @@
 
 TEST_SUITE("Sprite helpers")
 
-CATCH_TEST_CASE("convertToWidth", TEST_SUITE_TAG)
+TEST_CASE("convertToWidth")
 {
     std::vector<Color::XRGB8888> v0;
     CATCH_REQUIRE_THROWS(convertToWidth(v0, 5, 8, 8));
@@ -39,7 +39,7 @@ CATCH_TEST_CASE("convertToWidth", TEST_SUITE_TAG)
     CATCH_REQUIRE(v2 == convertToTiles(v1, 16, 8, 8, 8));
 }
 
-CATCH_TEST_CASE("convertToTiles", TEST_SUITE_TAG)
+TEST_CASE("convertToTiles")
 {
     std::vector<Color::XRGB8888> v0;
     CATCH_REQUIRE_THROWS(convertToTiles(v0, 5, 8));
@@ -71,7 +71,7 @@ CATCH_TEST_CASE("convertToTiles", TEST_SUITE_TAG)
     CATCH_REQUIRE(v2 == convertToWidth(v1, 16, 16, 8));
 }
 
-CATCH_TEST_CASE("convertToSprites", TEST_SUITE_TAG)
+TEST_CASE("convertToSprites")
 {
     std::vector<Color::XRGB8888> v0;
     CATCH_REQUIRE_THROWS(convertToSprites(v0, 5, 8, 8, 8));
@@ -106,7 +106,7 @@ CATCH_TEST_CASE("convertToSprites", TEST_SUITE_TAG)
     CATCH_REQUIRE(v2 == convertToTiles(convertToWidth(v1, 32, 16, 16), 16, 32, 8));
 }
 
-CATCH_TEST_CASE("buildUniqueTileMap", TEST_SUITE_TAG)
+TEST_CASE("buildUniqueTileMap")
 {
     std::vector<Color::XRGB8888> v0;
     CATCH_REQUIRE_THROWS(buildUniqueTileMap(v0, 5, 8, false, 8, 8));

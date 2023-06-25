@@ -7,7 +7,7 @@ using ColorType = Color::XRGB8888;
 
 TEST_SUITE("XRGB8888")
 
-CATCH_TEST_CASE("DefaultConstruction", TEST_SUITE_TAG)
+TEST_CASE("DefaultConstruction")
 {
     ColorType c0;
     CATCH_REQUIRE(c0.R() == 0);
@@ -16,7 +16,7 @@ CATCH_TEST_CASE("DefaultConstruction", TEST_SUITE_TAG)
     CATCH_REQUIRE(c0.raw() == 0);
 }
 
-CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
+TEST_CASE("Construction")
 {
     ColorType c1(1, 2, 3);
     CATCH_REQUIRE(c1.R() == 1);
@@ -41,12 +41,12 @@ CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
     CATCH_REQUIRE(static_cast<ColorType::pixel_type>(c5) == 0xFFFFFF);
 }
 
-CATCH_TEST_CASE("OutOfRangeValuesThrow", TEST_SUITE_TAG)
+TEST_CASE("OutOfRangeValuesThrow")
 {
     CATCH_REQUIRE_THROWS(ColorType(0x12345678));
 }
 
-CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
+TEST_CASE("Assignment")
 {
     ColorType c1(26, 43, 60);
     ColorType c2(0x001A2B3C);
@@ -66,7 +66,7 @@ CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.B() == 9);
 }
 
-CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
+TEST_CASE("Access")
 {
     ColorType c1(26, 43, 60);
     ColorType c2(0x001A2B3C);
@@ -86,7 +86,7 @@ CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2[2] == 9);
 }
 
-CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
+TEST_CASE("SwapRB")
 {
     ColorType c1(15, 7, 22);
     auto c2 = c1.swappedRB();
@@ -95,7 +95,7 @@ CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.B() == 15);
 }
 
-CATCH_TEST_CASE("Distance", TEST_SUITE_TAG)
+TEST_CASE("Distance")
 {
     ColorType c0(ColorType::Min[0], ColorType::Min[1], ColorType::Min[2]);
     ColorType c1(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
@@ -115,7 +115,7 @@ CATCH_TEST_CASE("Distance", TEST_SUITE_TAG)
     CATCH_REQUIRE(d5 == d6);
 }
 
-CATCH_TEST_CASE("FromHex", TEST_SUITE_TAG)
+TEST_CASE("FromHex")
 {
     auto c0 = ColorType::fromHex("000000");
     CATCH_REQUIRE(c0.raw() == 0);
@@ -139,7 +139,7 @@ CATCH_TEST_CASE("FromHex", TEST_SUITE_TAG)
     CATCH_REQUIRE_THROWS(ColorType::fromHex("#"));
 }
 
-CATCH_TEST_CASE("ToHex", TEST_SUITE_TAG)
+TEST_CASE("ToHex")
 {
     ColorType c0;
     CATCH_REQUIRE(c0.toHex() == "000000");

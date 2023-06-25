@@ -9,7 +9,7 @@ using ColorType = Color::RGBf;
 
 TEST_SUITE("RGBf")
 
-CATCH_TEST_CASE("DefaultConstruction", TEST_SUITE_TAG)
+TEST_CASE("DefaultConstruction")
 {
     ColorType c0;
     CATCH_REQUIRE(c0.R() == 0);
@@ -18,7 +18,7 @@ CATCH_TEST_CASE("DefaultConstruction", TEST_SUITE_TAG)
     CATCH_REQUIRE(c0.raw() == ColorType::pixel_type());
 }
 
-CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
+TEST_CASE("Construction")
 {
     ColorType c1(1, 2, 3);
     CATCH_REQUIRE(c1.R() == 1);
@@ -30,7 +30,7 @@ CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
     CATCH_REQUIRE(c1.raw() == ColorType::pixel_type(1, 2, 3));
 }
 
-CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
+TEST_CASE("Assignment")
 {
     ColorType c1(26, 43, 60);
     ColorType c2(1, 2, 3);
@@ -46,7 +46,7 @@ CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
     CATCH_REQUIRE(c1.B() == 9);
 }
 
-CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
+TEST_CASE("Access")
 {
     ColorType c1(26, 43, 60);
     ColorType c2(1, 2, 3);
@@ -62,7 +62,7 @@ CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
     CATCH_REQUIRE(c1.B() == 9);
 }
 
-CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
+TEST_CASE("SwapRB")
 {
     ColorType c1(15, 7, 22);
     auto c2 = c1.swappedRB();
@@ -71,7 +71,7 @@ CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.B() == 15);
 }
 
-CATCH_TEST_CASE("Distance", TEST_SUITE_TAG)
+TEST_CASE("Distance")
 {
     ColorType c0(ColorType::Min[0], ColorType::Min[1], ColorType::Min[2]);
     ColorType c1(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
@@ -91,7 +91,7 @@ CATCH_TEST_CASE("Distance", TEST_SUITE_TAG)
     CATCH_REQUIRE(d5 == d6);
 }
 
-CATCH_TEST_CASE("RoundToGrid", TEST_SUITE_TAG)
+TEST_CASE("RoundToGrid")
 {
     ColorType c0(ColorType::Min[0], ColorType::Min[1], ColorType::Min[2]);
     CATCH_REQUIRE(c0 == ColorType::roundTo(c0, std::array<int, 3>({31, 31, 31})));

@@ -28,7 +28,7 @@ auto compare(const std::array<A, N> &a, const std::array<B, N> &b) -> void
 
 // Calculate: https://coliru.stacked-crooked.com/a/a6f3ec31d820dada
 
-CATCH_TEST_CASE("RGB565", TEST_SUITE_TAG)
+TEST_CASE("RGB565")
 {
     std::array<Color::RGB565, 6> c = {
         Color::RGB565(0, 0, 0),
@@ -54,7 +54,7 @@ CATCH_TEST_CASE("RGB565", TEST_SUITE_TAG)
     compare(c, c5);
 }
 
-CATCH_TEST_CASE("XRGB1555", TEST_SUITE_TAG)
+TEST_CASE("XRGB1555")
 {
     std::array<Color::XRGB1555, 6> c = {
         Color::XRGB1555(0, 0, 0),
@@ -80,7 +80,7 @@ CATCH_TEST_CASE("XRGB1555", TEST_SUITE_TAG)
     compare(c, c5);
 }
 
-CATCH_TEST_CASE("XRGB8888", TEST_SUITE_TAG)
+TEST_CASE("XRGB8888")
 {
     std::array<Color::XRGB8888, 6> c = {
         Color::XRGB8888(0, 0, 0),
@@ -106,7 +106,7 @@ CATCH_TEST_CASE("XRGB8888", TEST_SUITE_TAG)
     compare(c, c5);
 }
 
-CATCH_TEST_CASE("RGBf", TEST_SUITE_TAG)
+TEST_CASE("RGBf")
 {
     std::array<Color::RGBf, 6> c = {
         Color::RGBf(0, 0, 0),
@@ -132,7 +132,7 @@ CATCH_TEST_CASE("RGBf", TEST_SUITE_TAG)
     compare(c, c5);
 }
 
-CATCH_TEST_CASE("YCgCoRf", TEST_SUITE_TAG)
+TEST_CASE("YCgCoRf")
 {
     std::array<Color::YCgCoRf, 6> c = {
         Color::YCgCoRf(0, 0, 0),
@@ -158,7 +158,7 @@ CATCH_TEST_CASE("YCgCoRf", TEST_SUITE_TAG)
     compare(c, c5);
 }
 
-CATCH_TEST_CASE("LChf", TEST_SUITE_TAG)
+TEST_CASE("LChf")
 {
     std::array<Color::LChf, 6> c = {
         Color::LChf(0, 0, 0),

@@ -7,7 +7,7 @@ using ColorType = Color::RGB565;
 
 TEST_SUITE("RGB565")
 
-CATCH_TEST_CASE("DefaultConstruction", TEST_SUITE_TAG)
+TEST_CASE("DefaultConstruction")
 {
     ColorType c0;
     CATCH_REQUIRE(c0.R() == 0);
@@ -16,7 +16,7 @@ CATCH_TEST_CASE("DefaultConstruction", TEST_SUITE_TAG)
     CATCH_REQUIRE(c0.raw() == 0);
 }
 
-CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
+TEST_CASE("Construction")
 {
     ColorType c1(1, 2, 3);
     CATCH_REQUIRE(c1.R() == 1);
@@ -41,14 +41,14 @@ CATCH_TEST_CASE("Construction", TEST_SUITE_TAG)
     CATCH_REQUIRE(static_cast<ColorType::pixel_type>(c5) == 0xFFFF);
 }
 
-CATCH_TEST_CASE("OutOfRangeValuesThrow", TEST_SUITE_TAG)
+TEST_CASE("OutOfRangeValuesThrow")
 {
     CATCH_REQUIRE_THROWS(ColorType(ColorType::Max[0] + 1, 2, 3));
     CATCH_REQUIRE_THROWS(ColorType(1, ColorType::Max[1] + 1, 3));
     CATCH_REQUIRE_THROWS(ColorType(1, 2, ColorType::Max[2] + 1));
 }
 
-CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
+TEST_CASE("Assignment")
 {
     ColorType c1(15, 7, 22);
     ColorType c2(uint16_t(0x6178));
@@ -62,7 +62,7 @@ CATCH_TEST_CASE("Assignment", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.B() == 19);
 }
 
-CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
+TEST_CASE("Access")
 {
     ColorType c1(15, 7, 22);
     ColorType c2(uint16_t(0x6178));
@@ -76,7 +76,7 @@ CATCH_TEST_CASE("Access", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2[2] == 19);
 }
 
-CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
+TEST_CASE("SwapRB")
 {
     ColorType c1(15, 7, 22);
     auto c2 = c1.swappedRB();
@@ -85,7 +85,7 @@ CATCH_TEST_CASE("SwapRB", TEST_SUITE_TAG)
     CATCH_REQUIRE(c2.B() == 15);
 }
 
-CATCH_TEST_CASE("Distance", TEST_SUITE_TAG)
+TEST_CASE("Distance")
 {
     ColorType c0(ColorType::Min[0], ColorType::Min[1], ColorType::Min[2]);
     ColorType c1(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);

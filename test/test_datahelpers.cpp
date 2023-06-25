@@ -8,7 +8,7 @@
 
 TEST_SUITE("Data helpers")
 
-CATCH_TEST_CASE("fillUpToMultipleOf", TEST_SUITE_TAG)
+TEST_CASE("fillUpToMultipleOf")
 {
     std::vector<uint8_t> v1;
     v1 = fillUpToMultipleOf(v1, 4);
@@ -30,7 +30,7 @@ CATCH_TEST_CASE("fillUpToMultipleOf", TEST_SUITE_TAG)
     CATCH_REQUIRE(v2[3] == 4);
 }
 
-CATCH_TEST_CASE("combineTo", TEST_SUITE_TAG)
+TEST_CASE("combineTo")
 {
     std::vector<std::vector<uint8_t>> v1 = {{1, 2, 3}, {4, 5, 6}};
     auto v8 = combineTo<uint8_t>(v1);
@@ -47,7 +47,7 @@ CATCH_TEST_CASE("combineTo", TEST_SUITE_TAG)
     CATCH_REQUIRE(v32 == std::vector<decltype(v32)::value_type>({0x04030201, 0x08070605}));
 }
 
-CATCH_TEST_CASE("convertTo", TEST_SUITE_TAG)
+TEST_CASE("convertTo")
 {
     std::vector<uint8_t> v0 = {1, 2, 3, 4, 5};
     CATCH_REQUIRE_THROWS(convertTo<uint16_t>(v0));
@@ -63,7 +63,7 @@ CATCH_TEST_CASE("convertTo", TEST_SUITE_TAG)
     CATCH_REQUIRE(v32 == std::vector<decltype(v32)::value_type>({0x04030201, 0x08070605}));
 }
 
-CATCH_TEST_CASE("getStartIndices", TEST_SUITE_TAG)
+TEST_CASE("getStartIndices")
 {
     std::vector<std::vector<uint8_t>> v0;
     CATCH_REQUIRE(getStartIndices(v0).empty());
@@ -72,7 +72,7 @@ CATCH_TEST_CASE("getStartIndices", TEST_SUITE_TAG)
     CATCH_REQUIRE(i1 == std::vector<decltype(i1)::value_type>({0, 2, 5, 6, 6}));
 }
 
-CATCH_TEST_CASE("divideBy", TEST_SUITE_TAG)
+TEST_CASE("divideBy")
 {
     std::vector<uint8_t> v0;
     CATCH_REQUIRE(divideBy(v0, uint8_t(4)).empty());
@@ -81,7 +81,7 @@ CATCH_TEST_CASE("divideBy", TEST_SUITE_TAG)
     CATCH_REQUIRE(v2 == std::vector<decltype(v2)::value_type>({0, 0, 0, 1, 1, 1, 1, 2}));
 }
 
-CATCH_TEST_CASE("interleave", TEST_SUITE_TAG)
+TEST_CASE("interleave")
 {
     std::vector<std::vector<uint8_t>> va = {{0x12, 0x23, 0x34}, {0x45, 0x67}};
     std::vector<std::vector<uint8_t>> vb = {{0x12, 0x23, 0x34}, {0x45, 0x67}};
@@ -127,7 +127,7 @@ auto generate_n(std::size_t n = 100000) -> std::vector<T>
     return result;
 }
 
-CATCH_TEST_CASE("deltaEncode", TEST_SUITE_TAG)
+TEST_CASE("deltaEncode")
 {
     std::vector<uint8_t> v0 = {1, 2, 56, 44, 7, 10, 0, 0};
     auto v1 = deltaEncode(v0);
@@ -150,7 +150,7 @@ CATCH_TEST_CASE("deltaEncode", TEST_SUITE_TAG)
     CATCH_REQUIRE(v8 == deltaDecode(deltaEncode(v8)));
 }
 
-CATCH_TEST_CASE("prependValue", TEST_SUITE_TAG)
+TEST_CASE("prependValue")
 {
     std::vector<uint8_t> v0;
     CATCH_REQUIRE(prependValue(v0, uint8_t(123)) == std::vector<decltype(v0)::value_type>({123}));
