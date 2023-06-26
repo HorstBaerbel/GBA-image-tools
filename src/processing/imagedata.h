@@ -82,29 +82,32 @@ namespace Image
             {
                 return std::get<std::vector<T>>(m_data);
             }
-            else if (std::holds_alternative<std::vector<Color::XRGB1555>>(m_data))
+            else if constexpr (!std::is_same<T, uint8_t>())
             {
-                return Color::convertTo<T>(std::get<std::vector<Color::XRGB1555>>(m_data));
-            }
-            else if (std::holds_alternative<std::vector<Color::RGB565>>(m_data))
-            {
-                return Color::convertTo<T>(std::get<std::vector<Color::RGB565>>(m_data));
-            }
-            else if (std::holds_alternative<std::vector<Color::XRGB8888>>(m_data))
-            {
-                return Color::convertTo<T>(std::get<std::vector<Color::XRGB8888>>(m_data));
-            }
-            else if (std::holds_alternative<std::vector<Color::RGBf>>(m_data))
-            {
-                return Color::convertTo<T>(std::get<std::vector<Color::RGBf>>(m_data));
-            }
-            else if (std::holds_alternative<std::vector<Color::LChf>>(m_data))
-            {
-                return Color::convertTo<T>(std::get<std::vector<Color::LChf>>(m_data));
-            }
-            else if (std::holds_alternative<std::vector<Color::YCgCoRf>>(m_data))
-            {
-                return Color::convertTo<T>(std::get<std::vector<Color::YCgCoRf>>(m_data));
+                if (std::holds_alternative<std::vector<Color::XRGB1555>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::XRGB1555>>(m_data));
+                }
+                else if (std::holds_alternative<std::vector<Color::RGB565>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::RGB565>>(m_data));
+                }
+                else if (std::holds_alternative<std::vector<Color::XRGB8888>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::XRGB8888>>(m_data));
+                }
+                else if (std::holds_alternative<std::vector<Color::RGBf>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::RGBf>>(m_data));
+                }
+                else if (std::holds_alternative<std::vector<Color::LChf>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::LChf>>(m_data));
+                }
+                else if (std::holds_alternative<std::vector<Color::YCgCoRf>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::YCgCoRf>>(m_data));
+                }
             }
             THROW(std::runtime_error, "Unsupported pixel format");
         }

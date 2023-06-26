@@ -59,6 +59,7 @@ TEST_CASE("ConstructionIndexed")
     CATCH_REQUIRE_THROWS(i8.colorMap().data<uint8_t>());
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::YCgCoRf>());
     CATCH_REQUIRE(i8.colorMap().data<Color::XRGB8888>() == m0);
+    CATCH_REQUIRE(i8.colorMap().convertData<Color::XRGB8888>() == m0);
     CATCH_REQUIRE(i8.pixels().empty() == false);
     CATCH_REQUIRE(i8.pixels().format() == Color::Format::Paletted8);
     CATCH_REQUIRE(i8.pixels().isIndexed() == true);
@@ -72,6 +73,7 @@ TEST_CASE("ConstructionIndexed")
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::XRGB8888>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::YCgCoRf>());
     CATCH_REQUIRE(i8.pixels().data<uint8_t>() == x0);
+    CATCH_REQUIRE(i8.pixels().convertData<uint8_t>() == x0);
 }
 
 TEST_CASE("ConstructionTruecolor")
@@ -109,4 +111,5 @@ TEST_CASE("ConstructionTruecolor")
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::YCgCoRf>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<uint8_t>());
     CATCH_REQUIRE(i8.pixels().data<Color::XRGB8888>() == c8);
+    CATCH_REQUIRE(i8.pixels().convertData<Color::XRGB8888>() == c8);
 }
