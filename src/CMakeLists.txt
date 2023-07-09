@@ -43,9 +43,12 @@ set(CMAKE_C_STANDARD 11)
 
 list(APPEND COLORMAP555_SRC
     colormap555.cpp
+    color/colorformat.cpp
     color/colorhelpers.cpp
     color/lchf.cpp
+    color/xrgb1555.cpp
     color/xrgb8888.cpp
+    color/ycgcorf.cpp
     color/conversions.cpp
     io/imageio.cpp
 )

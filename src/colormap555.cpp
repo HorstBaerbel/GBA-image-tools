@@ -10,7 +10,7 @@ bool isLessThan(const Color::XRGB8888 &a, const Color::XRGB8888 &b)
     auto lcha = Color::convertTo<Color::LChf>(a);
     auto lchb = Color::convertTo<Color::LChf>(b);
     return (lcha.H() < lchb.H()) ||
-           (lcha.H() < lchb.H() && (lcha.L() * lcha.C()) < (lchb.L() * lchb.C()));
+           (lcha.H() == lchb.H() && lcha.C() < lchb.C());
 }
 
 int main(int argc, char *argv[])
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
         {
             for (uint8_t b = 0; b < 32; ++b)
             {
-                colors.push_back(Color::XRGB8888(r / 31.0, g / 31.0, b / 31.0));
+                colors.push_back(Color::XRGB8888((255.0F * r) / 31.0F, (255.0F * g) / 31.0F, (255.0F * b) / 31.0F));
             }
         }
     }
