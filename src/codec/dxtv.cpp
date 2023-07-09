@@ -1,5 +1,8 @@
 #include "dxtv.h"
 
+#include "color/conversions.h"
+#include "color/ycgcorf.h"
+#include "color/xrgb1555.h"
 #include "processing/blockview.h"
 #include "processing/datahelpers.h"
 #include "compression/dxtblock.h"
@@ -68,8 +71,8 @@ constexpr uint16_t BLOCK_FROM_CURR = (0 << 14);    // The reference block is fro
 constexpr uint16_t BLOCK_FROM_PREV = (1 << 14);    // The reference block is from from the previous frame
 constexpr uint32_t BLOCK_INDEX_MASK = ~(3U << 14); // Mask to get the block index from the reference info
 
-constexpr std::pair<int32_t, int32_t> CurrRefOffset = {-16384, -1};  // Block search offsets for current frame for 16, 8, 4
-constexpr std::pair<int32_t, int32_t> PrevRefOffset = {-8191, 8192}; // Block search offsets for previous frame for 16, 8, 4
+constexpr std::pair<int32_t, int32_t> CurrRefOffset{-16384, -1};  // Block search offsets for current frame for 16, 8, 4
+constexpr std::pair<int32_t, int32_t> PrevRefOffset{-8191, 8192}; // Block search offsets for previous frame for 16, 8, 4
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
@@ -109,7 +112,7 @@ public:
     using state_type = bool;
     static constexpr std::size_t BlockMaxDim = 16;
     static constexpr std::size_t BlockMinDim = 4;
-    static constexpr std::size_t BlockLevels = std::log2(BlockMaxDim) - std::log2(BlockMinDim);
+    static constexpr std::size_t BlockLevels = 4 - 2; // std::log2(BlockMaxDim) - std::log2(BlockMinDim);
     using block_type0 = BlockView<value_type, BlockMaxDim, BlockMinDim>;
     using block_type1 = BlockView<value_type, BlockMaxDim / 2, BlockMinDim>;
     using block_type2 = BlockView<value_type, BlockMaxDim / 4, BlockMinDim>;
@@ -121,7 +124,7 @@ public:
         : m_width(width), m_height(height)
     {
         std::transform(image.cbegin(), image.cend(), std::back_inserter(m_colors), [](const auto &pixel)
-                       { return YCgCoRf::fromRGB555(pixel); });
+                       { return convertTo<YCgCoRf>(XRGB1555(pixel)); });
         for (uint32_t y = 0; y < m_height; y += BlockMaxDim)
         {
             for (uint32_t x = 0; x < m_width; x += BlockMaxDim)
@@ -304,7 +307,7 @@ public:
     {
         std::vector<uint16_t> image;
         std::transform(m_colors.cbegin(), m_colors.cend(), std::back_inserter(image), [](const auto &color)
-                       { return color.toRGB555(); });
+                       { return convertTo<XRGB1555>(color).raw(); });
         return image;
     }
 
@@ -513,7 +516,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
         auto headerData = frameHeader.toArray();
         assert((headerData.size() % 4) == 0);
         std::copy(headerData.cbegin(), headerData.cend(), std::back_inserter(compressedData));
-        return {compressedData, previousImage};
+        return std::pair<std::vector<uint8_t>, std::vector<uint16_t>>{compressedData, previousImage};
     }
     // if we don't have a keyframe, check for scene change
     /*if (!keyFrame)
@@ -574,7 +577,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     compressedData = fillUpToMultipleOf(compressedData, 4);
     assert((compressedData.size() % 4) == 0);
     // convert current frame / codebook back to store as decompressed frame
-    return {compressedData, image};
+    return std::pair<std::vector<uint8_t>, std::vector<uint16_t>>{compressedData, image};
 }
 
 auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint16_t>

@@ -2,6 +2,7 @@
 
 #include "color/ycgcorf.h"
 #include "color/colorhelpers.h"
+#include "color/conversions.h"
 #include "exception.h"
 
 #include <Eigen/Core>
@@ -117,7 +118,7 @@ auto findBestMatch(const CodeBook &codebook, const CodeBookEntry &entry, float m
     // find first codebook that is below max error
     auto bestErrorIt = std::find_if(errors.cbegin(), errors.cend(), [maxAllowedError](const auto &a)
                                     { return a.first < maxAllowedError; });
-    return (bestErrorIt != errors.cend()) ? std::optional<std::pair<float, int32_t>>({bestErrorIt->first, bestErrorIt->second}) : std::optional<std::pair<float, int32_t>>();
+    return (bestErrorIt != errors.cend()) ? std::optional<std::pair<float, int32_t>>(*bestErrorIt) : std::optional<std::pair<float, int32_t>>();
 }
 
 auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::vector<uint8_t>
@@ -146,13 +147,13 @@ auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_
             auto cIt = colors.begin();
             for (int by = 0; by < 4; by++)
             {
-                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
                 pixels += 3;
-                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
                 pixels += 3;
-                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
                 pixels += 3;
-                *cIt++ = Color::YCgCoRf::fromRGB888(pixels);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
                 pixels += pixelsPerScanline - 3 * 3;
             }
             // convert block to codebook

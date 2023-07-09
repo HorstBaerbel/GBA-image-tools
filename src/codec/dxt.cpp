@@ -2,6 +2,8 @@
 
 #include "color/rgbf.h"
 #include "color/colorhelpers.h"
+#include "color/conversions.h"
+#include "color/xrgb1555.h"
 #include "exception.h"
 #include "math/linefit.h"
 
@@ -24,10 +26,10 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     auto pixel = start;
     for (int y = 0; y < 4; y++)
     {
-        *cIt++ = RGBf::fromRGB555(pixel[0]);
-        *cIt++ = RGBf::fromRGB555(pixel[1]);
-        *cIt++ = RGBf::fromRGB555(pixel[2]);
-        *cIt++ = RGBf::fromRGB555(pixel[3]);
+        *cIt++ = convertTo<RGBf>(pixel[0]);
+        *cIt++ = convertTo<RGBf>(pixel[1]);
+        *cIt++ = convertTo<RGBf>(pixel[2]);
+        *cIt++ = convertTo<RGBf>(pixel[3]);
         pixel += pixelsPerScanline;
     }
     // calculate line fit through RGB color space
@@ -50,8 +52,8 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
         std::swap(endpoints[0], endpoints[1]);
     }*/
     // calculate intermediate colors c2 and c3 (rounded like in decoder)
-    endpoints[2] = RGBf::roundToRGB555(RGBf((c0.cwiseProduct(RGBf(2, 2, 2)) + c1).cwiseQuotient(RGBf(3, 3, 3))));
-    endpoints[3] = RGBf::roundToRGB555(RGBf((c0 + c1.cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))));
+    endpoints[2] = RGBf::roundTo(RGBf((c0.cwiseProduct(RGBf(2, 2, 2)) + c1).cwiseQuotient(RGBf(3, 3, 3))), XRGB1555::Max);
+    endpoints[3] = RGBf::roundTo(RGBf((c0 + c1.cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), XRGB1555::Max);
     // calculate minimum distance for all colors to endpoints
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
@@ -73,8 +75,8 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
     // add color endpoints c0 and c1
     auto data16 = reinterpret_cast<uint16_t *>(result.data());
-    *data16++ = toBGR555(endpoints[0].toRGB555());
-    *data16++ = toBGR555(endpoints[1].toRGB555());
+    *data16++ = convertTo<XRGB1555>(endpoints[0]).raw();
+    *data16++ = convertTo<XRGB1555>(endpoints[1]).raw();
     // add index data in reverse
     uint32_t indices = 0;
     for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
