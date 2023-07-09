@@ -54,17 +54,65 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::commonPalette{
         }
     }};
 
-ProcessingOptions::OptionT<std::string> ProcessingOptions::truecolor{
+ProcessingOptions::Option ProcessingOptions::truecolor{
     false,
-    {"truecolor", "Convert images to RGB888, RGB565 or RGB555 true-color", cxxopts::value(truecolor.value)},
+    {"truecolor", "Convert images to RGB888, RGB565 or RGB555 true-color", cxxopts::value(truecolor.isSet)}};
+
+ProcessingOptions::OptionT<Color::Format> ProcessingOptions::colorformat{
+    false,
+    {"colorformat", "Set output color format (direct pixel color / color map) to RGB888, RGB565 or RGB555", cxxopts::value(colorformat.valueString)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
     {
-        if (r.count(truecolor.cxxOption.opts_))
+        if (r.count(colorformat.cxxOption.opts_))
         {
-            REQUIRE(truecolor.value == "RGB888" || truecolor.value == "RGB565" || truecolor.value == "RGB555", std::runtime_error, "Format must be RGB888, RGB565 or RGB555");
-            truecolor.isSet = true;
+            if (colorformat.valueString == "RGB888")
+            {
+                colorformat.value = Color::Format::XRGB8888;
+            }
+            else if (colorformat.valueString == "RGB565")
+            {
+                colorformat.value = Color::Format::RGB565;
+            }
+            else if (colorformat.valueString == "RGB555")
+            {
+                colorformat.value = Color::Format::XRGB1555;
+            }
+            else
+            {
+                THROW(std::runtime_error, "Format must be RGB888, RGB565 or RGB555");
+            }
+            colorformat.isSet = true;
+        }
+    }};
+
+ProcessingOptions::OptionT<Image::Quantization::Method> ProcessingOptions::quantizationmethod{
+    true,
+    {"quantize", "Set quantization method for color(-space) reduction. Options are truncate (default), closestcolor or atkinsondither", cxxopts::value(quantizationmethod.valueString)},
+    {Image::Quantization::Method::Truncate},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(quantizationmethod.cxxOption.opts_))
+        {
+            if (quantizationmethod.valueString == "truncate")
+            {
+                quantizationmethod.value = Image::Quantization::Method::Truncate;
+            }
+            else if (quantizationmethod.valueString == "closestcolor")
+            {
+                quantizationmethod.value = Image::Quantization::Method::ClosestColor;
+            }
+            else if (quantizationmethod.valueString == "atkinsondither")
+            {
+                quantizationmethod.value = Image::Quantization::Method::AtkinsonDither;
+            }
+            else
+            {
+                THROW(std::runtime_error, "Quantization method must be truncate (default), closestcolor or atkinsondither if specified");
+            }
+            quantizationmethod.isSet = true;
         }
     }};
 
@@ -72,7 +120,7 @@ ProcessingOptions::Option ProcessingOptions::reorderColors{
     false,
     {"reordercolors", "Reorder palette colors to minimize preceived color distance.", cxxopts::value(reorderColors.isSet)}};
 
-ProcessingOptions::OptionT<Magick::Color> ProcessingOptions::addColor0{
+ProcessingOptions::OptionT<Color::XRGB8888> ProcessingOptions::addColor0{
     false,
     {"addcolor0", "Add COLOR at palette index #0 and increase all other color indices by 1. Only usable for paletted images. Color format \"abcd012\".", cxxopts::value(addColor0.valueString)},
     {},
@@ -83,9 +131,9 @@ ProcessingOptions::OptionT<Magick::Color> ProcessingOptions::addColor0{
         {
             try
             {
-                addColor0.value = Magick::Color(std::string("#") + addColor0.valueString);
+                addColor0.value = Color::XRGB8888::fromHex(addColor0.valueString);
             }
-            catch (const Magick::Exception &e)
+            catch (const std::runtime_error &e)
             {
                 THROW(std::runtime_error, addColor0.valueString << " is not a valid color. Format must be e.g. \"--addcolor0=abc012\"");
             }
@@ -93,7 +141,7 @@ ProcessingOptions::OptionT<Magick::Color> ProcessingOptions::addColor0{
         }
     }};
 
-ProcessingOptions::OptionT<Magick::Color> ProcessingOptions::moveColor0{
+ProcessingOptions::OptionT<Color::XRGB8888> ProcessingOptions::moveColor0{
     false,
     {"movecolor0", "Move COLOR to palette index #0 and move all other colors accordingly. Only usable for paletted images. Color format \"abcd012\".", cxxopts::value(moveColor0.valueString)},
     {},
@@ -104,9 +152,9 @@ ProcessingOptions::OptionT<Magick::Color> ProcessingOptions::moveColor0{
         {
             try
             {
-                moveColor0.value = Magick::Color(std::string("#") + moveColor0.valueString);
+                moveColor0.value = Color::XRGB8888::fromHex(moveColor0.valueString);
             }
-            catch (const Magick::Exception &e)
+            catch (const std::runtime_error &e)
             {
                 THROW(std::runtime_error, moveColor0.valueString << " is not a valid color. Format must be e.g. \"--movecolor0=abc012\"");
             }

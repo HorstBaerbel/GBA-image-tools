@@ -1,10 +1,13 @@
 #pragma once
 
+#include "color/colorformat.h"
+#include "color/xrgb8888.h"
+#include "quantizationmethod.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
 
-#include <Magick++.h>
 #include <cxxopts/include/cxxopts.hpp>
 
 class ProcessingOptions
@@ -31,10 +34,12 @@ public:
     static OptionT<double> blackWhite;
     static OptionT<uint32_t> paletted;
     static OptionT<uint32_t> commonPalette;
-    static OptionT<std::string> truecolor;
+    static Option truecolor;
+    static OptionT<Color::Format> colorformat;
+    static OptionT<Image::Quantization::Method> quantizationmethod;
     static Option reorderColors;
-    static OptionT<Magick::Color> addColor0;
-    static OptionT<Magick::Color> moveColor0;
+    static OptionT<Color::XRGB8888> addColor0;
+    static OptionT<Color::XRGB8888> moveColor0;
     static OptionT<uint32_t> shiftIndices;
     static OptionT<uint32_t> pruneIndices;
     static OptionT<std::vector<uint32_t>> sprites;
