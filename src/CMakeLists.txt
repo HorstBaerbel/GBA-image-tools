@@ -58,10 +58,6 @@ list(APPEND HEX2GBA_SRC
     color/xrgb8888.cpp
 )
 
-list(APPEND GIMPPALETTE555_SRC
-    gimppalette555.cpp
-)
-
 file(GLOB_RECURSE HELPERS_SRC CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*/*.cpp ${PROJECT_SOURCE_DIR}/src/*/*.h)
 
 list(APPEND IMG2H_SRC
@@ -80,7 +76,6 @@ list(APPEND VID2H_SRC
 include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/cxxopts ${PROJECT_SOURCE_DIR}/eigen ${PROJECT_SOURCE_DIR}/glob ${PROJECT_SOURCE_DIR}/src)
 add_executable(gencolormaps ${GENCOLORMAPS_SRC})
 target_link_libraries(gencolormaps PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX)
-add_executable(gimppalette555 ${GIMPPALETTE555_SRC})
 add_executable(hex2gba ${HEX2GBA_SRC})
 target_link_libraries(hex2gba)
 add_executable(img2h ${IMG2H_SRC})
