@@ -94,7 +94,7 @@ public:
                 }
             }
         }
-        return {toBGR555(c0.toRGB555()), toBGR555(c1.toRGB555()), bestIndices};
+        return {Color::convertTo<Color::XRGB1555>(c0), Color::convertTo<Color::XRGB1555>(c1), bestIndices};
     }
 
     static auto decode(const DXTBlock &block) -> std::array<YCgCoRf, Width * Height>

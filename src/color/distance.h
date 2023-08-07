@@ -13,7 +13,7 @@ namespace Color
         float dist = 0.0F;
         for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
         {
-            dist += distance(*c0It, *c1It);
+            dist += T::distance(*c0It, *c1It);
         }
         return dist / N;
     }
@@ -27,7 +27,7 @@ namespace Color
         float dist = 0.0F;
         for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
         {
-            auto colorDist = distance(*c0It, *c1It);
+            auto colorDist = T::distance(*c0It, *c1It);
             belowThreshold = belowThreshold ? colorDist < threshold : belowThreshold;
             dist += colorDist;
         }

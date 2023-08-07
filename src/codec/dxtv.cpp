@@ -1,6 +1,7 @@
 #include "dxtv.h"
 
 #include "color/conversions.h"
+#include "color/distance.h"
 #include "color/ycgcorf.h"
 #include "color/xrgb1555.h"
 #include "processing/blockview.h"
@@ -473,7 +474,7 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
         else if constexpr (BLOCK_DIM > CodeBook::BlockMinDim)
         {
             // check if encoded block is below allowed error or we want to split the block
-            auto encodedBlockDist = YCgCoRf::distance(rawBlock, decodedBlock);
+            auto encodedBlockDist = Color::distance(rawBlock, decodedBlock);
             if (encodedBlockDist < maxAllowedError)
             {
                 // Threshold ok. Store full DXT block
