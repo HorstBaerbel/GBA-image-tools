@@ -1,39 +1,10 @@
 #include "textio.h"
 
-#include <iomanip>
 #include <iostream>
 #include <filesystem>
 
 namespace IO
 {
-
-    /// @brief Write values as a comma-separated array of hex numbers.
-    template <typename T>
-    void writeValues(std::ofstream &outFile, const std::vector<T> &data, bool asHex = false)
-    {
-        auto flags = outFile.flags();
-        size_t loopCount = 0;
-        for (auto current : data)
-        {
-            if (asHex)
-            {
-                outFile << "0x" << std::hex << std::noshowbase << std::setw(sizeof(T) * 2) << std::setfill('0') << current;
-            }
-            else
-            {
-                outFile << std::dec << current;
-            }
-            if (loopCount < data.size() - 1)
-            {
-                outFile << ", ";
-            }
-            if (++loopCount % 10 == 0)
-            {
-                outFile << std::endl;
-            }
-        }
-        outFile.flags(flags);
-    }
 
     void Text::writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &mapData, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages, bool asTiles)
     {
@@ -77,17 +48,6 @@ namespace IO
         }
     }
 
-    void Text::writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<uint16_t> &data, uint32_t nrOfColors, bool singleColorMap, bool asTiles)
-    {
-        hFile << "#define " << varName << "_PALETTE_LENGTH " << nrOfColors << " // # of palette entries per palette" << std::endl;
-        hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data in 2 byte units" << std::endl;
-        if (!singleColorMap)
-        {
-            hFile << "extern const uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES]; // index where a palette for a sprite/tile starts (in 2 byte units)" : "_NR_OF_IMAGES]; // index where a palette for an image starts (in 2 byte units)") << std::endl;
-        }
-        hFile << "extern const uint16_t " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE];" << std::endl;
-    }
-
     void Text::writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &dataStartIndices, const std::vector<uint32_t> &mapData, bool asTiles)
     {
         cFile << "#include \"" << hFileBaseName << ".h\"" << std::endl
@@ -110,23 +70,6 @@ namespace IO
         }
         // write image data
         cFile << "const _Alignas(4) uint32_t " << varName << "_DATA[" << varName << "_DATA_SIZE] = { " << std::endl;
-        writeValues(cFile, data, true);
-        cFile << "};" << std::endl
-              << std::endl;
-    }
-
-    void Text::writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &data, const std::vector<uint32_t> &startIndices, bool asTiles)
-    {
-        // write palette start indices if more than one palette
-        if (startIndices.size() > 1)
-        {
-            cFile << "const _Alignas(4) uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES] = { " : "_NR_OF_IMAGES] = { ") << std::endl;
-            writeValues(cFile, startIndices);
-            cFile << "};" << std::endl
-                  << std::endl;
-        }
-        // write palette data
-        cFile << "const _Alignas(4) uint16_t " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE] = { " << std::endl;
         writeValues(cFile, data, true);
         cFile << "};" << std::endl
               << std::endl;
