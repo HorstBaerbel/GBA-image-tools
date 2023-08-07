@@ -1,11 +1,10 @@
 #pragma once
 
-#include "color/colorformat.h"
 #include "datahelpers.h"
 #include "datasize.h"
 #include "exception.h"
+#include "imagedata.h"
 
-#include <Magick++.h>
 #include <cstdint>
 #include <variant>
 #include <vector>
@@ -13,45 +12,37 @@
 namespace Image
 {
 
-    /// @brief Type of data currently stored in image data
+    /// @brief Type of data currently stored in data
     enum class DataType
     {
         Unknown,
-        Bitmap, // image / bitmap data
-        Tilemap // tilemap data
+        Bitmap, // Image / bitmap data
+        Tilemap // Tilemap data
     };
 
-    /// @brief Stores input data for image processing
-    struct InputData
-    {
-        uint32_t index = 0;   // input file index counter
-        std::string fileName; // input file name
-        Magick::Image image;  // input image
-    };
+    using MapData = std::vector<uint16_t>; // Screen / map data that specifies which tile index is displayed at a screen position
 
     /// @brief Stores data for an image
     struct Data
     {
-        uint32_t index = 0;                                        // image index counter
-        std::string fileName;                                      // input file name
-        Magick::ImageType type = Magick::ImageType::UndefinedType; // input image type
-        DataSize size = {0, 0};                                    // image size
-        DataType dataType = DataType::Unknown;                     // image data type
-        Color::Format colorFormat = Color::Format::Unknown;        // image color format
-        std::vector<uint16_t> mapData;                             // raw screen / map data (only if dataType == Tilemap)
-        std::vector<uint8_t> data;                                 // raw image / bitmap / tile data
-        std::vector<Magick::Color> colorMap;                       // image color map if paletted
-        Color::Format colorMapFormat = Color::Format::Unknown;     // raw color map data format
-        std::vector<uint8_t> colorMapData;                         // raw color map data
-        uint32_t maxMemoryNeeded = 0;                              // max. intermediate memory needed to process the image. 0 if it can be directly written to destination (single processing stage)
+        uint32_t index = 0;                    // image index counter
+        std::string fileName;                  // input file name
+        DataSize size = {0, 0};                // image size
+        DataType dataType = DataType::Unknown; // image data type
+        MapData mapData;                       // raw screen / map data (only if dataType == Tilemap)
+        ImageData imageData;                   // image / bitmap / tile data. indexed, true color or raw / compressed data
+        uint32_t maxMemoryNeeded = 0;          // max. intermediate memory needed to process the image. 0 if it can be directly written to destination (single processing stage)
     };
 
-    /// @brief Return true if the data has paletted data (1/2/4/8 bits), false if not.
-    auto isPaletted(const Data &frame) -> bool;
+    /// @brief Return number of bits needed per color pixel.
+    auto bitsPerPixel(const Data &image) -> uint32_t;
 
-    /// @brief Return true if the data has a color map, false if not.
-    auto hasColorMap(const Data &frame) -> bool;
+    /// @brief Return number of full bytes needed per color pixel.
+    auto bytesPerPixel(const Data &image) -> uint32_t;
+
+    /// @brief Return number of bits needed per color map entry.
+    auto bitsPerColorMapEntry(const Data &image) -> uint32_t;
 
     /// @brief Return number of full bytes needed per color map entry.
-    auto bytesPerColorMapEntry(const Data &frame) -> uint32_t;
+    auto bytesPerColorMapEntry(const Data &image) -> uint32_t;
 }

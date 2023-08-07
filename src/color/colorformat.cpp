@@ -8,126 +8,27 @@
 #include "ycgcorf.h"
 #include "exception.h"
 
+#include <map>
+
 namespace Color
 {
 
-    auto isIndexed(Format format) -> bool
-    {
-        switch (format)
-        {
-        case Color::Format::Unknown:
-        case Color::Format::XRGB1555:
-        case Color::Format::RGB565:
-        case Color::Format::XRGB8888:
-        case Color::Format::LChf:
-        case Color::Format::RGBf:
-        case Color::Format::YCgCoRf:
-            return false;
-        case Color::Format::Paletted1:
-        case Color::Format::Paletted2:
-        case Color::Format::Paletted4:
-        case Color::Format::Paletted8:
-            return true;
-        default:
-            THROW(std::runtime_error, "Unsupported color map format");
-        }
-    }
+    static const std::map<Format, FormatInfo> FormatInfoMap = {
+        {Format::Unknown, {Format::Unknown, "Unknown", 0, 0, false, false}},
+        {Format::Paletted1, {Format::Paletted1, "Paletted 1-bit", 1, 1, true, false}},
+        {Format::Paletted2, {Format::Paletted2, "Paletted 2-bit", 2, 1, true, false}},
+        {Format::Paletted4, {Format::Paletted4, "Paletted 4-bit", 4, 1, true, false}},
+        {Format::Paletted8, {Format::Paletted8, "Paletted 8-bit", 8, 1, true, false}},
+        {Format::XRGB1555, {Format::XRGB1555, "XRGB1555", 15, 2, false, true}},
+        {Format::RGB565, {Format::RGB565, "RGB565", 16, 2, false, true}},
+        {Format::XRGB8888, {Format::XRGB8888, "XRGB8888", 4 * 8, 4, false, true}},
+        {Format::LChf, {Format::LChf, "LCh float", 12 * 8, 12, false, true}},
+        {Format::RGBf, {Format::RGBf, "RGB float", 12 * 8, 12, false, true}},
+        {Format::YCgCoRf, {Format::YCgCoRf, "YCgCoR float", 12 * 8, 12, false, true}}};
 
-    auto isTruecolor(Format format) -> bool
+    auto formatInfo(Format format) -> const FormatInfo &
     {
-        switch (format)
-        {
-        case Color::Format::XRGB1555:
-        case Color::Format::RGB565:
-        case Color::Format::XRGB8888:
-        case Color::Format::LChf:
-        case Color::Format::RGBf:
-        case Color::Format::YCgCoRf:
-            return true;
-        case Color::Format::Paletted1:
-        case Color::Format::Paletted2:
-        case Color::Format::Paletted4:
-        case Color::Format::Paletted8:
-            return false;
-        default:
-            THROW(std::runtime_error, "Unsupported color map format");
-        }
-    }
-
-    auto bitsPerPixelForFormat(Format format) -> uint32_t
-    {
-        switch (format)
-        {
-        case Format::Paletted1:
-            return 1;
-        case Format::Paletted2:
-            return 2;
-        case Format::Paletted4:
-            return 4;
-        case Format::Paletted8:
-            return 8;
-        case Format::XRGB1555:
-            return 15;
-        case Format::RGB565:
-            return 16;
-        case Format::XRGB8888:
-            return 32;
-        case Format::LChf:
-        case Format::RGBf:
-        case Format::YCgCoRf:
-            return 96;
-        default:
-            THROW(std::runtime_error, "Bad color format");
-        }
-    }
-
-    auto bytesPerColorMapEntry(Format format) -> uint32_t
-    {
-        switch (format)
-        {
-        case Color::Format::Unknown:
-            return 0;
-        case Color::Format::XRGB1555:
-        case Color::Format::RGB565:
-            return 2;
-        case Color::Format::XRGB8888:
-            return 4;
-        case Color::Format::LChf:
-        case Color::Format::RGBf:
-        case Color::Format::YCgCoRf:
-            return 12;
-        default:
-            THROW(std::runtime_error, "Unsupported color map format");
-        }
-    }
-
-    auto toString(Format format) -> std::string
-    {
-        switch (format)
-        {
-        case Format::Paletted1:
-            return "Paletted 1-bit";
-        case Format::Paletted2:
-            return "Paletted 2-bit";
-        case Format::Paletted4:
-            return "Paletted 4-bit";
-        case Format::Paletted8:
-            return "Paletted 8-bit";
-        case Format::XRGB1555:
-            return "XRGB1555";
-        case Format::RGB565:
-            return "RGB565";
-        case Format::XRGB8888:
-            return "XRGB8888";
-        case Format::LChf:
-            return "LCh float";
-        case Format::RGBf:
-            return "RGB float";
-        case Format::YCgCoRf:
-            return "YCgCoR float";
-        default:
-            THROW(std::runtime_error, "Bad color format");
-        }
+        return FormatInfoMap.at(format);
     }
 
     template <>

@@ -26,7 +26,7 @@ namespace Image
             const auto allDataSameSize = std::find_if_not(temp8.cbegin(), temp8.cend(), [refSize = temp8.front().size()](const auto &d)
                                                           { return d.size() == refSize; }) == temp8.cend();
             REQUIRE(allDataSameSize, std::runtime_error, "The image pixel data size of all images must be the same for interleaving");
-            return {convertTo<OUT_TYPE>(interleave(temp8, bitsPerPixelForFormat(images.front().imageData.pixels().format()))), std::vector<uint32_t>()};
+            return {convertTo<OUT_TYPE>(interleave(temp8, Color::formatInfo(images.front().imageData.pixels().format()).bitsPerPixel)), std::vector<uint32_t>()};
         }
         else
         {

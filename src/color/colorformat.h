@@ -6,8 +6,8 @@
 namespace Color
 {
 
-    /// @brief Color format information
-    enum class Format
+    /// @brief Color format identifier
+    enum class Format : unsigned
     {
         Unknown = 0,   // Bad, raw or compressed data
         Paletted1 = 1, // 1bit paletted b/w format
@@ -22,20 +22,19 @@ namespace Color
         YCgCoRf = 98   // YCgCoR float truecolor format
     };
 
-    /// @brief Return true if color format is indexed / paletted
-    auto isIndexed(Format format) -> bool;
+    /// @brief Color format information
+    struct FormatInfo
+    {
+        Format format = Format::Unknown;
+        std::string name;           // Color format as string
+        uint32_t bitsPerPixel = 0;  // Bits per pixel for input color format
+        uint32_t bytesPerPixel = 0; // Bytes per pixel for input color format
+        bool isIndexed = false;     // If color format is indexed / paletted
+        bool isTruecolor = false;   // If color format is truecolor
+    };
 
-    /// @brief Return true if color format is truecolor
-    auto isTruecolor(Format format) -> bool;
-
-    /// @brief Return bits per pixel for input color format
-    auto bitsPerPixelForFormat(Format format) -> uint32_t;
-
-    /// @brief Return bits per pixel for input color format
-    auto bytesPerColorMapEntry(Format format) -> uint32_t;
-
-    /// @brief Return color format as string
-    auto toString(Format format) -> std::string;
+    /// @brief Return color format information
+    auto formatInfo(Format format) -> const FormatInfo &;
 
     /// @brief Return color format for color value type
     /// @note Paletted and raw types can not be distinguished as they are all uint8_t and will return "Unknown"

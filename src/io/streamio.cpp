@@ -43,8 +43,8 @@ namespace IO
         fileHeader.width = static_cast<uint16_t>(frames.front().size.width());
         fileHeader.height = static_cast<uint16_t>(frames.front().size.height());
         fileHeader.fps = fps;
-        fileHeader.bitsPerPixel = Color::bitsPerPixelForFormat(frameData.pixels().format());
-        fileHeader.bitsPerColor = frameHasColorMap ? Color::bitsPerPixelForFormat(frameData.colorMap().format()) : 0;
+        fileHeader.bitsPerPixel = static_cast<uint8_t>(Color::formatInfo(frameData.pixels().format()).bitsPerPixel);
+        fileHeader.bitsPerColor = frameHasColorMap ? static_cast<uint8_t>(Color::formatInfo(frameData.colorMap().format()).bitsPerPixel) : 0;
         fileHeader.colorMapEntries = frameHasColorMap ? frameData.colorMap().size() : 0;
         fileHeader.maxMemoryNeeded = maxMemoryNeeded;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(fileHeader));

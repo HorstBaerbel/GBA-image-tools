@@ -168,12 +168,12 @@ namespace Image
 
         auto isIndexed() const -> bool
         {
-            return !std::holds_alternative<std::monostate>(m_data) && Color::isIndexed(m_dataFormat) && std::holds_alternative<std::vector<uint8_t>>(m_data);
+            return !std::holds_alternative<std::monostate>(m_data) && Color::formatInfo(m_dataFormat).isIndexed && std::holds_alternative<std::vector<uint8_t>>(m_data);
         }
 
         auto isTruecolor() const -> bool
         {
-            return !std::holds_alternative<std::monostate>(m_data) && Color::isTruecolor(m_dataFormat) && (!std::holds_alternative<std::vector<uint8_t>>(m_data));
+            return !std::holds_alternative<std::monostate>(m_data) && Color::formatInfo(m_dataFormat).isTruecolor && (!std::holds_alternative<std::vector<uint8_t>>(m_data));
         }
 
         auto isRaw() const -> bool
