@@ -48,7 +48,7 @@ namespace IO
 
         /// @brief Write additional palette information to a .h file. Use after write writeImageInfoToH.
         template <typename T>
-        void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<T> &data, uint32_t nrOfColors, bool singleColorMap = true, bool asTiles = false)
+        static void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<T> &data, uint32_t nrOfColors, bool singleColorMap = true, bool asTiles = false)
         {
             hFile << "#define " << varName << "_PALETTE_LENGTH " << nrOfColors << " // # of palette entries per palette" << std::endl;
             hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data" << std::endl;
@@ -64,7 +64,7 @@ namespace IO
 
         /// @brief Write palette data to a .c file. Use after write writeImageDataToC.
         template <typename T>
-        void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<T> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false)
+        static void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<T> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false)
         {
             // write palette start indices if more than one palette
             if (startIndices.size() > 1)
