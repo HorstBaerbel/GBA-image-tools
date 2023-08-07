@@ -23,10 +23,6 @@ find_package(OpenMP REQUIRED)
 #-------------------------------------------------------------------------------
 # Set up compiler flags
 
-# Add defines so Magick++ does not throw warnings
-add_definitions(-DMAGICKCORE_HDRI_ENABLE=0)
-add_definitions(-DMAGICKCORE_QUANTUM_DEPTH=16)
-
 if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
     add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
@@ -59,6 +55,9 @@ list(APPEND HEX2GBA_SRC
 )
 
 file(GLOB_RECURSE HELPERS_SRC CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*/*.cpp ${PROJECT_SOURCE_DIR}/src/*/*.h)
+
+# Add defines so Magick++ does not throw warnings
+set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES COMPILE_DEFINTIONS "MAGICKCORE_HDRI_ENABLE=0 MAGICKCORE_QUANTUM_DEPTH=16")
 
 list(APPEND IMG2H_SRC
     img2h.cpp
