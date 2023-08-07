@@ -124,6 +124,12 @@ namespace Color
         return RGBf(R, G, B);
     }
 
+    template <>
+    float grayValue(const RGBf &color)
+    {
+        return 0.2126F * color.R() + 0.7152F * color.G() + 0.0722F * color.B();
+    }
+
     // ----- XRGB1555 --------------------------------------------------------------
 
     template <>
@@ -182,6 +188,12 @@ namespace Color
         return convertTo<XRGB1555>(convertTo<RGBf>(color));
     }
 
+    template <>
+    float grayValue(const XRGB1555 &color)
+    {
+        return (0.2126F * static_cast<float>(color.R()) + 0.7152F * static_cast<float>(color.G()) + 0.0722F * static_cast<float>(color.B())) / 31.0F;
+    }
+
     // ----- RGB565 --------------------------------------------------------------
 
     template <>
@@ -238,6 +250,12 @@ namespace Color
     auto convertTo(const LChf &color) -> RGB565
     {
         return convertTo<RGB565>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    float grayValue(const RGB565 &color)
+    {
+        return (0.2126F * static_cast<float>(color.R())) / 31.0F + (0.7152F * static_cast<float>(color.G())) / 63.0F + (0.0722F * static_cast<float>(color.B())) / 31.0F;
     }
 
     // ----- XRGB8888 --------------------------------------------------------------
@@ -300,6 +318,12 @@ namespace Color
         return convertTo<XRGB8888>(convertTo<RGBf>(color));
     }
 
+    template <>
+    float grayValue(const XRGB8888 &color)
+    {
+        return (0.2126F * static_cast<float>(color.R()) + 0.7152F * static_cast<float>(color.G()) + 0.0722F * static_cast<float>(color.B())) / 255.0F;
+    }
+
     // ----- YCgCoRf --------------------------------------------------------------
 
     template <>
@@ -334,6 +358,13 @@ namespace Color
     auto convertTo(const LChf &color) -> YCgCoRf
     {
         return convertTo<YCgCoRf>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    float grayValue(const YCgCoRf &color)
+    {
+        auto rgb = convertTo<RGBf>(color);
+        return grayValue(rgb);
     }
 
     // ----- LCHf --------------------------------------------------------------
@@ -400,6 +431,13 @@ namespace Color
     auto convertTo(const YCgCoRf &color) -> LChf
     {
         return convertTo<LChf>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    float grayValue(const LChf &color)
+    {
+        auto rgb = convertTo<RGBf>(color);
+        return grayValue(rgb);
     }
 
 }

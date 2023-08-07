@@ -51,4 +51,7 @@ namespace Color
         return result;
     }
 
+    /// @brief Return grascale value for color
+    template <typename T>
+    float grayValue(const T &color);
 }

@@ -52,6 +52,10 @@ TEST_CASE("RGB565")
     // LChf
     std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.42716, 68.55281, 302.5583)};
     compare(c, c5);
+    // grayscale
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::RGB565(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::RGB565(15, 32, 15)), Catch::Matchers::WithinAbs(0.5, 0.01));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::RGB565(31, 63, 31)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }
 
 TEST_CASE("XRGB1555")
@@ -78,6 +82,10 @@ TEST_CASE("XRGB1555")
     // LChf
     std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.64899, 67.9604, 302.32974)};
     compare(c, c5);
+    // grayscale
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::XRGB1555(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::XRGB1555(15, 15, 15)), Catch::Matchers::WithinAbs(0.48, 0.01));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::XRGB1555(31, 31, 31)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }
 
 TEST_CASE("XRGB8888")
@@ -104,6 +112,10 @@ TEST_CASE("XRGB8888")
     // LChf
     std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38783, 302.42209)};
     compare(c, c5);
+    // grayscale
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::XRGB8888(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::XRGB8888(127, 127, 127)), Catch::Matchers::WithinAbs(0.5, 0.002));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::XRGB8888(255, 255, 255)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }
 
 TEST_CASE("RGBf")
@@ -130,6 +142,10 @@ TEST_CASE("RGBf")
     // LChf
     std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38783, 302.42209)};
     compare(c, c5);
+    // grayscale
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::RGBf(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::RGBf(0.5F, 0.5F, 0.5F)), Catch::Matchers::WithinAbs(0.5, 0.0001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::RGBf(1, 1, 1)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }
 
 TEST_CASE("YCgCoRf")
@@ -156,13 +172,17 @@ TEST_CASE("YCgCoRf")
     // LChf
     std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38841, 302.42209)};
     compare(c, c5);
+    // grayscale
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::YCgCoRf(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::YCgCoRf(0.5F, 0, 0)), Catch::Matchers::WithinAbs(0.5, 0.0001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::YCgCoRf(1, 0, 0)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }
 
 TEST_CASE("LChf")
 {
     std::array<Color::LChf, 6> c = {
         Color::LChf(0, 0, 0),
-        Color::LChf(100, 0.00840794, 213.9604),
+        Color::LChf(100, 0, 360),
         Color::LChf(53.23824, 104.5461, 39.99994),
         Color::LChf(87.73554, 119.7787, 136.0166),
         Color::LChf(32.29847, 133.8101, 306.2844),
@@ -182,4 +202,8 @@ TEST_CASE("LChf")
     // YCgCoRf
     std::array<Color::YCgCoRf, 6> c5 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.43431, -0.42157, -0.64706)};
     compare(c, c5);
+    // grayscale
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::LChf(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
+    // CATCH_REQUIRE_THAT(Color::grayValue(Color::LChf(50, 0, 0)), Catch::Matchers::WithinAbs(0.5, 0.001));
+    CATCH_REQUIRE_THAT(Color::grayValue(Color::LChf(100, 0, 360)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }
