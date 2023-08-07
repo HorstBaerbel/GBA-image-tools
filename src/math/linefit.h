@@ -27,7 +27,8 @@ auto lineFit(const std::array<T, N> &p) -> std::pair<T, T>
     Eigen::Vector3d mean = points.rowwise().mean();
     auto centered = points.colwise() - mean;
     // calculate SVD and first eigenvector
-    auto svd = centered.jacobiSvd(Eigen::DecompositionOptions::ComputeFullU);
-    Eigen::Vector3d axis = svd.matrixU().col(0).transpose().normalized();
+    Eigen::JacobiSVD<Eigen::MatrixXd, Eigen::DecompositionOptions::ComputeFullU> svd;
+    auto fullU = svd.compute(centered);
+    Eigen::Vector3d axis = fullU.matrixU().col(0).transpose().normalized();
     return {T(mean.x(), mean.y(), mean.z()), T(axis.x(), axis.y(), axis.z())};
 }
