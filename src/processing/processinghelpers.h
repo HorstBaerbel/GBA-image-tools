@@ -1,0 +1,74 @@
+#pragma once
+
+#include "color/colorformat.h"
+#include "datahelpers.h"
+#include "exception.h"
+#include "imagedata.h"
+#include "imagestructs.h"
+
+#include <cstdint>
+#include <vector>
+#include <utility>
+
+namespace Image
+{
+
+    /// @brief Combine raw image pixel data of all images and return the data and the start indices into that data.
+    /// Indices are returned in OUT_TYPE units
+    template <typename OUT_TYPE>
+    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawPixelData(const std::vector<Data> &images, bool interleavePixels = false)
+    {
+        std::vector<std::vector<uint8_t>> temp8;
+        std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
+                       { return img.imageData.pixels().convertDataToRaw(); });
+        if (interleavePixels)
+        {
+            const auto allDataSameSize = std::find_if_not(temp8.cbegin(), temp8.cend(), [refSize = temp8.front().size()](const auto &d)
+                                                          { return d.size() == refSize; }) == temp8.cend();
+            REQUIRE(allDataSameSize, std::runtime_error, "The image pixel data size of all images must be the same for interleaving");
+            return {convertTo<OUT_TYPE>(interleave(temp8, bitsPerPixelForFormat(images.front().imageData.pixels().format()))), std::vector<uint32_t>()};
+        }
+        else
+        {
+            auto startIndices = getStartIndices(temp8);
+            for (auto index : startIndices)
+            {
+                REQUIRE(index % sizeof(OUT_TYPE) == 0, std::runtime_error, "The image pixel data size of all images must be evenly dividable by " << sizeof(OUT_TYPE) / sizeof(uint8_t));
+            }
+            return {combineTo<OUT_TYPE>(temp8), divideBy<uint32_t>(startIndices, sizeof(OUT_TYPE) / sizeof(uint8_t))};
+        }
+    }
+
+    /// @brief Combine raw map data of all images in uint16_t units and return the data and the start indices into that data.
+    /// Indices are return in OUT_TYPE units
+    template <typename OUT_TYPE>
+    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawMapData(const std::vector<Data> &images)
+    {
+        std::vector<std::vector<uint8_t>> temp8;
+        std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
+                       { return convertTo<uint8_t>(img.mapData); });
+        auto startIndices = getStartIndices(temp8);
+        for (auto index : startIndices)
+        {
+            REQUIRE(index % sizeof(OUT_TYPE) == 0, std::runtime_error, "The image map data size of all images must be evenly dividable by " << sizeof(OUT_TYPE) / sizeof(uint8_t));
+        }
+        return {combineTo<OUT_TYPE>(temp8), divideBy<uint32_t>(getStartIndices(temp8), sizeof(OUT_TYPE) / sizeof(uint8_t))};
+    }
+
+    /// @brief Combine the raw image color map data of all images and return the data and the start indices into that data.
+    /// Indices are returned in OUT_TYPE units
+    template <typename OUT_TYPE>
+    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawColorMapData(const std::vector<Data> &images)
+    {
+        std::vector<std::vector<uint8_t>> temp8;
+        std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
+                       { return img.imageData.colorMap().convertDataToRaw(); });
+        auto startIndices = getStartIndices(temp8);
+        for (auto index : startIndices)
+        {
+            REQUIRE(index % sizeof(OUT_TYPE) == 0, std::runtime_error, "The image pixel data size of all images must be evenly dividable by " << sizeof(OUT_TYPE) / sizeof(uint8_t));
+        }
+        return {combineTo<OUT_TYPE>(temp8), divideBy<uint32_t>(startIndices, sizeof(OUT_TYPE) / sizeof(uint8_t))};
+    }
+
+}
