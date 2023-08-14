@@ -34,7 +34,7 @@ namespace Video
             case Image::ProcessingType::Uncompressed:
                 Memory::memcpy32(currentDst, currentSrc, chunk->uncompressedSize / 4);
                 break;
-            case Image::ProcessingType::CompressLz10:
+            case Image::ProcessingType::CompressLZ10:
                 dstInVRAM ? Decompress::LZ77UnCompWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressRLE:
