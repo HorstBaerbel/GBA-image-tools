@@ -31,7 +31,7 @@ TEST_CASE("Assignment")
     CATCH_REQUIRE(c2.raw() == 0.1F);
     CATCH_REQUIRE(c2.I() == 0.1F);
     c1.I() = 5;
-    CATCH_REQUIRE(c1.raw() == 0.1F);
+    CATCH_REQUIRE(c1.raw() == 5);
     CATCH_REQUIRE(c1.I() == 5);
 }
 

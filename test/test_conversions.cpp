@@ -16,6 +16,18 @@
 TEST_SUITE("Conversions")
 
 template <std::size_t N, typename A, typename B>
+auto compare(const std::array<A, 1> &a, const std::array<B, N> &b) -> void
+{
+    for (std::size_t i = 0; i < N; i++)
+    {
+        auto c = Color::convertTo<B>(a[i]);
+        CATCH_REQUIRE_THAT(static_cast<float>(c[0]), Catch::Matchers::WithinAbs(b[i][0], 0.0005));
+        CATCH_REQUIRE_THAT(static_cast<float>(c[1]), Catch::Matchers::WithinAbs(b[i][1], 0.0005));
+        CATCH_REQUIRE_THAT(static_cast<float>(c[2]), Catch::Matchers::WithinAbs(b[i][2], 0.0005));
+    }
+}
+
+template <std::size_t N, typename A, typename B>
 auto compare(const std::array<A, N> &a, const std::array<B, N> &b) -> void
 {
     for (std::size_t i = 0; i < N; i++)
@@ -28,6 +40,32 @@ auto compare(const std::array<A, N> &a, const std::array<B, N> &b) -> void
 }
 
 // Calculate: https://coliru.stacked-crooked.com/a/a6f3ec31d820dada
+
+TEST_CASE("Grayf")
+{
+    std::array<Color::Grayf, 3> c = {
+        Color::Grayf(0),
+        Color::Grayf(1),
+        Color::Grayf(82.0 / 255)};
+    // RGB565
+    std::array<Color::RGB565, 3> c1 = {Color::RGB565(0, 0, 0), Color::RGB565(31, 63, 31), Color::RGB565(10, 20, 10)};
+    compare(c, c1);
+    // XRGB1555
+    std::array<Color::XRGB1555, 3> c2 = {Color::XRGB1555(0, 0, 0), Color::XRGB1555(31, 31, 31), Color::XRGB1555(10, 10, 10)};
+    compare(c, c2);
+    // XRGB8888
+    std::array<Color::XRGB8888, 3> c3 = {Color::XRGB8888(0, 0, 0), Color::XRGB8888(255, 255, 255), Color::XRGB8888(82, 82, 82)};
+    compare(c, c3);
+    // YCgCoRf
+    std::array<Color::YCgCoRf, 3> c4 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.321568638, 0, 0)};
+    compare(c, c4);
+    // LChf
+    std::array<Color::LChf, 3> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(63.4723129, 0.00575300632, 213.75572)};
+    compare(c, c5);
+    // RGBf
+    std::array<Color::RGBf, 3> c6 = {Color::RGBf(0, 0, 0), Color::RGBf(1, 1, 1), Color::RGBf(82.0 / 255, 82.0 / 255, 82.0 / 255)};
+    compare(c, c6);
+}
 
 TEST_CASE("RGB565")
 {

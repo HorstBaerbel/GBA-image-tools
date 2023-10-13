@@ -26,6 +26,12 @@ namespace Color
     // ----- RGBf -----------------------------------------------------------------
 
     template <>
+    auto convertTo(const Grayf &color) -> RGBf
+    {
+        return RGBf(color.I(), color.I(), color.I());
+    }
+
+    template <>
     auto convertTo(const XRGB1555 &color) -> RGBf
     {
         uint16_t c = color;
@@ -128,6 +134,16 @@ namespace Color
     // ----- XRGB1555 --------------------------------------------------------------
 
     template <>
+    auto convertTo(const Grayf &color) -> XRGB1555
+    {
+        // bring into range and round
+        auto R = color.I() * 31.0F + 0.5F;
+        // clamp to [0,31]
+        auto R16 = static_cast<uint16_t>(R < 0.0F ? 0.0F : (R > 31.0F ? 31.0F : R));
+        return XRGB1555((R16 << 10) | (R16 << 5) | R16);
+    }
+
+    template <>
     auto convertTo(const uint16_t &color) -> XRGB1555
     {
         return XRGB1555(color);
@@ -186,6 +202,18 @@ namespace Color
     // ----- RGB565 --------------------------------------------------------------
 
     template <>
+    auto convertTo(const Grayf &color) -> RGB565
+    {
+        // bring into range and round
+        auto R = color.I() * 31.0F + 0.5F;
+        auto G = color.I() * 63.0F + 0.5F;
+        // clamp to [0,31] resp. [0,63]
+        auto R16 = static_cast<uint16_t>(R < 0.0F ? 0.0F : (R > 31.0F ? 31.0F : R));
+        auto G16 = static_cast<uint16_t>(G < 0.0F ? 0.0F : (G > 63.0F ? 63.0F : G));
+        return RGB565((R16 << 11) | (G16 << 5) | R16);
+    }
+
+    template <>
     auto convertTo(const uint16_t &color) -> RGB565
     {
         return RGB565(color);
@@ -242,6 +270,18 @@ namespace Color
     }
 
     // ----- XRGB8888 --------------------------------------------------------------
+
+    template <>
+    auto convertTo(const Grayf &color) -> XRGB8888
+    {
+        // bring into range and round
+        float R = color.I() * 255.0F + 0.5F;
+        float G = color.I() * 255.0F + 0.5F;
+        // clamp to [0,255]
+        auto R32 = static_cast<uint32_t>(R < 0.0F ? 0.0F : (R > 255.0F ? 255.0F : R));
+        auto G32 = static_cast<uint32_t>(G < 0.0F ? 0.0F : (G > 255.0F ? 255.0F : G));
+        return XRGB8888((R32 << 16) | (G32 << 8) | R32);
+    }
 
     template <>
     auto convertTo(const uint32_t &color) -> XRGB8888
@@ -314,6 +354,12 @@ namespace Color
     }
 
     template <>
+    auto convertTo(const Grayf &color) -> YCgCoRf
+    {
+        return convertTo<YCgCoRf>(convertTo<RGBf>(color));
+    }
+
+    template <>
     auto convertTo(const XRGB1555 &color) -> YCgCoRf
     {
         return convertTo<YCgCoRf>(convertTo<RGBf>(color));
@@ -377,6 +423,12 @@ namespace Color
             h += 360.0F;
         }
         return LChf(L, C, h);
+    }
+
+    template <>
+    auto convertTo(const Grayf &color) -> LChf
+    {
+        return convertTo<LChf>(convertTo<RGBf>(color));
     }
 
     template <>
