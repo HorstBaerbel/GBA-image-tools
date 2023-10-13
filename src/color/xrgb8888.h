@@ -16,6 +16,7 @@ namespace Color
     {
     public:
         static constexpr Color::Format ColorFormat = Format::XRGB8888;
+        static constexpr uint32_t Channels = 3;
         using pixel_type = uint32_t; // pixel value type
         using value_type = uint8_t;  // color channel value type
 

@@ -2,6 +2,7 @@
 
 #include "color/colorformat.h"
 #include "color/conversions.h"
+#include "color/grayf.h"
 #include "color/lchf.h"
 #include "color/rgb565.h"
 #include "color/rgbf.h"
@@ -38,8 +39,9 @@ namespace Image
             {
                 REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
                             m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf ||
-                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf,
-                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf");
+                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf ||
+                            m_dataFormat == Color::Format::Grayf,
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
             }
         }
 
@@ -55,8 +57,9 @@ namespace Image
             {
                 REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
                             m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf ||
-                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf,
-                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf");
+                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf ||
+                            m_dataFormat == Color::Format::Grayf,
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
             }
             m_data = std::move(data);
         }
@@ -108,6 +111,10 @@ namespace Image
                 {
                     return Color::convertTo<T>(std::get<std::vector<Color::YCgCoRf>>(m_data));
                 }
+                else if (std::holds_alternative<std::vector<Color::Grayf>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::Grayf>>(m_data));
+                }
             }
             THROW(std::runtime_error, "Unsupported pixel format");
         }
@@ -138,7 +145,19 @@ namespace Image
             {
                 return getAsRaw<Color::YCgCoRf>();
             }
+            else if (std::holds_alternative<std::vector<Color::Grayf>>(m_data))
+            {
+                return getAsRaw<Color::Grayf>();
+            }
             THROW(std::runtime_error, "Unsupported pixel format");
+        }
+
+        template <typename FUNC_TYPE>
+        auto apply(FUNC_TYPE f) -> PixelData
+        {
+            return std::visit([f](auto arg)
+                              { return f(arg); },
+                              m_data);
         }
 
         auto empty() const -> bool
@@ -164,6 +183,11 @@ namespace Image
         auto format() const -> Color::Format
         {
             return m_dataFormat;
+        }
+
+        auto isGrayscale() const -> bool
+        {
+            return !std::holds_alternative<std::monostate>(m_data) && Color::formatInfo(m_dataFormat).channels == 1 && std::holds_alternative<std::vector<Color::Grayf>>(m_data);
         }
 
         auto isIndexed() const -> bool
@@ -196,7 +220,7 @@ namespace Image
         }
 
         Color::Format m_dataFormat = Color::Format::Unknown;
-        std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::LChf>, std::vector<Color::YCgCoRf>> m_data;
+        std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::LChf>, std::vector<Color::YCgCoRf>, std::vector<Color::Grayf>> m_data;
     };
 
     /// @brief Stores indexed images with a color map, true color images or raw / compressed image data
@@ -240,8 +264,9 @@ namespace Image
                         pixelFormat == Color::Format::XRGB8888 ||
                         pixelFormat == Color::Format::RGBf ||
                         pixelFormat == Color::Format::LChf ||
-                        pixelFormat == Color::Format::YCgCoRf,
-                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf");
+                        pixelFormat == Color::Format::YCgCoRf ||
+                        pixelFormat == Color::Format::Grayf,
+                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf, Grayf");
             m_pixels = PixelData(pixels, pixelFormat);
         }
 
@@ -254,8 +279,9 @@ namespace Image
                         pixelFormat == Color::Format::XRGB8888 ||
                         pixelFormat == Color::Format::RGBf ||
                         pixelFormat == Color::Format::LChf ||
-                        pixelFormat == Color::Format::YCgCoRf,
-                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf");
+                        pixelFormat == Color::Format::YCgCoRf ||
+                        pixelFormat == Color::Format::Grayf,
+                    std::runtime_error, "Pixel format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf or YCgCoRf, Grayf");
             m_pixels = PixelData(std::move(pixels), pixelFormat);
         }
 

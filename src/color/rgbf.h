@@ -14,6 +14,7 @@ namespace Color
     {
     public:
         static constexpr Color::Format ColorFormat = Format::RGBf;
+        static constexpr uint32_t Channels = 3;
         using pixel_type = Eigen::Vector3f; // pixel value type
         using value_type = float;           // color channel value type
 

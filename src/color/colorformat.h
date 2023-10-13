@@ -7,7 +7,7 @@ namespace Color
 {
 
     /// @brief Color format identifier
-    enum class Format : unsigned
+    enum class Format : uint8_t
     {
         Unknown = 0,   // Bad, raw or compressed data
         Paletted1 = 1, // 1bit paletted b/w format
@@ -19,7 +19,8 @@ namespace Color
         XRGB8888 = 32, // X8R8G8B8 32-bit straight truecolor format
         LChf = 96,     // LCh float truecolor format
         RGBf = 97,     // RGB float truecolor format
-        YCgCoRf = 98   // YCgCoR float truecolor format
+        YCgCoRf = 98,  // YCgCoR float truecolor format
+        Grayf = 111    // Single-channel float grayscale format
     };
 
     /// @brief Color format information
@@ -29,6 +30,7 @@ namespace Color
         std::string name;           // Color format as string
         uint32_t bitsPerPixel = 0;  // Bits per pixel for input color format
         uint32_t bytesPerPixel = 0; // Bytes per pixel for input color format
+        uint32_t channels = 0;      // Color channels in color data
         bool isIndexed = false;     // If color format is indexed / paletted
         bool isTruecolor = false;   // If color format is truecolor
     };
