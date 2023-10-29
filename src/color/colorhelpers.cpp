@@ -15,9 +15,10 @@ std::string asHex(const Magick::Color &color)
 {
     std::stringstream ss;
     ss << "0x";
-    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum())));
-    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum())));
-    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum())));
+    auto colorRGB = Magick::ColorRGB(color);
+    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * colorRGB.red()));
+    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * colorRGB.green()));
+    ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint8_t>(std::round(255.0 * colorRGB.blue()));
     return ss.str();
 }
 
@@ -44,9 +45,10 @@ std::vector<uint16_t> convertToBGR555(const std::vector<Magick::Color> &colors)
 
 uint16_t colorToBGR555(const Magick::Color &color)
 {
-    auto b = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum())));
-    auto g = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum())));
-    auto r = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum())));
+    auto colorRGB = Magick::ColorRGB(color);
+    auto b = static_cast<uint16_t>(std::round(31.0 * colorRGB.blue()));
+    auto g = static_cast<uint16_t>(std::round(31.0 * colorRGB.green()));
+    auto r = static_cast<uint16_t>(std::round(31.0 * colorRGB.red()));
     return (b << 10 | g << 5 | r);
 }
 
@@ -110,9 +112,10 @@ std::vector<uint16_t> convertToBGR565(const std::vector<Magick::Color> &colors)
 
 uint16_t colorToBGR565(const Magick::Color &color)
 {
-    auto b = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum())));
-    auto g = static_cast<uint16_t>(std::round(63.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum())));
-    auto r = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum())));
+    auto colorRGB = Magick::ColorRGB(color);
+    auto b = static_cast<uint16_t>(std::round(31.0 * colorRGB.blue()));
+    auto g = static_cast<uint16_t>(std::round(63.0 * colorRGB.green()));
+    auto r = static_cast<uint16_t>(std::round(31.0 * colorRGB.red()));
     return (b << 11 | g << 5 | r);
 }
 
@@ -167,10 +170,10 @@ std::vector<uint8_t> convertToBGR888(const std::vector<Magick::Color> &colors)
     std::vector<uint8_t> result;
     for (decltype(colors.size()) i = 0; i < colors.size(); i++)
     {
-        const auto &color = colors.at(i);
-        result.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.blueQuantum()))));
-        result.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.greenQuantum()))));
-        result.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(color.redQuantum()))));
+        auto colorRGB = Magick::ColorRGB(colors.at(i));
+        result.push_back(static_cast<uint8_t>(std::round(255.0 * colorRGB.blue())));
+        result.push_back(static_cast<uint8_t>(std::round(255.0 * colorRGB.green())));
+        result.push_back(static_cast<uint8_t>(std::round(255.0 * colorRGB.red())));
     }
     return result;
 }
@@ -201,12 +204,14 @@ float distance(const Magick::Color &a, const Magick::Color &b)
     {
         return 0.0F;
     }
-    auto ra = Magick::Color::scaleQuantumToDouble(a.redQuantum());
-    auto rb = Magick::Color::scaleQuantumToDouble(b.redQuantum());
+    auto rgbA = Magick::ColorRGB(a);
+    auto rgbB = Magick::ColorRGB(b);
+    auto ra = rgbA.red();
+    auto rb = rgbB.red();
     auto r = 0.5 * (ra + rb);
     auto dR = ra - rb;
-    auto dG = Magick::Color::scaleQuantumToDouble(a.greenQuantum()) - Magick::Color::scaleQuantumToDouble(b.greenQuantum());
-    auto dB = Magick::Color::scaleQuantumToDouble(a.blueQuantum()) - Magick::Color::scaleQuantumToDouble(b.blueQuantum());
+    auto dG = rgbA.green() - rgbB.green();
+    auto dB = rgbA.blue() - rgbB.blue();
     return sqrt((2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB);
 } // max:  sqrt((2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1) = sqrt(2.5 + 4 + 2.5) = 3
 
@@ -216,12 +221,14 @@ float distanceSqr(const Magick::Color &a, const Magick::Color &b)
     {
         return 0.0F;
     }
-    auto ra = Magick::Color::scaleQuantumToDouble(a.redQuantum());
-    auto rb = Magick::Color::scaleQuantumToDouble(b.redQuantum());
+    auto rgbA = Magick::ColorRGB(a);
+    auto rgbB = Magick::ColorRGB(b);
+    auto ra = rgbA.red();
+    auto rb = rgbB.red();
     auto r = 0.5 * (ra + rb);
     auto dR = ra - rb;
-    auto dG = Magick::Color::scaleQuantumToDouble(a.greenQuantum()) - Magick::Color::scaleQuantumToDouble(b.greenQuantum());
-    auto dB = Magick::Color::scaleQuantumToDouble(a.blueQuantum()) - Magick::Color::scaleQuantumToDouble(b.blueQuantum());
+    auto dG = rgbA.green() - rgbB.green();
+    auto dB = rgbA.blue() - rgbB.blue();
     return (2.0 + r) * dR * dR + 4.0 * dG * dG + (3.0 - r) * dB * dB;
 } // max:  (2 + 0.5) *  1 *  1 + 4   *  1 *  1 + (3 - 0.5) *  1 *  1 = 2.5 + 4 + 2.5 = 9
 
@@ -278,11 +285,11 @@ std::vector<uint8_t> minimizeColorDistance(const std::vector<Magick::Color> &col
                   auto ca = Magick::ColorHSL(colors.at(ia));
                   auto cb = Magick::ColorHSL(colors.at(ib));
                   auto distH = cb.hue() - ca.hue();
-                  auto distI = cb.intensity() - ca.intensity();
-                  auto distL = cb.luminosity() - ca.luminosity();
-                  return (distH > epsilon && distI > epsilon && distL > epsilon) ||
-                         (std::abs(distH) < epsilon && distI > epsilon && distL > epsilon) ||
-                         (std::abs(distH) < epsilon && std::abs(distI) < epsilon && distL > epsilon); });
+                  auto distS = cb.saturation() - ca.saturation();
+                  auto distL = cb.lightness() - ca.lightness();
+                  return (distH > epsilon && distS > epsilon && distL > epsilon) ||
+                         (std::abs(distH) < epsilon && distS > epsilon && distL > epsilon) ||
+                         (std::abs(distH) < epsilon && std::abs(distS) < epsilon && distL > epsilon); });
     // insert colors / indices successively at optimal positions
     std::vector<uint8_t> currentIndices(1, sortedIndices.front());
     for (uint32_t i = 1; i < sortedIndices.size(); i++)
@@ -308,13 +315,13 @@ std::vector<std::vector<uint8_t>> RGB555DistanceSqrTable()
     std::vector<Magick::Color> colors;
     for (uint16_t r = 0; r < 32; ++r)
     {
-        auto rq = Magick::Color::scaleDoubleToQuantum(static_cast<double>(r) / 31.0);
+        auto rq = (QuantumRange * static_cast<double>(r)) / 31.0;
         for (uint16_t g = 0; g < 32; ++g)
         {
-            auto gq = Magick::Color::scaleDoubleToQuantum(static_cast<double>(g) / 31.0);
+            auto gq = (QuantumRange * static_cast<double>(g)) / 31.0;
             for (uint16_t b = 0; b < 32; ++b)
             {
-                auto bq = Magick::Color::scaleDoubleToQuantum(static_cast<double>(b) / 31.0);
+                auto bq = (QuantumRange * static_cast<double>(b)) / 31.0;
                 colors.push_back(Magick::Color(rq, gq, bq));
             }
         }

@@ -51,7 +51,7 @@ namespace Image
         REQUIRE(threshold >= 0 && threshold <= 1, std::runtime_error, "Threshold must be in [0.0, 1.0]");
         // threshold image
         Magick::Image temp = image;
-        temp.threshold(Magick::Color::scaleDoubleToQuantum(threshold));
+        temp.threshold(threshold);
         temp.quantizeDither(false);
         temp.quantizeColors(2);
         temp.type(Magick::ImageType::PaletteType);

@@ -7,12 +7,13 @@
 std::vector<uint8_t> getImageData(const Magick::Image &img)
 {
     std::vector<uint8_t> data;
-    if (img.type() == Magick::ImageType::PaletteType)
+    if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::PaletteType)
     {
         const auto nrOfColors = img.colorMapSize();
         const auto nrOfIndices = img.columns() * img.rows();
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getIndices to work...
-        auto indices = img.getConstIndexes();
+        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getConstMetacontent to work...
+        REQUIRE(pixels != nullptr, std::runtime_error, "Failed to get paletted image pixels");
+        auto indices = static_cast<const uint8_t *>(img.getConstMetacontent());
         if (nrOfColors <= 256)
         {
             for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
@@ -25,17 +26,17 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
             throw std::runtime_error("Only up to 256 colors supported in color map!");
         }
     }
-    else if (img.type() == Magick::ImageType::TrueColorType)
+    else if (img.classType() == Magick::ClassType::DirectClass && img.type() == Magick::ImageType::TrueColorType)
     {
-        // get pixel colors aas RGB888
+        // get pixel colors as RGB888
         const auto nrOfPixels = img.columns() * img.rows();
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
-        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; ++i)
+        REQUIRE(pixels != nullptr, std::runtime_error, "Failed to get truecolor image pixels");
+        for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
         {
-            auto pixel = pixels[i];
-            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.red))));
-            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.green))));
-            data.push_back(static_cast<uint8_t>(std::round(255.0 * Magick::Color::scaleQuantumToDouble(pixel.blue))));
+            data.push_back(static_cast<uint8_t>(std::round(255.0F * *pixels++) / QuantumRange));
+            data.push_back(static_cast<uint8_t>(std::round(255.0F * *pixels++) / QuantumRange));
+            data.push_back(static_cast<uint8_t>(std::round(255.0F * *pixels++) / QuantumRange));
         }
     }
     else

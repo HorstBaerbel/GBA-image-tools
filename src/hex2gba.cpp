@@ -58,9 +58,10 @@ int main(int argc, const char *argv[])
         return 2;
     }
     // convert color
-    auto b = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.blueQuantum())));
-    auto g = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.greenQuantum())));
-    auto r = static_cast<uint16_t>(std::round(31.0 * Magick::Color::scaleQuantumToDouble(m_color.redQuantum())));
+    auto colorRGB = Magick::ColorRGB(m_color);
+    auto b = static_cast<uint16_t>(std::round(31.0 * colorRGB.blue()));
+    auto g = static_cast<uint16_t>(std::round(31.0 * colorRGB.green()));
+    auto r = static_cast<uint16_t>(std::round(31.0 * colorRGB.red()));
     uint16_t rgb = (r << 10 | g << 5 | b);
     std::cout << "RGB555 = #" << std::hex << std::setfill('0') << std::setw(4) << rgb << ", ";
     std::cout << std::hex << std::setfill('0') << std::setw(4) << rgb << "h, ";

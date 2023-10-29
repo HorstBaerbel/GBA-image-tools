@@ -190,6 +190,17 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         }
         imgSize = img.size();
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
+        const bool isGreyscale = img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::GrayscaleType;
+        if (isGreyscale)
+        {
+            img.modifyImage();
+            img.quantizeColors(256);
+            img.quantizeDither(false);
+            img.quantize();
+            img.syncPixels();
+            REQUIRE(img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::PaletteType, std::runtime_error, "Image conversion failed");
+            std::cout << "greyscale >> ";
+        }
         imgType = img.type();
         const bool isPaletted = img.classType() == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
         if (isPaletted)
@@ -202,7 +213,7 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         }
         else
         {
-            THROW(std::runtime_error, "Unsupported image format");
+            THROW(std::runtime_error, "Unsupported image format. ClassType " << img.classType() << ", ImageType " << img.type());
         }
         // compare size and type to first image to make sure all images have the same format
         if (images.size() > 0)
