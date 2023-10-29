@@ -1,14 +1,18 @@
 #pragma once
 
+#include "color/colorformat.h"
+#include "color/xrgb8888.h"
 #include "datahelpers.h"
 #include "exception.h"
 #include "imagestructs.h"
+#include "processinghelpers.h"
 #include "processingtypes.h"
+#include "quantizationmethod.h"
 #include "statistics/statistics.h"
 
-#include <Magick++.h>
-
 #include <cstdint>
+#include <functional>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -19,7 +23,7 @@ namespace Image
     {
     public:
         /// @brief Variable parameters for processing step
-        using Parameter = std::variant<bool, int32_t, uint32_t, double, Magick::Color, Magick::Image, Color::Format, Data, std::string>;
+        using Parameter = std::variant<bool, int32_t, uint32_t, double, Color::Format, Quantization::Method, Color::XRGB8888, std::vector<Color::XRGB8888>, Data, std::string>;
 
         /// @brief Set object to receive statistics from processing pipeline
         void setStatisticsContainer(Statistics::Container::SPtr c);
@@ -27,9 +31,9 @@ namespace Image
         /// @brief Add a processing step and its parameters
         /// @param type Processing type
         /// @param parameters Parameters to pass to processing
-        /// @param prependProcessing If true the input data size and processing type will be prepended to the result
+        /// @param prependProcessingInfo If true the input data size and processing type will be prepended to the result
         /// @param addStatistics The step should output statistics to the container set with setStatisticsContainer()
-        void addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessing = false, bool addStatistics = false);
+        void addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessingInfo = false, bool addStatistics = false);
 
         /// @brief Get current # of steps in processing pipeline
         std::size_t size() const;
@@ -45,38 +49,37 @@ namespace Image
 
         /// @brief Run processing steps in pipeline on data. Used for processing a batch of images
         /// @param images Input images and file names
-        std::vector<Data> processBatch(const std::vector<InputData> &images);
+        std::vector<Data> processBatch(const std::vector<Data> &images);
 
         /// @brief Run processing steps in pipeline on single image. Used for processing a stream of images / video frames
         /// @param image Input image
-        /// @param index Image index in stream
         /// @note Will silently ignore OperationType::BatchConvert and ::Reduce operations
-        Data processStream(const Magick::Image &image, uint32_t index = 0);
+        Data processStream(const Data &image);
 
         // --- image conversion functions ------------------------------------
 
         /// @brief Binarize image using threshold. Everything < threshold will be black everything > threshold white
         /// @param parameters Binarization threshold as double. Must be in [0.0, 1.0]
-        static Data toBlackWhite(const InputData &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data toBlackWhite(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert input image to paletted image by:
         /// - Mapping colors to colorSpaceMap (ImageMagicks -remap option)
         /// - Dithering to nrOfColors (ImageMagicks -colors option)
-        /// @param parameters Magick::Image containing all colors of the target color space, e.g. RGB555 and
+        /// @param parameters Image containing all colors of the target color space, e.g. RGB555 and
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
-        static Data toPaletted(const InputData &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data toPaletted(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert all input images to paletted images by:
         /// - Mapping colors to colorSpaceMap (ImageMagicks -remap option)
         /// - Finding a common palette of all images with nrOfColors
         /// - Dithering to nrOfColors (ImageMagicks -colors option)
-        /// @param parameters Magick::Image containing all colors of the target color space, e.g. RGB555 and
+        /// @param parameters Image containing all colors of the target color space, e.g. RGB555 and
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
-        static std::vector<Data> toCommonPalette(const std::vector<InputData> &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static std::vector<Data> toCommonPalette(const std::vector<Data> &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
-        /// @brief Convert input image to RGB55, RGB565 or RGB888
+        /// @brief Convert input image to RGB555, RGB565 or RGB888
         /// @param parameters Truecolor format to convert image to as std::string
-        static Data toTruecolor(const InputData &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data toTruecolor(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         // --- data conversion functions ------------------------------------
 
@@ -155,7 +158,7 @@ namespace Image
         /// @param state Previous image as Data
         static Data compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics);
 
-        /// @brief Encode a truecolor RGB888 image with YCgCo block-based method
+        /// @brief Encode a truecolor RGB888 image with YCgCoR block-based method
         /// @param parameters:
         /// - Allowed error for inter-frame block references as float in [0,1]. 0 means no error allowed
         /// - Key frame rate n as int in [1,20] meaning a key frame is stored every n frames
@@ -166,7 +169,7 @@ namespace Image
 
         /// @brief Fill up map and image data with 0s to a multiple of N bytes
         /// @param parameters "Modulo value" as uint32_t. The mapData and data will be padded to a multiple of this
-        static Data padImageData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data padPixelData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Fill up color map with 0s to a multiple of N colors
         /// @param parameters "Modulo value" as uint32_t. The color map will be padded to a multiple of this
@@ -188,55 +191,12 @@ namespace Image
         /// @param state Previous image as Data
         static Data imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics);
 
-        /// @brief Combine image data of all images and return the data and the start indices into that data.
-        /// Indices are return in DATA_TYPE units
-        template <typename DATA_TYPE>
-        static std::pair<std::vector<DATA_TYPE>, std::vector<uint32_t>> combineImageData(const std::vector<Data> &images, bool interleavePixels = false)
-        {
-            std::vector<std::vector<uint8_t>> temp8;
-            std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
-                           { return img.data; });
-            if (interleavePixels)
-            {
-                const auto allDataSameSize = std::find_if_not(images.cbegin(), images.cend(), [refSize = images.front().data.size()](const auto &img)
-                                                              { return img.data.size() == refSize; }) == images.cend();
-                REQUIRE(allDataSameSize, std::runtime_error, "The image data size of all images must be the same for interleaving");
-                return {convertTo<DATA_TYPE>(interleave(temp8, bitsPerPixelForFormat(images.front().colorFormat))), std::vector<uint32_t>()};
-            }
-            else
-            {
-                return {combineTo<DATA_TYPE>(temp8), divideBy<uint32_t>(getStartIndices(temp8), sizeof(DATA_TYPE) / sizeof(uint8_t))};
-            }
-        }
-
-        /// @brief Combine map data of all images and return the data and the start indices into that data.
-        /// Indices are return in DATA_TYPE units
-        template <typename DATA_TYPE>
-        static std::pair<std::vector<DATA_TYPE>, std::vector<uint32_t>> combineMapData(const std::vector<Data> &images)
-        {
-            std::vector<std::vector<uint16_t>> temp16;
-            std::transform(images.cbegin(), images.cend(), std::back_inserter(temp16), [](const auto &img)
-                           { return img.mapData; });
-            return {combineTo<DATA_TYPE>(temp16), divideBy<uint32_t>(getStartIndices(temp16), sizeof(DATA_TYPE) / sizeof(uint16_t))};
-        }
-
-        /// @brief Combine color maps of all images using conversion function and return the data and the start indices into that data.
-        /// Indices are return in DATA_TYPE units
-        template <typename DATA_TYPE>
-        static std::pair<std::vector<DATA_TYPE>, std::vector<uint32_t>> combineColorMaps(const std::vector<Data> &images, const std::function<std::vector<DATA_TYPE>(const std::vector<Magick::Color> &)> &converter)
-        {
-            std::vector<std::vector<DATA_TYPE>> temp;
-            std::transform(images.cbegin(), images.cend(), std::back_inserter(temp), [converter](const auto &img)
-                           { return converter(img.colorMap); });
-            return {combineTo<DATA_TYPE>(temp), getStartIndices(temp)};
-        }
-
     private:
         struct ProcessingStep
         {
             ProcessingType type;
             std::vector<Parameter> parameters;
-            bool prependProcessing = false;
+            bool prependProcessingInfo = false;
             bool addStatistics = false;
             std::vector<uint8_t> state;
         };
@@ -245,21 +205,17 @@ namespace Image
 
         enum class OperationType
         {
-            Input,        // Converts image input into 1 data output
-            BatchInput,   // Converts N image inputs into N data outputs
             Convert,      // Converts 1 data input into 1 data output
             ConvertState, // Converts 1 data input + state into 1 data output
             BatchConvert, // Converts N data inputs into N data outputs
             Reduce        // Converts N data inputs into 1 data output
         };
 
-        using InputFunc = std::function<Data(const InputData &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
-        using BatchInputFunc = std::function<std::vector<Data>(const std::vector<InputData> &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
         using ConvertFunc = std::function<Data(const Data &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
         using ConvertStateFunc = std::function<Data(const Data &, const std::vector<Parameter> &, std::vector<uint8_t> &, Statistics::Container::SPtr statistics)>;
         using BatchConvertFunc = std::function<std::vector<Data>(const std::vector<Data> &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
         using ReduceFunc = std::function<Data(const std::vector<Data> &, const std::vector<Parameter> &, Statistics::Container::SPtr statistics)>;
-        using FunctionType = std::variant<InputFunc, BatchInputFunc, ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc>;
+        using FunctionType = std::variant<ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc>;
 
         struct ProcessingFunc
         {
