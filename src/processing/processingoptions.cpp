@@ -89,18 +89,14 @@ ProcessingOptions::OptionT<Color::Format> ProcessingOptions::colorformat{
 
 ProcessingOptions::OptionT<Image::Quantization::Method> ProcessingOptions::quantizationmethod{
     true,
-    {"quantize", "Set quantization method for color(-space) reduction. Options are truncate (default), closestcolor or atkinsondither", cxxopts::value(quantizationmethod.valueString)},
-    {Image::Quantization::Method::Truncate},
+    {"quantize", "Set quantization method for color(-space) reduction. Options are closestcolor (default) or atkinsondither", cxxopts::value(quantizationmethod.valueString)},
+    {Image::Quantization::Method::ClosestColor},
     {},
     [](const cxxopts::ParseResult &r)
     {
         if (r.count(quantizationmethod.cxxOption.opts_))
         {
-            if (quantizationmethod.valueString == "truncate")
-            {
-                quantizationmethod.value = Image::Quantization::Method::Truncate;
-            }
-            else if (quantizationmethod.valueString == "closestcolor")
+            if (quantizationmethod.valueString == "closestcolor")
             {
                 quantizationmethod.value = Image::Quantization::Method::ClosestColor;
             }
@@ -110,7 +106,7 @@ ProcessingOptions::OptionT<Image::Quantization::Method> ProcessingOptions::quant
             }
             else
             {
-                THROW(std::runtime_error, "Quantization method must be truncate (default), closestcolor or atkinsondither if specified");
+                THROW(std::runtime_error, "Quantization method must be closestcolor (default) or atkinsondither if specified");
             }
             quantizationmethod.isSet = true;
         }

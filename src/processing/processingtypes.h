@@ -30,7 +30,7 @@ namespace Image
         CompressDXTG = 70,                // Compress image data using DXTG
         CompressDXTV = 71,                // Compress image data using DXTV
         CompressGVID = 72,                // Compress image data using GVID
-        PadPixelData = 80,                // Fill up image data with 0s to a multiple of N bytes
+        PadPixelData = 80,                // Fill up image and map data with 0s to a multiple of N bytes
         SwapPixelDataToBGR = 81,          // Swap image data RGB->BGR
         ConvertPixelDataToRaw = 82,       // Convert image data to raw data
         PadColorMap = 90,                 // Fill up color map with 0s to a multiple of N colors
