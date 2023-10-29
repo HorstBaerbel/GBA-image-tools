@@ -12,7 +12,7 @@
 #include <vector>
 #include <iostream>
 
-template <typename COLOR_TYPE>
+template <typename PIXEL_TYPE>
 class ColorFit
 {
     static constexpr std::size_t MinNeighbourCount = 5;       // For more than 2D use minPts ~= 2*D, See: https://stackoverflow.com/questions/12893492/choosing-eps-and-minpts-for-dbscan-r
@@ -31,12 +31,12 @@ class ColorFit
         enum class Type
         {
             Outlier = 0, // Object not within MaxNeigbourDistance of a CoreObject
-            NonCore = 1, // Object reachable from a CoreObject, but has less than MinNeighbourCount
-            Core = 2     // Object has at least MinNeighbourCount
+            NonCore = 1, // Object reachable from a CoreObject, but has less than MinNeighbourCount neighbours
+            Core = 2     // Object has at least MinNeighbourCount neighbours
         };
         Type type = Type::Outlier;
         float weight = 0.0F;                // Normalized number of occurrences in histogram
-        std::vector<COLOR_TYPE> neighbours; // Neighbour in less than MaxNeigbourDistance
+        std::vector<PIXEL_TYPE> neighbours; // Neighbour in less than MaxNeigbourDistance
         bool visited = false;
         std::size_t clusterIndex = InvalidClusterIndex;
     };
@@ -44,14 +44,14 @@ class ColorFit
     // Cluster containing color objects
     struct Cluster
     {
-        COLOR_TYPE center;
+        PIXEL_TYPE center;
         float weight = 0.0F;
-        std::vector<COLOR_TYPE> objects;      // Objects in cluster
-        BoundingBox<COLOR_TYPE> objectBounds; // Range of object coordinates
+        std::vector<PIXEL_TYPE> objects;      // Objects in cluster
+        BoundingBox<PIXEL_TYPE> objectBounds; // Range of object coordinates
     };
 
 public:
-    ColorFit(const std::vector<COLOR_TYPE> &colorSpace)
+    ColorFit(const std::vector<PIXEL_TYPE> &colorSpace)
         : m_colorSpace(colorSpace)
     {
     }
@@ -64,7 +64,7 @@ public:
     // - Snap important outlier objects to colorspace color
     // - Repeat while adjusting allowedNeighbourDistance until important outliers + clusters ~= nrOfColors
     // @note This can be quite slow and take quite a bit of RAM. You have been warned...
-    auto reduceColors(const std::map<COLOR_TYPE, uint64_t> &colorHistogram, std::size_t nrOfColors) const -> std::vector<COLOR_TYPE>
+    auto reduceColors(const std::map<PIXEL_TYPE, uint64_t> &colorHistogram, std::size_t nrOfColors) const -> std::vector<PIXEL_TYPE>
     {
         REQUIRE(nrOfColors > 1 && nrOfColors <= 256, std::runtime_error, "Bad number of colors. Must be in range [2,256]");
         std::size_t iterationsLeft = 5;
@@ -85,7 +85,7 @@ public:
         auto rightIt = std::next(medianIt, halfRange); // max border of range
         const auto maxCount = *rightIt;
         // create as many objects as colors in histogram. normalize weight and clamp to [0,1]
-        std::map<COLOR_TYPE, ColorObject> objects;
+        std::map<PIXEL_TYPE, ColorObject> objects;
         std::transform(colorHistogram.cbegin(), colorHistogram.cend(), std::inserter(objects, objects.end()), [maxCount](const auto &entry)
                        { return std::make_pair(entry.first, ColorObject{ColorObject::Type::Outlier, entry.second >= maxCount ? 1.0F : static_cast<float>(static_cast<double>(entry.second) / static_cast<double>(maxCount)), {}, false, InvalidClusterIndex}); });
         std::vector<Cluster> clusters;
@@ -112,7 +112,7 @@ public:
                         // find distance to supposed neighbour
                         const auto objectColor = objectIt->first;
                         const auto otherColor = otherIt->first;
-                        if (COLOR_TYPE::distance(objectColor, otherColor) <= allowedNeighbourDistance)
+                        if (PIXEL_TYPE::distance(objectColor, otherColor) <= allowedNeighbourDistance)
                         {
                             // other is neighbour. add to object
                             object.neighbours.push_back(otherColor);
@@ -220,7 +220,7 @@ public:
                     clusterCenter.z() = t0 * clusterCenter.z() + t1 * objectCenter.B();
                     clusterWeight = combinedWeight;
                 }
-                COLOR_TYPE centerColor(clusterCenter.x(), clusterCenter.y(), clusterCenter.z());
+                PIXEL_TYPE centerColor(clusterCenter.x(), clusterCenter.y(), clusterCenter.z());
                 // snap center to closest colorspace color
                 auto snappedColor = getClosestColor(centerColor, m_colorSpace);
 #pragma omp critical
@@ -295,14 +295,14 @@ public:
             }
         } while (--iterationsLeft > 0);
         REQUIRE(clusters.size() > 0 && clusters.size() <= nrOfColors, std::runtime_error, "Bad number of clusters");
-        std::vector<COLOR_TYPE> result;
+        std::vector<PIXEL_TYPE> result;
         std::transform(clusters.cbegin(), clusters.cend(), std::back_inserter(result), [](const auto &c)
                        { return c.center; });
         return result;
     }
 
 private:
-    static auto getClosestColor(COLOR_TYPE color, const std::vector<COLOR_TYPE> &colors) -> COLOR_TYPE
+    static auto getClosestColor(PIXEL_TYPE color, const std::vector<PIXEL_TYPE> &colors) -> PIXEL_TYPE
     {
         // Note: We don't use min_element here due to double distance function evaluations
         // Improvement: Use distance query acceleration structure
@@ -311,7 +311,7 @@ private:
         float closestDistance = std::numeric_limits<float>::max();
         while (colorIt != colors.cend())
         {
-            auto colorDistance = COLOR_TYPE::distance(*colorIt, color);
+            auto colorDistance = PIXEL_TYPE::distance(*colorIt, color);
             if (closestDistance > colorDistance)
             {
                 closestDistance = colorDistance;
@@ -322,7 +322,7 @@ private:
         return closestColor;
     }
 
-    static auto dumpToCSV(const std::vector<Cluster> &clusters, const std::map<COLOR_TYPE, ColorObject> &objects) -> void
+    static auto dumpToCSV(const std::vector<Cluster> &clusters, const std::map<PIXEL_TYPE, ColorObject> &objects) -> void
     {
         std::ofstream csvObjects("result/colorfit_objects.csv");
         IO::CSV::writeCSV(csvObjects, {"r", "g", "b", "csscolor", "weight", "type", "clusterindex"}, objects, [](decltype(*objects.cbegin()) o, std::size_t index)
@@ -360,5 +360,5 @@ private:
                             } });
     }
 
-    std::vector<COLOR_TYPE> m_colorSpace;
+    std::vector<PIXEL_TYPE> m_colorSpace;
 };
