@@ -1,14 +1,15 @@
 #include "color/colorhelpers.h"
+#include "color/conversions.h"
 #include "compression/lzss.h"
-#include "processing/datahelpers.h"
 #include "io/textio.h"
-#include "processing/imagehelpers.h"
 #include "io/streamio.h"
+#include "io/videoreader.h"
+#include "processing/datahelpers.h"
+#include "processing/imagehelpers.h"
 #include "processing/imageprocessing.h"
 #include "processing/processingoptions.h"
 #include "processing/spritehelpers.h"
 #include "statistics/statistics_window.h"
-#include "io/videoreader.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -19,7 +20,6 @@
 #include <filesystem>
 
 #include "cxxopts/include/cxxopts.hpp"
-#include <Magick++.h>
 
 enum class ConversionMode
 {
@@ -118,7 +118,6 @@ bool readArguments(int argc, const char *argv[])
         // check if exclusive options set
         options.blackWhite.parse(result);
         options.paletted.parse(result);
-        options.truecolor.parse(result);
         if ((options.blackWhite + options.paletted + options.truecolor) == 0)
         {
             std::cerr << "One format option is needed." << std::endl;
@@ -134,6 +133,13 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
             return false;
         }
+        options.colorformat.parse(result);
+        if (!options.colorformat)
+        {
+            std::cerr << "Output color format must be set." << std::endl;
+            return false;
+        }
+        options.quantizationmethod.parse(result);
         options.addColor0.parse(result);
         options.moveColor0.parse(result);
         options.shiftIndices.parse(result);
@@ -159,7 +165,10 @@ void printUsage()
     std::cout << options.blackWhite.helpString() << std::endl;
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
+    std::cout << "Color format (must be set):" << std::endl;
+    std::cout << options.colorformat.helpString() << std::endl;
     std::cout << "CONVERT options (all optional):" << std::endl;
+    std::cout << options.quantizationmethod.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
     std::cout << options.moveColor0.helpString() << std::endl;
     std::cout << options.shiftIndices.helpString() << std::endl;
@@ -213,8 +222,6 @@ int main(int argc, const char *argv[])
             std::cerr << "No output name passed. Aborting." << std::endl;
             return 1;
         }
-        // fire up ImageMagick
-        Magick::InitializeMagick(*argv);
         // fire up video reader and open video file
         VideoReader videoReader;
         VideoReader::VideoInfo videoInfo;
@@ -235,16 +242,16 @@ int main(int argc, const char *argv[])
         Image::Processing processing;
         if (options.blackWhite)
         {
-            processing.addStep(Image::ProcessingType::InputBlackWhite, {options.blackWhite.value});
+            processing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.colorformat.value, options.quantizationmethod.value, options.blackWhite.value});
         }
         else if (options.paletted)
         {
-            // add palette conversion using GBA RGB555 reference color map
-            processing.addStep(Image::ProcessingType::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
+            // add palette conversion using a RGB555 or RGB565 reference color map
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.colorformat.value, options.quantizationmethod.value, options.paletted.value});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::ProcessingType::InputTruecolor, {options.truecolor.value});
+            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value, options.quantizationmethod.value});
         }
         // build processing pipeline - conversion
         if (options.paletted)
@@ -272,7 +279,7 @@ int main(int argc, const char *argv[])
             {
                 processing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMap, {Color::Format::RGB555});
+            processing.addStep(Image::ProcessingType::ConvertColorMap, {Color::Format::XRGB1555});
             processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)
@@ -313,13 +320,13 @@ int main(int argc, const char *argv[])
         }*/
         if (options.lz10)
         {
-            processing.addStep(Image::ProcessingType::CompressLz10, {options.vram.isSet}, true);
+            processing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true);
         }
         if (options.lz11)
         {
-            processing.addStep(Image::ProcessingType::CompressLz11, {options.vram.isSet}, true);
+            processing.addStep(Image::ProcessingType::CompressLZ11, {options.vram.isSet}, true);
         }
-        processing.addStep(Image::ProcessingType::PadImageData, {uint32_t(4)});
+        processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
         // create statistics window
         Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height);
         processing.setStatisticsContainer(window.getStatisticsContainer());
@@ -338,9 +345,9 @@ int main(int argc, const char *argv[])
             {
                 break;
             }
-            REQUIRE(frame.size() == videoInfo.width * videoInfo.height * 3, std::runtime_error, "Unexpected frame size");
+            REQUIRE(frame.size() == videoInfo.width * videoInfo.height, std::runtime_error, "Unexpected frame size");
             // build image from frame and apply processing
-            images.push_back(processing.processStream(Magick::Image(videoInfo.width, videoInfo.height, "RGB", Magick::StorageType::CharPixel, frame.data()), frameIndex++));
+            images.push_back(processing.processStream(Image::Data{frameIndex++, "", {videoInfo.width, videoInfo.height}, Image::DataType::Bitmap, {}, Color::convertTo<Color::XRGB8888>(frame)}));
             // calculate progress
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
             if (lastProgress != newProgress)
@@ -356,15 +363,13 @@ int main(int argc, const char *argv[])
             window.update();
         } while (true);
         // set up some image info
-        const auto imgType = images.front().type;
-        auto imgSize = images.front().size;
         const bool allColorMapsSame = false;
         const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
         // output some info about data
         const auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
         std::cout << "Input size: " << static_cast<double>(inputSize) / (1024 * 1024) << " MB" << std::endl;
         const auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
-                                                    { return v + img.data.size() + (options.paletted ? img.colorMap.size() * 2 : 0); });
+                                                    { return v + img.imageData.pixels().size() + (options.paletted ? img.imageData.colorMap().size() * 2 : 0); });
         std::cout << "Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
         std::cout << "Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
         std::cout << "Avg. frame size: " << std::fixed << std::setprecision(1) << static_cast<double>(compressedSize) / images.size() << " Byte" << std::endl;

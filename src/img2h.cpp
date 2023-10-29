@@ -19,7 +19,6 @@
 
 #include "cxxopts/include/cxxopts.hpp"
 #include "glob/single_include/glob/glob.hpp"
-#include <Magick++.h>
 
 std::vector<std::string> m_inFile;
 std::string m_outFile;
@@ -114,7 +113,6 @@ bool readArguments(int argc, const char *argv[])
         options.blackWhite.parse(result);
         options.paletted.parse(result);
         options.commonPalette.parse(result);
-        options.truecolor.parse(result);
         if ((options.blackWhite + options.paletted + options.commonPalette + options.truecolor) == 0)
         {
             std::cerr << "One format option is needed." << std::endl;
@@ -130,6 +128,13 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
             return false;
         }
+        options.colorformat.parse(result);
+        if (!options.colorformat)
+        {
+            std::cerr << "Output color format must be set." << std::endl;
+            return false;
+        }
+        options.quantizationmethod.parse(result);
         options.addColor0.parse(result);
         options.moveColor0.parse(result);
         options.shiftIndices.parse(result);
@@ -163,7 +168,10 @@ void printUsage()
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.commonPalette.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
+    std::cout << "Color format (must be set):" << std::endl;
+    std::cout << options.colorformat.helpString() << std::endl;
     std::cout << "CONVERT options (all optional):" << std::endl;
+    std::cout << options.quantizationmethod.helpString() << std::endl;
     std::cout << options.reorderColors.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
     std::cout << options.moveColor0.helpString() << std::endl;
@@ -197,56 +205,43 @@ void printUsage()
     std::cout << "tiles, tilemap, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
-std::vector<Image::InputData> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
+std::vector<Image::Data> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
-    Magick::ImageType commonImgType = Magick::ImageType::UndefinedType;
+    Color::Format commonImgFormat = Color::Format::Unknown;
     Image::DataSize commonImgSize = {0, 0};
-    std::vector<Image::InputData> images;
+    std::vector<Image::Data> images;
     // open first image and store type
     auto ifIt = fileNames.cbegin();
     while (ifIt != fileNames.cend())
     {
         std::cout << "Reading " << *ifIt;
-        Magick::Image img;
+        Image::Data img;
         try
         {
-            img.read(*ifIt);
+            img = IO::File::readImage(*ifIt);
         }
-        catch (const Magick::Exception &ex)
+        catch (const std::runtime_error &e)
         {
-            THROW(std::runtime_error, "Failed to read image: " << ex.what());
+            THROW(std::runtime_error, "Failed to read image: " << e.what());
         }
-        Image::DataSize imgSize = {img.size().width(), img.size().height()};
+        const auto imgSize = img.size;
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        Magick::ImageType imgType = img.type();
-        const bool isPaletted = img.classType() == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
-        if (isPaletted)
-        {
-            std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
-        }
-        else if (imgType == Magick::ImageType::TrueColorType)
-        {
-            std::cout << "true color" << std::endl;
-        }
-        else
-        {
-            THROW(std::runtime_error, "Unsupported image format");
-        }
-        // compare size and type to first image to make sure all images have the same format
-        if (images.size() == 0)
+        const auto imgFormat = img.imageData.pixels().format();
+        const auto imgIsIndexed = img.imageData.pixels().isIndexed();
+        if (imgIsIndexed)
         {
             // set type and size of first image
-            commonImgType = imgType;
+            commonImgFormat = imgFormat;
             commonImgSize = imgSize;
         }
         else
         {
             // check type and size
-            REQUIRE(commonImgType == imgType, std::runtime_error, "Image types do not match");
+            REQUIRE(commonImgFormat == imgFormat, std::runtime_error, "Image color formats do not match");
             REQUIRE(commonImgSize == imgSize, std::runtime_error, "Image sizes do not match");
         }
         // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
-        if ((options.sprites || options.tiles) && (!isPaletted || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
+        if ((options.sprites || options.tiles) && (!imgIsIndexed || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
         {
             THROW(std::runtime_error, "Image must be paletted and width / height must be a multiple of 8");
         }
@@ -254,7 +249,9 @@ std::vector<Image::InputData> readImages(const std::vector<std::string> &fileNam
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        images.push_back({static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, img});
+        img.index = static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt));
+        img.fileName = *ifIt;
+        images.push_back(img);
         ifIt++;
     }
     return images;
@@ -281,29 +278,27 @@ int main(int argc, const char *argv[])
             std::cerr << "No output file passed. Aborting." << std::endl;
             return 1;
         }
-        // fire up ImageMagick
-        Magick::InitializeMagick(*argv);
         // read image(s) from disk
         auto images = readImages(m_inFile, options);
         // build processing pipeline - input
         Image::Processing processing;
         if (options.blackWhite)
         {
-            processing.addStep(Image::ProcessingType::InputBlackWhite, {options.blackWhite.value});
+            processing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.colorformat.value, options.quantizationmethod.value, options.blackWhite.value});
         }
         else if (options.paletted)
         {
-            // add palette conversion using GBA RGB555 reference color map
-            processing.addStep(Image::ProcessingType::InputPaletted, {buildColorMapRGB555(), options.paletted.value});
+            // add palette conversion using a RGB555 or RGB565 reference color map
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.colorformat.value, options.quantizationmethod.value, options.paletted.value});
         }
         else if (options.commonPalette)
         {
-            // add common palette conversion using GBA RGB555 reference color map
-            processing.addStep(Image::ProcessingType::InputCommonPalette, {buildColorMapRGB555(), options.commonPalette.value});
+            // add common palette conversion using a RGB555 or RGB565 reference color map
+            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.colorformat.value, options.quantizationmethod.value, options.commonPalette.value});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::ProcessingType::InputTruecolor, {options.truecolor.value});
+            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value, options.quantizationmethod.value});
         }
         // build processing pipeline - conversion
         if (options.reorderColors)
@@ -328,7 +323,7 @@ int main(int argc, const char *argv[])
             {
                 processing.addStep(Image::ProcessingType::EqualizeColorMaps, {});
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMap, {Color::Format::RGB555});
+            processing.addStep(Image::ProcessingType::ConvertColorMap, {options.colorformat.value});
             processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.pruneIndices)
@@ -361,20 +356,20 @@ int main(int argc, const char *argv[])
         }*/
         if (options.lz10)
         {
-            processing.addStep(Image::ProcessingType::CompressLz10, {options.vram.isSet});
+            processing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet});
         }
         if (options.lz11)
         {
-            processing.addStep(Image::ProcessingType::CompressLz11, {options.vram.isSet});
+            processing.addStep(Image::ProcessingType::CompressLZ11, {options.vram.isSet});
         }
-        processing.addStep(Image::ProcessingType::PadImageData, {uint32_t(4)}, {});
+        processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)}, {});
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;
         auto data = processing.processBatch(images);
         // get info from data
         auto dataSize = data.front().size;
-        const bool dataIsPaletted = Image::isPaletted(data.front());
+        const bool dataIsPaletted = data.front().imageData.pixels().isIndexed();
         // check if all color maps are the same
         bool allColorMapsSame = true;
         uint32_t maxColorMapColors = 0;
@@ -382,15 +377,16 @@ int main(int argc, const char *argv[])
         {
             if (data.size() == 1)
             {
-                maxColorMapColors = data.front().colorMap.size();
+                maxColorMapColors = data.front().imageData.colorMap().size();
             }
             else
             {
-                allColorMapsSame = std::find_if_not(data.cbegin(), data.cend(), [&refColorMap = data.front().colorMap](const auto &img)
-                                                    { return img.colorMap == refColorMap; }) == data.cend();
+                allColorMapsSame = std::find_if_not(data.cbegin(), data.cend(), [&refColorMap = data.front().imageData.colorMap()](const auto &img)
+                                                    { return img.imageData.colorMap() == refColorMap; }) == data.cend();
                 maxColorMapColors = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
-                                                     { return imgA.colorMap.size() < imgB.colorMap.size(); })
-                                        ->colorMap.size();
+                                                     { return imgA.imageData.colorMap().size() < imgB.imageData.colorMap().size(); })
+                                        ->imageData.colorMap()
+                                        .size();
             }
             std::cout << "Saving " << (allColorMapsSame ? 1 : data.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
         }
@@ -445,14 +441,14 @@ int main(int argc, const char *argv[])
                     }
                     nrOfBytesPerImageOrSprite = dataIsPaletted ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
                     // convert image data to uint32_ts and palette to BGR555 uint16_ts
-                    auto [imageData32, imageOrSpriteStartIndices] = Image::Processing::combineImageData<uint32_t>(data, options.interleavePixels);
+                    auto [imageData32, imageOrSpriteStartIndices] = Image::combineRawPixelData<uint32_t>(data, options.interleavePixels);
                     // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
                     nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
                     // output image and palette data
                     if (options.tilemap)
                     {
                         // convert map data to uint32_ts
-                        auto [mapData32, mapStartIndices] = Image::Processing::combineMapData<uint32_t>(data);
+                        auto [mapData32, mapStartIndices] = Image::combineRawMapData<uint32_t>(data);
                         IO::Text::writeImageInfoToH(hFile, varName, imageData32, mapData32, dataSize.width(), dataSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
                         IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, mapData32, storeTileOrSpriteWise);
                     }
@@ -463,10 +459,9 @@ int main(int argc, const char *argv[])
                     }
                     if (dataIsPaletted)
                     {
-                        auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(data.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(data, [](auto cm)
-                                                                                                                                                                                                                          { return convertToBGR555(cm); }));
-                        IO::Text::writePaletteInfoToHeader(hFile, varName, paletteData16, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
-                        IO::Text::writePaletteDataToC(cFile, varName, paletteData16, colorMapsStartIndices, storeTileOrSpriteWise);
+                        auto [paletteData, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(data.front().imageData.colorMap().convertDataToRaw(), std::vector<uint32_t>()) : Image::combineRawColorMapData<uint8_t>(data));
+                        IO::Text::writePaletteInfoToHeader(hFile, varName, paletteData, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
+                        IO::Text::writePaletteDataToC(cFile, varName, paletteData, colorMapsStartIndices, storeTileOrSpriteWise);
                     }
                     hFile << std::endl;
                     hFile.close();
