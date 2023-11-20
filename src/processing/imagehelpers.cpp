@@ -9,29 +9,25 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
     std::vector<uint8_t> data;
     if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::PaletteType)
     {
+        // get palette indices as unsigned chars
         const auto nrOfColors = img.colorMapSize();
-        const auto nrOfIndices = img.columns() * img.rows();
+        REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getConstMetacontent to work...
         REQUIRE(pixels != nullptr, std::runtime_error, "Failed to get paletted image pixels");
         auto indices = static_cast<const uint8_t *>(img.getConstMetacontent());
-        if (nrOfColors <= 256)
+        REQUIRE(indices != nullptr, std::runtime_error, "Failed to get paletted image index data");
+        const auto nrOfIndices = img.columns() * img.rows();
+        for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
         {
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
-            {
-                data.push_back(indices[i]);
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Only up to 256 colors supported in color map!");
+            data.push_back(indices[i]);
         }
     }
     else if (img.classType() == Magick::ClassType::DirectClass && img.type() == Magick::ImageType::TrueColorType)
     {
         // get pixel colors as RGB888
-        const auto nrOfPixels = img.columns() * img.rows();
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
         REQUIRE(pixels != nullptr, std::runtime_error, "Failed to get truecolor image pixels");
+        const auto nrOfPixels = img.columns() * img.rows();
         for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
         {
             data.push_back(static_cast<uint8_t>(std::round(255.0F * *pixels++) / QuantumRange));
@@ -51,8 +47,10 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
 
 std::vector<Magick::Color> getColorMap(const Magick::Image &img)
 {
-    std::vector<Magick::Color> colorMap(img.colorMapSize());
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
+    const auto nrOfColors = img.colorMapSize();
+    REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
+    std::vector<Magick::Color> colorMap(nrOfColors);
+    for (std::remove_const<decltype(nrOfColors)>::type i = 0; i < nrOfColors; ++i)
     {
         colorMap[i] = img.colorMap(i);
     }
@@ -61,7 +59,9 @@ std::vector<Magick::Color> getColorMap(const Magick::Image &img)
 
 void setColorMap(Magick::Image &img, const std::vector<Magick::Color> &colorMap)
 {
-    for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
+    const auto nrOfColors = colorMap.size();
+    REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
+    for (std::remove_const<decltype(nrOfColors)>::type i = 0; i < nrOfColors; ++i)
     {
         img.colorMap(i, colorMap.at(i));
     }
