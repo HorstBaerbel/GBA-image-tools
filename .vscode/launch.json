@@ -13,7 +13,7 @@
                 "--shift=128",
                 "--tilemap",
                 "--movecolor0=00ff00",
-                "\"${workspaceFolder}/../Remute-Unity/Gfx_work/slides/glow1.png\"",
+                "\"${workspaceFolder}/../Remute-Unity/gfx/glow1.png\"",
                 "bla"
             ],
             "stopAtEntry": false,

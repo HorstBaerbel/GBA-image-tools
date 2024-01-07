@@ -12,8 +12,8 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
         // get palette indices as unsigned chars
         const auto nrOfColors = img.colorMapSize();
         REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
-        auto temp = img;                        // Currently im ImageMagick 7 channel() is non-const, so we need a copy here
-        temp.channel(MagickCore::IndexChannel); // new in ImageMagick 7: Switch to IndexChannel
+        // get IndexChannel from image
+        auto temp = img.separate(MagickCore::IndexChannel);
         auto indices = temp.getConstPixels(0, 0, temp.columns(), temp.rows());
         REQUIRE(indices != nullptr, std::runtime_error, "Failed to get paletted image pixels");
         const auto nrOfIndices = temp.columns() * temp.rows();
