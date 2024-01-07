@@ -12,14 +12,14 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
         // get palette indices as unsigned chars
         const auto nrOfColors = img.colorMapSize();
         REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
-        auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows()); // we need to call this first for getConstMetacontent to work...
-        REQUIRE(pixels != nullptr, std::runtime_error, "Failed to get paletted image pixels");
-        auto indices = static_cast<const uint8_t *>(img.getConstMetacontent());
-        REQUIRE(indices != nullptr, std::runtime_error, "Failed to get paletted image index data");
-        const auto nrOfIndices = img.columns() * img.rows();
+        auto temp = img;                        // Currently im ImageMagick 7 channel() is non-const, so we need a copy here
+        temp.channel(MagickCore::IndexChannel); // new in ImageMagick 7: Switch to IndexChannel
+        auto indices = temp.getConstPixels(0, 0, temp.columns(), temp.rows());
+        REQUIRE(indices != nullptr, std::runtime_error, "Failed to get paletted image pixels");
+        const auto nrOfIndices = temp.columns() * temp.rows();
         for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
         {
-            data.push_back(indices[i]);
+            data.push_back(static_cast<uint8_t>(indices[i]));
         }
     }
     else if (img.classType() == Magick::ClassType::DirectClass && img.type() == Magick::ImageType::TrueColorType)
