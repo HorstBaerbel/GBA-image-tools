@@ -401,7 +401,16 @@ int main(int argc, const char *argv[])
                         imgSize = Magick::Geometry(8, 8);
                     }
                 }
-                nrOfBytesPerImageOrSprite = imgType == Magick::ImageType::PaletteType ? (maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite) : (nrOfBytesPerImageOrSprite * 2);
+                if (imgType == Magick::ImageType::PaletteType)
+                {
+                    nrOfBytesPerImageOrSprite = maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite;
+                    nrOfBytesPerImageOrSprite = maxColorMapColors <= 4 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite;
+                    nrOfBytesPerImageOrSprite = maxColorMapColors <= 2 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite;
+                }
+                else
+                {
+                    nrOfBytesPerImageOrSprite *= 2;
+                }
                 // convert image data to uint32_ts and palette to BGR555 uint16_ts
                 auto [imageData32, imageOrSpriteStartIndices] = Image::Processing::combineImageData<uint32_t>(images, options.interleavePixels);
                 // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
