@@ -23,10 +23,6 @@ find_package(OpenMP REQUIRED)
 #-------------------------------------------------------------------------------
 # Set up compiler flags
 
-# Add defines so Magick++ does not throw warnings
-add_definitions(-DMAGICKCORE_HDRI_ENABLE=0)
-add_definitions(-DMAGICKCORE_QUANTUM_DEPTH=16)
-
 if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
     add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
