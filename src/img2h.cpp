@@ -169,9 +169,10 @@ void printUsage()
     std::cout << "tiles, tilemap, delta8 / delta16, rle, lz10 / lz11, interleavepixels, output" << std::endl;
 }
 
-std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
+std::tuple<bool, Magick::Geometry, std::vector<Image::Data>> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
     Magick::ImageType imgType = Magick::ImageType::UndefinedType;
+    Magick::ClassType imgClass = Magick::ClassType::UndefinedClass;
     Magick::Geometry imgSize;
     std::vector<Image::Data> images;
     // open first image and store type
@@ -190,40 +191,37 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         }
         imgSize = img.size();
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        const bool isGreyscale = img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::GrayscaleType;
+        imgType = img.type();
+        imgClass = img.classType();
+        const bool isGreyscale = imgClass == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::GrayscaleType;
+        const bool isPaletted = imgClass == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
         if (isGreyscale)
         {
-            img.modifyImage();
-            img.quantizeColors(256);
-            img.quantizeDither(false);
-            img.quantize();
-            img.syncPixels();
-            REQUIRE(img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::PaletteType, std::runtime_error, "Image conversion failed");
-            std::cout << "greyscale >> ";
+            std::cout << "greyscale" << std::endl;
         }
-        imgType = img.type();
-        const bool isPaletted = img.classType() == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType;
-        if (isPaletted)
+        else if (isPaletted)
         {
             std::cout << "paletted, " << img.colorMapSize() << " colors" << std::endl;
         }
-        else if (imgType == Magick::ImageType::TrueColorType)
+        else if (imgType == Magick::ImageType::TrueColorType || imgType == Magick::ImageType::TrueColorAlphaType)
         {
-            std::cout << "true color" << std::endl;
+            std::cout << "true color" << (imgType == Magick::ImageType::TrueColorAlphaType ? " (Warning: Alpha ignored)" : "") << std::endl;
         }
         else
         {
-            THROW(std::runtime_error, "Unsupported image format. ClassType " << img.classType() << ", ImageType " << img.type());
+            THROW(std::runtime_error, "Unsupported image format. ClassType " << classTypeToString(img.classType()) << ", ImageType " << imageTypeToString(img.type()));
         }
         // compare size and type to first image to make sure all images have the same format
         if (images.size() > 0)
         {
             // check type and size
             REQUIRE(images.front().type == imgType, std::runtime_error, "Image types do not match");
+            REQUIRE(images.front().classType == imgClass, std::runtime_error, "Image class types do not match");
             REQUIRE(images.front().size == imgSize, std::runtime_error, "Image sizes do not match");
         }
+        const auto isNotDirect = isGreyscale | isPaletted;
         // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
-        if ((options.sprites || options.tiles) && (!isPaletted || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
+        if ((options.sprites || options.tiles) && (!isNotDirect || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
         {
             THROW(std::runtime_error, "Image must be paletted and width / height must be a multiple of 8");
         }
@@ -231,13 +229,15 @@ std::tuple<Magick::ImageType, Magick::Geometry, std::vector<Image::Data>> readIm
         {
             THROW(std::runtime_error, "Image width / height must be a multiple of sprite width / height");
         }
-        auto imgPalette = isPaletted ? getColorMap(img) : std::vector<Magick::Color>();
-        auto imgData = isPaletted ? getImageData(img) : toRGB555(getImageData(img));
-        Image::Data entry{static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, imgType, imgSize, Image::DataType::Bitmap, (isPaletted ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), {}, imgData, imgPalette};
+        auto imgData = isNotDirect ? getImageData(img) : toRGB555(getImageData(img));
+        auto imgPalette = isNotDirect ? getColorMap(img) : std::vector<Magick::Color>();
+        Image::Data entry{static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt)), *ifIt, imgType, imgClass, imgSize, Image::DataType::Bitmap, (isNotDirect ? Image::ColorFormat::Paletted8 : Image::ColorFormat::RGB555), {}, imgData, imgPalette};
         images.push_back(entry);
         ifIt++;
     }
-    return {imgType, imgSize, images};
+    // we consider greyscale images as paletted
+    const bool isPaletted = (imgClass == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::GrayscaleType) || (imgClass == Magick::ClassType::PseudoClass && imgType == Magick::ImageType::PaletteType);
+    return {isPaletted, imgSize, images};
 }
 
 std::string getBaseNameFromFilePath(const std::string &filePath)
@@ -272,7 +272,7 @@ int main(int argc, const char *argv[])
         // fire up ImageMagick
         Magick::InitializeMagick(*argv);
         // read image(s) from disk
-        auto [imgType, imgSize, images] = readImages(m_inFile, options);
+        auto [imgIsPaletted, imgSize, images] = readImages(m_inFile, options);
         // build processing pipeline
         Image::Processing processing;
         if (options.reorderColors)
@@ -291,7 +291,7 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
         }
-        if (imgType == Magick::ImageType::PaletteType)
+        if (imgIsPaletted)
         {
             if (images.size() > 1)
             {
@@ -344,7 +344,7 @@ int main(int argc, const char *argv[])
         // check if all color maps are the same
         bool allColorMapsSame = true;
         uint32_t maxColorMapColors = 0;
-        if (imgType == Magick::ImageType::PaletteType)
+        if (imgIsPaletted)
         {
             if (images.size() == 1)
             {
@@ -401,7 +401,7 @@ int main(int argc, const char *argv[])
                         imgSize = Magick::Geometry(8, 8);
                     }
                 }
-                if (imgType == Magick::ImageType::PaletteType)
+                if (imgIsPaletted)
                 {
                     nrOfBytesPerImageOrSprite = maxColorMapColors <= 16 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite;
                     nrOfBytesPerImageOrSprite = maxColorMapColors <= 4 ? (nrOfBytesPerImageOrSprite / 2) : nrOfBytesPerImageOrSprite;
@@ -428,7 +428,7 @@ int main(int argc, const char *argv[])
                     writeImageInfoToH(hFile, varName, imageData32, {}, imgSize.width(), imgSize.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
                     writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, {}, storeTileOrSpriteWise);
                 }
-                if (imgType == Magick::ImageType::PaletteType)
+                if (imgIsPaletted)
                 {
                     auto [paletteData16, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(convertToBGR555(images.front().colorMap), std::vector<uint32_t>()) : Image::Processing::combineColorMaps<uint16_t>(images, [](auto cm)
                                                                                                                                                                                                                         { return convertToBGR555(cm); }));

@@ -2,8 +2,19 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 #include <Magick++.h>
+
+/// @brief Convert image type to string
+/// @param type Input type
+/// @return Image type or "unknown" if not valid
+std::string imageTypeToString(const Magick::ImageType type);
+
+/// @brief Convert image class type to string
+/// @param type Input type
+/// @return Image class type or "unknown" if not valid
+std::string classTypeToString(const Magick::ClassType type);
 
 /// @brief Get ImageMagick image data (palette or truecolor) as raw data bytes
 /// The format returned are Palette8 for paletted images and RGB888 for truecolor images

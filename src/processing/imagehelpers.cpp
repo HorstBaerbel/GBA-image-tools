@@ -17,10 +17,46 @@
 #error "ImageMagick is a pile of shit"
 #endif
 
+std::string imageTypeToString(const Magick::ImageType type)
+{
+    std::array<std::string, 11> imageTypes = {"BilevelType", "GrayscaleType", "GrayscaleAlphaType", "PaletteType", "PaletteAlphaType", "TrueColorType",
+                                              "TrueColorAlphaType", "ColorSeparationType", "ColorSeparationAlphaType", "OptimizeType", "PaletteBilevelAlphaType"};
+    auto index = ((uint32_t)type);
+    if (index > 0 && index <= imageTypes.size())
+    {
+        return imageTypes[index - 1];
+    }
+    return "unknown";
+}
+
+std::string classTypeToString(const Magick::ClassType type)
+{
+    std::string classTypeString;
+    std::array<std::string, 2> classTypes = {"DirectClass", "PseudoClass"};
+    auto index = ((uint32_t)type);
+    if (index > 0 && index <= classTypes.size())
+    {
+        return classTypes[index - 1];
+    }
+    return "unknown";
+}
+
 std::vector<uint8_t> getImageData(const Magick::Image &img)
 {
     std::vector<uint8_t> data;
-    if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::PaletteType)
+    if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::GrayscaleType)
+    {
+        // get GrayChannel from image as unsigned chars
+        auto temp = img.separate(MagickCore::GrayChannel);
+        auto indices = temp.getConstPixels(0, 0, temp.columns(), temp.rows());
+        REQUIRE(indices != nullptr, std::runtime_error, "Failed to get grayscale image pixels");
+        const auto nrOfIndices = temp.columns() * temp.rows();
+        for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
+        {
+            data.push_back(static_cast<uint8_t>(std::round(255.0F * indices[i]) / QuantumRange));
+        }
+    }
+    else if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::PaletteType)
     {
         // get palette indices as unsigned chars
         const auto nrOfColors = img.colorMapSize();
@@ -32,10 +68,11 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
         const auto nrOfIndices = temp.columns() * temp.rows();
         for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
         {
+            REQUIRE(indices[i] <= 255, std::runtime_error, "Image color index must be <= 255");
             data.push_back(static_cast<uint8_t>(indices[i]));
         }
     }
-    else if (img.classType() == Magick::ClassType::DirectClass && img.type() == Magick::ImageType::TrueColorType)
+    else if (img.classType() == Magick::ClassType::DirectClass && (img.type() == Magick::ImageType::TrueColorType || img.type() == Magick::ImageType::TrueColorAlphaType))
     {
         // get pixel colors as RGB888
         auto pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
@@ -46,6 +83,11 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
             data.push_back(static_cast<uint8_t>(std::round(255.0F * *pixels++) / QuantumRange));
             data.push_back(static_cast<uint8_t>(std::round(255.0F * *pixels++) / QuantumRange));
             data.push_back(static_cast<uint8_t>(std::round(255.0F * *pixels++) / QuantumRange));
+            // ignore alpha channel pixels
+            if (img.type() == Magick::ImageType::TrueColorAlphaType)
+            {
+                pixels++;
+            }
         }
     }
     else
@@ -60,12 +102,27 @@ std::vector<uint8_t> getImageData(const Magick::Image &img)
 
 std::vector<Magick::Color> getColorMap(const Magick::Image &img)
 {
-    const auto nrOfColors = img.colorMapSize();
-    REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
-    std::vector<Magick::Color> colorMap(nrOfColors);
-    for (std::remove_const<decltype(nrOfColors)>::type i = 0; i < nrOfColors; ++i)
+    std::vector<Magick::Color> colorMap;
+    if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::GrayscaleType)
     {
-        colorMap[i] = img.colorMap(i);
+        for (std::vector<Magick::Color>::size_type i = 0; i < 256; ++i)
+        {
+            double grayValue = i / 255.0;
+            colorMap.push_back(Magick::ColorRGB(grayValue, grayValue, grayValue));
+        }
+    }
+    else if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::PaletteType)
+    {
+        const auto nrOfColors = img.colorMapSize();
+        REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
+        for (std::remove_const<decltype(nrOfColors)>::type i = 0; i < nrOfColors; ++i)
+        {
+            colorMap.push_back(img.colorMap(i));
+        }
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported image type!");
     }
     return colorMap;
 }

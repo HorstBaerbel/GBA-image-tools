@@ -56,7 +56,7 @@ namespace Image
         temp.quantizeColors(2);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), temp.classType(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
     Data Processing::toPaletted(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
@@ -75,7 +75,7 @@ namespace Image
         temp.quantizeColors(nrOfcolors);
         temp.type(Magick::ImageType::PaletteType);
         // get image data and color map
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), temp.classType(), image.size(), DataType::Bitmap, ColorFormat::Paletted8, {}, getImageData(temp), getColorMap(temp), ColorFormat::Unknown, {}};
     }
 
     Data Processing::toTruecolor(const Magick::Image &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
@@ -109,7 +109,7 @@ namespace Image
         {
             imageData = toRGB565(imageData);
         }
-        return {0, "", temp.type(), image.size(), DataType::Bitmap, format, {}, imageData, {}, ColorFormat::Unknown, {}};
+        return {0, "", temp.type(), temp.classType(), image.size(), DataType::Bitmap, format, {}, imageData, {}, ColorFormat::Unknown, {}};
     }
 
     // ----------------------------------------------------------------------------
