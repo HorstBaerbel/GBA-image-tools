@@ -3,9 +3,21 @@
 #include "exception.h"
 
 #include <Magick++.h>
-#include <Magick++/Color.h>
 
 #include <filesystem>
+
+// Redefine QuantumRange here, to avoid an issue with ImageMagick headers
+#if (MAGICKCORE_QUANTUM_DEPTH == 8)
+#define QuantumRange (255.0)
+#elif (MAGICKCORE_QUANTUM_DEPTH == 16)
+#define QuantumRange (65535.0)
+#elif (MAGICKCORE_QUANTUM_DEPTH == 32)
+#define QuantumRange (4294967295.0)
+#elif (MAGICKCORE_QUANTUM_DEPTH == 64)
+#define QuantumRange (18446744073709551615.0)
+#else
+#error "Could not define QuantumRange, check the ImageMagick header"
+#endif
 
 namespace IO
 {
