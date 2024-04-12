@@ -26,10 +26,10 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     auto pixel = start;
     for (int y = 0; y < 4; y++)
     {
-        *cIt++ = convertTo<RGBf>(pixel[0]);
-        *cIt++ = convertTo<RGBf>(pixel[1]);
-        *cIt++ = convertTo<RGBf>(pixel[2]);
-        *cIt++ = convertTo<RGBf>(pixel[3]);
+        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[0]));
+        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[1]));
+        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[2]));
+        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[3]));
         pixel += pixelsPerScanline;
     }
     // calculate line fit through RGB color space
