@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 /// @brief Convert data to 1-bit-sized values and put 8*1 bits into 1 byte
