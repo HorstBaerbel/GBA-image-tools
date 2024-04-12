@@ -5,7 +5,7 @@
 
 #include <Magick++.h>
 
-// Redefine QuantumRange here, because ImageMagick sucks ass and can't get it's headers right
+// Redefine QuantumRange here, to avoid an issue with ImageMagick headers
 #if (MAGICKCORE_QUANTUM_DEPTH == 8)
 #define QuantumRange (255.0)
 #elif (MAGICKCORE_QUANTUM_DEPTH == 16)
@@ -15,7 +15,7 @@
 #elif (MAGICKCORE_QUANTUM_DEPTH == 64)
 #define QuantumRange (18446744073709551615.0)
 #else
-#error "ImageMagick is a pile of shit"
+#error "Could not define QuantumRange, check the ImageMagick header"
 #endif
 
 bool isLessThan(const Magick::ColorRGB &a, const Magick::ColorRGB &b)
