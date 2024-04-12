@@ -86,10 +86,10 @@ namespace Ui
                             const auto &data = std::get<DisplayImage>(eventData);
                             switch (data.format)
                             {
-                            case ColorFormat::FormatRGB888:
+                            case ColorFormat::FormatXRGB8888:
                                 surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 24, SDL_PIXELFORMAT_RGB24);
                                 break;
-                            case ColorFormat::FormatRGB555:
+                            case ColorFormat::FormatXRGB1555:
                                 surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 15, SDL_PIXELFORMAT_RGB555);
                                 break;
                             }
@@ -125,13 +125,13 @@ namespace Ui
         return 0;
     }
 
-    auto SDLWindow::displayImageRGB888(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
+    auto SDLWindow::displayImageXRGB8888(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
     {
         if (!m_quit)
         {
             // copy data to thread event queue
             SDL_LockMutex(m_mutex);
-            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatRGB888, image, width, height, x, y});
+            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatXRGB8888, image, width, height, x, y});
             SDL_UnlockMutex(m_mutex);
             // notify SDL thread about event
             SDL_Event e;
@@ -143,13 +143,13 @@ namespace Ui
         }
     }
 
-    auto SDLWindow::displayImageRGB555(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
+    auto SDLWindow::displayImageXRGB1555(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
     {
         if (!m_quit)
         {
             // copy data to thread event queue
             SDL_LockMutex(m_mutex);
-            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatRGB555, image, width, height, x, y});
+            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatXRGB1555, image, width, height, x, y});
             SDL_UnlockMutex(m_mutex);
             // notify SDL thread about event
             SDL_Event e;
