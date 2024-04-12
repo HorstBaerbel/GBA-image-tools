@@ -2,7 +2,9 @@
 
 #include "colorformat.h"
 
+#include <Eigen/Eigen>
 #include <Eigen/Core>
+
 #include <array>
 #include <cstdint>
 
@@ -13,18 +15,16 @@ namespace Color
     class RGBf : public Eigen::Vector3f
     {
     public:
-        static constexpr Color::Format ColorFormat = Format::RGBf;
-        static constexpr uint32_t Channels = 3;
         using pixel_type = Eigen::Vector3f; // pixel value type
         using value_type = float;           // color channel value type
+        static constexpr Color::Format ColorFormat = Format::RGBf;
+        static constexpr uint32_t Channels = pixel_type::RowsAtCompileTime;
 
-        RGBf() : Eigen::Vector3f(0, 0, 0) {}
-        RGBf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
+        RGBf() : pixel_type(0.0F, 0.0F, 0.0F) {}
         template <class... Types>
-        RGBf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
-        RGBf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
-        RGBf(const std::array<value_type, 3> &other) : Eigen::Vector3f(other[0], other[1], other[2]) {}
-        RGBf(float R, float G, float B) : Eigen::Vector3f(R, G, B) {}
+        RGBf(const Eigen::CwiseBinaryOp<Types...> &op) : pixel_type(op.matrix()) {}
+        RGBf(const std::array<value_type, 3> &other) : pixel_type(other[0], other[1], other[2]) {}
+        RGBf(float R, float G, float B) : pixel_type(R, G, B) {}
 
         inline auto R() const -> const value_type & { return x(); }
         inline auto R() -> value_type & { return x(); }

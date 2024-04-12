@@ -2,7 +2,9 @@
 
 #include "colorformat.h"
 
+#include <Eigen/Eigen>
 #include <Eigen/Core>
+
 #include <array>
 #include <cstdint>
 
@@ -17,18 +19,16 @@ namespace Color
     class YCgCoRf : public Eigen::Vector3f
     {
     public:
-        static constexpr Color::Format ColorFormat = Format::YCgCoRf;
-        static constexpr uint32_t Channels = 3;
         using pixel_type = Eigen::Vector3f; // pixel value type
         using value_type = float;           // color channel value type
+        static constexpr Color::Format ColorFormat = Format::YCgCoRf;
+        static constexpr uint32_t Channels = pixel_type::RowsAtCompileTime;
 
-        YCgCoRf() : Eigen::Vector3f(0, 0, 0) {}
-        YCgCoRf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
+        YCgCoRf() : pixel_type(0.0F, 0.0F, 0.0F) {}
         template <class... Types>
-        YCgCoRf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
-        YCgCoRf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
-        YCgCoRf(const std::array<value_type, 3> &other) : Eigen::Vector3f(other[0], other[1], other[2]) {}
-        YCgCoRf(float Y, float Cg, float Co) : Eigen::Vector3f(Y, Cg, Co) {}
+        YCgCoRf(const Eigen::CwiseBinaryOp<Types...> &op) : pixel_type(op.matrix()) {}
+        YCgCoRf(const std::array<value_type, 3> &other) : pixel_type(other[0], other[1], other[2]) {}
+        YCgCoRf(float Y, float Cg, float Co) : pixel_type(Y, Cg, Co) {}
 
         inline auto Y() const -> const value_type & { return x(); }
         inline auto Y() -> value_type & { return x(); }

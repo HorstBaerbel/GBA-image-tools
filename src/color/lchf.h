@@ -2,7 +2,9 @@
 
 #include "colorformat.h"
 
+#include <Eigen/Eigen>
 #include <Eigen/Core>
+
 #include <array>
 #include <cstdint>
 
@@ -16,18 +18,16 @@ namespace Color
     class LChf : public Eigen::Vector3f
     {
     public:
-        static constexpr Color::Format ColorFormat = Format::LChf;
-        static constexpr uint32_t Channels = 3;
         using pixel_type = Eigen::Vector3f; // pixel value type
         using value_type = float;           // color channel value type
+        static constexpr Color::Format ColorFormat = Format::LChf;
+        static constexpr uint32_t Channels = pixel_type::RowsAtCompileTime;
 
-        LChf() = default;
-        LChf(const Eigen::Vector3f &other) : Eigen::Vector3f(other) {}
+        LChf() : pixel_type(0.0F, 0.0F, 0.0F) {}
         template <class... Types>
-        LChf(const Eigen::CwiseBinaryOp<Types...> &op) : Eigen::Vector3f(op.matrix()) {}
-        LChf(const std::initializer_list<value_type> &other) : Eigen::Vector3f({other}) {}
-        LChf(const std::array<value_type, 3> &other) : Eigen::Vector3f(other[0], other[1], other[2]) {}
-        LChf(float L, float C, float H) : Eigen::Vector3f(L, C, H) {}
+        LChf(const Eigen::CwiseBinaryOp<Types...> &op) : pixel_type(op.matrix()) {}
+        LChf(const std::array<value_type, 3> &other) : pixel_type(other[0], other[1], other[2]) {}
+        LChf(float L, float C, float H) : pixel_type(L, C, H) {}
 
         inline auto L() const -> const value_type & { return x(); }
         inline auto L() -> value_type & { return x(); }

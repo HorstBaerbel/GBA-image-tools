@@ -96,6 +96,8 @@
                 "cfenv": "cpp",
                 "charconv": "cpp",
                 "format": "cpp",
-                "span": "cpp"
+                "span": "cpp",
+                "dense": "cpp",
+                "svd": "cpp"
         }
 }

@@ -1,7 +1,10 @@
 #pragma once
 
+#include <Eigen/Eigen>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <Eigen/Jacobi>
+#include <Eigen/SVD>
 
 #include <array>
 
@@ -27,7 +30,7 @@ auto lineFit(const std::array<T, N> &p) -> std::pair<T, T>
     Eigen::Vector3d mean = points.rowwise().mean();
     auto centered = points.colwise() - mean;
     // calculate SVD and first eigenvector
-    Eigen::JacobiSVD<Eigen::MatrixXd, Eigen::DecompositionOptions::ComputeFullU> svd;
+    Eigen::JacobiSVD<Eigen::Matrix3Xd, Eigen::QRPreconditioners::FullPivHouseholderQRPreconditioner> svd;
     auto fullU = svd.compute(centered);
     Eigen::Vector3d axis = fullU.matrixU().col(0).transpose().normalized();
     return {T(mean.x(), mean.y(), mean.z()), T(axis.x(), axis.y(), axis.z())};
