@@ -7,8 +7,8 @@ namespace Image
 
     auto quantizeThreshold(const ImageData &data, float threshold) -> ImageData
     {
-        REQUIRE(data.pixels().isTruecolor() || data.pixels().isGrayscale(), "Input data must be truecolor or grayscale");
-        REQUIRE(!data.pixels().empty(), "Input data can not be empty");
+        REQUIRE(data.pixels().isTruecolor() || data.pixels().isGrayscale(), std::runtime_error, "Input data must be truecolor or grayscale");
+        REQUIRE(!data.pixels().empty(), std::runtime_error, "Input data can not be empty");
         auto grayscale = data.pixels().convertData<Color::Grayf>();
         std::vector<uint8_t> result;
         std::transform(grayscale.cbegin(), grayscale.cend(), std::back_inserter(result), [threshold](auto v)
