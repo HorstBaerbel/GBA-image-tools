@@ -78,6 +78,10 @@ namespace Image
             return std::get<std::vector<T>>(m_data);
         }
 
+        friend bool operator==(const PixelData &lhs, const PixelData &rhs);
+
+        friend bool operator!=(const PixelData &lhs, const PixelData &rhs);
+
         template <typename T>
         auto convertData() const -> std::vector<T>
         {
@@ -222,6 +226,17 @@ namespace Image
         Color::Format m_dataFormat = Color::Format::Unknown;
         std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::LChf>, std::vector<Color::YCgCoRf>, std::vector<Color::Grayf>> m_data;
     };
+
+    inline bool operator==(const PixelData &lhs, const PixelData &rhs)
+    {
+        return lhs.m_dataFormat == rhs.m_dataFormat &&
+               lhs.m_data == rhs.m_data;
+    }
+
+    inline bool operator!=(const PixelData &lhs, const PixelData &rhs)
+    {
+        return !(lhs == rhs);
+    }
 
     /// @brief Stores indexed images with a color map, true color images or raw / compressed image data
     /// Continuous array of pixels, no stride etc.
