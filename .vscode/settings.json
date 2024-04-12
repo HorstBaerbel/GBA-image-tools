@@ -71,6 +71,11 @@
         "semaphore": "cpp",
         "stop_token": "cpp",
         "valarray": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "strstream": "cpp",
+        "cfenv": "cpp",
+        "charconv": "cpp",
+        "format": "cpp",
+        "span": "cpp"
     }
 }
