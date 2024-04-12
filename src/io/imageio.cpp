@@ -77,7 +77,7 @@ namespace IO
         THROW(std::runtime_error, "Unsupported image type");
     }
 
-    auto readImage(const std::string &filePath) -> Image::Data
+    auto File::readImage(const std::string &filePath) -> Image::Data
     {
         Magick::Image img;
         try

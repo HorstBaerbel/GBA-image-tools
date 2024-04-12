@@ -57,9 +57,6 @@ list(APPEND HEX2GBA_SRC
 
 file(GLOB_RECURSE HELPERS_SRC CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*/*.cpp ${PROJECT_SOURCE_DIR}/src/*/*.h)
 
-# Add defines so Magick++ does not throw warnings
-set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES COMPILE_DEFINTIONS "MAGICKCORE_HDRI_ENABLE=0 MAGICKCORE_QUANTUM_DEPTH=16")
-
 list(APPEND IMG2H_SRC
     img2h.cpp
     ${HELPERS_SRC}
