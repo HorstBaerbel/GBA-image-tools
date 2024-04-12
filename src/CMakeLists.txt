@@ -87,13 +87,12 @@ target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP
 # Define install files for CPack
 
 install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/colormap555"
-    "${CMAKE_CURRENT_BINARY_DIR}/gimppalette555"
+    "${CMAKE_CURRENT_BINARY_DIR}/gencolormaps"
     "${CMAKE_CURRENT_BINARY_DIR}/hex2gba"
     "${CMAKE_CURRENT_BINARY_DIR}/img2h"
     "${CMAKE_CURRENT_BINARY_DIR}/vid2h"
     "${PROJECT_SOURCE_DIR}/colormap555.png"
-    "${PROJECT_SOURCE_DIR}/GBA.gpl"
+    "${PROJECT_SOURCE_DIR}/colormap565.png"
     "${PROJECT_SOURCE_DIR}/README.md"
     "${PROJECT_SOURCE_DIR}/img2h.md"
     "${PROJECT_SOURCE_DIR}/vid2h.md"
