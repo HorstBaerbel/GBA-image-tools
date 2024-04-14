@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tuple>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -26,7 +27,7 @@ namespace VariantHelpers
     template <class... Args, class T>
     auto hasTypes(const std::vector<T> &v) -> bool
     {
-        return HasTypes(v, std::tuple<Args...>(), std::make_index_sequence<sizeof...(Args)>{});
+        return hasTypes(v, std::tuple<Args...>(), std::make_index_sequence<sizeof...(Args)>{});
     }
 
     /// @brief Check if vector of variants contains correct types

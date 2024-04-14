@@ -1,8 +1,8 @@
 #pragma once
 
 #include <iosfwd>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
 
 /// @brief Throw an exception with variable arguments
 #define THROW(EXCEPTION_T, ...)      \
