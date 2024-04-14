@@ -36,7 +36,7 @@ namespace VariantHelpers
     /// @tparam index Index of value we want to get
     /// @param v Vector of variants get value from
     template <class V, std::size_t index, class T>
-    auto getValue(const std::vector<T> &v) -> V
+    auto getValue(const std::vector<T> &v)
     {
         return std::get<V>(v[index]);
     }

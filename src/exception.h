@@ -14,6 +14,7 @@
     } while (0)
 
 /// @brief Require COND to be true, else throw an exception with variable arguments
+/// If your parameters have commas, add braces, otherwise you get compiler errors!
 #define REQUIRE(COND, EXCEPTION_T, ...) \
     if (!(COND))                        \
     {                                   \
