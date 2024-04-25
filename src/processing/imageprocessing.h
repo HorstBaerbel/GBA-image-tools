@@ -60,6 +60,7 @@ namespace Image
 
         /// @brief Binarize image using threshold. Everything < threshold will be black everything > threshold white
         /// @param parameters Binarization threshold as double. Must be in [0.0, 1.0]
+        /// @return Returns data as Paletted8
         static Data toBlackWhite(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert input image to paletted image by:
@@ -67,6 +68,7 @@ namespace Image
         /// - Dithering to nrOfColors (ImageMagicks -colors option)
         /// @param parameters Image containing all colors of the target color space, e.g. RGB555 and
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
+        /// @return Returns data as Paletted8
         static Data toPaletted(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert all input images to paletted images by:
@@ -75,10 +77,12 @@ namespace Image
         /// - Dithering to nrOfColors (ImageMagicks -colors option)
         /// @param parameters Image containing all colors of the target color space, e.g. RGB555 and
         ///                   Target number of colors in palette as uint32_t. This is an upper bound, the palette may be smaller.
+        /// @return Returns data as Paletted8
         static std::vector<Data> toCommonPalette(const std::vector<Data> &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert input image to RGB555, RGB565 or RGB888
         /// @param parameters Truecolor format to convert image to as std::string
+        /// @return Returns data as XRGB1555, RGB565 or XRGB8888
         static Data toTruecolor(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         // --- data conversion functions ------------------------------------
@@ -94,7 +98,7 @@ namespace Image
         /// @param parameters Unused
         static Data toTiles(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
-        /// @brief Cut data to w x h pixel wide sprties and store per sprite instead of per scanline.
+        /// @brief Cut data to w x h pixel wide sprites and store per sprite instead of per scanline.
         /// Width and height of image MUST be a multiple of 8 and of sprit width.
         /// @param parameters Sprite width as uint32_t
         static Data toSprites(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
@@ -116,7 +120,7 @@ namespace Image
         /// @param parameters Shift value to add to index as uint32_t
         static Data shiftIndices(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
-        /// @brief Convert image index data to 4-bit values
+        /// @brief Convert image index data to 1-,2- or 4-bit values
         /// @param parameters Unused
         static Data pruneIndices(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
