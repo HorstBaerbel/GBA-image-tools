@@ -1,7 +1,7 @@
 #pragma once
 
-#include "color/lchf.h"
 #include "color/conversions.h"
+#include "color/lchf.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,7 +9,7 @@
 #include <map>
 #include <vector>
 
-namespace Color
+namespace ColorHelpers
 {
 
     /// @brief Find optimal insertion position for color according to color distance map
@@ -17,14 +17,14 @@ namespace Color
 
     /// @brief Reorder colors to optimize / minimize preceived color distance using LCh color space distance
     /// Sorts by hue, then by chroma, then by lightness
-    /// @return Returns the new order of indices - old_index -> new_index
+    /// @return Returns the new order of indices: old_index -> new_index
     template <typename T>
     auto optimizeColorDistance(const std::vector<T> &colors) -> std::vector<uint8_t>
     {
         // convert all colors to LCh color space
         std::vector<T> lchColors;
         std::transform(colors.cbegin(), colors.cend(), std::back_inserter(lchColors), [](const auto &c)
-                       { return convertTo<LChf>(c); });
+                       { return convertTo<Color::LChf>(c); });
         // build map with color distance for all possible combinations from palette
         std::map<uint8_t, std::vector<float>> distancesSqrMap;
         for (uint32_t i = 0; i < lchColors.size(); i++)

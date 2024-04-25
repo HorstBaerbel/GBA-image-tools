@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace Color
+namespace ColorHelpers
 {
 
     /// @brief Add color to color map and shift all other colors towards the end by one

@@ -1,6 +1,6 @@
 #include "optimizedistance.h"
 
-namespace Color
+namespace ColorHelpers
 {
 
     /// @brief Calculate RMS distance for color index constellation

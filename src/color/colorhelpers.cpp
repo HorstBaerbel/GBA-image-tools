@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace Color
+namespace ColorHelpers
 {
 
     auto addColorAtIndex0(const std::vector<Color::XRGB8888> &colorMap, const Color::XRGB8888 &color0) -> std::vector<Color::XRGB8888>
@@ -52,11 +52,11 @@ namespace Color
 
     auto buildColorMapFor(Color::Format format) -> std::vector<Color::XRGB8888>
     {
-        if (format == Format::XRGB1555)
+        if (format == Color::Format::XRGB1555)
         {
             return buildColorMapRGB555();
         }
-        else if (format == Format::RGB565)
+        else if (format == Color::Format::RGB565)
         {
             return buildColorMapRGB565();
         }
