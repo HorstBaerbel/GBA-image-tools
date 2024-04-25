@@ -1,8 +1,8 @@
 #include "gvid.h"
 
-#include "color/ycgcorf.h"
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
+#include "color/ycgcorf.h"
 #include "exception.h"
 
 #include <Eigen/Core>
@@ -11,9 +11,9 @@
 #include <algorithm>
 #include <array>
 #include <deque>
+#include <iostream>
 #include <numeric>
 #include <optional>
-#include <iostream>
 
 constexpr float MaxKeyFrameBlockError = 1.0F; // Maximum error allowed for key frame block references [0,6]
 
@@ -121,14 +121,13 @@ auto findBestMatch(const CodeBook &codebook, const CodeBookEntry &entry, float m
     return (bestErrorIt != errors.cend()) ? std::optional<std::pair<float, int32_t>>(*bestErrorIt) : std::optional<std::pair<float, int32_t>>();
 }
 
-auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::vector<uint8_t>
+auto GVID::encodeGVID(const std::vector<Color::XRGB8888> &image, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::vector<uint8_t>
 {
     static_assert(sizeof(BlockCodeBookEntry) == 4, "Size of code book block must be 32 bit");
     static_assert(sizeof(BlockReferenceBFrame) == 1, "Size of intra-frame reference block must be 8 bit");
     static_assert(sizeof(BlockReferenceBFrame) == 1, "Size of inter-frame reference block must be 8 bit");
     REQUIRE(width % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for GVID compression");
     REQUIRE(height % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for GVID compression");
-    REQUIRE(image.size() % 3 == 0, std::runtime_error, "Image data size must be a multiple of 3 for GVID compression");
     const auto pixelsPerScanline = width * 3;
     // set up some variables
     uint32_t blockIndex = 0;               // 4x4 block index in frame
@@ -147,14 +146,11 @@ auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_
             auto cIt = colors.begin();
             for (int by = 0; by < 4; by++)
             {
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
-                pixels += 3;
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
-                pixels += 3;
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
-                pixels += 3;
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels);
-                pixels += pixelsPerScanline - 3 * 3;
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
+                pixels += pixelsPerScanline - 4;
             }
             // convert block to codebook
             CodeBookEntry cbe;
@@ -216,7 +212,7 @@ auto GVID::encodeGVID(const std::vector<uint8_t> &image, uint32_t width, uint32_
     return result;
 }
 
-auto decodeGVID(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint8_t>
+auto decodeGVID(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<Color::XRGB8888>
 {
     return {};
 }

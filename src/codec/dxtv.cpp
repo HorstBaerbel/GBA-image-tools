@@ -2,24 +2,24 @@
 
 #include "color/conversions.h"
 #include "color/distance.h"
-#include "color/ycgcorf.h"
 #include "color/xrgb1555.h"
-#include "processing/blockview.h"
-#include "processing/datahelpers.h"
+#include "color/ycgcorf.h"
 #include "compression/dxtblock.h"
 #include "exception.h"
 #include "math/linefit.h"
+#include "processing/blockview.h"
+#include "processing/datahelpers.h"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
 #include <array>
+#include <iomanip>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <type_traits>
 #include <vector>
-#include <iomanip>
-#include <iostream>
 
 using namespace Color;
 
@@ -121,11 +121,11 @@ public:
     CodeBook() = default;
 
     /// @brief Construct a codebook from image data
-    CodeBook(const std::vector<uint16_t> &image, uint32_t width, uint32_t height, bool encoded = false)
+    CodeBook(const std::vector<XRGB8888> &image, uint32_t width, uint32_t height, bool encoded = false)
         : m_width(width), m_height(height)
     {
         std::transform(image.cbegin(), image.cend(), std::back_inserter(m_colors), [](const auto &pixel)
-                       { return convertTo<YCgCoRf>(XRGB1555(pixel)); });
+                       { return convertTo<YCgCoRf>(pixel); });
         for (uint32_t y = 0; y < m_height; y += BlockMaxDim)
         {
             for (uint32_t x = 0; x < m_width; x += BlockMaxDim)
@@ -304,11 +304,11 @@ public:
     }
 
     /// @brief Convert a codebook to image data
-    auto toImage() const -> std::vector<uint16_t>
+    auto toImage() const -> std::vector<XRGB8888>
     {
-        std::vector<uint16_t> image;
+        std::vector<XRGB8888> image;
         std::transform(m_colors.cbegin(), m_colors.cend(), std::back_inserter(image), [](const auto &color)
-                       { return convertTo<XRGB1555>(color).raw(); });
+                       { return convertTo<XRGB8888>(color).raw(); });
         return image;
     }
 
@@ -494,7 +494,7 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
     }
 }
 
-auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint16_t> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<uint16_t>>
+auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
 {
     static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
     REQUIRE(width % CodeBook::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
@@ -517,7 +517,7 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
         auto headerData = frameHeader.toArray();
         assert((headerData.size() % 4) == 0);
         std::copy(headerData.cbegin(), headerData.cend(), std::back_inserter(compressedData));
-        return std::pair<std::vector<uint8_t>, std::vector<uint16_t>>{compressedData, previousImage};
+        return std::make_pair(compressedData, previousImage);
     }
     // if we don't have a keyframe, check for scene change
     /*if (!keyFrame)
@@ -578,10 +578,10 @@ auto DXTV::encodeDXTV(const std::vector<uint16_t> &image, const std::vector<uint
     compressedData = fillUpToMultipleOf(compressedData, 4);
     assert((compressedData.size() % 4) == 0);
     // convert current frame / codebook back to store as decompressed frame
-    return std::pair<std::vector<uint8_t>, std::vector<uint16_t>>{compressedData, image};
+    return std::make_pair(compressedData, image);
 }
 
-auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint16_t>
+auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<XRGB8888>
 {
     return {};
 }

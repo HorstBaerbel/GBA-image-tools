@@ -1,8 +1,8 @@
 #include "dxt.h"
 
-#include "color/rgbf.h"
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
+#include "color/rgbf.h"
 #include "color/xrgb1555.h"
 #include "exception.h"
 #include "math/linefit.h"
@@ -17,7 +17,7 @@
 using namespace Color;
 
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixelsPerScanline)
+std::vector<uint8_t> DXT::encodeBlockDXTG2(const Color::XRGB8888 *start, uint32_t pixelsPerScanline)
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
@@ -26,10 +26,10 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const uint16_t *start, uint32_t pixel
     auto pixel = start;
     for (int y = 0; y < 4; y++)
     {
-        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[0]));
-        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[1]));
-        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[2]));
-        *cIt++ = convertTo<RGBf>(XRGB1555(pixel[3]));
+        *cIt++ = convertTo<RGBf>(pixel[0]);
+        *cIt++ = convertTo<RGBf>(pixel[1]);
+        *cIt++ = convertTo<RGBf>(pixel[2]);
+        *cIt++ = convertTo<RGBf>(pixel[3]);
         pixel += pixelsPerScanline;
     }
     // calculate line fit through RGB color space
@@ -211,7 +211,7 @@ for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
 return result;
 }*/
 
-auto DXT::encodeDXTG(const std::vector<uint16_t> &image, uint32_t width, uint32_t height) -> std::vector<uint8_t>
+auto DXT::encodeDXTG(const std::vector<Color::XRGB8888> &image, uint32_t width, uint32_t height) -> std::vector<uint8_t>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
