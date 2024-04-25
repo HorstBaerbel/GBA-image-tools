@@ -1,9 +1,9 @@
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
-#include "processing/datahelpers.h"
 #include "exception.h"
-#include "io/textio.h"
 #include "io/imageio.h"
+#include "io/textio.h"
+#include "processing/datahelpers.h"
 #include "processing/imagehelpers.h"
 #include "processing/imageprocessing.h"
 #include "processing/processingoptions.h"
@@ -11,11 +11,11 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <filesystem>
 
 #include "cxxopts/include/cxxopts.hpp"
 #include "glob/single_include/glob/glob.hpp"
@@ -284,21 +284,21 @@ int main(int argc, const char *argv[])
         Image::Processing processing;
         if (options.blackWhite)
         {
-            processing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.colorformat.value, options.quantizationmethod.value, options.blackWhite.value});
+            processing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.quantizationmethod.value, options.blackWhite.value});
         }
         else if (options.paletted)
         {
             // add palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.colorformat.value, options.quantizationmethod.value, options.paletted.value});
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
         }
         else if (options.commonPalette)
         {
             // add common palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.colorformat.value, options.quantizationmethod.value, options.commonPalette.value});
+            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value, options.quantizationmethod.value});
+            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value});
         }
         // build processing pipeline - conversion
         if (options.reorderColors)
