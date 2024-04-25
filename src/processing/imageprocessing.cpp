@@ -3,14 +3,19 @@
 #include "codec/dxt.h"
 #include "codec/dxtv.h"
 #include "codec/gvid.h"
-#include "color/xrgb8888.h"
 #include "color/colorhelpers.h"
+#include "color/optimizedistance.h"
+#include "color/rgb565.h"
+#include "color/xrgb1555.h"
+#include "color/xrgb8888.h"
 #include "compression/lzss.h"
-#include "math/colorfit.h"
 #include "datahelpers.h"
 #include "exception.h"
 #include "imagehelpers.h"
+#include "math/colorfit.h"
+#include "quantization.h"
 #include "spritehelpers.h"
+#include "varianthelpers.h"
 
 #include <iostream>
 #include <memory>
@@ -50,52 +55,60 @@ namespace Image
 
     Data Processing::toBlackWhite(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "toBlackWhite expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "Expected RGB888 input data");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<double>(parameters.front()), std::runtime_error, "toBlackWhite expects a single double threshold parameter");
-        const auto threshold = std::get<double>(parameters.front());
+        REQUIRE((VariantHelpers::hasTypes<Quantization::Method, double>(parameters)), std::runtime_error, "toBlackWhite expects a Quantization::Method and double threshold parameter");
+        const auto quantizationMethod = VariantHelpers::getValue<Quantization::Method, 0>(parameters);
+        const auto threshold = VariantHelpers::getValue<double, 1>(parameters);
         REQUIRE(threshold >= 0 && threshold <= 1, std::runtime_error, "Threshold must be in [0.0, 1.0]");
         // threshold image
-        Magick::Image temp = data.image;
-        temp.threshold(Magick::Color::scaleDoubleToQuantum(threshold));
-        temp.quantizeDither(false);
-        temp.quantizeColors(2);
-        temp.type(Magick::ImageType::PaletteType);
-        // get image data and color map
-        auto imageData = getImageData(temp);
-        REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
-        return {data.index, data.fileName, temp.type(), {temp.size().width(), temp.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
+        auto result = data;
+        result.imageData = Quantization::quantizeThreshold(data.imageData, static_cast<float>(threshold));
+        REQUIRE(result.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
+        return result;
     }
 
     Data Processing::toPaletted(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "toPaletted expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "toPaletted expects RGB888 input data");
         // get parameter(s)
-        REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toPaletted expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
-        const auto nrOfcolors = std::get<uint32_t>(parameters.back());
-        REQUIRE(nrOfcolors >= 2 && nrOfcolors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
-        const auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
-        // map image to input color map, no dithering
-        Magick::Image temp = data.image;
-        temp.map(colorSpaceMap, false);
+        REQUIRE((VariantHelpers::hasTypes<Quantization::Method, uint32_t, std::vector<Color::XRGB8888>>(parameters)), std::runtime_error, "toPaletted expects a Quantization::Method, uint32_t number of colors parameter and a std::vector<Color::XRGB8888> color-space map");
+        const auto quantizationMethod = VariantHelpers::getValue<Quantization::Method, 0>(parameters);
+        const auto nrOfColors = VariantHelpers::getValue<uint32_t, 1>(parameters);
+        REQUIRE(nrOfColors >= 2 && nrOfColors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
+        const auto colorSpaceMap = VariantHelpers::getValue<std::vector<Color::XRGB8888>, 2>(parameters);
+        REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "colorSpaceMap can not be empty");
         // convert image to paletted using dithering
-        temp.quantizeDither(true);
-        temp.quantizeDitherMethod(Magick::DitherMethod::RiemersmaDitherMethod);
-        temp.quantizeColors(nrOfcolors);
-        temp.type(Magick::ImageType::PaletteType);
-        // get image data and color map
-        auto imageData = getImageData(temp);
-        REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
-        return {data.index, data.fileName, temp.type(), {temp.size().width(), temp.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, getColorMap(temp), Color::Format::Unknown, {}};
+        auto result = data;
+        switch (quantizationMethod)
+        {
+        case Quantization::Method::ClosestColor:
+            result.imageData = Quantization::quantizeClosest(data.imageData, nrOfColors, colorSpaceMap);
+            break;
+        case Quantization::Method::AtkinsonDither:
+            result.imageData = Quantization::atkinsonDither(data.imageData, nrOfColors, colorSpaceMap);
+            break;
+        default:
+            THROW(std::runtime_error, "Unsupported quantization method " << Quantization::toString(quantizationMethod));
+        }
+        REQUIRE(result.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted return image");
+        return result;
     }
 
     std::vector<Data> Processing::toCommonPalette(const std::vector<Data> &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
+        REQUIRE(data.size() > 1, std::runtime_error, "toCommonPalette expects more than one input image");
+        REQUIRE(data.front().dataType == DataType::Bitmap, std::runtime_error, "toCommonPalette expects bitmaps as input data");
+        REQUIRE(data.front().imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "toCommonPalette expects RGB888 input data");
         // get parameter(s)
-        REQUIRE(parameters.size() == 2 && std::holds_alternative<Magick::Image>(parameters.front()) && std::holds_alternative<uint32_t>(parameters.back()), std::runtime_error, "toCommonPalette expects a Magick::Image colorSpaceMap and uint32_t nrOfColors parameter");
-        const auto nrOfColors = std::get<uint32_t>(parameters.back());
+        REQUIRE((VariantHelpers::hasTypes<Quantization::Method, uint32_t, std::vector<Color::XRGB8888>>(parameters)), std::runtime_error, "toCommonPalette expects a Quantization::Method, uint32_t number of colors parameter and a std::vector<Color::XRGB8888> color-space map");
+        const auto quantizationMethod = VariantHelpers::getValue<Quantization::Method, 0>(parameters);
+        const auto nrOfColors = VariantHelpers::getValue<uint32_t, 1>(parameters);
         REQUIRE(nrOfColors >= 2 && nrOfColors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
-        const auto colorSpaceMap = std::get<Magick::Image>(parameters.front());
-        REQUIRE(colorSpaceMap.size().width() > 0 && colorSpaceMap.size().height() > 0, std::runtime_error, "colorSpaceMap can not be empty");
-        REQUIRE(data.size() > 1, std::runtime_error, "Number of input images must be > 1");
+        const auto colorSpaceMap = VariantHelpers::getValue<std::vector<Color::XRGB8888>, 2>(parameters);
+        REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "colorSpaceMap can not be empty");
         // set up number of cores for parallel processing
         const auto nrOfProcessors = omp_get_num_procs();
         omp_set_num_threads(nrOfProcessors);
@@ -104,354 +117,303 @@ namespace Image
         std::map<Color::XRGB8888, uint64_t> histogram;
         std::for_each(data.cbegin(), data.cend(), [&histogram](const auto &d)
                       {
-            auto imageData = getImageDataXRGB888(d.image).first;
+            auto & imageData = d.imageData.pixels().template data<Color::XRGB8888>();
             std::for_each(imageData.cbegin(), imageData.cend(), [&histogram](auto pixel)
                 { histogram[pixel]++; }); });
         std::cout << histogram.size() << " unique colors in " << data.size() << " images" << std::endl;
         // create as many preliminary clusters as colors in colorSpaceMap
-        auto colorSpace = getImageDataXRGB888(colorSpaceMap).first;
-        ColorFit<Color::XRGB8888> colorFit(colorSpace);
-        std::cout << "Color space has " << colorSpace.size() << " colors" << std::endl;
+        ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
+        std::cout << "Color space has " << colorSpaceMap.size() << " colors" << std::endl;
         // sort histogram colors into closest clusters in parallel
-        std::cout << "Sorting colors into clusters... (this might take some time)" << std::endl;
-        auto colorMap = colorFit.reduceColors(histogram, nrOfColors);
-        // convert clusters to color map
-        std::cout << "Building color table..." << std::endl;
-        Magick::Image colorMapImage(Magick::Geometry(colorMap.size(), 1), "black");
-        colorMapImage.type(Magick::ImageType::TrueColorType);
-        colorMapImage.modifyImage();
-        auto colorMapPixels = colorMapImage.getPixels(0, 0, colorMapImage.columns(), colorMapImage.rows());
-        for (std::size_t i = 0; i < colorMap.size(); ++i)
-        {
-            *colorMapPixels++ = toMagick(colorMap[i]);
-        }
-        colorMapImage.syncPixels();
+        std::cout << "Sorting colors into max. " << nrOfColors << " clusters... (this might take some time)" << std::endl;
+        auto commonColorMap = colorFit.reduceColors(histogram, nrOfColors);
         // apply color map to all images
         std::cout << "Converting images..." << std::endl;
         std::vector<Data> result;
-        std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [&colorMapImage](const auto &d)
+        std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [&commonColorMap, quantizationMethod, nrOfColors](const auto &d)
                        {
-            // convert image to paletted using dithering
-            auto temp = d.image;
-            temp.quantizeDither(true);
-            temp.quantizeDitherMethod(Magick::DitherMethod::FloydSteinbergDitherMethod);
-            temp.map(colorMapImage, true);
-            //temp.type(Magick::ImageType::PaletteType);
-            // get image data and color map
-            auto imageData = getImageData(temp);
-            auto imageColorMap = getColorMap(temp);
-            //REQUIRE(imageData.second == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted image");
-            //auto dumpPath = std::filesystem::current_path() / "result" / (std::to_string(d.index) + ".png");
-            //temp.write(dumpPath.c_str());
-            return Data{d.index, d.fileName, temp.type(), DataSize{temp.size().width(), temp.size().height()}, DataType::Bitmap, imageData.second, {}, imageData.first, imageColorMap, Color::Format::Unknown, {}}; });
+                           // convert image to paletted using dithering
+                           auto r = d;
+                           switch (quantizationMethod)
+                           {
+                           case Quantization::Method::ClosestColor:
+                               r.imageData = Quantization::quantizeClosest(d.imageData, nrOfColors, commonColorMap);
+                               break;
+                           case Quantization::Method::AtkinsonDither:
+                               r.imageData = Quantization::atkinsonDither(d.imageData, nrOfColors, commonColorMap);
+                               break;
+                           default:
+                               THROW(std::runtime_error, "Unsupported quantization method " << Quantization::toString(quantizationMethod));
+                           }
+                           REQUIRE(r.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted return image");
+                           // auto dumpPath = std::filesystem::current_path() / "result" / (std::to_string(d.index) + ".png");
+                           // temp.write(dumpPath.c_str());
+                       });
         return result;
     }
 
     Data Processing::toTruecolor(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "toTruecolor expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "toTruecolor expects a RGB888 image");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<std::string>(parameters.front()), std::runtime_error, "toTruecolor expects a single std::string parameter");
-        const auto formatString = std::get<std::string>(parameters.front());
-        Color::Format format = Color::Format::Unknown;
-        if (formatString == "RGB888")
-        {
-            format = Color::Format::RGB888;
-        }
-        else if (formatString == "RGB565")
-        {
-            format = Color::Format::RGB565;
-        }
-        else if (formatString == "RGB555")
-        {
-            format = Color::Format::RGB555;
-        }
-        REQUIRE(format == Color::Format::RGB555 || format == Color::Format::RGB565 || format == Color::Format::RGB888, std::runtime_error, "Color format must be in [RGB555, RGB565, RGB888]");
-        // get image data
-        Magick::Image temp = data.image;
-        auto imageData = getImageData(temp);
-        REQUIRE(imageData.second == Color::Format::RGB888, std::runtime_error, "Expected RGB888 image");
-        auto colorData = imageData.first;
+        REQUIRE(VariantHelpers::hasTypes<Color::Format>(parameters), std::runtime_error, "toTruecolor expects a Color::Format parameter");
+        const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
+        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::RGB565 || format == Color::Format::XRGB8888, std::runtime_error, "Color format must be in [RGB555, RGB565, RGB888]");
+        auto result = data;
         // convert colors if needed
-        if (format == Color::Format::RGB555)
+        if (format == Color::Format::XRGB1555)
         {
-            colorData = toRGB555(colorData);
+            result.imageData = data.imageData.pixels().convertData<Color::XRGB1555>();
         }
         else if (format == Color::Format::RGB565)
         {
-            colorData = toRGB565(colorData);
+            result.imageData = data.imageData.pixels().convertData<Color::RGB565>();
         }
-        return {data.index, data.fileName, temp.type(), {temp.size().width(), temp.size().height()}, DataType::Bitmap, format, {}, colorData, {}, Color::Format::Unknown, {}};
+        return result;
     }
 
     // ----------------------------------------------------------------------------
 
-    Data Processing::toUniqueTileMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::toUniqueTileMap(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toUniqueTileMap expects bitmaps as input data");
+        REQUIRE(data.dataType == DataType::Tilemap, std::runtime_error, "toUniqueTileMap expects tiles as input data");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "toUniqueTileMap expects a single bool detect flips parameter");
-        const auto detectFlips = std::get<bool>(parameters.front());
-        auto result = image;
-        auto screenAndTileMap = buildUniqueTileMap(image.data, image.size.width(), image.size.height(), bitsPerPixelForFormat(image.colorFormat), detectFlips);
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "toUniqueTileMap expects a bool detect flips parameter");
+        const auto detectFlips = VariantHelpers::getValue<bool, 0>(parameters);
+        auto result = data;
+        auto screenAndTileMap = buildUniqueTileMap(data.imageData.pixels(), data.size.width(), data.size.height(), detectFlips);
         result.mapData = screenAndTileMap.first;
-        result.data = screenAndTileMap.second;
+        result.imageData.pixels() = screenAndTileMap.second;
         result.dataType = DataType::Tilemap;
         return result;
     }
 
-    Data Processing::toTiles(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::toTiles(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toTiles expects bitmaps as input data");
-        auto result = image;
-        result.data = convertToTiles(image.data, image.size.width(), image.size.height(), bitsPerPixelForFormat(image.colorFormat));
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "toTiles expects bitmaps as input data");
+        auto result = data;
+        result.imageData.pixels() = convertToTiles(data.imageData.pixels(), data.size.width(), data.size.height());
         return result;
     }
 
-    Data Processing::toSprites(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::toSprites(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "toSprites expects bitmaps as input data");
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "toSprites expects bitmaps as input data");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "toSprites expects a single uint32_t sprite width parameter");
-        const auto spriteWidth = std::get<uint32_t>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "toSprites expects a uint32_t sprite width parameter");
+        const auto spriteWidth = VariantHelpers::getValue<uint32_t, 0>(parameters);
         // convert image to sprites
-        if (image.size.width() != spriteWidth)
+        if (data.size.width() != spriteWidth)
         {
-            auto result = image;
-            result.data = convertToWidth(image.data, result.size.width(), result.size.height(), bitsPerPixelForFormat(result.colorFormat), spriteWidth);
-            result.size = {spriteWidth, (result.size.width() * result.size.height()) / spriteWidth};
+            auto result = data;
+            result.imageData.pixels() = convertToWidth(data.imageData.pixels(), data.size.width(), data.size.height(), spriteWidth);
+            result.size = {spriteWidth, (data.size.width() * data.size.height()) / spriteWidth};
             return result;
         }
-        return image;
+        return data;
     }
 
-    Data Processing::addColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::addColor0(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "addColor0 expects bitmaps as input data");
-        REQUIRE(image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Adding a color can only be done for paletted images");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Adding a color can only be done for 8bit paletted images");
+        REQUIRE(data.imageData.colorMap().format() == Color::Format::XRGB8888, std::runtime_error, "Adding a color can only be done for RGB888 color maps");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<Magick::Color>(parameters.front()), std::runtime_error, "addColor0 expects a single Color parameter");
-        const auto color0 = std::get<Magick::Color>(parameters.front());
-        // checkl of space in color map
-        REQUIRE(image.colorMap.size() <= 255, std::runtime_error, "No space in color map (image has " << image.colorMap.size() << " colors)");
+        REQUIRE(VariantHelpers::hasTypes<Color::XRGB8888>(parameters), std::runtime_error, "addColor0 expects a RGB888 color parameter");
+        const auto color0 = VariantHelpers::getValue<Color::XRGB8888, 0>(parameters);
+        // check for space in color map
+        REQUIRE(data.imageData.colorMap().size() <= 255, std::runtime_error, "No space in color map (image has " << data.imageData.colorMap().size() << " colors)");
         // add color at front of color map
-        auto result = image;
-        result.data = incValuesBy1(image.data);
-        result.colorMap = addColorAtIndex0(image.colorMap, color0);
-        result.colorMapFormat = Color::Format::Unknown;
-        result.colorMapData = {};
+        auto result = data;
+        result.imageData.pixels().data<uint8_t>() = ImageHelpers::incValuesBy1(data.imageData.pixels().data<uint8_t>());
+        result.imageData.colorMap().data<Color::XRGB8888>() = ColorHelpers::addColorAtIndex0(data.imageData.colorMap().data<Color::XRGB8888>(), color0);
         return result;
     }
 
-    Data Processing::moveColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::moveColor0(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "moveColor0 expects bitmaps as input data");
-        REQUIRE(image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Moving a color can only be done for paletted images");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Moving a color can only be done for 8bit paletted images");
+        REQUIRE(data.imageData.colorMap().format() == Color::Format::XRGB8888, std::runtime_error, "Moving a color can only be done for RGB888 color maps");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<Color::XRGB8888>(parameters.front()), std::runtime_error, "moveColor0 expects a single Color parameter");
-        const auto color0 = std::get<Color::XRGB8888>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<Color::XRGB8888>(parameters), std::runtime_error, "moveColor0 expects a RGB888 color parameter");
+        const auto color0 = VariantHelpers::getValue<Color::XRGB8888, 0>(parameters);
         // try to find color in palette
-        auto oldColorIt = std::find(image.colorMap.begin(), image.colorMap.end(), color0);
-        REQUIRE(oldColorIt != image.colorMap.end(), std::runtime_error, "Color " << color0.toHex() << " not found in image color map");
-        const size_t oldIndex = std::distance(image.colorMap.begin(), oldColorIt);
+        auto colorMap = data.imageData.colorMap().data<Color::XRGB8888>();
+        auto oldColorIt = std::find(colorMap.begin(), colorMap.end(), color0);
+        REQUIRE(oldColorIt != colorMap.end(), std::runtime_error, "Color " << color0.toHex() << " not found in image color map");
+        const size_t oldIndex = std::distance(colorMap.begin(), oldColorIt);
         // check if index needs to move
         if (oldIndex != 0)
         {
-            auto result = image;
-            result.colorMapFormat = Color::Format::Unknown;
-            result.colorMapData = {};
-            // move index in color map and image data
-            std::swap(result.colorMap[oldIndex], result.colorMap[0]);
-            result.data = swapValueWith0(image.data, oldIndex);
+            auto result = data;
+            // move index in color map and pixel data
+            std::swap(colorMap[oldIndex], colorMap[0]);
+            result.imageData.colorMap().data<Color::XRGB8888>() = colorMap;
+            result.imageData.pixels().data<uint8_t>() = ImageHelpers::swapValueWith0(data.imageData.pixels().data<uint8_t>(), oldIndex);
             return result;
         }
-        return image;
+        return data;
     }
 
-    Data Processing::reorderColors(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::reorderColors(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "reorderColors expects bitmaps as input data");
-        REQUIRE(image.colorFormat == Color::Format::Paletted4 || image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Reordering colors can only be done for paletted images");
-        const auto newOrder = optimizeColorDistance(image.colorMap);
-        auto result = image;
-        result.data = swapValues(image.data, newOrder);
-        result.colorMap = swapColors(image.colorMap, newOrder);
-        result.colorMapFormat = Color::Format::Unknown;
-        result.colorMapData = {};
+        REQUIRE(data.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Reordering colors can only be done for 8bit paletted images");
+        REQUIRE(data.imageData.colorMap().format() == Color::Format::XRGB8888, std::runtime_error, "Reordering colors can only be done for RGB888 color maps");
+        const auto newOrder = ColorHelpers::optimizeColorDistance(data.imageData.colorMap().data<Color::XRGB8888>());
+        auto result = data;
+        result.imageData.pixels().data<uint8_t>() = ImageHelpers::swapValues(data.imageData.pixels().data<uint8_t>(), newOrder);
+        result.imageData.colorMap().data<Color::XRGB8888>() = ColorHelpers::swapColors(data.imageData.colorMap().data<Color::XRGB8888>(), newOrder);
         return result;
     }
 
-    Data Processing::shiftIndices(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::shiftIndices(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "shiftIndices expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Shifting indices can only be done for 8bit paletted images");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "shiftIndices expects a single uint32_t shift parameter");
-        const auto shiftBy = std::get<uint32_t>(parameters.front());
-        auto maxIndex = *std::max_element(image.data.cbegin(), image.data.cend());
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "shiftIndices expects a uint32_t shift parameter");
+        const auto shiftBy = VariantHelpers::getValue<uint32_t, 0>(parameters);
+        // find max. index value
+        auto &dataIndices = data.imageData.pixels().data<uint8_t>();
+        auto maxIndex = *std::max_element(dataIndices.cbegin(), dataIndices.cend());
         REQUIRE(maxIndex + shiftBy <= 255, std::runtime_error, "Max. index value in image is " << maxIndex << ", shift is " << shiftBy << "! Resulting index values would be > 255");
-        Data result = image;
-        std::for_each(result.data.begin(), result.data.end(), [shiftBy](auto &index)
+        // shift indices
+        Data result = data;
+        auto &resultIndices = result.imageData.pixels().data<uint8_t>();
+        std::for_each(resultIndices.begin(), resultIndices.end(), [shiftBy](auto &index)
                       { index = (index == 0) ? 0 : (((index + shiftBy) > 255) ? 255 : (index + shiftBy)); });
         return result;
     }
 
-    Data Processing::pruneIndices(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::pruneIndices(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "pruneIndices expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
+        REQUIRE(data.imageData.colorMap().size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "pruneIndices expects a single uint32_t bit depth parameter");
-        const auto bitDepth = std::get<uint32_t>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "pruneIndices expects a uint32_t bit depth parameter");
+        const auto bitDepth = VariantHelpers::getValue<uint32_t, 0>(parameters);
         REQUIRE(bitDepth == 1 || bitDepth == 2 || bitDepth == 4, std::runtime_error, "Bit depth must be in [1, 2, 4]");
-        REQUIRE(image.colorFormat == Color::Format::Paletted8, std::runtime_error, "Index pruning only possible for 8bit paletted images");
-        REQUIRE(image.colorMap.size() <= 16, std::runtime_error, "Index pruning only possible for images with <= 16 colors");
-        auto result = image;
-        uint8_t maxIndex = *std::max_element(image.data.cbegin(), image.data.cend());
+        auto result = data;
+        auto &indices = result.imageData.pixels().data<uint8_t>();
+        auto maxIndex = *std::max_element(indices.cbegin(), indices.cend());
         if (bitDepth == 1)
         {
             REQUIRE(maxIndex == 1, std::runtime_error, "Index pruning to 1 bit only possible with index data <= 1");
-            result.colorFormat = Color::Format::Paletted1;
-            result.data = convertDataTo1Bit(image.data);
+            result.imageData.pixels() = PixelData(ImageHelpers::convertDataTo1Bit(indices), Color::Format::Paletted1);
         }
         else if (bitDepth == 2)
         {
             REQUIRE(maxIndex < 4, std::runtime_error, "Index pruning to 2 bit only possible with index data <= 3");
-            result.colorFormat = Color::Format::Paletted2;
-            result.data = convertDataTo2Bit(image.data);
+            result.imageData.pixels() = PixelData(ImageHelpers::convertDataTo2Bit(indices), Color::Format::Paletted2);
         }
         else
         {
             REQUIRE(maxIndex < 16, std::runtime_error, "Index pruning to 4 bit only possible with index data <= 15");
-            result.colorFormat = Color::Format::Paletted4;
-            result.data = convertDataTo4Bit(image.data);
+            result.imageData.pixels() = PixelData(ImageHelpers::convertDataTo4Bit(indices), Color::Format::Paletted4);
         }
         return result;
     }
 
-    Data Processing::toDelta8(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::toDelta8(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        auto result = image;
-        result.data = deltaEncode(image.data);
+        auto result = data;
+        result.imageData.pixels() = PixelData(DataHelpers::deltaEncode(result.imageData.pixels().convertDataToRaw()), Color::Format::Unknown);
         return result;
     }
 
-    Data Processing::toDelta16(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::toDelta16(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        auto result = image;
-        result.data = convertTo<uint8_t>(deltaEncode(convertTo<uint16_t>(image.data)));
+        auto result = data;
+        result.imageData.pixels() = PixelData(DataHelpers::convertTo<uint8_t>(DataHelpers::deltaEncode(DataHelpers::convertTo<uint16_t>(result.imageData.pixels().convertDataToRaw()))), Color::Format::Unknown);
         return result;
     }
 
     // ----------------------------------------------------------------------------
 
-    Data Processing::compressLZ10(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::compressLZ10(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ10 expects a single bool VRAMcompatible parameter");
-        const auto vramCompatible = std::get<bool>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ10 expects a bool VRAMcompatible parameter");
+        const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
         // compress data
-        auto result = image;
-        result.data = Compression::compressLzss(image.data, vramCompatible, false);
+        auto result = data;
+        result.imageData.pixels() = PixelData(Compression::compressLzss(result.imageData.pixels().convertDataToRaw(), vramCompatible, false), Color::Format::Unknown);
         // result.data = LZSS::encodeLZSS(image.data, vramCompatible);
         return result;
     }
 
-    Data Processing::compressLZ11(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::compressLZ11(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressLZ11 expects a single bool VRAMcompatible parameter");
-        const auto vramCompatible = std::get<bool>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ11 expects a bool VRAMcompatible parameter");
+        const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
         // compress data
-        auto result = image;
-        result.data = Compression::compressLzss(image.data, vramCompatible, true);
+        auto result = data;
+        result.imageData.pixels() = PixelData(Compression::compressLzss(result.imageData.pixels().convertDataToRaw(), vramCompatible, true), Color::Format::Unknown);
         return result;
     }
 
-    Data Processing::compressRLE(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::compressRLE(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<bool>(parameters.front()), std::runtime_error, "compressRLE expects a single bool VRAMcompatible parameter");
-        const auto vramCompatible = std::get<bool>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressRLE expects a bool VRAMcompatible parameter");
+        const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
         // compress data
-        auto result = image;
+        auto result = data;
         // result.data = RLE::encodeRLE(image.data, vramCompatible);
         return result;
     }
 
-    Data Processing::compressDXTG(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::compressDXTG(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTG expects bitmaps as input data");
-        REQUIRE(image.colorFormat == Color::Format::XRGB8888 || image.colorFormat == Color::Format::XRGB1555, std::runtime_error, "DXTG compression is only possible for RGB888 and RGB555 truecolor images");
-        REQUIRE(image.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
-        REQUIRE(image.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
-        // convert RGB888 to RGB565
-        auto data = image.data;
-        if (image.colorFormat == Color::Format::RGB888)
-        {
-            data = toRGB555(data);
-        }
-        auto result = image;
-        result.colorFormat = Color::Format::XRGB1555;
-        result.mapData = {};
-        result.data = DXT::encodeDXTG(convertTo<uint16_t>(data), image.size.width(), image.size.height());
-        result.colorMap = {};
-        result.colorMapFormat = Color::Format::Unknown;
-        result.colorMapData = {};
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "compressDXTG expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "DXTG compression is only possible for RGB888 truecolor images");
+        REQUIRE(data.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXTG compression");
+        REQUIRE(data.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXTG compression");
+        // convert image using DXT compression
+        auto result = data;
+        auto compressedData = DXT::encodeDXTG(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height());
+        result.imageData.pixels() = PixelData(compressedData, Color::Format::Unknown);
         return result;
     }
 
-    Data Processing::compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
+    Data Processing::compressDXTV(const Data &data, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressDXTV expects bitmaps as input data");
-        REQUIRE(image.colorFormat == Color::Format::RGB888 || image.colorFormat == Color::Format::RGB555, std::runtime_error, "DXTV compression is only possible for RGB888 and RGB555 truecolor images");
-        REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXT compression");
-        REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXT compression");
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "compressDXTV expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "DXTV compression is only possible for RGB888 truecolor images");
+        REQUIRE(data.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
+        REQUIRE(data.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
         // get parameter(s)
-        REQUIRE(parameters.size() == 2, std::runtime_error, "compressDXTV expects 2 double parameters");
-        REQUIRE(std::holds_alternative<double>(parameters.at(0)), std::runtime_error, "compressDXTV keyframe interval must be a double");
-        auto keyFrameInterval = static_cast<int32_t>(std::get<double>(parameters.at(0)));
-        REQUIRE(keyFrameInterval >= 0 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [0,60] (0 = none)");
-        REQUIRE(std::holds_alternative<double>(parameters.at(1)), std::runtime_error, "compressDXTV max. block error must be a double");
-        auto maxBlockError = std::get<double>(parameters.at(1));
-        REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01,1]");
-        // convert RGB888 to RGB555
-        auto data = image.data;
-        if (image.colorFormat == Color::Format::RGB888)
-        {
-            data = toRGB555(data);
-        }
+        REQUIRE((VariantHelpers::hasTypes<double, double>(parameters)), std::runtime_error, "compressDXTV expects a double keyframe interval and a double max. block error parameter");
+        auto keyFrameInterval = static_cast<int32_t>(VariantHelpers::getValue<double, 0>(parameters));
+        REQUIRE(keyFrameInterval >= 0 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [0, 60] (0 = none)");
+        auto maxBlockError = VariantHelpers::getValue<double, 1>(parameters);
+        REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01, 1]");
         // check if needs to be a keyframe
-        const bool isKeyFrame = keyFrameInterval > 0 ? ((image.index % keyFrameInterval) == 0 || state.empty()) : false;
-        // compress data
-        auto result = image;
-        result.colorFormat = Color::Format::RGB555;
-        result.mapData = {};
-        auto dxtData = DXTV::encodeDXTV(convertTo<uint16_t>(data), state.empty() ? std::vector<uint16_t>() : convertTo<uint16_t>(state), image.size.width(), image.size.height(), isKeyFrame, maxBlockError);
-        result.data = dxtData.first;
-        result.colorMap = {};
-        result.colorMapFormat = Color::Format::Unknown;
-        result.colorMapData = {};
+        const bool isKeyFrame = keyFrameInterval > 0 ? ((data.index % keyFrameInterval) == 0 || state.empty()) : false;
+        // convert image using DXT compression
+        auto result = data;
+        auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
+        auto compressedData = DXTV::encodeDXTV(data.imageData.pixels().data<Color::XRGB8888>(), previousImage, data.size.width(), data.size.height(), isKeyFrame, maxBlockError);
+        result.imageData.pixels() = PixelData(compressedData.first, Color::Format::Unknown);
         // store decompressed image as state
-        state = convertTo<uint8_t>(dxtData.second);
+        state = DataHelpers::convertTo<uint8_t>(compressedData.second);
         // add statistics
         if (statistics != nullptr)
         {
-            statistics->addImage("DXTV output", state, result.colorFormat, result.size.width(), result.size.height());
+            statistics->addImage("DXTV output", state, Color::Format::XRGB8888, result.size.width(), result.size.height());
         }
         return result;
     }
 
-    Data Processing::compressGVID(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
+    Data Processing::compressGVID(const Data &data, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(image.dataType == DataType::Bitmap, std::runtime_error, "compressGVID expects bitmaps as input data");
-        REQUIRE(image.colorFormat == Color::Format::RGB888, std::runtime_error, "GVID compression is only possible for RGB888 truecolor images");
-        REQUIRE(image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for GVID compression");
-        REQUIRE(image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for GVID compression");
-        auto result = image;
-        result.colorFormat = Color::Format::RGB888;
-        result.mapData = {};
-        result.data = GVID::encodeGVID(image.data, image.size.width(), image.size.height(), true);
-        result.colorMap = {};
-        result.colorMapFormat = Color::Format::Unknown;
-        result.colorMapData = {};
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "compressGVID expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "GVID compression is only possible for RGB888 truecolor images");
+        REQUIRE(data.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for GVID compression");
+        REQUIRE(data.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for GVID compression");
+        auto result = data;
+        auto compressedData = GVID::encodeGVID(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height());
+        result.imageData.pixels() = PixelData(compressedData, Color::Format::Unknown);
         return result;
     }
 
@@ -460,20 +422,20 @@ namespace Image
     Data Processing::padPixelData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padPixelData expects a single uint32_t pad modulo parameter");
-        auto multipleOf = std::get<uint32_t>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "padPixelData expects a uint32_t pad modulo parameter");
+        auto multipleOf = VariantHelpers::getValue<uint32_t, 0>(parameters);
         // pad data
         auto result = image;
-        result.mapData = fillUpToMultipleOf(image.mapData, multipleOf / 2);
-        result.data = fillUpToMultipleOf(image.data, multipleOf);
+        result.mapData = DataHelpers::fillUpToMultipleOf(image.mapData, multipleOf / 2);
+        result.data = DataHelpers::fillUpToMultipleOf(image.data, multipleOf);
         return result;
     }
 
     Data Processing::padColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMap expects a single uint32_t pad modulo parameter");
-        auto multipleOf = std::get<uint32_t>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "padColorMap expects a uint32_t pad modulo parameter");
+        auto multipleOf = VariantHelpers::getValue<uint32_t, 0>(parameters);
         // pad data
         auto result = image;
         result.colorMap = fillUpToMultipleOf(image.colorMap, multipleOf);
@@ -482,26 +444,29 @@ namespace Image
         return result;
     }
 
-    Data Processing::convertColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::convertColorMap(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<Color::Format>(parameters.front()), std::runtime_error, "convertColorMap expects a single Color::Format parameter");
-        auto format = std::get<Color::Format>(parameters.front());
-        REQUIRE(format == Color::Format::RGB555 || format == Color::Format::RGB565 || format == Color::Format::RGB888, std::runtime_error, "convertColorMap expects 15, 16 or 24 bit color formats");
+        REQUIRE(VariantHelpers::hasTypes<Color::Format>(parameters), std::runtime_error, "convertColorMap expects a Color::Format parameter");
+        auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
+        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::RGB565 || format == Color::Format::XRGB8888, std::runtime_error, "convertColorMap can only convert to XRGB1555, RGB565 and XRGB8888");
+        // check if we need to convert
+        if (data.imageData.colorMap().format() == format)
+        {
+            return data;
+        }
         // convert colormap
-        auto result = image;
-        result.colorMapFormat = format;
-        result.colorMapData = {};
+        auto result = data;
         switch (format)
         {
-        case Color::Format::RGB555:
-            result.colorMapData = convertTo<uint8_t>(convertToBGR555(image.colorMap));
+        case Color::Format::XRGB1555:
+            result.imageData.colorMap() = PixelData(data.imageData.colorMap().convertData<Color::XRGB1555>(), Color::Format::XRGB1555);
             break;
         case Color::Format::RGB565:
-            result.colorMapData = convertTo<uint8_t>(convertToBGR565(image.colorMap));
+            result.imageData.colorMap() = PixelData(data.imageData.colorMap().convertData<Color::RGB565>(), Color::Format::RGB565);
             break;
-        case Color::Format::RGB888:
-            result.colorMapData = convertToBGR888(image.colorMap);
+        case Color::Format::XRGB8888:
+            result.imageData.colorMap() = PixelData(data.imageData.colorMap().convertData<Color::XRGB8888>(), Color::Format::XRGB8888);
             break;
         default:
             THROW(std::runtime_error, "Bad target color map format");
@@ -522,14 +487,15 @@ namespace Image
 
     std::vector<Data> Processing::equalizeColorMaps(const std::vector<Data> &images, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        auto allColorMapsSameSize = std::find_if_not(images.cbegin(), images.cend(), [refSize = images.front().colorMap.size()](const auto &img)
-                                                     { return img.colorMap.size() == refSize; }) == images.cend();
+        auto allColorMapsSameSize = std::find_if_not(images.cbegin(), images.cend(), [refSize = images.front().imageData.colorMap().size()](const auto &img)
+                                                     { return img.imageData.colorMap().size() == refSize; }) == images.cend();
         // padd data if necessary
         if (!allColorMapsSameSize)
         {
             uint32_t maxColorMapColors = std::max_element(images.cbegin(), images.cend(), [](const auto &imgA, const auto &imgB)
-                                                          { return imgA.colorMap.size() < imgB.colorMap.size(); })
-                                             ->colorMap.size();
+                                                          { return imgA.imageData.colorMap().size() < imgB.imageData.colorMap().size(); })
+                                             ->imageData.colorMap()
+                                             .size();
             std::vector<Data> result;
             std::transform(images.begin(), images.end(), std::back_inserter(result), [maxColorMapColors, statistics](auto &img)
                            { return padColorMap(img, {Parameter(maxColorMapColors)}, statistics); });
@@ -629,7 +595,7 @@ namespace Image
                 }
                 else if (std::holds_alternative<Color::Format>(p))
                 {
-                    result += Color::toString(std::get<Color::Format>(p));
+                    result += Color::formatInfo(std::get<Color::Format>(p)).name;
                     result += (pi < (step.parameters.size() - 1) ? " " : "");
                 }
                 else if (std::holds_alternative<std::string>(p))
@@ -643,60 +609,33 @@ namespace Image
         return result;
     }
 
-    Data prependProcessingInfo(const Data &img, uint32_t size, ProcessingType type, bool isFinal)
+    Data prependProcessingInfo(const Data &processedData, uint32_t originalSize, ProcessingType type, bool isFinal)
     {
-        REQUIRE(img.data.size() < (1 << 24), std::runtime_error, "Data size stored must be < 16MB");
+        auto rawData = processedData.imageData.pixels().convertDataToRaw();
+        REQUIRE(rawData.size() < (1 << 24), std::runtime_error, "Raw data size stored must be < 16MB");
         REQUIRE(static_cast<uint32_t>(type) <= 127, std::runtime_error, "Type value must be <= 127");
-        const uint32_t sizeAndType = ((size & 0xFFFFFF) << 8) | ((static_cast<uint32_t>(type) & 0x7F) | (isFinal ? static_cast<uint32_t>(ProcessingTypeFinal) : 0));
-        auto result = img;
-        result.data = prependValue(img.data, sizeAndType);
+        const uint32_t sizeAndType = ((originalSize & 0xFFFFFF) << 8) | ((static_cast<uint32_t>(type) & 0x7F) | (isFinal ? static_cast<uint32_t>(ProcessingTypeFinal) : 0));
+        auto result = processedData;
+        result.imageData.pixels() = PixelData(DataHelpers::prependValue(rawData, sizeAndType), Color::Format::Unknown);
         return result;
     }
 
     std::vector<Data> Processing::processBatch(const std::vector<Data> &data)
     {
         REQUIRE(data.size() > 0, std::runtime_error, "Empty data passed to processing");
-        const auto firstFunctionType = ProcessingFunctions.find(m_steps.front().type)->second.type;
-        REQUIRE(firstFunctionType == OperationType::Input || firstFunctionType == OperationType::BatchInput, std::runtime_error, "First step must be an input step");
-        bool finalStepFound = false;
         std::vector<Data> processed;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
             auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
             // check if this was the final processing step (first non-input processing)
-            const bool isInputStep = stepFunc.type == OperationType::Input || stepFunc.type == OperationType::BatchInput;
-            bool isFinalStep = false;
-            if (!finalStepFound)
-            {
-                isFinalStep = !isInputStep;
-                finalStepFound = isFinalStep;
-            }
-            if (stepFunc.type == OperationType::Input)
-            {
-                REQUIRE(processed.empty(), std::runtime_error, "Only a single input step allowed");
-                auto inputFunc = std::get<InputFunc>(stepFunc.func);
-                uint32_t index = 0;
-                for (const auto &d : data)
-                {
-                    auto data = inputFunc(d, stepIt->parameters, stepStatistics);
-                    processed.push_back(data);
-                }
-            }
-            else if (stepFunc.type == OperationType::BatchInput)
-            {
-                REQUIRE(processed.empty(), std::runtime_error, "Only a single input step allowed");
-                auto inputFunc = std::get<BatchInputFunc>(stepFunc.func);
-                processed = inputFunc(data, stepIt->parameters, stepStatistics);
-                std::for_each(processed.begin(), processed.end(), [index = 0](auto &p) mutable
-                              { p.index = index++; });
-            }
-            else if (stepFunc.type == OperationType::Convert)
+            const bool isFinalStep = std::next(stepIt) == m_steps.end();
+            if (stepFunc.type == OperationType::Convert)
             {
                 auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
                 for (auto &img : processed)
                 {
-                    const uint32_t inputSize = img.data.size();
+                    const auto inputSize = img.data.size();
                     img = convertFunc(img, stepIt->parameters, stepStatistics);
                     if (stepIt->prependProcessingInfo)
                     {
@@ -704,7 +643,7 @@ namespace Image
                     }
                     // record max. memory needed for everything, but the first step
                     auto chunkMemoryNeeded = img.data.size() + sizeof(uint32_t);
-                    img.maxMemoryNeeded = (!isInputStep && img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
+                    img.maxMemoryNeeded = (img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
                 }
             }
             else if (stepFunc.type == OperationType::ConvertState)
@@ -720,7 +659,7 @@ namespace Image
                     }
                     // record max. memory needed for everything, but the first step
                     auto chunkMemoryNeeded = img.data.size() + sizeof(uint32_t);
-                    img.maxMemoryNeeded = (!isInputStep && img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
+                    img.maxMemoryNeeded = (img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
                 }
             }
             else if (stepFunc.type == OperationType::BatchConvert)
@@ -740,7 +679,7 @@ namespace Image
                     }
                     // record max. memory needed for everything, but the first step
                     auto chunkMemoryNeeded = pIt->data.size() + sizeof(uint32_t);
-                    pIt->maxMemoryNeeded = (!isInputStep && pIt->maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : pIt->maxMemoryNeeded;
+                    pIt->maxMemoryNeeded = (pIt->maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : pIt->maxMemoryNeeded;
                 }
             }
             else if (stepFunc.type == OperationType::Reduce)
@@ -754,20 +693,13 @@ namespace Image
 
     Data Processing::processStream(const Data &image)
     {
-        REQUIRE(ProcessingFunctions.find(m_steps.front().type)->second.type == OperationType::Input, std::runtime_error, "First step must be an input step");
-        bool finalStepFound = false;
         Data processed;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
             const uint32_t inputSize = processed.data.size();
             auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
-            if (stepFunc.type == OperationType::Input)
-            {
-                auto inputFunc = std::get<InputFunc>(stepFunc.func);
-                processed = inputFunc(image, stepIt->parameters, stepStatistics);
-            }
-            else if (stepFunc.type == OperationType::Convert)
+            if (stepFunc.type == OperationType::Convert)
             {
                 auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
                 processed = convertFunc(processed, stepIt->parameters, stepStatistics);
@@ -777,21 +709,16 @@ namespace Image
                 auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
                 processed = convertFunc(processed, stepIt->parameters, stepIt->state, stepStatistics);
             }
-            // check if this was the final processing step (first non-input processing)
-            bool isFinalStep = false;
-            if (!finalStepFound)
-            {
-                isFinalStep = stepFunc.type != OperationType::Input;
-                finalStepFound = isFinalStep;
-            }
             // we're silently ignoring OperationType::BatchInput ::BatchConvert and ::Reduce operations here
             if (stepIt->prependProcessingInfo)
             {
+                // check if this was the final processing step (first non-input processing)
+                const bool isFinalStep = std::next(stepIt) == m_steps.end();
                 processed = prependProcessingInfo(processed, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
             }
             // record max. memory needed for everything, but the first step
             auto chunkMemoryNeeded = processed.imageData.size() + sizeof(uint32_t);
-            processed.maxMemoryNeeded = (stepFunc.type != OperationType::Input && processed.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.maxMemoryNeeded;
+            processed.maxMemoryNeeded = (processed.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.maxMemoryNeeded;
         }
         return processed;
     }
