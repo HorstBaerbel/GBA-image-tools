@@ -187,7 +187,7 @@ namespace Image
                               { if constexpr(std::is_same<decltype(arg), std::monostate>()) {
                                  return std::size_t(0);
                                }
-                               else { return arg.size() * sizeof(decltype(arg)::value_type); } },
+                               else { return arg.size() * sizeof(typename decltype(arg)::value_type); } },
                               m_data);
         }
 
