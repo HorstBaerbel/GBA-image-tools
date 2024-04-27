@@ -26,16 +26,16 @@ namespace Image
             const auto allDataSameSize = std::find_if_not(temp8.cbegin(), temp8.cend(), [refSize = temp8.front().size()](const auto &d)
                                                           { return d.size() == refSize; }) == temp8.cend();
             REQUIRE(allDataSameSize, std::runtime_error, "The image pixel data size of all images must be the same for interleaving");
-            return {convertTo<OUT_TYPE>(interleave(temp8, Color::formatInfo(images.front().imageData.pixels().format()).bitsPerPixel)), std::vector<uint32_t>()};
+            return {DataHelpers::convertTo<OUT_TYPE>(DataHelpers::interleave(temp8, Color::formatInfo(images.front().imageData.pixels().format()).bitsPerPixel)), std::vector<uint32_t>()};
         }
         else
         {
-            auto startIndices = getStartIndices(temp8);
+            auto startIndices = DataHelpers::getStartIndices(temp8);
             for (auto index : startIndices)
             {
                 REQUIRE(index % sizeof(OUT_TYPE) == 0, std::runtime_error, "The image pixel data size of all images must be evenly dividable by " << sizeof(OUT_TYPE) / sizeof(uint8_t));
             }
-            return {combineTo<OUT_TYPE>(temp8), divideBy<uint32_t>(startIndices, sizeof(OUT_TYPE) / sizeof(uint8_t))};
+            return {DataHelpers::combineTo<OUT_TYPE>(temp8), DataHelpers::divideBy<uint32_t>(startIndices, sizeof(OUT_TYPE) / sizeof(uint8_t))};
         }
     }
 
@@ -46,13 +46,13 @@ namespace Image
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
-                       { return convertTo<uint8_t>(img.mapData); });
-        auto startIndices = getStartIndices(temp8);
+                       { return DataHelpers::convertTo<uint8_t>(img.mapData); });
+        auto startIndices = DataHelpers::getStartIndices(temp8);
         for (auto index : startIndices)
         {
             REQUIRE(index % sizeof(OUT_TYPE) == 0, std::runtime_error, "The image map data size of all images must be evenly dividable by " << sizeof(OUT_TYPE) / sizeof(uint8_t));
         }
-        return {combineTo<OUT_TYPE>(temp8), divideBy<uint32_t>(getStartIndices(temp8), sizeof(OUT_TYPE) / sizeof(uint8_t))};
+        return {DataHelpers::combineTo<OUT_TYPE>(temp8), DataHelpers::divideBy<uint32_t>(DataHelpers::getStartIndices(temp8), sizeof(OUT_TYPE) / sizeof(uint8_t))};
     }
 
     /// @brief Combine the raw image color map data of all images and return the data and the start indices into that data.
@@ -63,12 +63,12 @@ namespace Image
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
                        { return img.imageData.colorMap().convertDataToRaw(); });
-        auto startIndices = getStartIndices(temp8);
+        auto startIndices = DataHelpers::getStartIndices(temp8);
         for (auto index : startIndices)
         {
             REQUIRE(index % sizeof(OUT_TYPE) == 0, std::runtime_error, "The image pixel data size of all images must be evenly dividable by " << sizeof(OUT_TYPE) / sizeof(uint8_t));
         }
-        return {combineTo<OUT_TYPE>(temp8), divideBy<uint32_t>(startIndices, sizeof(OUT_TYPE) / sizeof(uint8_t))};
+        return {DataHelpers::combineTo<OUT_TYPE>(temp8), DataHelpers::divideBy<uint32_t>(startIndices, sizeof(OUT_TYPE) / sizeof(uint8_t))};
     }
 
 }
