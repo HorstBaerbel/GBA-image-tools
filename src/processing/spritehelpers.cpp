@@ -122,7 +122,7 @@ namespace Image
             for (int32_t x = 0; x < columns; x++, ++src0)
             {
                 auto p = primes[pi++ % (primes.size() - 1)];
-                hash[0] = hashPixel(src0, hash[0], p);
+                hash[0] = hashPixel<pixel_type>(src0, hash[0], p);
             }
         }
         if (hashFlips)
@@ -135,7 +135,7 @@ namespace Image
                 for (int32_t x = columns - 1; x >= 0; x--, --src1)
                 {
                     auto p = primes[pi++ % (primes.size() - 1)];
-                    hash[1] = hashPixel(src1, hash[1], p);
+                    hash[1] = hashPixel<pixel_type>(src1, hash[1], p);
                 }
             }
             // hash flipped vertically
@@ -146,7 +146,7 @@ namespace Image
                 for (int32_t x = 0; x < columns; x++, ++src2)
                 {
                     auto p = primes[pi++ % (primes.size() - 1)];
-                    hash[2] = hashPixel(src2, hash[2], p);
+                    hash[2] = hashPixel<pixel_type>(src2, hash[2], p);
                 }
             }
             // hash flipped both ways
@@ -157,7 +157,7 @@ namespace Image
                 for (int32_t x = columns - 1; x >= 0; x--, --src3)
                 {
                     auto p = primes[pi++ % (primes.size() - 1)];
-                    hash[3] = hashPixel(src3, hash[3], p);
+                    hash[3] = hashPixel<pixel_type>(src3, hash[3], p);
                 }
             }
         }
@@ -180,7 +180,7 @@ namespace Image
         for (uint32_t tileIndex = 0; tileIndex < dstScreen.size(); tileIndex++)
         {
             // hash tile pixel block
-            auto tileHash = hashTileBlock(srcIt, tileWidth, tileHeight, detectFlips);
+            auto tileHash = hashTileBlock<pixel_type>(srcIt, tileWidth, tileHeight, detectFlips);
             // check if tile pixel hash can be found in one of the hash maps
             if (auto tileIt = dstTileHashes.find(tileHash[0]); tileIt != dstTileHashes.cend())
             {
