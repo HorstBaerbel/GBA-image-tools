@@ -27,7 +27,7 @@ public:
     /// @brief Destruktor. Calls close()
     ~VideoReader();
 
-    /// @brief Open FFmpeg reader on a file so you can later getFrame() from it
+    /// @brief Open FFmpeg reader on a file so you can later readFrame() from it
     /// @throw Throws a std::runtime_errror if anything goes wrong
     auto open(const std::string &filePath) -> void;
 

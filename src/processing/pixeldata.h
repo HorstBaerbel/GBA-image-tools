@@ -68,7 +68,7 @@ namespace Image
         auto data() const -> const std::vector<T> &
         {
             REQUIRE(std::holds_alternative<std::vector<T>>(m_data), std::runtime_error, "Can't get data in different format");
-            return std::get<const std::vector<T>>(m_data);
+            return std::get<std::vector<T>>(m_data);
         }
 
         template <typename T>

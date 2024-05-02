@@ -575,7 +575,7 @@ auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB
     }
     // copy DXT blocks to compressedData
     std::copy(state.data.cbegin(), state.data.cend(), std::back_inserter(compressedData));
-    compressedData = fillUpToMultipleOf(compressedData, 4);
+    compressedData = DataHelpers::fillUpToMultipleOf(compressedData, 4);
     assert((compressedData.size() % 4) == 0);
     // convert current frame / codebook back to store as decompressed frame
     return std::make_pair(compressedData, image);

@@ -51,7 +51,7 @@ namespace Image
             {ProcessingType::ConvertColorMap, {"convert color map", OperationType::Convert, FunctionType(convertColorMap)}},
             {ProcessingType::PadColorMapData, {"pad color map data", OperationType::Convert, FunctionType(padColorMapData)}},
             {ProcessingType::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
-            {ProcessingType::DeltaImage, {"image diff", OperationType::ConvertState, FunctionType(imageDiff)}}};
+            {ProcessingType::DeltaImage, {"pixel diff", OperationType::ConvertState, FunctionType(pixelDiff)}}};
 
     Data Processing::toBlackWhite(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
@@ -148,6 +148,7 @@ namespace Image
                            REQUIRE(r.imageData.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted return image");
                            // auto dumpPath = std::filesystem::current_path() / "result" / (std::to_string(d.index) + ".png");
                            // temp.write(dumpPath.c_str());
+                           return r;
                        });
         return result;
     }
@@ -170,6 +171,14 @@ namespace Image
         {
             result.imageData = data.imageData.pixels().convertData<Color::RGB565>();
         }
+        return result;
+    }
+
+    Data Processing::toRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    {
+        auto result = data;
+        result.imageData.pixels() = PixelData(result.imageData.pixels().convertDataToRaw(), Color::Format::Unknown);
+        result.imageData.colorMap() = PixelData(result.imageData.colorMap().convertDataToRaw(), Color::Format::Unknown);
         return result;
     }
 
@@ -419,28 +428,27 @@ namespace Image
 
     // ----------------------------------------------------------------------------
 
-    Data Processing::padPixelData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::padPixelData(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
+        REQUIRE(data.imageData.pixels().isRaw(), std::runtime_error, "Pixel data padding is only possible for raw data");
         // get parameter(s)
         REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "padPixelData expects a uint32_t pad modulo parameter");
         auto multipleOf = VariantHelpers::getValue<uint32_t, 0>(parameters);
-        // pad data
-        auto result = image;
-        result.mapData = DataHelpers::fillUpToMultipleOf(image.mapData, multipleOf / 2);
-        result.data = DataHelpers::fillUpToMultipleOf(image.data, multipleOf);
+        // pad pixel data
+        auto result = data;
+        result.imageData.pixels() = PixelData(DataHelpers::fillUpToMultipleOf(data.imageData.pixels().convertDataToRaw(), multipleOf), Color::Format::Unknown);
         return result;
     }
 
-    Data Processing::padColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::padMapData(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
+        REQUIRE(!data.mapData.empty(), std::runtime_error, "Map data can not be empty");
         // get parameter(s)
-        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "padColorMap expects a uint32_t pad modulo parameter");
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "padMapData expects a uint32_t pad modulo parameter");
         auto multipleOf = VariantHelpers::getValue<uint32_t, 0>(parameters);
-        // pad data
-        auto result = image;
-        result.colorMap = fillUpToMultipleOf(image.colorMap, multipleOf);
-        result.colorMapFormat = Color::Format::Unknown;
-        result.colorMapData = {};
+        // pad map data
+        auto result = data;
+        result.mapData = DataHelpers::fillUpToMultipleOf(data.mapData, multipleOf);
         return result;
     }
 
@@ -474,14 +482,34 @@ namespace Image
         return result;
     }
 
-    Data Processing::padColorMapData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::padColorMap(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
+        // get parameter(s)
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "padColorMap expects a uint32_t pad modulo parameter");
+        auto multipleOf = VariantHelpers::getValue<uint32_t, 0>(parameters);
+        // pad data
+        auto result = data;
+        result.imageData.colorMap() = std::visit([multipleOf, format = data.imageData.colorMap().format()](auto colorMap) -> PixelData
+                                                 { 
+                using T = std::decay_t<decltype(colorMap)>;
+                if constexpr (std::is_same<T, std::vector<Color::XRGB1555>>() || std::is_same<T, std::vector<Color::RGB565>>() || std::is_same<T, std::vector<Color::XRGB8888>>())
+                {
+                    return PixelData(DataHelpers::fillUpToMultipleOf(colorMap, multipleOf), format);
+                }
+                THROW(std::runtime_error, "Color format must be XRGB1555, RGB565 or XRGB8888"); },
+                                                 data.imageData.colorMap().storage());
+        return result;
+    }
+
+    Data Processing::padColorMapData(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    {
+        REQUIRE(data.imageData.pixels().isRaw(), std::runtime_error, "Color map data padding is only possible for raw data");
         // get parameter(s)
         REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMapData expects a single uint32_t pad modulo parameter");
         auto multipleOf = std::get<uint32_t>(parameters.front());
         // pad raw color map data
-        auto result = image;
-        result.colorMapData = fillUpToMultipleOf(image.colorMapData, multipleOf);
+        auto result = data;
+        result.imageData.colorMap() = PixelData(DataHelpers::fillUpToMultipleOf(data.imageData.colorMap().convertDataToRaw(), multipleOf), Color::Format::Unknown);
         return result;
     }
 
@@ -489,7 +517,7 @@ namespace Image
     {
         auto allColorMapsSameSize = std::find_if_not(images.cbegin(), images.cend(), [refSize = images.front().imageData.colorMap().size()](const auto &img)
                                                      { return img.imageData.colorMap().size() == refSize; }) == images.cend();
-        // padd data if necessary
+        // pad color map if necessary
         if (!allColorMapsSameSize)
         {
             uint32_t maxColorMapColors = std::max_element(images.cbegin(), images.cend(), [](const auto &imgA, const auto &imgB)
@@ -504,28 +532,46 @@ namespace Image
         return images;
     }
 
-    Data Processing::imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
+    Data Processing::pixelDiff(const Data &data, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics)
     {
         // check if a usable state was passed
         if (!state.empty())
         {
-            // ok. calculate difference
-            REQUIRE(image.data.size() == state.size(), std::runtime_error, "Images must have the same size");
-            std::vector<uint8_t> diff(image.data.size());
-            for (std::size_t i = 0; i < image.data.size(); i++)
-            {
-                diff[i] = state[i] - image.data[i];
-            }
-            // set current image to state
-            state = image.data;
-            auto result = image;
-            result.data = diff;
+            auto result = data;
+            // calculate difference and set state
+            result.imageData.pixels() = std::visit([&state, format = data.imageData.pixels().format()](auto currentPixels) -> PixelData
+                                                   { 
+                using T = std::decay_t<decltype(currentPixels)>;
+                if constexpr(std::is_same<T, std::vector<uint8_t>>())
+                {
+                    auto & prevPixels = state;
+                    std::vector<uint8_t> diff(currentPixels.size());
+                    for (std::size_t i = 0; i < currentPixels.size(); i++)
+                    {
+                        diff[i] = prevPixels[i] - currentPixels[i];
+                    }
+                    state = diff;
+                    return PixelData(diff, format);
+                }
+                else if constexpr (std::is_same<T, std::vector<Color::XRGB1555>>() || std::is_same<T, std::vector<Color::RGB565>>() || std::is_same<T, std::vector<Color::XRGB8888>>())
+                {
+                    auto prevPixels = DataHelpers::convertTo<typename T::value_type::pixel_type>(state);
+                    std::vector<typename T::value_type::pixel_type> diff(currentPixels.size());
+                    for (std::size_t i = 0; i < currentPixels.size(); i++)
+                    {
+                        diff[i] = prevPixels[i] - typename T::value_type::pixel_type(currentPixels[i]);
+                    }
+                    state = DataHelpers::convertTo<uint8_t>(diff);
+                    return PixelData(DataHelpers::convertTo<typename T::value_type>(diff), format);
+                }
+                THROW(std::runtime_error, "Color format must be Paletted8, XRGB1555, RGB565 or XRGB8888"); },
+                                                   data.imageData.pixels().storage());
             return result;
         }
         // set current image to state
-        state = image.data;
+        state = data.imageData.pixels().convertDataToRaw();
         // no state, return input data
-        return image;
+        return data;
     }
 
     void Processing::setStatisticsContainer(Statistics::Container::SPtr c)
@@ -635,14 +681,14 @@ namespace Image
                 auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
                 for (auto &img : processed)
                 {
-                    const auto inputSize = img.data.size();
+                    const auto inputSize = img.imageData.pixels().size();
                     img = convertFunc(img, stepIt->parameters, stepStatistics);
                     if (stepIt->prependProcessingInfo)
                     {
                         img = prependProcessingInfo(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
                     }
                     // record max. memory needed for everything, but the first step
-                    auto chunkMemoryNeeded = img.data.size() + sizeof(uint32_t);
+                    auto chunkMemoryNeeded = img.imageData.pixels().size() + sizeof(uint32_t);
                     img.maxMemoryNeeded = (img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
                 }
             }
@@ -651,14 +697,14 @@ namespace Image
                 auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
                 for (auto &img : processed)
                 {
-                    const uint32_t inputSize = img.data.size();
+                    const uint32_t inputSize = img.imageData.pixels().size();
                     img = convertFunc(img, stepIt->parameters, stepIt->state, stepStatistics);
                     if (stepIt->prependProcessingInfo)
                     {
                         img = prependProcessingInfo(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
                     }
                     // record max. memory needed for everything, but the first step
-                    auto chunkMemoryNeeded = img.data.size() + sizeof(uint32_t);
+                    auto chunkMemoryNeeded = img.imageData.pixels().size() + sizeof(uint32_t);
                     img.maxMemoryNeeded = (img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
                 }
             }
@@ -667,7 +713,7 @@ namespace Image
                 // get all input sizes
                 std::vector<uint32_t> inputSizes = {};
                 std::transform(processed.cbegin(), processed.cend(), std::back_inserter(inputSizes), [](const auto &d)
-                               { return d.data.size(); });
+                               { return d.imageData.pixels().size(); });
                 auto batchFunc = std::get<BatchConvertFunc>(stepFunc.func);
                 processed = batchFunc(processed, stepIt->parameters, stepStatistics);
                 for (auto pIt = processed.begin(); pIt != processed.end(); pIt++)
@@ -678,7 +724,7 @@ namespace Image
                         *pIt = prependProcessingInfo(*pIt, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
                     }
                     // record max. memory needed for everything, but the first step
-                    auto chunkMemoryNeeded = pIt->data.size() + sizeof(uint32_t);
+                    auto chunkMemoryNeeded = pIt->imageData.pixels().size() + sizeof(uint32_t);
                     pIt->maxMemoryNeeded = (pIt->maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : pIt->maxMemoryNeeded;
                 }
             }
@@ -696,7 +742,7 @@ namespace Image
         Data processed;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
-            const uint32_t inputSize = processed.data.size();
+            const uint32_t inputSize = processed.imageData.pixels().size();
             auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
             if (stepFunc.type == OperationType::Convert)
@@ -717,7 +763,7 @@ namespace Image
                 processed = prependProcessingInfo(processed, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
             }
             // record max. memory needed for everything, but the first step
-            auto chunkMemoryNeeded = processed.imageData.size() + sizeof(uint32_t);
+            auto chunkMemoryNeeded = processed.imageData.pixels().size() + sizeof(uint32_t);
             processed.maxMemoryNeeded = (processed.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.maxMemoryNeeded;
         }
         return processed;

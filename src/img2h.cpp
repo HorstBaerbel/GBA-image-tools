@@ -324,7 +324,6 @@ int main(int argc, const char *argv[])
                 processing.addStep(Image::ProcessingType::EqualizeColorMaps, {});
             }
             processing.addStep(Image::ProcessingType::ConvertColorMap, {options.colorformat.value});
-            processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.pruneIndices)
         {
@@ -342,6 +341,9 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::BuildTileMap, {options.tilemap.value});
         }
+        // convert to raw data
+        processing.addStep(Image::ProcessingType::ConvertPixelDataToRaw, {});
+        processing.addStep(Image::ProcessingType::ConvertColorMapDataToRaw, {});
         if (options.delta8)
         {
             processing.addStep(Image::ProcessingType::ConvertDelta8, {});
@@ -362,7 +364,12 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::CompressLZ11, {options.vram.isSet});
         }
+        // padd data
         processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)}, {});
+        if (options.paletted || options.commonPalette)
+        {
+            processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
+        }
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << (options.interleavePixels ? ", interleave pixels" : "") << std::endl;

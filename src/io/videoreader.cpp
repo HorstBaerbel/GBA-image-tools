@@ -167,12 +167,14 @@ auto VideoReader::readFrame() const -> std::vector<uint32_t>
         auto receiveResult = avcodec_receive_frame(m_state->codecContext, m_state->frame);
         if (receiveResult == AVERROR_EOF)
         {
+            // end of video file encountered
             avcodec_flush_buffers(m_state->codecContext);
             av_packet_unref(m_state->packet);
             return {};
         }
         else if (receiveResult == AVERROR(EAGAIN))
         {
+            // decoder is busy. try again
             av_packet_unref(m_state->packet);
             continue;
         }

@@ -85,6 +85,10 @@ namespace Image
         /// @return Returns data as XRGB1555, RGB565 or XRGB8888
         static Data toTruecolor(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
+        /// @brief Convert input image and color map to uint8_t raw data stream
+        /// @return Returns image and color map data in uint8_t format
+        static Data toRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+
         // --- data conversion functions ------------------------------------
 
         /// @brief Store optimized tile and screen map. Only max. 1024 unique tiles allowed!
@@ -171,9 +175,13 @@ namespace Image
 
         // --- misc conversion functions ------------------------------------------------------------------------
 
-        /// @brief Fill up map and image data with 0s to a multiple of N bytes
-        /// @param parameters "Modulo value" as uint32_t. The mapData and data will be padded to a multiple of this
+        /// @brief Fill up pixel data with 0s to a multiple of N bytes
+        /// @param parameters "Modulo value" as uint32_t. The pixel data will be padded to a multiple of this
         static Data padPixelData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+
+        /// @brief Fill up map data with 0s to a multiple of N bytes
+        /// @param parameters "Modulo value" as uint32_t. The map data will be padded to a multiple of this
+        static Data padMapData(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Fill up color map with 0s to a multiple of N colors
         /// @param parameters "Modulo value" as uint32_t. The color map will be padded to a multiple of this
@@ -193,7 +201,7 @@ namespace Image
         /// @brief Calcuate pixel-difference to previous image
         /// @param parameters Unused
         /// @param state Previous image as Data
-        static Data imageDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics);
+        static Data pixelDiff(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Container::SPtr statistics);
 
     private:
         struct ProcessingStep

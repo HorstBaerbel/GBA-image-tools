@@ -22,7 +22,7 @@ namespace ColorHelpers
     auto optimizeColorDistance(const std::vector<T> &colors) -> std::vector<uint8_t>
     {
         // convert all colors to LCh color space
-        std::vector<T> lchColors;
+        std::vector<Color::LChf> lchColors;
         std::transform(colors.cbegin(), colors.cend(), std::back_inserter(lchColors), [](const auto &c)
                        { return convertTo<Color::LChf>(c); });
         // build map with color distance for all possible combinations from palette
@@ -33,7 +33,7 @@ namespace ColorHelpers
             std::vector<float> distances;
             for (const auto &b : lchColors)
             {
-                distances.push_back(distance(a, b));
+                distances.push_back(Color::LChf::distance(a, b));
             }
             distancesSqrMap[i] = distances;
         }

@@ -146,10 +146,10 @@ auto GVID::encodeGVID(const std::vector<Color::XRGB8888> &image, uint32_t width,
             auto cIt = colors.begin();
             for (int by = 0; by < 4; by++)
             {
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
-                *cIt++ = Color::convertTo<Color::YCgCoRf>(pixels++);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(*pixels++);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(*pixels++);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(*pixels++);
+                *cIt++ = Color::convertTo<Color::YCgCoRf>(*pixels++);
                 pixels += pixelsPerScanline - 4;
             }
             // convert block to codebook
