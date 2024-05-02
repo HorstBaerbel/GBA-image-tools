@@ -6,6 +6,8 @@
 #include <random>
 #include <vector>
 
+using namespace DataHelpers;
+
 TEST_SUITE("Data helpers")
 
 TEST_CASE("fillUpToMultipleOf")

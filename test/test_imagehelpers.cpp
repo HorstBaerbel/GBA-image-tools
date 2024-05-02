@@ -6,6 +6,8 @@
 #include <random>
 #include <vector>
 
+using namespace ImageHelpers;
+
 TEST_SUITE("Image helpers")
 
 TEST_CASE("convertDataTo1Bit")
