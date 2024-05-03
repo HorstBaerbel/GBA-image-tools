@@ -45,7 +45,7 @@ namespace Color
         {
             return colors;
         }
-        std::vector<T_OUT> result;
+        std::vector<T_OUT> result(colors.size());
         std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
                        { return convertTo<T_OUT>(c); });
         return result;
