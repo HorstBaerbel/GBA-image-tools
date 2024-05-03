@@ -17,19 +17,12 @@ namespace Ui
         SDLWindow(uint32_t width, uint32_t height);
         ~SDLWindow();
 
-        auto displayImageXRGB8888(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) -> void override;
-        auto displayImageXRGB1555(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) -> void override;
+        auto displayImage(const std::vector<uint8_t> &image, ColorFormat format, uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) -> void override;
 
     private:
-        enum class ColorFormat
-        {
-            FormatXRGB8888,
-            FormatXRGB1555
-        };
-
         struct DisplayImage
         {
-            ColorFormat format = ColorFormat::FormatXRGB8888;
+            ColorFormat format = ColorFormat::Unknown;
             std::vector<uint8_t> image;
             uint32_t width = 0;
             uint32_t height = 0;

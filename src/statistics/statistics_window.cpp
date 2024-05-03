@@ -21,12 +21,17 @@ namespace Statistics
             const auto &data = image.second;
             switch (data.colorFormat)
             {
-            case Color::Format::XRGB8888:
-                displayImageXRGB8888(data.image, data.width, data.height);
-                break;
             case Color::Format::XRGB1555:
-                displayImageXRGB1555(data.image, data.width, data.height);
+                displayImage(data.image, Ui::ColorFormat::XRGB1555, data.width, data.height);
                 break;
+            case Color::Format::RGB565:
+                displayImage(data.image, Ui::ColorFormat::RGB565, data.width, data.height);
+                break;
+            case Color::Format::XRGB8888:
+                displayImage(data.image, Ui::ColorFormat::XRGB8888, data.width, data.height);
+                break;
+            default:
+                THROW(std::runtime_error, "Unsupported color format");
             }
         }
     }

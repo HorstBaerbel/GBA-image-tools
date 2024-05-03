@@ -86,11 +86,14 @@ namespace Ui
                             const auto &data = std::get<DisplayImage>(eventData);
                             switch (data.format)
                             {
-                            case ColorFormat::FormatXRGB8888:
-                                surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 24, SDL_PIXELFORMAT_RGB24);
-                                break;
-                            case ColorFormat::FormatXRGB1555:
+                            case ColorFormat::XRGB1555:
                                 surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 15, SDL_PIXELFORMAT_RGB555);
+                                break;
+                            case ColorFormat::RGB565:
+                                surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 16, SDL_PIXELFORMAT_RGB565);
+                                break;
+                            case ColorFormat::XRGB8888:
+                                surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 32, SDL_PIXELFORMAT_XRGB8888);
                                 break;
                             }
                             if (surface == nullptr)
@@ -125,31 +128,13 @@ namespace Ui
         return 0;
     }
 
-    auto SDLWindow::displayImageXRGB8888(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
+    auto SDLWindow::displayImage(const std::vector<uint8_t> &image, ColorFormat format, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
     {
         if (!m_quit)
         {
             // copy data to thread event queue
             SDL_LockMutex(m_mutex);
-            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatXRGB8888, image, width, height, x, y});
-            SDL_UnlockMutex(m_mutex);
-            // notify SDL thread about event
-            SDL_Event e;
-            e.type = SDL_USEREVENT;
-            e.user.code = 0;
-            e.user.data1 = nullptr;
-            e.user.data2 = nullptr;
-            SDL_PushEvent(&e);
-        }
-    }
-
-    auto SDLWindow::displayImageXRGB1555(const std::vector<uint8_t> &image, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
-    {
-        if (!m_quit)
-        {
-            // copy data to thread event queue
-            SDL_LockMutex(m_mutex);
-            m_eventData.emplace_back(DisplayImage{ColorFormat::FormatXRGB1555, image, width, height, x, y});
+            m_eventData.emplace_back(DisplayImage{format, image, width, height, x, y});
             SDL_UnlockMutex(m_mutex);
             // notify SDL thread about event
             SDL_Event e;
