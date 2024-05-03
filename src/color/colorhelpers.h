@@ -21,7 +21,7 @@ namespace ColorHelpers
     /// @brief Build a color map for color format color space. Only works for XRGB1555 and RGB565. All other formats will return empty color maps
     auto buildColorMapFor(Color::Format format) -> std::vector<Color::XRGB8888>;
 
-    /// @brief Swap colors in palette according to index table
+    /// @brief Swap colors in palette according to index table. The assignment is result[i] = colors[newIndices[i]];
     auto swapColors(const std::vector<Color::XRGB8888> &colors, const std::vector<uint8_t> &newIndices) -> std::vector<Color::XRGB8888>;
 
 }
