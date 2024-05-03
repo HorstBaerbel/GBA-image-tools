@@ -60,7 +60,7 @@ ProcessingOptions::Option ProcessingOptions::truecolor{
 
 ProcessingOptions::OptionT<Color::Format> ProcessingOptions::colorformat{
     false,
-    {"colorformat", "Set output color format (direct pixel color / color map) to RGB888, RGB565 or RGB555", cxxopts::value(colorformat.valueString)},
+    {"colorformat", "Set output color format (direct pixel color + color map) to RGB888, RGB565 or RGB555", cxxopts::value(colorformat.valueString)},
     {},
     {},
     [](const cxxopts::ParseResult &r)

@@ -50,6 +50,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.paletted.cxxOption);
         opts.add_option("", options.commonPalette.cxxOption);
         opts.add_option("", options.truecolor.cxxOption);
+        opts.add_option("", options.colorformat.cxxOption);
         opts.add_option("", options.reorderColors.cxxOption);
         opts.add_option("", options.addColor0.cxxOption);
         opts.add_option("", options.moveColor0.cxxOption);

@@ -21,15 +21,6 @@
 
 #include "cxxopts/include/cxxopts.hpp"
 
-enum class ConversionMode
-{
-    None,
-    BlackWhite,
-    Paletted,
-    Truecolor
-};
-ConversionMode m_conversionMode = ConversionMode::None;
-
 std::string m_inFile;
 std::string m_outFile;
 ProcessingOptions options;
@@ -59,6 +50,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.blackWhite.cxxOption);
         opts.add_option("", options.paletted.cxxOption);
         opts.add_option("", options.truecolor.cxxOption);
+        opts.add_option("", options.colorformat.cxxOption);
         opts.add_option("", options.addColor0.cxxOption);
         opts.add_option("", options.moveColor0.cxxOption);
         opts.add_option("", options.shiftIndices.cxxOption);
@@ -242,16 +234,21 @@ int main(int argc, const char *argv[])
         Image::Processing processing;
         if (options.blackWhite)
         {
-            processing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.colorformat.value, options.quantizationmethod.value, options.blackWhite.value});
+            processing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.quantizationmethod.value, options.blackWhite.value});
         }
         else if (options.paletted)
         {
             // add palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.colorformat.value, options.quantizationmethod.value, options.paletted.value});
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
+        }
+        else if (options.commonPalette)
+        {
+            // add common palette conversion using a RGB555 or RGB565 reference color map
+            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value, options.quantizationmethod.value});
+            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value});
         }
         // build processing pipeline - conversion
         if (options.paletted)

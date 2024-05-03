@@ -98,6 +98,7 @@
                 "format": "cpp",
                 "span": "cpp",
                 "dense": "cpp",
-                "svd": "cpp"
+                "svd": "cpp",
+                "tensor": "cpp"
         }
 }
