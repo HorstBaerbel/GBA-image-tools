@@ -29,8 +29,8 @@ namespace Color
         /// @brief Construct color using raw XRGB8888 value
         XRGB8888(uint32_t xrgb)
         {
-            REQUIRE((xrgb & 0xFF000000) == 0, std::runtime_error, "Bits 31-24 must be 0 for XRGB8888");
             v = std::bit_cast<std::array<value_type, 4>>(xrgb);
+            v[3] = 0;
         }
 
         constexpr XRGB8888(const XRGB8888 &other) : v(other.v) {}
@@ -44,8 +44,8 @@ namespace Color
         /// @brief Set color using raw XRGB8888 value
         inline XRGB8888 &operator=(uint32_t xrgb)
         {
-            REQUIRE((xrgb & 0xFF000000) == 0, std::runtime_error, "Bits 31-24 must be 0 for XRGB8888");
             v = std::bit_cast<std::array<value_type, 4>>(xrgb);
+            v[3] = 0;
             return *this;
         }
 

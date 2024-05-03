@@ -41,9 +41,13 @@ TEST_CASE("Construction")
     CATCH_REQUIRE(static_cast<ColorType::pixel_type>(c5) == 0xFFFFFF);
 }
 
-TEST_CASE("OutOfRangeValuesThrow")
+TEST_CASE("OutOfRangeValuesGetZeroed")
 {
-    CATCH_REQUIRE_THROWS(ColorType(0x12345678));
+    ColorType c1(0x12345678);
+    CATCH_REQUIRE(c1.R() == 0x34);
+    CATCH_REQUIRE(c1.G() == 0x56);
+    CATCH_REQUIRE(c1.B() == 0x78);
+    CATCH_REQUIRE(c1.raw() == 0x00345678); // raw is XRGB
 }
 
 TEST_CASE("Assignment")
