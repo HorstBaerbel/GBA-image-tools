@@ -4,6 +4,11 @@
 
 Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn...] OUTNAME```
 
+* ```FORMAT``` is mandatory and means the color format to convert the input frame to:
+  * ```--blackwhite``` - Convert frame to b/w paletted image with two colors according to a brightness threshold.
+  * ```--paletted``` - Convert frame to paletted image with specified number of colors.
+  * ```--commonpalette``` - Convert all frames to images using a common palette with specified number of colors.
+  * ```--truecolor``` - Convert frame to RGB555 / RGB565 / RGB888 true-color image.
 * ```CONVERSION``` is optional and means the type of conversion to be done:
   * [```--reordercolors```](#reordering-palette-colors) - Reorder palette colors to minimize preceived color distance.
   * [```--addcolor0=COLOR```](#adding-a-color-to-index--0-in-the-palette) - Add COLOR at palette index #0 and increase all other color indices by 1.

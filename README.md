@@ -42,10 +42,6 @@ All of this is under the [MIT License](LICENSE). It uses:
 
 * For compressing data with LZ77 you need to have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) and the environment variable ```$DEVKITPRO``` set, or the [gbalzss](https://github.com/devkitPro/gba-tools) tool in your ```$PATH```.
 
-* You must have [ImageMagick](https://imagemagick.org/index.php) installed for using the "convert" tool for [image conversion](img2h.md#convert-an-image-to-gba-rgb555-format-with-a-restricted-number-of-colors). Install it with:
-
-  ```apt install imagemagick``` or ```dnf install imagemagick```
-
 ## Building
 
 ### From the command line
@@ -78,4 +74,4 @@ make package
 * More TESTS!
 * More modern C++ constructs
 * Get rid of ImageMagick altogether (only used for image I/O atm)
-* Clean up and use internal RLE + LZ77 compression
+* Clean up and use internal RLE + LZ77 + Huffman compression
