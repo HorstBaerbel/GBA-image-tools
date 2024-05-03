@@ -1,18 +1,11 @@
 build/*
 result*/*
+gba/build/*
 .vscode/ipch/*
 *.code-workspace
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
-
-colormap555
-gimppalette555
-img2h
-vid2h
-hex2gba
-
-gba/build/*
 
 # Prerequisites
 *.d
