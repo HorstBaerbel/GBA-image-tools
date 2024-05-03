@@ -34,6 +34,8 @@ LIST(APPEND TARGET_SOURCE_FILES
 	data/video.s
 )
 
+set_source_files_properties(data/video.s OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/data/video.bin)
+
 LIST(APPEND TARGET_INCLUDE_DIRS
 	${DEVKITPRO}/libgba/include
 	${DEVKITARM}/arm-none-eabi/include
