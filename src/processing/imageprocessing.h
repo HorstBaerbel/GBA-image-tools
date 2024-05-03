@@ -48,13 +48,13 @@ namespace Image
         std::string getProcessingDescription(const std::string &seperator = ", ");
 
         /// @brief Run processing steps in pipeline on data. Used for processing a batch of images
-        /// @param images Input images and file names
-        std::vector<Data> processBatch(const std::vector<Data> &images);
+        /// @param data Input data and file names
+        std::vector<Data> processBatch(const std::vector<Data> &data);
 
         /// @brief Run processing steps in pipeline on single image. Used for processing a stream of images / video frames
-        /// @param image Input image
+        /// @param data Input data and file name
         /// @note Will silently ignore OperationType::BatchConvert and ::Reduce operations
-        Data processStream(const Data &image);
+        Data processStream(const Data &data);
 
         // --- image conversion functions ------------------------------------
 

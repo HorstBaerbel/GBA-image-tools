@@ -669,7 +669,7 @@ namespace Image
     std::vector<Data> Processing::processBatch(const std::vector<Data> &data)
     {
         REQUIRE(data.size() > 0, std::runtime_error, "Empty data passed to processing");
-        std::vector<Data> processed;
+        std::vector<Data> processed = data;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
             auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
@@ -737,9 +737,9 @@ namespace Image
         return processed;
     }
 
-    Data Processing::processStream(const Data &image)
+    Data Processing::processStream(const Data &data)
     {
-        Data processed;
+        Data processed = data;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
             const uint32_t inputSize = processed.imageData.pixels().size();
