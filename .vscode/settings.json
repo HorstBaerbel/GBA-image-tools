@@ -99,6 +99,9 @@
                 "span": "cpp",
                 "dense": "cpp",
                 "svd": "cpp",
-                "tensor": "cpp"
+                "tensor": "cpp",
+                "source_location": "cpp",
+                "stdfloat": "cpp",
+                "text_encoding": "cpp"
         }
 }

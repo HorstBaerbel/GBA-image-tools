@@ -35,7 +35,8 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "--truecolor=RGB555",
+                "--truecolor",
+                "--colorformat=RGB888",
                 "--dxtv=15,0.1",
                 "--lz10",
                 "${workspaceFolder}/data/bbb_240x160_15fps_part.mp4",
@@ -43,6 +44,25 @@
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Automatische Strukturierung und Einrückung für \"gdb\" aktivieren",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "unit test debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/test",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
