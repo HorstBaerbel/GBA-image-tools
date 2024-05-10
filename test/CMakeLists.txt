@@ -35,16 +35,20 @@ add_subdirectory(Catch2)
 # Define targets
 
 set(TARGET_SRC
+    ${PROJECT_SOURCE_DIR}/src/codec/dxt.cpp
+    ${PROJECT_SOURCE_DIR}/src/codec/dxttables.cpp
     ${PROJECT_SOURCE_DIR}/src/color/conversions.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorformat.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorhelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/color/grayf.cpp
     ${PROJECT_SOURCE_DIR}/src/color/lchf.cpp
     ${PROJECT_SOURCE_DIR}/src/color/rgb565.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/rgb888.cpp
     ${PROJECT_SOURCE_DIR}/src/color/rgbf.cpp
     ${PROJECT_SOURCE_DIR}/src/color/xrgb1555.cpp
     ${PROJECT_SOURCE_DIR}/src/color/xrgb8888.cpp
     ${PROJECT_SOURCE_DIR}/src/color/ycgcorf.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/imageio.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/datahelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/imagehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/spritehelpers.cpp
@@ -57,12 +61,13 @@ set(TARGET_INCLUDES
 file(GLOB TESTS_SRC CONFIGURE_DEPENDS "*.cpp")
 
 # Add defines so Magick++ does not throw warnings
+set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES INCLUDE_DIRECTORIES "${ImageMagick_INCLUDE_DIRS}")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES COMPILE_DEFINTIONS "MAGICKCORE_HDRI_ENABLE=0 MAGICKCORE_QUANTUM_DEPTH=16")
 
 set(TARGET_NAME unit_tests)
 
 add_executable(${TARGET_NAME} ${TARGET_SRC} ${TESTS_SRC})
-target_link_libraries(${TARGET_NAME} PRIVATE Catch2::Catch2WithMain pthread)
+target_link_libraries(${TARGET_NAME} PRIVATE PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX Catch2::Catch2WithMain pthread)
 target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${TARGET_INCLUDES} ${PROJECT_SOURCE_DIR}/eigen ${CMAKE_CURRENT_SOURCE_DIR}/Catch2)
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
