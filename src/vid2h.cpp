@@ -60,7 +60,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.deltaImage.cxxOption);
         opts.add_option("", options.delta8.cxxOption);
         opts.add_option("", options.delta16.cxxOption);
-        opts.add_option("", options.dxtg.cxxOption);
+        opts.add_option("", options.dxt.cxxOption);
         opts.add_option("", options.dxtv.cxxOption);
         // opts.add_option("", options.gvid.cxxOption);
         // opts.add_option("", options.rle.cxxOption);
@@ -171,7 +171,7 @@ void printUsage()
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << "IMAGE COMPRESS options (mutually exclusive):" << std::endl;
-    std::cout << options.dxtg.helpString() << std::endl;
+    std::cout << options.dxt.helpString() << std::endl;
     std::cout << options.dxtv.helpString() << std::endl;
     // std::cout << options.gvid.helpString() << std::endl;
     std::cout << "COMPRESS options (mutually exclusive):" << std::endl;
@@ -291,7 +291,7 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::DeltaImage, {});
         }
-        if (options.dxtg)
+        if (options.dxt)
         {
             processing.addStep(Image::ProcessingType::CompressDXTG, {}, true, true);
         }

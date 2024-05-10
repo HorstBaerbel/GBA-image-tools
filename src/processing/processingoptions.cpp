@@ -249,9 +249,9 @@ ProcessingOptions::Option ProcessingOptions::vram{
     false,
     {"vram", "Make compression VRAM-safe.", cxxopts::value(vram.isSet)}};
 
-ProcessingOptions::Option ProcessingOptions::dxtg{
+ProcessingOptions::Option ProcessingOptions::dxt{
     false,
-    {"dxtg", "Use DXT1-ish RGB555 compression.", cxxopts::value(dxtg.isSet)}};
+    {"dxt", "Use DXT1-ish RGB555 compression.", cxxopts::value(dxt.isSet)}};
 
 ProcessingOptions::OptionT<std::vector<double>> ProcessingOptions::dxtv{
     false,

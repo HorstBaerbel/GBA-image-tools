@@ -43,7 +43,7 @@ namespace Image
             {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
             {ProcessingType::CompressLZ11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
-            {ProcessingType::CompressDXTG, {"compress DXTG", OperationType::Convert, FunctionType(compressDXTG)}},
+            {ProcessingType::CompressDXTG, {"compress DXTG", OperationType::Convert, FunctionType(compressDXT)}},
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
             {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
             {ProcessingType::PadPixelData, {"pad pixel data", OperationType::Convert, FunctionType(padPixelData)}},
@@ -372,15 +372,15 @@ namespace Image
         return result;
     }
 
-    Data Processing::compressDXTG(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    Data Processing::compressDXT(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
-        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "compressDXTG expects bitmaps as input data");
-        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "DXTG compression is only possible for RGB888 truecolor images");
-        REQUIRE(data.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXTG compression");
-        REQUIRE(data.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXTG compression");
+        REQUIRE(data.dataType == DataType::Bitmap, std::runtime_error, "compressDXT expects bitmaps as input data");
+        REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "DXT compression is only possible for RGB888 truecolor images");
+        REQUIRE(data.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
+        REQUIRE(data.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
         // convert image using DXT compression
         auto result = data;
-        auto compressedData = DXT::encodeDXTG(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height());
+        auto compressedData = DXT::encodeDXT(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height());
         result.imageData.pixels() = PixelData(compressedData, Color::Format::Unknown);
         return result;
     }

@@ -155,7 +155,7 @@ namespace Image
 
         /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
         /// @param parameters: Unused
-        static Data compressDXTG(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+        static Data compressDXT(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
         /// Has additional intra- and inter-frame compression in comparison to DTXG

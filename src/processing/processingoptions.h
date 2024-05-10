@@ -52,7 +52,7 @@ public:
     static Option lz11;
     // static Option rle;
     static Option vram;
-    static Option dxtg;
+    static Option dxt;
     static OptionT<std::vector<double>> dxtv;
     static Option gvid;
     static Option interleavePixels;
