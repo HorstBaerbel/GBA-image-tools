@@ -70,7 +70,10 @@ list(APPEND VID2H_SRC
 #-------------------------------------------------------------------------------
 # Define targets
 
-include_directories(${ImageMagick_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/cxxopts ${PROJECT_SOURCE_DIR}/eigen ${PROJECT_SOURCE_DIR}/glob ${PROJECT_SOURCE_DIR}/src)
+set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES INCLUDE_DIRECTORIES "${ImageMagick_INCLUDE_DIRS}")
+set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES COMPILE_DEFINTIONS "MAGICKCORE_HDRI_ENABLE=0 MAGICKCORE_QUANTUM_DEPTH=16")
+
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/cxxopts ${PROJECT_SOURCE_DIR}/eigen ${PROJECT_SOURCE_DIR}/glob ${PROJECT_SOURCE_DIR}/src)
 add_executable(gencolormaps ${GENCOLORMAPS_SRC})
 target_link_libraries(gencolormaps PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX)
 add_executable(hex2gba ${HEX2GBA_SRC})
