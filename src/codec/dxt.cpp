@@ -222,7 +222,7 @@ auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t wi
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
     std::vector<uint8_t> dxtData(nrOfBlocks * 8);
-    // #pragma omp parallel for
+#pragma omp parallel for
     for (int y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
@@ -353,9 +353,9 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
             if (asRGB565)
             {
                 uint32_t b = ((c0 & 0xF800) >> 6) | ((c1 & 0xF800) >> 11);
-                uint32_t g = (c0 & 0x7E0) | ((c1 & 0x7E0) >> 6);
+                uint32_t g = ((c0 & 0x7E0) << 1) | ((c1 & 0x7E0) >> 5);
                 uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-                c2c3 = (DXTTables::C2C3_5bit[b] << 11) | (DXTTables::C2C3_6bit[g] << 6) | DXTTables::C2C3_5bit[r];
+                c2c3 = (DXTTables::C2C3_5bit[b] << 11) | (DXTTables::C2C3_6bit[g] << 5) | DXTTables::C2C3_5bit[r];
             }
             else
             {
