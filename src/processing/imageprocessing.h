@@ -108,11 +108,11 @@ namespace Image
         static Data toSprites(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Add color at palette index #0, shifting all other color indices +1
-        /// @param parameters Color to add as Magick::Color
+        /// @param parameters Color to add as Color::XRGB8888
         static Data addColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Move specific color to palette index #0, shifting all other colors accordingly
-        /// @param parameters Color to move as Magick::Color
+        /// @param parameters Color to move as Color::XRGB8888
         static Data moveColor0(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Reorder color palette indices in image, so that similar colors are closer together.
