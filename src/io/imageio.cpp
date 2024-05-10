@@ -38,7 +38,7 @@ namespace IO
 
     auto getImageData(const Magick::Image &img) -> Image::ImageData
     {
-        if (img.type() == Magick::ImageType::PaletteType)
+        if (img.type() == Magick::ImageType::PaletteType || img.type() == Magick::ImageType::PaletteAlphaType)
         {
             // convert to linear RGB color space
             auto linearImg = img;
@@ -56,7 +56,7 @@ namespace IO
             }
             return Image::ImageData(dstIndices, Color::Format::Paletted8, getColorMap(linearImg));
         }
-        else if (img.type() == Magick::ImageType::TrueColorType)
+        else if (img.type() == Magick::ImageType::TrueColorType || img.type() == Magick::ImageType::TrueColorAlphaType)
         {
             std::vector<Color::XRGB8888> dstPixels;
             // convert to linear RGB color space
@@ -90,7 +90,7 @@ namespace IO
         }
         Image::Data data;
         data.size = {img.size().width(), img.size().height()};
-        auto imageData = getImageData(img);
+        data.imageData = getImageData(img);
         return data;
     }
 
@@ -132,10 +132,11 @@ namespace IO
         }
     }
 
-    auto File::writeImage(const std::string &folder, const Image::Data &image) -> void
+    auto File::writeImage(const Image::Data &image, const std::string &folder, const std::string &fileName) -> void
     {
         REQUIRE(image.imageData.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
         REQUIRE(image.size.width() > 0 && image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(!image.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
         Magick::Image temp({image.size.width(), image.size.height()}, "black");
         const bool isIndexed = !image.imageData.colorMap().empty();
         temp.type(isIndexed ? Magick::ImageType::PaletteType : Magick::ImageType::TrueColorType);
@@ -152,14 +153,15 @@ namespace IO
         // convert to sRGB color space
         temp.colorSpace(Magick::sRGBColorspace);
         // write to disk
-        temp.write(std::filesystem::path(folder) / std::filesystem::path(image.fileName).filename());
+        auto outName = !fileName.empty() ? fileName : image.fileName;
+        temp.write(std::filesystem::path(folder) / std::filesystem::path(outName).filename());
     }
 
-    auto File::writeImages(const std::string &folder, const std::vector<Image::Data> &images) -> void
+    auto File::writeImages(const std::vector<Image::Data> &images, const std::string &folder) -> void
     {
         for (const auto &i : images)
         {
-            writeImage(folder, i);
+            writeImage(i, folder);
         }
     }
 }

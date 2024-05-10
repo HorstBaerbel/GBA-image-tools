@@ -402,7 +402,7 @@ int main(int argc, const char *argv[])
         if (options.dumpResults)
         {
             auto dumpPath = std::filesystem::current_path() / "result";
-            IO::File::writeImages(dumpPath.c_str(), data);
+            IO::File::writeImages(data, dumpPath.c_str());
         }
         // open output files
         if (!options.dryRun)
