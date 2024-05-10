@@ -14,10 +14,10 @@ namespace Color
     class RGB565
     {
     public:
-        static constexpr Color::Format ColorFormat = Format::RGB565;
-        static constexpr uint32_t Channels = 3;
         using pixel_type = uint16_t; // pixel value type
         using value_type = uint8_t;  // color channel value type
+        static constexpr Color::Format ColorFormat = Format::RGB565;
+        static constexpr uint32_t Channels = 3;
 
         RGB565() : v(std::bit_cast<Value>(uint16_t(0))) {}
 
@@ -88,7 +88,7 @@ namespace Color
             uint16_t b : 5;
             uint16_t g : 6;
             uint16_t r : 5;
-        } __attribute__((aligned(2), packed)) v; // low to high bits, RGB in memory
+        } __attribute__((aligned(2), packed)) v; // low to high bits, BGR in memory
     };
 
 }

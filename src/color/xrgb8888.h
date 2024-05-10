@@ -15,10 +15,10 @@ namespace Color
     class XRGB8888
     {
     public:
-        static constexpr Color::Format ColorFormat = Format::XRGB8888;
-        static constexpr uint32_t Channels = 3;
         using pixel_type = uint32_t; // pixel value type
         using value_type = uint8_t;  // color channel value type
+        static constexpr Color::Format ColorFormat = Format::XRGB8888;
+        static constexpr uint32_t Channels = 3;
 
         XRGB8888() : v(std::bit_cast<std::array<uint8_t, 4>>(uint32_t(0))){};
 
@@ -86,7 +86,7 @@ namespace Color
         static auto distance(const XRGB8888 &color0, const XRGB8888 &color1) -> float;
 
     private:
-        std::array<uint8_t, 4> v; // XRGB in memory
+        std::array<uint8_t, 4> v; // BGRX in memory
     };
 
 }

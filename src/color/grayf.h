@@ -13,10 +13,10 @@ namespace Color
     class Grayf
     {
     public:
-        static constexpr Color::Format ColorFormat = Format::Grayf;
-        static constexpr uint32_t Channels = 1;
         using pixel_type = float; // pixel value type
         using value_type = float; // color channel value type
+        static constexpr Color::Format ColorFormat = Format::Grayf;
+        static constexpr uint32_t Channels = 1;
 
         Grayf() : v(0.0F) {}
         Grayf(float I) : v(I) {}

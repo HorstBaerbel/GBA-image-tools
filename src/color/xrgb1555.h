@@ -14,10 +14,10 @@ namespace Color
     class XRGB1555
     {
     public:
-        static constexpr Color::Format ColorFormat = Format::XRGB1555;
-        static constexpr uint32_t Channels = 3;
         using pixel_type = uint16_t; // pixel value type
         using value_type = uint8_t;  // color channel value type
+        static constexpr Color::Format ColorFormat = Format::XRGB1555;
+        static constexpr uint32_t Channels = 3;
 
         XRGB1555() : v(std::bit_cast<Value>(uint16_t(0))) {}
 
@@ -96,7 +96,7 @@ namespace Color
             uint16_t g : 5;
             uint16_t r : 5;
             uint16_t x : 1;
-        } __attribute__((aligned(2), packed)) v; // low to high bits, XRGB in memory
+        } __attribute__((aligned(2), packed)) v; // low to high bits, BGRX in memory
     };
 
 }
