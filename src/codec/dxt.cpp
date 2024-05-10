@@ -2,8 +2,10 @@
 
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
+#include "color/rgb565.h"
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
+#include "dxttables.h"
 #include "exception.h"
 #include "math/linefit.h"
 
@@ -17,7 +19,7 @@
 using namespace Color;
 
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-std::vector<uint8_t> DXT::encodeBlockDXTG2(const Color::XRGB8888 *start, uint32_t pixelsPerScanline)
+std::vector<uint8_t> DXT::encodeBlockDXTG2(const Color::XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565)
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
@@ -52,8 +54,8 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const Color::XRGB8888 *start, uint32_
         std::swap(endpoints[0], endpoints[1]);
     }*/
     // calculate intermediate colors c2 and c3 (rounded like in decoder)
-    endpoints[2] = RGBf::roundTo(RGBf((c0.cwiseProduct(RGBf(2, 2, 2)) + c1).cwiseQuotient(RGBf(3, 3, 3))), XRGB1555::Max);
-    endpoints[3] = RGBf::roundTo(RGBf((c0 + c1.cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), XRGB1555::Max);
+    endpoints[2] = RGBf::roundTo(RGBf((c0.cwiseProduct(RGBf(2, 2, 2)) + c1).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+    endpoints[3] = RGBf::roundTo(RGBf((c0 + c1.cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
     // calculate minimum distance for all colors to endpoints
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
@@ -75,8 +77,8 @@ std::vector<uint8_t> DXT::encodeBlockDXTG2(const Color::XRGB8888 *start, uint32_
     std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
     // add color endpoints c0 and c1
     auto data16 = reinterpret_cast<uint16_t *>(result.data());
-    *data16++ = convertTo<XRGB1555>(endpoints[0]).raw();
-    *data16++ = convertTo<XRGB1555>(endpoints[1]).raw();
+    *data16++ = asRGB565 ? convertTo<RGB565>(endpoints[0]).raw() : convertTo<XRGB1555>(endpoints[0]).raw();
+    *data16++ = asRGB565 ? convertTo<RGB565>(endpoints[1]).raw() : convertTo<XRGB1555>(endpoints[1]).raw();
     // add index data in reverse
     uint32_t indices = 0;
     for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
@@ -211,16 +213,10 @@ for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
 return result;
 }*/
 
-auto DXT::encodeDXTG(const std::vector<Color::XRGB8888> &image, uint32_t width, uint32_t height) -> std::vector<uint8_t>
+auto DXT::encodeDXTG(const std::vector<Color::XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<uint8_t>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
-    // build y-position table for parallel for
-    std::vector<uint32_t> ys(height / 4);
-    std::generate(ys.begin(), ys.end(), [y = 0]() mutable
-                  {
-                          y += 4;
-                          return y - 4; });
     // compress to DXT1. we get 8 bytes per 4x4 block / 16 pixels
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
@@ -230,7 +226,7 @@ auto DXT::encodeDXTG(const std::vector<Color::XRGB8888> &image, uint32_t width, 
     {
         for (uint32_t x = 0; x < width; x += 4)
         {
-            auto block = encodeBlockDXTG2(image.data() + y * width + x, width);
+            auto block = encodeBlockDXTG2(image.data() + y * width + x, width, asRGB565);
             std::copy(block.cbegin(), block.cend(), std::next(dxtData.begin(), y * yStride + x * 8 / 4));
         }
     }
@@ -331,7 +327,62 @@ auto DXT::encodeDXTG(const std::vector<Color::XRGB8888> &image, uint32_t width, 
     return data;
 }
 
-auto decodeDXTG(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<uint8_t>
+auto DXT::decodeDXTG(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<Color::XRGB8888>
 {
-    return {};
+    REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT decompression");
+    REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT decompression");
+    const auto nrOfBlocks = data.size() / 8;
+    REQUIRE(nrOfBlocks == width / 4 * height / 4, std::runtime_error, "Data size does not match image size");
+    std::vector<Color::XRGB8888> result(width * height);
+    for (std::size_t y = 0; y < height; y += 4)
+    {
+        // set up pointer to source block data
+        auto src16 = reinterpret_cast<const uint16_t *>(data.data() + (y / 4 * width / 4) * 8);
+        for (std::size_t x = 0; x < width; x += 4)
+        {
+            // read colors c0 and c1
+            std::array<Color::XRGB8888, 4> colors;
+            const uint16_t c0 = *src16++;
+            const uint16_t c1 = *src16++;
+            colors[0] = asRGB565 ? Color::RGB565(c0) : Color::XRGB1555(c0);
+            colors[1] = asRGB565 ? Color::RGB565(c1) : Color::XRGB1555(c1);
+            // calculate intermediate colors c2 and c3 using tables
+            uint32_t c2c3 = 0;
+            if (asRGB565)
+            {
+                uint32_t b = ((c0 & 0xF800) >> 6) | ((c1 & 0xF800) >> 11);
+                uint32_t g = (c0 & 0x7E0) | ((c1 & 0x7E0) >> 6);
+                uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
+                c2c3 = (DXTTables::C2C3_5bit[b] << 11) | (DXTTables::C2C3_6bit[g] << 6) | DXTTables::C2C3_5bit[r];
+            }
+            else
+            {
+                uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
+                uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
+                uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
+                c2c3 = (DXTTables::C2C3_5bit[b] << 10) | (DXTTables::C2C3_5bit[g] << 5) | DXTTables::C2C3_5bit[r];
+            }
+            const uint16_t c2 = (c2c3 & 0xFFFF0000 >> 16);
+            const uint16_t c3 = (c2c3 & 0x0000FFFF);
+            colors[2] = asRGB565 ? Color::RGB565(c2) : Color::XRGB1555(c2);
+            colors[3] = asRGB565 ? Color::RGB565(c3) : Color::XRGB1555(c3);
+            // read pixel color indices
+            uint32_t indices = *reinterpret_cast<const uint32_t *>(src16);
+            src16 += 2;
+            // decode colors
+            auto dstI = std::next(result.begin(), y * width + x);
+            for (std::size_t y = 0; y < 4; y++)
+            {
+                for (std::size_t x = 0; x < 4; x++)
+                {
+                    auto index = indices & 0x03;
+                    indices >>= 2;
+                    auto color = colors[index];
+                    *dstI++ = color;
+                }
+                dstI = std::next(dstI, width - 4);
+            }
+        }
+    }
+    return result;
 }
