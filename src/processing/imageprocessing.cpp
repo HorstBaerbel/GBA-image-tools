@@ -669,26 +669,33 @@ namespace Image
     std::vector<Data> Processing::processBatch(const std::vector<Data> &data)
     {
         REQUIRE(data.size() > 0, std::runtime_error, "Empty data passed to processing");
+        bool finalStepFound = false;
         std::vector<Data> processed = data;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
             auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
             // check if this was the final processing step (first non-input processing)
-            const bool isFinalStep = std::next(stepIt) == m_steps.end();
+            bool isFinalStep = false;
+            if (!finalStepFound)
+            {
+                isFinalStep = true;
+                finalStepFound = true;
+            }
+            // process depending on operation type
             if (stepFunc.type == OperationType::Convert)
             {
                 auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
                 for (auto &img : processed)
                 {
-                    const auto inputSize = img.imageData.pixels().size();
+                    const auto inputSize = img.imageData.pixels().rawSize();
                     img = convertFunc(img, stepIt->parameters, stepStatistics);
                     if (stepIt->prependProcessingInfo)
                     {
                         img = prependProcessingInfo(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
                     }
                     // record max. memory needed for everything, but the first step
-                    auto chunkMemoryNeeded = img.imageData.pixels().size() + sizeof(uint32_t);
+                    auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : img.imageData.pixels().rawSize() + sizeof(uint32_t);
                     img.maxMemoryNeeded = (img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
                 }
             }
@@ -697,14 +704,14 @@ namespace Image
                 auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
                 for (auto &img : processed)
                 {
-                    const uint32_t inputSize = img.imageData.pixels().size();
+                    const uint32_t inputSize = img.imageData.pixels().rawSize();
                     img = convertFunc(img, stepIt->parameters, stepIt->state, stepStatistics);
                     if (stepIt->prependProcessingInfo)
                     {
                         img = prependProcessingInfo(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
                     }
                     // record max. memory needed for everything, but the first step
-                    auto chunkMemoryNeeded = img.imageData.pixels().size() + sizeof(uint32_t);
+                    auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : img.imageData.pixels().rawSize() + sizeof(uint32_t);
                     img.maxMemoryNeeded = (img.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.maxMemoryNeeded;
                 }
             }
@@ -713,7 +720,7 @@ namespace Image
                 // get all input sizes
                 std::vector<uint32_t> inputSizes = {};
                 std::transform(processed.cbegin(), processed.cend(), std::back_inserter(inputSizes), [](const auto &d)
-                               { return d.imageData.pixels().size(); });
+                               { return d.imageData.pixels().rawSize(); });
                 auto batchFunc = std::get<BatchConvertFunc>(stepFunc.func);
                 processed = batchFunc(processed, stepIt->parameters, stepStatistics);
                 for (auto pIt = processed.begin(); pIt != processed.end(); pIt++)
@@ -724,7 +731,7 @@ namespace Image
                         *pIt = prependProcessingInfo(*pIt, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
                     }
                     // record max. memory needed for everything, but the first step
-                    auto chunkMemoryNeeded = pIt->imageData.pixels().size() + sizeof(uint32_t);
+                    auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : pIt->imageData.pixels().rawSize() + sizeof(uint32_t);
                     pIt->maxMemoryNeeded = (pIt->maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : pIt->maxMemoryNeeded;
                 }
             }
@@ -739,10 +746,11 @@ namespace Image
 
     Data Processing::processStream(const Data &data)
     {
+        bool finalStepFound = false;
         Data processed = data;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
-            const uint32_t inputSize = processed.imageData.pixels().size();
+            const uint32_t inputSize = processed.imageData.pixels().rawSize();
             auto stepStatistics = stepIt->addStatistics ? m_statistics : nullptr;
             auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
             if (stepFunc.type == OperationType::Convert)
@@ -759,11 +767,16 @@ namespace Image
             if (stepIt->prependProcessingInfo)
             {
                 // check if this was the final processing step (first non-input processing)
-                const bool isFinalStep = std::next(stepIt) == m_steps.end();
+                bool isFinalStep = false;
+                if (!finalStepFound)
+                {
+                    isFinalStep = true;
+                    finalStepFound = true;
+                }
                 processed = prependProcessingInfo(processed, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
             }
             // record max. memory needed for everything, but the first step
-            auto chunkMemoryNeeded = processed.imageData.pixels().size() + sizeof(uint32_t);
+            auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : processed.imageData.pixels().rawSize() + sizeof(uint32_t);
             processed.maxMemoryNeeded = (processed.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.maxMemoryNeeded;
         }
         return processed;
