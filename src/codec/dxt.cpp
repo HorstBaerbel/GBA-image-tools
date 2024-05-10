@@ -3,6 +3,7 @@
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "color/rgb565.h"
+#include "color/rgb888.h"
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
 #include "dxttables.h"
@@ -77,8 +78,8 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
     std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
     // add color endpoints c0 and c1
     auto data16 = reinterpret_cast<uint16_t *>(result.data());
-    *data16++ = asRGB565 ? convertTo<RGB565>(endpoints[0]) : convertTo<XRGB1555>(endpoints[0]);
-    *data16++ = asRGB565 ? convertTo<RGB565>(endpoints[1]) : convertTo<XRGB1555>(endpoints[1]);
+    *data16++ = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[0])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[0]));
+    *data16++ = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[1])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[1]));
     // add index data in reverse
     uint32_t indices = 0;
     for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
@@ -221,7 +222,7 @@ auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t wi
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
     std::vector<uint8_t> dxtData(nrOfBlocks * 8);
-#pragma omp parallel for
+    // #pragma omp parallel for
     for (int y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
@@ -345,8 +346,8 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
             std::array<Color::XRGB8888, 4> colors;
             const uint16_t c0 = *color16++;
             const uint16_t c1 = *color16++;
-            colors[0] = asRGB565 ? Color::RGB565(c0) : Color::XRGB1555(c0);
-            colors[1] = asRGB565 ? Color::RGB565(c1) : Color::XRGB1555(c1);
+            colors[0] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c0)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c0));
+            colors[1] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c1)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c1));
             // calculate intermediate colors c2 and c3 using tables
             uint32_t c2c3 = 0;
             if (asRGB565)
@@ -363,24 +364,22 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
                 uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
                 c2c3 = (DXTTables::C2C3_5bit[b] << 10) | (DXTTables::C2C3_5bit[g] << 5) | DXTTables::C2C3_5bit[r];
             }
-            const uint16_t c2 = ((c2c3 & 0xFFFF0000) >> 16);
-            const uint16_t c3 = (c2c3 & 0x0000FFFF);
-            colors[2] = asRGB565 ? Color::RGB565(c2) : Color::XRGB1555(c2);
-            colors[3] = asRGB565 ? Color::RGB565(c3) : Color::XRGB1555(c3);
+            const uint16_t c2 = (c2c3 & 0x0000FFFF);
+            const uint16_t c3 = ((c2c3 & 0xFFFF0000) >> 16);
+            colors[2] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c2)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c2));
+            colors[3] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c3)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c3));
             // read pixel color indices
             uint32_t indices = *indices32++;
             // and decode colors
-            auto dstI = std::next(result.begin(), y * width + x);
-            for (std::size_t y = 0; y < 4; y++)
+            auto dst = result.data() + y * width + x;
+            for (std::size_t by = 0; by < 4; by++)
             {
-                for (std::size_t x = 0; x < 4; x++)
+                for (std::size_t bx = 0; bx < 4; bx++)
                 {
-                    auto index = indices & 0x03;
+                    *dst++ = colors[indices & 0x03];
                     indices >>= 2;
-                    auto color = colors[index];
-                    *dstI++ = color;
                 }
-                dstI = std::next(dstI, width - 4);
+                dst += width - 4;
             }
         }
     }
