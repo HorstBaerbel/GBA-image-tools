@@ -25,4 +25,13 @@ namespace Color
         return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (2.0F + (1.0F - rMean) * dB * dB)) / 9.0F;
     } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (2    +  1    -     1) *  1 *  1) = 3 + 4 + 2 = 9 / 9 = 1
 
+    bool operator==(const RGB565 &c1, const RGB565 &c2)
+    {
+        return (uint16_t)c1 == (uint16_t)c2;
+    }
+
+    bool operator!=(const RGB565 &c1, const RGB565 &c2)
+    {
+        return !(c1 == c2);
+    }
 }

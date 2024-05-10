@@ -64,7 +64,7 @@ namespace Color
         inline auto operator[](std::size_t pos) -> value_type & { return pos == 0 ? v[2] : (pos == 1 ? v[1] : v[0]); }
 
         /// @brief Return raw XRGB8888 value
-        inline operator uint32_t() const
+        explicit inline operator uint32_t() const
         {
             std::array<uint8_t, 4> temp = {v[0], v[1], v[2], 0};
             return std::bit_cast<uint32_t>(temp);
@@ -89,6 +89,9 @@ namespace Color
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
         /// @return Returns a value in [0,1]
         static auto distance(const RGB888 &color0, const RGB888 &color1) -> float;
+
+        friend bool operator==(const RGB888 &c1, const RGB888 &c2);
+        friend bool operator!=(const RGB888 &c1, const RGB888 &c2);
 
     private:
         std::array<uint8_t, 3> v; // BGR in memory

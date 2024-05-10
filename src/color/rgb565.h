@@ -66,7 +66,7 @@ namespace Color
         inline auto operator[](std::size_t pos) const -> value_type { return pos == 0 ? v.r : (pos == 1 ? v.g : v.b); }
 
         /// @brief Return raw RGB565 value
-        inline operator uint16_t() const { return std::bit_cast<uint16_t>(v); }
+        explicit inline operator uint16_t() const { return std::bit_cast<uint16_t>(v); }
 
         static constexpr std::array<value_type, 3> Min{0, 0, 0};
         static constexpr std::array<value_type, 3> Max{31, 63, 31};
@@ -78,6 +78,9 @@ namespace Color
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
         /// @return Returns a value in [0,1]
         static auto distance(const RGB565 &color0, const RGB565 &color1) -> float;
+
+        friend bool operator==(const RGB565 &c1, const RGB565 &c2);
+        friend bool operator!=(const RGB565 &c1, const RGB565 &c2);
 
     private:
         struct Value

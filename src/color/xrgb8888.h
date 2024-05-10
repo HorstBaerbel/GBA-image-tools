@@ -60,7 +60,7 @@ namespace Color
         inline auto operator[](std::size_t pos) -> value_type & { return pos == 0 ? v[2] : (pos == 1 ? v[1] : v[0]); }
 
         /// @brief Return raw XRGB8888 value
-        inline operator uint32_t() const { return std::bit_cast<uint32_t>(v); }
+        explicit inline operator uint32_t() const { return std::bit_cast<uint32_t>(v); }
 
         static constexpr std::array<value_type, 3> Min{0, 0, 0};
         static constexpr std::array<value_type, 3> Max{255, 255, 255};
@@ -81,6 +81,9 @@ namespace Color
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
         /// @return Returns a value in [0,1]
         static auto distance(const XRGB8888 &color0, const XRGB8888 &color1) -> float;
+
+        friend bool operator==(const XRGB8888 &c1, const XRGB8888 &c2);
+        friend bool operator!=(const XRGB8888 &c1, const XRGB8888 &c2);
 
     private:
         std::array<uint8_t, 4> v; // BGRX in memory

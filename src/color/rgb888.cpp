@@ -62,4 +62,13 @@ namespace Color
         return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (3.0F - rMean) * dB * dB) / 9.0F;
     } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (3    -     1) *  1 *  1 = 3 + 4 + 2 = 9 / 9 = 1
 
+    bool operator==(const RGB888 &c1, const RGB888 &c2)
+    {
+        return c1.v == c2.v;
+    }
+
+    bool operator!=(const RGB888 &c1, const RGB888 &c2)
+    {
+        return !(c1 == c2);
+    }
 }
