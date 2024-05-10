@@ -14,52 +14,83 @@ namespace IO
 
     auto getColorMap(const Magick::Image &img) -> std::vector<Color::XRGB8888>
     {
-        std::vector<Color::XRGB8888> colorMap(img.colorMapSize());
-        for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
+        REQUIRE(img.classType() == Magick::ClassType::PseudoClass, std::runtime_error, "Image must be paletted");
+        if (img.type() == Magick::ImageType::GrayscaleType)
         {
-            auto color = Magick::ColorRGB(img.colorMap(i));
-            auto r = static_cast<uint8_t>(255.0 * color.red());
-            auto g = static_cast<uint8_t>(255.0 * color.green());
-            auto b = static_cast<uint8_t>(255.0 * color.blue());
-            colorMap.emplace_back(Color::XRGB8888(r, g, b));
+            std::vector<Color::XRGB8888> colorMap;
+            for (std::vector<Magick::Color>::size_type i = 0; i < 256; ++i)
+            {
+                colorMap.emplace_back(Color::XRGB8888(i, i, i));
+            }
+            return colorMap;
         }
-        return colorMap;
+        else if (img.type() == Magick::ImageType::PaletteType || img.type() == Magick::ImageType::PaletteAlphaType)
+        {
+            std::vector<Color::XRGB8888> colorMap;
+            for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
+            {
+                auto color = Magick::ColorRGB(img.colorMap(i));
+                auto r = static_cast<uint8_t>(255.0 * color.red());
+                auto g = static_cast<uint8_t>(255.0 * color.green());
+                auto b = static_cast<uint8_t>(255.0 * color.blue());
+                colorMap.emplace_back(Color::XRGB8888(r, g, b));
+            }
+            return colorMap;
+        }
+        THROW(std::runtime_error, "Unsupported image type");
     }
 
     auto getImageData(const Magick::Image &img) -> Image::ImageData
     {
-        if (img.type() == Magick::ImageType::PaletteType || img.type() == Magick::ImageType::PaletteAlphaType)
+        if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::GrayscaleType)
         {
-            // convert to linear RGB color space
-            auto linearImg = img;
-            linearImg.colorSpace(Magick::RGBColorspace);
-            // get pixel indices
-            const auto nrOfColors = linearImg.colorMapSize();
-            REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
-            const auto nrOfIndices = linearImg.columns() * linearImg.rows();
-            auto srcPixels = linearImg.getConstPixels(0, 0, linearImg.columns(), linearImg.rows()); // we need to call this first for getIndices to work...
-            auto srcIndices = static_cast<const uint8_t *>(linearImg.getConstMetacontent());
+            // get GrayChannel from image
+            auto temp = img.separate(MagickCore::GrayChannel);
+            auto indices = temp.getConstPixels(0, 0, temp.columns(), temp.rows());
+            REQUIRE(indices != nullptr, std::runtime_error, "Failed to get grayscale image pixels");
+            const auto nrOfIndices = temp.columns() * temp.rows();
             std::vector<uint8_t> dstIndices;
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; ++i)
+            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
             {
-                dstIndices.push_back(srcIndices[i]);
+                dstIndices.push_back(static_cast<uint8_t>(std::round(255.0F * indices[i]) / QuantumRange));
             }
-            return Image::ImageData(dstIndices, Color::Format::Paletted8, getColorMap(linearImg));
+            return Image::ImageData(dstIndices, Color::Format::Paletted8, getColorMap(img));
+        }
+        else if (img.type() == Magick::ImageType::PaletteType || img.type() == Magick::ImageType::PaletteAlphaType)
+        {
+            // get pixel indices
+            const auto nrOfColors = img.colorMapSize();
+            REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
+            // get IndexChannel from image
+            auto temp = img.separate(MagickCore::IndexChannel);
+            auto srcIndices = temp.getConstPixels(0, 0, temp.columns(), temp.rows());
+            REQUIRE(srcIndices != nullptr, std::runtime_error, "Failed to get paletted image pixels");
+            const auto nrOfIndices = temp.columns() * temp.rows();
+            std::vector<uint8_t> dstIndices;
+            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
+            {
+                REQUIRE(srcIndices[i] <= 255, std::runtime_error, "Image color index must be <= 255");
+                dstIndices.push_back(static_cast<uint8_t>(srcIndices[i]));
+            }
+            return Image::ImageData(dstIndices, Color::Format::Paletted8, getColorMap(img));
         }
         else if (img.type() == Magick::ImageType::TrueColorType || img.type() == Magick::ImageType::TrueColorAlphaType)
         {
             std::vector<Color::XRGB8888> dstPixels;
-            // convert to linear RGB color space
-            auto linearImg = img;
-            linearImg.colorSpace(Magick::RGBColorspace);
-            // get pixel colors as RGBf
-            const auto nrOfPixels = linearImg.columns() * linearImg.rows();
-            auto srcPixels = linearImg.getConstPixels(0, 0, linearImg.columns(), linearImg.rows());
+            //  get pixel colors as RGBf
+            auto srcPixels = img.getConstPixels(0, 0, img.columns(), img.rows());
+            REQUIRE(srcPixels != nullptr, std::runtime_error, "Failed to get truecolor image pixels");
+            const auto nrOfPixels = img.columns() * img.rows();
             for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
             {
                 auto r = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
                 auto g = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
                 auto b = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
+                // ignore alpha channel pixels
+                if (img.type() == Magick::ImageType::TrueColorAlphaType)
+                {
+                    srcPixels++;
+                }
                 dstPixels.emplace_back(Color::XRGB8888(r, g, b));
             }
             return Image::ImageData(dstPixels);
