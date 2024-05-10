@@ -7,18 +7,7 @@
 #include <filesystem>
 #include <fstream>
 
-// Redefine QuantumRange here, to avoid an issue with ImageMagick headers
-#if (MAGICKCORE_QUANTUM_DEPTH == 8)
-#define QuantumRange (255.0)
-#elif (MAGICKCORE_QUANTUM_DEPTH == 16)
-#define QuantumRange (65535.0)
-#elif (MAGICKCORE_QUANTUM_DEPTH == 32)
-#define QuantumRange (4294967295.0)
-#elif (MAGICKCORE_QUANTUM_DEPTH == 64)
-#define QuantumRange (18446744073709551615.0)
-#else
-#error "Could not define QuantumRange, check the ImageMagick header"
-#endif
+using namespace MagickCore;
 
 namespace IO
 {
@@ -68,9 +57,9 @@ namespace IO
             auto srcPixels = linearImg.getConstPixels(0, 0, linearImg.columns(), linearImg.rows());
             for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
             {
-                auto r = static_cast<uint8_t>((255.0F * *srcPixels++) / QuantumRange);
-                auto g = static_cast<uint8_t>((255.0F * *srcPixels++) / QuantumRange);
-                auto b = static_cast<uint8_t>((255.0F * *srcPixels++) / QuantumRange);
+                auto r = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
+                auto g = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
+                auto b = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
                 dstPixels.emplace_back(Color::XRGB8888(r, g, b));
             }
             return Image::ImageData(dstPixels);
@@ -127,9 +116,9 @@ namespace IO
         const auto nrOfPixels = dst.columns() * dst.rows();
         for (std::size_t i = 0; i < nrOfPixels; i++)
         {
-            *dstPixels++ = (QuantumRange * static_cast<float>(srcPixels[i].R())) / 255.0F;
-            *dstPixels++ = (QuantumRange * static_cast<float>(srcPixels[i].G())) / 255.0F;
-            *dstPixels++ = (QuantumRange * static_cast<float>(srcPixels[i].B())) / 255.0F;
+            *dstPixels++ = (QuantumRange * static_cast<double>(srcPixels[i].R())) / 255.0;
+            *dstPixels++ = (QuantumRange * static_cast<double>(srcPixels[i].G())) / 255.0;
+            *dstPixels++ = (QuantumRange * static_cast<double>(srcPixels[i].B())) / 255.0;
         }
     }
 
