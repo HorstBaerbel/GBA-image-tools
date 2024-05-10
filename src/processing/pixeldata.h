@@ -5,6 +5,7 @@
 #include "color/grayf.h"
 #include "color/lchf.h"
 #include "color/rgb565.h"
+#include "color/rgb888.h"
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
 #include "color/xrgb8888.h"
@@ -23,7 +24,7 @@ namespace Image
     class PixelData
     {
     public:
-        using storage_type = std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::LChf>, std::vector<Color::YCgCoRf>, std::vector<Color::Grayf>>;
+        using storage_type = std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::RGB888>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::LChf>, std::vector<Color::YCgCoRf>, std::vector<Color::Grayf>>;
 
         PixelData() = default;
 
@@ -38,10 +39,10 @@ namespace Image
             else
             {
                 REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
-                            m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf ||
-                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf ||
-                            m_dataFormat == Color::Format::Grayf,
-                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
+                            m_dataFormat == Color::Format::RGB888 || m_dataFormat == Color::Format::XRGB8888 ||
+                            m_dataFormat == Color::Format::RGBf || m_dataFormat == Color::Format::LChf ||
+                            m_dataFormat == Color::Format::YCgCoRf || m_dataFormat == Color::Format::Grayf,
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, RGB888, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
             }
         }
 
@@ -56,10 +57,10 @@ namespace Image
             else
             {
                 REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
-                            m_dataFormat == Color::Format::XRGB8888 || m_dataFormat == Color::Format::RGBf ||
-                            m_dataFormat == Color::Format::LChf || m_dataFormat == Color::Format::YCgCoRf ||
-                            m_dataFormat == Color::Format::Grayf,
-                        std::runtime_error, "Color format must be XRGB1555, RGB565, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
+                            m_dataFormat == Color::Format::RGB888 || m_dataFormat == Color::Format::XRGB8888 ||
+                            m_dataFormat == Color::Format::RGBf || m_dataFormat == Color::Format::LChf ||
+                            m_dataFormat == Color::Format::YCgCoRf || m_dataFormat == Color::Format::Grayf,
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, RGB888, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
             }
             m_data = std::move(data);
         }
@@ -104,6 +105,10 @@ namespace Image
                 {
                     return Color::convertTo<T>(std::get<std::vector<Color::RGB565>>(m_data));
                 }
+                else if (std::holds_alternative<std::vector<Color::RGB888>>(m_data))
+                {
+                    return Color::convertTo<T>(std::get<std::vector<Color::RGB888>>(m_data));
+                }
                 else if (std::holds_alternative<std::vector<Color::XRGB8888>>(m_data))
                 {
                     return Color::convertTo<T>(std::get<std::vector<Color::XRGB8888>>(m_data));
@@ -141,6 +146,10 @@ namespace Image
             else if (std::holds_alternative<std::vector<Color::RGB565>>(m_data))
             {
                 return getAsRaw<Color::RGB565>();
+            }
+            else if (std::holds_alternative<std::vector<Color::RGB888>>(m_data))
+            {
+                return getAsRaw<Color::RGB888>();
             }
             else if (std::holds_alternative<std::vector<Color::XRGB8888>>(m_data))
             {
