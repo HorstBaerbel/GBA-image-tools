@@ -35,52 +35,36 @@ namespace Color
     template <>
     auto convertTo(const XRGB1555 &color) -> RGBf
     {
-        uint16_t c = color;
-        auto R = static_cast<float>((c & 0x7C00) >> 10);
-        auto G = static_cast<float>((c & 0x3E0) >> 5);
-        auto B = static_cast<float>(c & 0x1F);
-        R /= 31.0F;
-        G /= 31.0F;
-        B /= 31.0F;
+        auto R = static_cast<float>(color.R()) / 31.0F;
+        auto G = static_cast<float>(color.G()) / 31.0F;
+        auto B = static_cast<float>(color.B()) / 31.0F;
         return RGBf(R, G, B);
     }
 
     template <>
     auto convertTo(const RGB565 &color) -> RGBf
     {
-        uint16_t c = color;
-        auto R = static_cast<float>((c & 0xF800) >> 11);
-        auto G = static_cast<float>((c & 0x7E0) >> 5);
-        auto B = static_cast<float>(c & 0x1F);
-        R /= 31.0F;
-        G /= 63.0F;
-        B /= 31.0F;
+        auto R = static_cast<float>(color.R()) / 31.0F;
+        auto G = static_cast<float>(color.G()) / 63.0F;
+        auto B = static_cast<float>(color.B()) / 31.0F;
         return RGBf(R, G, B);
     }
 
     template <>
     auto convertTo(const RGB888 &color) -> RGBf
     {
-        uint32_t c = color;
-        auto R = static_cast<float>((c & 0xFF0000) >> 16);
-        auto G = static_cast<float>((c & 0xFF00) >> 8);
-        auto B = static_cast<float>(c & 0xFF);
-        R /= 255.0F;
-        G /= 255.0F;
-        B /= 255.0F;
+        auto R = static_cast<float>(color.R()) / 255.0F;
+        auto G = static_cast<float>(color.G()) / 255.0F;
+        auto B = static_cast<float>(color.B()) / 255.0F;
         return RGBf(R, G, B);
     }
 
     template <>
     auto convertTo(const XRGB8888 &color) -> RGBf
     {
-        uint32_t c = color;
-        auto R = static_cast<float>((c & 0xFF0000) >> 16);
-        auto G = static_cast<float>((c & 0xFF00) >> 8);
-        auto B = static_cast<float>(c & 0xFF);
-        R /= 255.0F;
-        G /= 255.0F;
-        B /= 255.0F;
+        auto R = static_cast<float>(color.R()) / 255.0F;
+        auto G = static_cast<float>(color.G()) / 255.0F;
+        auto B = static_cast<float>(color.B()) / 255.0F;
         return RGBf(R, G, B);
     }
 
@@ -172,7 +156,7 @@ namespace Color
         auto R = (static_cast<uint16_t>(color.R()) * 249 + 1014) >> 11;
         auto G = (static_cast<uint16_t>(color.G()) * 249 + 1014) >> 11;
         auto B = (static_cast<uint16_t>(color.B()) * 249 + 1014) >> 11;
-        return XRGB1555(R << 10) | (G << 5) | B;
+        return XRGB1555((R << 10) | (G << 5) | B);
     }
 
     // See: https://stackoverflow.com/a/9069480/1121150
@@ -184,7 +168,7 @@ namespace Color
         auto R = (static_cast<uint16_t>(color.R()) * 249 + 1014) >> 11;
         auto G = (static_cast<uint16_t>(color.G()) * 249 + 1014) >> 11;
         auto B = (static_cast<uint16_t>(color.B()) * 249 + 1014) >> 11;
-        return XRGB1555(R << 10) | (G << 5) | B;
+        return XRGB1555((R << 10) | (G << 5) | B);
     }
 
     // See: https://stackoverflow.com/a/9069480/1121150
@@ -196,7 +180,7 @@ namespace Color
         auto R = static_cast<uint16_t>(color.R());
         auto G = static_cast<uint16_t>(color.G() * 31 + 31) >> 6;
         auto B = static_cast<uint16_t>(color.B());
-        return XRGB1555(R << 10) | (G << 5) | B;
+        return XRGB1555((R << 10) | (G << 5) | B);
     }
 
     template <>
