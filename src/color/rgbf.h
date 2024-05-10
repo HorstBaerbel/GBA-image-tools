@@ -33,8 +33,6 @@ namespace Color
         inline auto B() const -> const value_type & { return z(); }
         inline auto B() -> value_type & { return z(); }
 
-        inline auto raw() const -> pixel_type { return *this; }
-
         static constexpr std::array<value_type, 3> Min{0.0F, 0.0F, 0.0F};
         static constexpr std::array<value_type, 3> Max{1.0F, 1.0F, 1.0F};
 

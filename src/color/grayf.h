@@ -28,9 +28,6 @@ namespace Color
         inline auto operator[](std::size_t /*pos*/) -> value_type & { return v; }
 
         /// @brief Return raw intensity value
-        inline auto raw() const -> pixel_type { return v; }
-
-        /// @brief Return raw intensity value
         inline operator float() const { return v; }
 
         static constexpr std::array<value_type, 1> Min{0.0F};
@@ -44,7 +41,7 @@ namespace Color
         static auto roundTo(const Grayf &color, const std::array<T, 1> &gridMax) -> Grayf
         {
             // scale to grid
-            float I = color.raw() * gridMax[0];
+            float I = color * gridMax[0];
             // clamp to [0, gridMax]
             I = I < 0.0F ? 0.0F : (I > gridMax[0] ? gridMax[0] : I);
             // round to grid point

@@ -1,16 +1,16 @@
-#include "xrgb8888.h"
+#include "rgb888.h"
 
 #include <iomanip>
 
 namespace Color
 {
 
-    auto XRGB8888::swappedRB() const -> XRGB8888
+    auto RGB888::swappedRB() const -> RGB888
     {
-        return XRGB8888(B(), G(), R());
+        return RGB888(B(), G(), R());
     }
 
-    auto XRGB8888::fromHex(const std::string &hex) -> XRGB8888
+    auto RGB888::fromHex(const std::string &hex) -> RGB888
     {
         REQUIRE(hex.length() >= 6, std::runtime_error, "Hex color string must have format RRGGBB or #RRGGBB");
         auto temp = hex;
@@ -26,7 +26,7 @@ namespace Color
             auto R = std::stoi(temp.substr(0, 2), nullptr, 16);
             auto G = std::stoi(temp.substr(2, 2), nullptr, 16);
             auto B = std::stoi(temp.substr(4, 2), nullptr, 16);
-            return XRGB8888(R, G, B);
+            return RGB888(R, G, B);
         }
         catch (const std::invalid_argument &e)
         {
@@ -34,22 +34,22 @@ namespace Color
         }
     }
 
-    auto XRGB8888::toHex() const -> std::string
+    auto RGB888::toHex() const -> std::string
     {
         return toHex(*this);
     }
 
-    auto XRGB8888::toHex(const XRGB8888 &color) -> std::string
+    auto RGB888::toHex(const RGB888 &color) -> std::string
     {
         std::stringstream ss;
         ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << static_cast<uint32_t>(color.R()) << std::setw(2) << static_cast<uint32_t>(color.G()) << std::setw(2) << static_cast<uint32_t>(color.B());
         return ss.str();
     }
 
-    auto XRGB8888::distance(const XRGB8888 &color0, const XRGB8888 &color1) -> float
+    auto RGB888::distance(const RGB888 &color0, const RGB888 &color1) -> float
     {
         static constexpr float OneOver255 = 1.0F / 255.0F;
-        if (static_cast<uint32_t>(color0) == static_cast<uint32_t>(color1))
+        if (color0.R() == color1.R() && color0.G() == color1.G() && color0.B() == color1.B())
         {
             return 0.0F;
         }

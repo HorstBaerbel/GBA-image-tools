@@ -12,7 +12,7 @@ namespace Color
     {
         static constexpr float OneOver31 = 1.0F / 31.0F;
         static constexpr float OneOver63 = 1.0F / 63.0F;
-        if (color0.raw() == color1.raw())
+        if (static_cast<uint16_t>(color0) == static_cast<uint16_t>(color1))
         {
             return 0.0F;
         }

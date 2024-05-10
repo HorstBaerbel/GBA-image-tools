@@ -15,7 +15,7 @@ TEST_CASE("DefaultConstruction")
     CATCH_REQUIRE(c0.R() == 0);
     CATCH_REQUIRE(c0.G() == 0);
     CATCH_REQUIRE(c0.B() == 0);
-    CATCH_REQUIRE(c0.raw() == ColorType::pixel_type());
+    CATCH_REQUIRE(c0 == ColorType::pixel_type(0, 0, 0));
 }
 
 TEST_CASE("Construction")
@@ -27,7 +27,7 @@ TEST_CASE("Construction")
     CATCH_REQUIRE(c1.x() == 1);
     CATCH_REQUIRE(c1.y() == 2);
     CATCH_REQUIRE(c1.z() == 3);
-    CATCH_REQUIRE(c1.raw() == ColorType::pixel_type(1, 2, 3));
+    CATCH_REQUIRE(c1 == ColorType::pixel_type(1, 2, 3));
 }
 
 TEST_CASE("Assignment")

@@ -12,14 +12,14 @@ TEST_SUITE("Grayf")
 TEST_CASE("DefaultConstruction")
 {
     ColorType c0;
-    CATCH_REQUIRE(c0.raw() == ColorType::pixel_type());
-    CATCH_REQUIRE(c0.I() == ColorType::pixel_type());
+    CATCH_REQUIRE(c0 == 0.0F);
+    CATCH_REQUIRE(c0.I() == 0.0F);
 }
 
 TEST_CASE("Construction")
 {
     ColorType c1(0.5F);
-    CATCH_REQUIRE(c1.raw() == 0.5F);
+    CATCH_REQUIRE(c1 == 0.5F);
     CATCH_REQUIRE(c1.I() == 0.5F);
 }
 
@@ -28,10 +28,10 @@ TEST_CASE("Assignment")
     ColorType c1(0.1F);
     ColorType c2(0.2F);
     c2 = c1;
-    CATCH_REQUIRE(c2.raw() == 0.1F);
+    CATCH_REQUIRE(c2 == 0.1F);
     CATCH_REQUIRE(c2.I() == 0.1F);
     c1.I() = 5;
-    CATCH_REQUIRE(c1.raw() == 5);
+    CATCH_REQUIRE(c1 == 5);
     CATCH_REQUIRE(c1.I() == 5);
 }
 

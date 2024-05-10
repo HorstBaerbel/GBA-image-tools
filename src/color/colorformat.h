@@ -16,6 +16,7 @@ namespace Color
         Paletted8 = 8, // 8bit paletted format
         XRGB1555 = 15, // X1R5G5B5 16-bit format for GBA
         RGB565 = 16,   // R5G6B5 16-bit format for NDS, DXT
+        RGB888 = 24,   // R8G8B8 24-bit straight truecolor format
         XRGB8888 = 32, // X8R8G8B8 32-bit straight truecolor format
         LChf = 96,     // LCh float truecolor format
         RGBf = 97,     // RGB float truecolor format
@@ -33,6 +34,7 @@ namespace Color
         uint32_t channels = 0;      // Color channels in color data
         bool isIndexed = false;     // If color format is indexed / paletted
         bool isTruecolor = false;   // If color format is truecolor
+        bool hasAlpha = false;      // If color format has alpah channel
     };
 
     /// @brief Return color format information

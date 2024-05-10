@@ -220,13 +220,11 @@ namespace Image
         template <typename T>
         auto getAsRaw() const -> std::vector<uint8_t>
         {
-            const auto &temp = std::get<std::vector<T>>(m_data);
-            std::vector<uint8_t> raw(temp.size() * sizeof(typename T::pixel_type));
-            auto rawPtr = reinterpret_cast<T::pixel_type *>(raw.data());
-            for (auto pixel : temp)
-            {
-                *rawPtr++ = pixel.raw();
-            }
+            const auto &src = std::get<std::vector<T>>(m_data);
+            auto srcPtr = src.data();
+            std::vector<uint8_t> raw(src.size() * sizeof(T));
+            auto rawPtr = reinterpret_cast<T *>(raw.data());
+            std::memcpy(rawPtr, srcPtr, raw.size());
             return raw;
         }
 

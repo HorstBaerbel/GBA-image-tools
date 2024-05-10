@@ -13,7 +13,7 @@ TEST_CASE("DefaultConstruction")
     CATCH_REQUIRE(c0.R() == 0);
     CATCH_REQUIRE(c0.G() == 0);
     CATCH_REQUIRE(c0.B() == 0);
-    CATCH_REQUIRE(c0.raw() == 0);
+    CATCH_REQUIRE(c0 == 0);
 }
 
 TEST_CASE("Construction")
@@ -22,13 +22,13 @@ TEST_CASE("Construction")
     CATCH_REQUIRE(c1.R() == 1);
     CATCH_REQUIRE(c1.G() == 2);
     CATCH_REQUIRE(c1.B() == 3);
-    CATCH_REQUIRE(c1.raw() == uint16_t(0b0000010001000011)); // raw is XRGB
-    CATCH_REQUIRE(((decltype(c1)::pixel_type)c1) == c1.raw());
+    CATCH_REQUIRE(c1 == uint16_t(0b0000010001000011)); // raw is XRGB
+    CATCH_REQUIRE(((decltype(c1)::pixel_type)c1) == static_cast<uint16_t>(c1));
     ColorType c2(uint16_t(0b0101000010001100));
     CATCH_REQUIRE(c2.R() == 20);
     CATCH_REQUIRE(c2.G() == 4);
     CATCH_REQUIRE(c2.B() == 12);
-    CATCH_REQUIRE(c2.raw() == uint16_t(0b0101000010001100)); // raw is XRGB
+    CATCH_REQUIRE(c2 == uint16_t(0b0101000010001100)); // raw is XRGB
     ColorType c3(c1);
     CATCH_REQUIRE(c3.R() == c1.R());
     CATCH_REQUIRE(c3.G() == c1.G());
@@ -39,16 +39,6 @@ TEST_CASE("Construction")
     CATCH_REQUIRE(c4.B() == 3);
     ColorType c5(ColorType::Max);
     CATCH_REQUIRE(static_cast<ColorType::pixel_type>(c5) == 0x7FFF);
-}
-
-TEST_CASE("OutOfRangeValuesThrow")
-{
-    CATCH_REQUIRE_THROWS(ColorType(ColorType::Max[0] + 1, 2, 3));
-    CATCH_REQUIRE_THROWS(ColorType(1, ColorType::Max[1] + 1, 3));
-    CATCH_REQUIRE_THROWS(ColorType(1, 2, ColorType::Max[2] + 1));
-    CATCH_REQUIRE_THROWS(ColorType(uint16_t(0x9753)));
-    ColorType c5;
-    CATCH_REQUIRE_THROWS(c5 = uint16_t(0x9753));
 }
 
 TEST_CASE("Assignment")

@@ -1,11 +1,11 @@
 #include "testmacros.h"
 
-#include "color/xrgb8888.h"
 #include "color/distance.h"
+#include "color/rgb888.h"
 
-using ColorType = Color::XRGB8888;
+using ColorType = Color::RGB888;
 
-TEST_SUITE("XRGB8888")
+TEST_SUITE("RGB888")
 
 TEST_CASE("DefaultConstruction")
 {
@@ -23,7 +23,6 @@ TEST_CASE("Construction")
     CATCH_REQUIRE(c1.G() == 2);
     CATCH_REQUIRE(c1.B() == 3);
     CATCH_REQUIRE(c1 == 0x00010203); // raw is XRGB
-    CATCH_REQUIRE(((decltype(c1)::pixel_type)c1) == static_cast<uint32_t>(c1));
     ColorType c2(0x00123456);
     CATCH_REQUIRE(c2.R() == 18);
     CATCH_REQUIRE(c2.G() == 52);
@@ -43,24 +42,15 @@ TEST_CASE("Construction")
     CATCH_REQUIRE(c6 == 0xFFFFFF);
 }
 
-TEST_CASE("OutOfRangeValuesGetZeroed")
-{
-    ColorType c1(0x12345678);
-    CATCH_REQUIRE(c1.R() == 0x34);
-    CATCH_REQUIRE(c1.G() == 0x56);
-    CATCH_REQUIRE(c1.B() == 0x78);
-    CATCH_REQUIRE(c1 == 0x00345678); // raw is XRGB
-}
-
 TEST_CASE("Assignment")
 {
     ColorType c1(26, 43, 60);
-    ColorType c2(0x001A2B3C);
+    ColorType c2;
     c2 = c1;
     CATCH_REQUIRE(c2.R() == c1.R());
     CATCH_REQUIRE(c2.G() == c1.G());
     CATCH_REQUIRE(c2.B() == c1.B());
-    c2 = 0x00135790;
+    c2 = ColorType::pixel_type({19, 87, 144});
     CATCH_REQUIRE(c2.R() == 19);
     CATCH_REQUIRE(c2.G() == 87);
     CATCH_REQUIRE(c2.B() == 144);
@@ -75,12 +65,12 @@ TEST_CASE("Assignment")
 TEST_CASE("Access")
 {
     ColorType c1(26, 43, 60);
-    ColorType c2(0x001A2B3C);
+    ColorType c2;
     c2 = c1;
     CATCH_REQUIRE(c2[0] == c1.R());
     CATCH_REQUIRE(c2[1] == c1.G());
     CATCH_REQUIRE(c2[2] == c1.B());
-    c2 = 0x00135790;
+    c2 = ColorType::pixel_type({19, 87, 144});
     CATCH_REQUIRE(c2[0] == 19);
     CATCH_REQUIRE(c2[1] == 87);
     CATCH_REQUIRE(c2[2] == 144);

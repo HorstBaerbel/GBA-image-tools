@@ -46,8 +46,8 @@ namespace Color
         /// @brief Construct color using raw XRGB1555 value
         XRGB1555(uint16_t xrgb)
         {
-            REQUIRE((xrgb & 0x8000) == 0, std::runtime_error, "15th bit must be 0 for XRGB1555");
-            v = std::bit_cast<Value>(xrgb);
+            uint16_t temp = xrgb & uint16_t(0x7FFF);
+            v = std::bit_cast<Value>(temp);
         }
 
         constexpr XRGB1555(const XRGB1555 &other) : v(other.v) {}
@@ -61,8 +61,8 @@ namespace Color
         /// @brief Set color using raw XRGB1555 value
         inline XRGB1555 &operator=(uint16_t xrgb)
         {
-            REQUIRE((xrgb & 0x8000) == 0, std::runtime_error, "15th bit must be 0 for XRGB1555");
-            v = std::bit_cast<Value>(xrgb);
+            uint16_t temp = xrgb & uint16_t(0x7FFF);
+            v = std::bit_cast<Value>(temp);
             return *this;
         }
 
@@ -71,9 +71,6 @@ namespace Color
         inline auto B() const -> value_type { return v.b; }
 
         inline auto operator[](std::size_t pos) const -> value_type { return pos == 0 ? v.r : (pos == 1 ? v.g : v.b); }
-
-        /// @brief Return raw XRGB1555 value
-        inline auto raw() const -> pixel_type { return std::bit_cast<uint16_t>(v); }
 
         /// @brief Return raw XRGB1555 value
         inline operator uint16_t() const { return std::bit_cast<uint16_t>(v); }

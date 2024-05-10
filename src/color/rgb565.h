@@ -66,9 +66,6 @@ namespace Color
         inline auto operator[](std::size_t pos) const -> value_type { return pos == 0 ? v.r : (pos == 1 ? v.g : v.b); }
 
         /// @brief Return raw RGB565 value
-        inline auto raw() const -> pixel_type { return std::bit_cast<uint16_t>(v); }
-
-        /// @brief Return raw RGB565 value
         inline operator uint16_t() const { return std::bit_cast<uint16_t>(v); }
 
         static constexpr std::array<value_type, 3> Min{0, 0, 0};

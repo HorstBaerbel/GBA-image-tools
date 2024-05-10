@@ -3,7 +3,6 @@
 #include "processing/imagedata.h"
 
 #include <algorithm>
-#include <random>
 #include <vector>
 
 TEST_SUITE("Image data")

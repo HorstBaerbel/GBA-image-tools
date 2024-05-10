@@ -2,9 +2,10 @@
 
 #include "grayf.h"
 #include "lchf.h"
+#include "rgb565.h"
+#include "rgb888.h"
 #include "rgbf.h"
 #include "xrgb1555.h"
-#include "rgb565.h"
 #include "xrgb8888.h"
 #include "ycgcorf.h"
 
@@ -54,6 +55,19 @@ namespace Color
         R /= 31.0F;
         G /= 63.0F;
         B /= 31.0F;
+        return RGBf(R, G, B);
+    }
+
+    template <>
+    auto convertTo(const RGB888 &color) -> RGBf
+    {
+        uint32_t c = color;
+        auto R = static_cast<float>((c & 0xFF0000) >> 16);
+        auto G = static_cast<float>((c & 0xFF00) >> 8);
+        auto B = static_cast<float>(c & 0xFF);
+        R /= 255.0F;
+        G /= 255.0F;
+        B /= 255.0F;
         return RGBf(R, G, B);
     }
 
@@ -152,6 +166,18 @@ namespace Color
     // See: https://stackoverflow.com/a/9069480/1121150
     // Test: https://coliru.stacked-crooked.com/a/9ab8887d2cb48685
     template <>
+    auto convertTo(const RGB888 &color) -> XRGB1555
+    {
+        // bring into range and round
+        auto R = (static_cast<uint16_t>(color.R()) * 249 + 1014) >> 11;
+        auto G = (static_cast<uint16_t>(color.G()) * 249 + 1014) >> 11;
+        auto B = (static_cast<uint16_t>(color.B()) * 249 + 1014) >> 11;
+        return XRGB1555(R << 10) | (G << 5) | B;
+    }
+
+    // See: https://stackoverflow.com/a/9069480/1121150
+    // Test: https://coliru.stacked-crooked.com/a/9ab8887d2cb48685
+    template <>
     auto convertTo(const XRGB8888 &color) -> XRGB1555
     {
         // bring into range and round
@@ -234,6 +260,18 @@ namespace Color
     // See: https://stackoverflow.com/a/9069480/1121150
     // Test: https://coliru.stacked-crooked.com/a/9ab8887d2cb48685
     template <>
+    auto convertTo(const RGB888 &color) -> RGB565
+    {
+        // bring into range and round
+        auto R = (static_cast<uint16_t>(color.R()) * 249 + 1014) >> 11;
+        auto G = (static_cast<uint16_t>(color.G()) * 253 + 505) >> 10;
+        auto B = (static_cast<uint16_t>(color.B()) * 249 + 1014) >> 11;
+        return RGB565((R << 11) | (G << 5) | B);
+    }
+
+    // See: https://stackoverflow.com/a/9069480/1121150
+    // Test: https://coliru.stacked-crooked.com/a/9ab8887d2cb48685
+    template <>
     auto convertTo(const XRGB8888 &color) -> RGB565
     {
         // bring into range and round
@@ -289,6 +327,12 @@ namespace Color
         return XRGB8888(color);
     }
 
+    template <>
+    auto convertTo(const RGB888 &color) -> XRGB8888
+    {
+        return XRGB8888(uint32_t(color));
+    }
+
     // See: https://stackoverflow.com/a/9069480/1121150
     // Test: https://coliru.stacked-crooked.com/a/90829ec6fc2f95c3
     template <>
@@ -341,6 +385,56 @@ namespace Color
         return convertTo<XRGB8888>(convertTo<RGBf>(color));
     }
 
+    // ----- RGB888 ----------------------------------------------------------------
+
+    template <>
+    auto convertTo(const XRGB8888 &color) -> RGB888
+    {
+        return RGB888((uint32_t)color);
+    }
+
+    template <>
+    auto convertTo(const Grayf &color) -> RGB888
+    {
+        return convertTo<RGB888>(convertTo<XRGB8888>(color));
+    }
+
+    template <>
+    auto convertTo(const uint32_t &color) -> RGB888
+    {
+        return convertTo<RGB888>(convertTo<XRGB8888>(color));
+    }
+
+    template <>
+    auto convertTo(const XRGB1555 &color) -> RGB888
+    {
+        return convertTo<RGB888>(convertTo<XRGB8888>(color));
+    }
+
+    template <>
+    auto convertTo(const RGB565 &color) -> RGB888
+    {
+        return convertTo<RGB888>(convertTo<XRGB8888>(color));
+    }
+
+    template <>
+    auto convertTo(const RGBf &color) -> RGB888
+    {
+        return convertTo<RGB888>(convertTo<XRGB8888>(color));
+    }
+
+    template <>
+    auto convertTo(const YCgCoRf &color) -> RGB888
+    {
+        return convertTo<RGB888>(convertTo<XRGB8888>(color));
+    }
+
+    template <>
+    auto convertTo(const LChf &color) -> RGB888
+    {
+        return convertTo<RGB888>(convertTo<XRGB8888>(color));
+    }
+
     // ----- YCgCoRf --------------------------------------------------------------
 
     template <>
@@ -367,6 +461,12 @@ namespace Color
 
     template <>
     auto convertTo(const RGB565 &color) -> YCgCoRf
+    {
+        return convertTo<YCgCoRf>(convertTo<RGBf>(color));
+    }
+
+    template <>
+    auto convertTo(const RGB888 &color) -> YCgCoRf
     {
         return convertTo<YCgCoRf>(convertTo<RGBf>(color));
     }
@@ -444,6 +544,12 @@ namespace Color
     }
 
     template <>
+    auto convertTo(const RGB888 &color) -> LChf
+    {
+        return convertTo<LChf>(convertTo<RGBf>(color));
+    }
+
+    template <>
     auto convertTo(const XRGB8888 &color) -> LChf
     {
         return convertTo<LChf>(convertTo<RGBf>(color));
@@ -473,6 +579,12 @@ namespace Color
     auto convertTo(const RGB565 &color) -> Grayf
     {
         return Grayf((0.2126F * static_cast<float>(color.R())) / 31.0F + (0.7152F * static_cast<float>(color.G())) / 63.0F + (0.0722F * static_cast<float>(color.B())) / 31.0F);
+    }
+
+    template <>
+    auto convertTo(const RGB888 &color) -> Grayf
+    {
+        return Grayf((0.2126F * static_cast<float>(color.R()) + 0.7152F * static_cast<float>(color.G()) + 0.0722F * static_cast<float>(color.B())) / 255.0F);
     }
 
     template <>
