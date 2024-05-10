@@ -5,6 +5,7 @@
 #include <Magick++.h>
 
 #include <filesystem>
+#include <fstream>
 
 // Redefine QuantumRange here, to avoid an issue with ImageMagick headers
 #if (MAGICKCORE_QUANTUM_DEPTH == 8)
@@ -163,5 +164,17 @@ namespace IO
         {
             writeImage(i, folder);
         }
+    }
+
+    auto File::writeRawImage(const Image::Data &image, const std::string &folder, const std::string &fileName) -> void
+    {
+        REQUIRE(image.imageData.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(image.size.width() > 0 && image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(!image.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
+        auto outName = !fileName.empty() ? fileName : image.fileName;
+        auto outPath = std::filesystem::path(folder) / std::filesystem::path(outName).filename();
+        auto ofs = std::ofstream(outPath, std::ios::binary);
+        auto pixels = image.imageData.pixels().convertDataToRaw();
+        ofs.write(reinterpret_cast<const char *>(pixels.data()), pixels.size());
     }
 }

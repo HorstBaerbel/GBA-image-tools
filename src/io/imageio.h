@@ -28,6 +28,12 @@ namespace IO
         /// @param images Images data to write. If image.fileName is filled it can be used as the file name
         /// @param folder Images output folder
         static auto writeImages(const std::vector<Image::Data> &images, const std::string &folder) -> void;
+
+        /// @brief Write raw image data to file
+        /// @param image Image data to write. If image.fileName is filled it can be used as the file name
+        /// @param folder Image output folder
+        /// @param fileName Optional. If passed used as image file name, if empty image.fileName is used
+        static auto writeRawImage(const Image::Data &image, const std::string &folder, const std::string &fileName = "") -> void;
     };
 
 }
