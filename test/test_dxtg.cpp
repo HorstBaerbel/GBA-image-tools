@@ -22,7 +22,7 @@ TEST_CASE("EncodeDecode555")
     image.imageData.pixels() = Image::PixelData(xrgb8888.convertData<Color::RGB888>(), Color::Format::RGB888);
     // IO::File::writeRawImage(image, "/tmp", "out.data");
     IO::File::writeImage(image, "/tmp", "out555.png");
-    CATCH_REQUIRE(imageError < 0.0003F);
+    CATCH_REQUIRE(imageError < 0.00022F);
 }
 
 TEST_CASE("EncodeDecode565")
@@ -37,5 +37,5 @@ TEST_CASE("EncodeDecode565")
     image.imageData.pixels() = Image::PixelData(xrgb8888.convertData<Color::RGB888>(), Color::Format::RGB888);
     // IO::File::writeRawImage(image, "/tmp", "out.data");
     IO::File::writeImage(image, "/tmp", "out565.png");
-    CATCH_REQUIRE(imageError < 0.0003F);
+    CATCH_REQUIRE(imageError < 0.00018F);
 }
