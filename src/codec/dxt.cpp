@@ -3,9 +3,9 @@
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "color/rgb565.h"
-#include "color/rgb888.h"
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
+#include "color/xrgb8888.h"
 #include "dxttables.h"
 #include "exception.h"
 #include "math/linefit.h"
@@ -109,9 +109,7 @@ auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t wi
     }
     // split data into colors and indices for better compression
     std::vector<uint8_t> data(nrOfBlocks * 8);
-    // std::vector<uint16_t> rgbData(nrOfBlocks * 2);
     auto colorPtr16 = reinterpret_cast<uint16_t *>(data.data());
-    // std::vector<uint16_t> indexData(nrOfBlocks * 2);
     auto indexPtr16 = reinterpret_cast<uint16_t *>(data.data() + nrOfBlocks * 4);
     auto srcPtr16 = reinterpret_cast<const uint16_t *>(dxtData.data());
     for (uint32_t i = 0; i < nrOfBlocks; i++)
@@ -121,86 +119,7 @@ auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t wi
         *indexPtr16++ = *srcPtr16++;
         *indexPtr16++ = *srcPtr16++;
     }
-    /*auto srcPtr16 = reinterpret_cast<const uint16_t *>(resultData.data());
-    std::vector<uint16_t> uniqueColors;
-    for (uint32_t i = 0; i < nrOfBlocks * 2; i++)
-    {
-        auto color = *srcPtr16++;
-        if (std::find(uniqueColors.cbegin(), uniqueColors.cend(), color) == uniqueColors.cend())
-        {
-            uniqueColors.push_back(color);
-        }
-    }
-    auto srcPtr32 = reinterpret_cast<const uint32_t *>(srcPtr16);
-    std::vector<uint32_t> uniqueIndices;
-    for (uint32_t i = 0; i < nrOfBlocks; i++)
-    {
-        auto indices = *srcPtr32++;
-        if (std::find(uniqueIndices.cbegin(), uniqueIndices.cend(), indices) == uniqueIndices.cend())
-        {
-            uniqueIndices.push_back(indices);
-        }
-    }
-    std::cout << "Unique colors: " << uniqueColors.size() << ", indices: " << uniqueIndices.size() << std::endl;*/
-#ifdef SLIDING_WINDOW
-    // encode colors with moving window
-    std::deque<uint16_t> colorWindow;
-    srcPtr16 = reinterpret_cast<const uint16_t *>(rgbData.data());
-    uint32_t colorReuseCount = 0;
-    for (uint32_t i = 0; i < nrOfBlocks * 2; i++)
-    {
-        auto color = *srcPtr16++;
-        auto cwIt = std::find(colorWindow.cbegin(), colorWindow.cend(), color);
-        if (cwIt != colorWindow.cend())
-        {
-            auto dist = std::distance(colorWindow.cbegin(), cwIt);
-            data.push_back(static_cast<uint8_t>(dist));
-            colorWindow.erase(cwIt);
-            colorWindow.push_front(color);
-            colorReuseCount++;
-        }
-        else
-        {
-            data.push_back(static_cast<uint8_t>(color >> 8));
-            data.push_back(static_cast<uint8_t>(color & 0xFF));
-            if (colorWindow.size() >= 256)
-            {
-                colorWindow.pop_back();
-            }
-            colorWindow.push_front(color);
-        }
-    }
-    // std::cout << "Reused " << colorReuseCount << " of " << nrOfBlocks * 2 << " colors (" << ((colorReuseCount * 100) / (nrOfBlocks * 2)) << "%)" << std::endl;
-#endif
-#ifdef SLIDING_WINDOW
-    std::deque<uint16_t> indexWindow;
-    srcPtr16 = reinterpret_cast<const uint16_t *>(indexData.data());
-    uint32_t indexReuseCount = 0;
-    for (uint32_t i = 0; i < nrOfBlocks * 2; i++)
-    {
-        auto indices = *srcPtr16++;
-        auto iwIt = std::find(indexWindow.cbegin(), indexWindow.cend(), indices);
-        if (iwIt != indexWindow.cend())
-        {
-            auto dist = std::distance(indexWindow.cbegin(), iwIt);
-            data.push_back(static_cast<uint8_t>(dist));
-            indexWindow.erase(iwIt);
-            indexWindow.push_front(indices);
-            indexReuseCount++;
-        }
-        else
-        {
-            data.push_back(static_cast<uint8_t>(indices >> 8));
-            data.push_back(static_cast<uint8_t>(indices & 0xFF));
-            if (indexWindow.size() >= 256)
-            {
-                indexWindow.pop_back();
-            }
-            indexWindow.push_front(indices);
-        }
-    }
-    // std::cout << "Reused " << indexReuseCount << " of " << nrOfBlocks * 2 << " indices (" << ((indexReuseCount * 100) / (nrOfBlocks * 2)) << "%)" << std::endl;
-#endif
+
     return data;
 }
 
