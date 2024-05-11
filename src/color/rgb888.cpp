@@ -46,7 +46,7 @@ namespace Color
         return ss.str();
     }
 
-    auto RGB888::distance(const RGB888 &color0, const RGB888 &color1) -> float
+    auto RGB888::mse(const RGB888 &color0, const RGB888 &color1) -> float
     {
         static constexpr float OneOver255 = 1.0F / 255.0F;
         if (color0.R() == color1.R() && color0.G() == color1.G() && color0.B() == color1.B())

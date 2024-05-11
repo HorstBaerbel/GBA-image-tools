@@ -46,7 +46,7 @@ namespace Color
         return ss.str();
     }
 
-    auto XRGB8888::distance(const XRGB8888 &color0, const XRGB8888 &color1) -> float
+    auto XRGB8888::mse(const XRGB8888 &color0, const XRGB8888 &color1) -> float
     {
         static constexpr float OneOver255 = 1.0F / 255.0F;
         if (static_cast<uint32_t>(color0) == static_cast<uint32_t>(color1))

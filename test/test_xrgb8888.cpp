@@ -1,7 +1,7 @@
 #include "testmacros.h"
 
+#include "color/psnr.h"
 #include "color/xrgb8888.h"
-#include "color/distance.h"
 
 using ColorType = Color::XRGB8888;
 
@@ -107,17 +107,17 @@ TEST_CASE("Distance")
     ColorType c1(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
     ColorType c2(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
     ColorType c3(ColorType::Min[0], ColorType::Min[1], ColorType::Min[2]);
-    auto d1 = ColorType::distance(c0, c1);
+    auto d1 = ColorType::mse(c0, c1);
     CATCH_REQUIRE(d1 == 1.0F);
-    auto d2 = ColorType::distance(c1, c0);
+    auto d2 = ColorType::mse(c1, c0);
     CATCH_REQUIRE(d1 == d2);
-    auto d3 = ColorType::distance(c1, c2);
+    auto d3 = ColorType::mse(c1, c2);
     CATCH_REQUIRE(d3 == 0.0F);
-    auto d4 = ColorType::distance(c2, c1);
+    auto d4 = ColorType::mse(c2, c1);
     CATCH_REQUIRE(d3 == d4);
-    auto d5 = ColorType::distance(c0, c3);
+    auto d5 = ColorType::mse(c0, c3);
     CATCH_REQUIRE(d5 == 0.0F);
-    auto d6 = ColorType::distance(c3, c0);
+    auto d6 = ColorType::mse(c3, c0);
     CATCH_REQUIRE(d5 == d6);
 }
 

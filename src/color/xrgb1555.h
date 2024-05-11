@@ -81,10 +81,10 @@ namespace Color
         /// @brief Return swapped red and blue color channel
         auto swappedRB() const -> XRGB1555;
 
-        /// @brief Calculate square of perceived distance between colors
-        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
+        /// @brief Calculate mean squared error between colors using simple metric
         /// @return Returns a value in [0,1]
-        static auto distance(const XRGB1555 &color0, const XRGB1555 &color1) -> float;
+        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
+        static auto mse(const XRGB1555 &color0, const XRGB1555 &color1) -> float;
 
         friend bool operator==(const XRGB1555 &c1, const XRGB1555 &c2);
         friend bool operator!=(const XRGB1555 &c1, const XRGB1555 &c2);

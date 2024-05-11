@@ -1,7 +1,7 @@
 #include "dxtv.h"
 
 #include "color/conversions.h"
-#include "color/distance.h"
+#include "color/psnr.h"
 #include "color/xrgb1555.h"
 #include "color/ycgcorf.h"
 #include "compression/dxtblock.h"

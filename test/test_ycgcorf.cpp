@@ -2,8 +2,8 @@
 
 #include "testmacros.h"
 
+#include "color/psnr.h"
 #include "color/ycgcorf.h"
-#include "color/distance.h"
 
 using ColorType = Color::YCgCoRf;
 
@@ -77,18 +77,12 @@ TEST_CASE("Distance")
     ColorType c1(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
     ColorType c2(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
     ColorType c3(ColorType::Min[0], ColorType::Min[1], ColorType::Min[2]);
-    auto d1 = ColorType::distance(c0, c1);
-    CATCH_REQUIRE(d1 == 1.0F);
-    auto d2 = ColorType::distance(c1, c0);
-    CATCH_REQUIRE(d1 == d2);
-    auto d3 = ColorType::distance(c1, c2);
-    CATCH_REQUIRE(d3 == 0.0F);
-    auto d4 = ColorType::distance(c2, c1);
-    CATCH_REQUIRE(d3 == d4);
-    auto d5 = ColorType::distance(c0, c3);
-    CATCH_REQUIRE(d5 == 0.0F);
-    auto d6 = ColorType::distance(c3, c0);
-    CATCH_REQUIRE(d5 == d6);
+    CATCH_REQUIRE_THAT(ColorType::mse(c0, c1), Catch::Matchers::WithinAbs(0.3333, 0.0001));
+    CATCH_REQUIRE_THAT(ColorType::mse(c1, c0), Catch::Matchers::WithinAbs(0.3333, 0.0001));
+    CATCH_REQUIRE(ColorType::mse(c1, c2) == 0.0F);
+    CATCH_REQUIRE(ColorType::mse(c2, c1) == 0.0F);
+    CATCH_REQUIRE(ColorType::mse(c0, c3) == 0.0F);
+    CATCH_REQUIRE(ColorType::mse(c3, c0) == 0.0F);
 }
 
 TEST_CASE("RoundToGrid")

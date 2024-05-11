@@ -65,10 +65,10 @@ namespace Color
             return RGBf(R, G, B);
         }
 
-        /// @brief Calculate square of perceived distance between colors
-        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
+        /// @brief Calculate mean squared error between colors using simple metric
         /// @return Returns a value in [0,1]
-        static auto distance(const RGBf &color0, const RGBf &color1) -> float;
+        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
+        static auto mse(const RGBf &color0, const RGBf &color1) -> float;
     };
 
 }

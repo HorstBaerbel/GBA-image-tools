@@ -65,7 +65,7 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
         float bestColorDistance = std::numeric_limits<float>::max();
         for (uint32_t ei = 0; ei < 4; ++ei)
         {
-            auto indexDistance = RGBf::distance(colors[ci], endpoints[ei]);
+            auto indexDistance = RGBf::mse(colors[ci], endpoints[ei]);
             // check if result improved
             if (bestColorDistance > indexDistance)
             {
@@ -89,130 +89,6 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
     *(reinterpret_cast<uint32_t *>(data16)) = indices;
     return result;
 }
-
-/*using Cluster = std::pair<RGBf, std::vector<RGBf>>;
-
-float DistanceSqr(const std::array<Cluster, 4> &clusters)
-{
-    auto dist = 0.0;
-    for (auto clusterIt = clusters.begin(); clusterIt != clusters.end(); ++clusterIt)
-    {
-        dist += std::accumulate(clusterIt->second.cbegin(), clusterIt->second.cend(), 0.0, [center = clusterIt->first](const auto &v, const auto &color)
-                                { return v + DistanceSqr(center, color); });
-    }
-    return dist;
-}
-
-// This is basically the "cluster fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-std::vector<uint8_t> DXT::encodeBlockDXTG3(const uint16_t *start, uint32_t pixelsPerScanline, const std::vector<std::vector<uint8_t>> &distanceSqrMap)
-{
-    REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
-    // get block colors for all 16 pixels
-    std::array<uint16_t, 16> colors16 = {0};
-    auto c16It = colors16.begin();
-    std::vector<RGBf> colors(16);
-    auto cIt = colors.begin();
-    auto pixel = start;
-    for (int y = 0; y < 4; y++)
-    {
-        *c16It++ = pixel[0];
-        *cIt++ = toVector<float>(pixel[0]);
-        *c16It++ = pixel[1];
-        *cIt++ = toVector<float>(pixel[1]);
-        *c16It++ = pixel[2];
-        *cIt++ = toVector<float>(pixel[2]);
-        *c16It++ = pixel[3];
-        *cIt++ = toVector<float>(pixel[3]);
-        pixel += pixelsPerScanline;
-    }
-    // calculate line fit through RGB color space
-    auto originAndAxis = bestLineFromColors(colors);
-    // project all points onto the line
-    std::array<RGBf, 14> colorsOnLine;
-    std::transform(colors.cbegin(), colors.cend(), colorsOnLine.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
-                   { return origin + (color - origin).dot(axis) / axis.dot(axis) * axis; });
-    // calculate signed distance from origin
-    std::array<float, 16> distanceFromOrigin;
-    std::transform(colorsOnLine.cbegin(), colorsOnLine.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
-                   { return color.norm() * axis.dot(color); });
-    // get the min/max point indices
-    auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
-    auto p0 = colorsOnLine[std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first)];
-    auto p1 = colorsOnLine[std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second)];
-    // we split the line into 4 parts and use the centers as cluster centers
-    std::array<Cluster, 4> clusters;
-    // put the initial cluster centers at 1/8, 3/8, 5/8 and 7/8 along the principle axis
-    clusters[0].first = (p1 - p0) * 1.0 / 8.0 + p0;
-    clusters[1].first = (p1 - p0) * 3.0 / 8.0 + p0;
-    clusters[2].first = (p1 - p0) * 5.0 / 8.0 + p0;
-    clusters[3].first = (p1 - p0) * 7.0 / 8.0 + p0;
-    // put colors into clusters
-    for (const auto &color : colors)
-    {
-        // find cluster with minimal color-distance
-        auto minDist = std::numeric_limits<float>::max();
-        auto minIt = clusters.begin();
-        for (auto clusterIt = clusters.begin(); clusterIt != clusters.end(); ++clusterIt)
-        {
-            auto dist = DistanceSqr(clusterIt->first, color);
-            if (minDist > dist)
-            {
-                minDist = dist;
-                minIt = clusterIt;
-            }
-        }
-        // insert point into cluster
-        minIt->second.push_back(color);
-        // recalculate cluster center
-        minIt->first = std::accumulate(minIt->second.cbegin(), minIt->second.cend(), Eigen::Vector3d::Zero());
-        minIt->first /= minIt->second.size();
-    }
-    // calculate current distance
-    auto bestDist = DistanceSqr(clusters);
-    auto bestClusters = clusters;
-    // try to optimize clusters
-    int32_t iterationsLeft = 8;
-    while (iterationsLeft-- > 0)
-    {
-        // find
-    }
-// calculate intermediate colors c2 and c3
-uint16_t endpoints[4] = {colors16[indexC0], colors16[indexC1], 0, 0};
-endpoints[2] = lerpRGB555(endpoints[0], endpoints[1], 1.0 / 3.0);
-endpoints[3] = lerpRGB555(endpoints[0], endpoints[1], 2.0 / 3.0);
-// calculate minimum distance for all colors to endpoints
-std::array<uint32_t, 16> bestIndices = {0};
-for (uint32_t ci = 0; ci < 16; ++ci)
-{
-    const auto &distMapColorI = distanceSqrMap[colors16[ci]];
-    // calculate minimum distance for each index for this color
-    uint8_t bestRgbDistance = std::numeric_limits<uint8_t>::max();
-    for (uint32_t ei = 0; ei < 4; ++ei)
-    {
-        auto indexDistance = distMapColorI[endpoints[ei]];
-        // check if result improved
-        if (bestRgbDistance > indexDistance)
-        {
-            bestRgbDistance = indexDistance;
-            bestIndices[ci] = ei;
-        }
-    }
-}
-// build result data
-std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
-// add color endpoints c0 and c1
-auto data16 = reinterpret_cast<uint16_t *>(result.data());
-*data16++ = toBGR555(endpoints[0]);
-*data16++ = toBGR555(endpoints[1]);
-// add index data in reverse
-uint32_t indices = 0;
-for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
-{
-    indices = (indices << 2) | *iIt;
-}
-*(reinterpret_cast<uint32_t *>(data16)) = indices;
-return result;
-}*/
 
 auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<uint8_t>
 {

@@ -6,7 +6,7 @@
 namespace Color
 {
 
-    auto LChf::distance(const LChf &color0, const LChf &color1) -> float
+    auto LChf::mse(const LChf &color0, const LChf &color1) -> float
     {
         constexpr float OneOver360 = 1.0 / 360.0;
         if (color0 == color1)
@@ -19,7 +19,6 @@ namespace Color
         float dH0 = 2.0F * std::abs((color0.H() * OneOver360) - (color1.H() * OneOver360));
         float dH1 = 2.0F - dH0;
         float dH = dH0 < dH1 ? dH0 : dH1; // [0, 1]
-        return (dL * dL + dC * dC + dH * dH) / 3.0F;
-    } // max:  (   1    +    1    +    1    ) / 3 = 1
-
+        return (0.5F * dL * dL + 0.3F * dC * dC + 0.2F * dH * dH) / 3.0F;
+    } // max:  (0.5  *  1 *  1 + 0.3  *  1 *  1 + 0.2  *  1 *  1) / 3 = 1
 }

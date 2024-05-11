@@ -39,10 +39,9 @@ namespace Color
         static constexpr std::array<value_type, 3> Min{0.0F, 0.0F, 0.0F};
         static constexpr std::array<value_type, 3> Max{100.0F, 200.0F, 360.0F};
 
-        /// @brief Simple euclidian distance color metric (CIE76). Ideally we would use DistanceCIEDE2000, but it is too expensive and complicated...
-        /// See: https://en.wikipedia.org/wiki/Color_difference
+        /// @brief Calculate mean squared error between colors. Ideally we would use DistanceCIEDE2000, but it is too expensive and complicated...
         /// @return Returns a value in [0,1]
-        static auto distance(const LChf &color0, const LChf &color1) -> float;
+        static auto mse(const LChf &color0, const LChf &color1) -> float;
     };
 
 }

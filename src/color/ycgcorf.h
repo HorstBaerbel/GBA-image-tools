@@ -16,6 +16,7 @@ namespace Color
     /// Cg [-1,1] Chroma green
     /// Co [-1,1] Chroma orange
     /// See: https://en.wikipedia.org/wiki/YCoCg#The_lifting-based_YCoCg-R_variation
+    /// And: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/06/Malvar_Sullivan_YCoCg-R_JVT-I014r3-2.pdf
     class YCgCoRf : public Eigen::Vector3f
     {
     public:
@@ -74,9 +75,9 @@ namespace Color
             return YCgCoRf(Y, Cg, Co);
         }
 
-        /// @brief Calculate square of distance between colors (scalar product)
-        /// @return Returns color distance in [0,1]
-        static auto distance(const YCgCoRf &color0, const YCgCoRf &color1) -> float;
+        /// @brief Calculate mean squared error between colors
+        /// @return Returns a value in [0,1]
+        static auto mse(const YCgCoRf &color0, const YCgCoRf &color1) -> float;
     };
 
 }

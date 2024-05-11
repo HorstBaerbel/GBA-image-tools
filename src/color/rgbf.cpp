@@ -11,7 +11,7 @@ namespace Color
         return RGBf(z(), y(), x());
     }
 
-    auto RGBf::distance(const RGBf &color0, const RGBf &color1) -> float
+    auto RGBf::mse(const RGBf &color0, const RGBf &color1) -> float
     {
         if (color0 == color1)
         {

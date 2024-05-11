@@ -51,10 +51,9 @@ namespace Color
             return Grayf(I);
         }
 
-        /// @brief Calculate square of perceived distance between colors
-        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
+        /// @brief Calculate mean squared error between colors
         /// @return Returns a value in [0,1]
-        static auto distance(const Grayf &color0, const Grayf &color1) -> float;
+        static auto mse(const Grayf &color0, const Grayf &color1) -> float;
 
     private:
         float v;

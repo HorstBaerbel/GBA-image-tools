@@ -8,7 +8,7 @@ namespace Color
         return XRGB1555(v.b, v.g, v.r);
     }
 
-    auto XRGB1555::distance(const XRGB1555 &color0, const XRGB1555 &color1) -> float
+    auto XRGB1555::mse(const XRGB1555 &color0, const XRGB1555 &color1) -> float
     {
         static constexpr float OneOver31 = 1.0F / 31.0F;
         if (static_cast<uint16_t>(color0) == static_cast<uint16_t>(color1))

@@ -3,7 +3,7 @@
 #include "testmacros.h"
 
 #include "color/grayf.h"
-#include "color/distance.h"
+#include "color/psnr.h"
 
 using ColorType = Color::Grayf;
 
@@ -49,11 +49,11 @@ TEST_CASE("Distance")
 {
     ColorType c0(ColorType::Min[0]);
     ColorType c1(ColorType::Max[0]);
-    auto d1 = ColorType::distance(c0, c1);
+    auto d1 = ColorType::mse(c0, c1);
     CATCH_REQUIRE(d1 == 1.0F);
-    auto d2 = ColorType::distance(c1, c0);
+    auto d2 = ColorType::mse(c1, c0);
     CATCH_REQUIRE(d1 == d2);
-    auto d3 = ColorType::distance(c0, c0);
+    auto d3 = ColorType::mse(c0, c0);
     CATCH_REQUIRE(d3 == 0.0F);
 }
 

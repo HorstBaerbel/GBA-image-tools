@@ -85,10 +85,10 @@ namespace Color
         /// @brief Convert to 24-bit hex color string, excluding a prefix: RRGGBB
         static auto toHex(const RGB888 &color) -> std::string;
 
-        /// @brief Calculate square of perceived distance between colors
-        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
+        /// @brief Calculate mean squared error between colors using simple metric
         /// @return Returns a value in [0,1]
-        static auto distance(const RGB888 &color0, const RGB888 &color1) -> float;
+        /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
+        static auto mse(const RGB888 &color0, const RGB888 &color1) -> float;
 
         friend bool operator==(const RGB888 &c1, const RGB888 &c2);
         friend bool operator!=(const RGB888 &c1, const RGB888 &c2);

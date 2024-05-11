@@ -8,7 +8,7 @@ namespace Color
         return RGB565(v.b, v.g, v.r);
     }
 
-    auto RGB565::distance(const RGB565 &color0, const RGB565 &color1) -> float
+    auto RGB565::mse(const RGB565 &color0, const RGB565 &color1) -> float
     {
         static constexpr float OneOver31 = 1.0F / 31.0F;
         static constexpr float OneOver63 = 1.0F / 63.0F;
