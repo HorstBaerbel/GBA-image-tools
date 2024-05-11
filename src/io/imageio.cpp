@@ -173,9 +173,15 @@ namespace IO
         temp.syncPixels();
         // convert to sRGB color space
         temp.colorSpace(Magick::sRGBColorspace);
-        // write to disk
+        // create paths if neccessary
         auto outName = !fileName.empty() ? fileName : image.fileName;
-        temp.write(std::filesystem::path(folder) / std::filesystem::path(outName).filename());
+        auto outPath = std::filesystem::path(folder) / std::filesystem::path(outName).filename();
+        if (!std::filesystem::exists(std::filesystem::path(folder)))
+        {
+            std::filesystem::create_directory(std::filesystem::path(folder));
+        }
+        // write to disk
+        temp.write(outPath);
     }
 
     auto File::writeImages(const std::vector<Image::Data> &images, const std::string &folder) -> void
@@ -191,8 +197,14 @@ namespace IO
         REQUIRE(image.imageData.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
         REQUIRE(image.size.width() > 0 && image.size.height() > 0, std::runtime_error, "Bad image size");
         REQUIRE(!image.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
+        // create paths if neccessary
         auto outName = !fileName.empty() ? fileName : image.fileName;
         auto outPath = std::filesystem::path(folder) / std::filesystem::path(outName).filename();
+        if (!std::filesystem::exists(std::filesystem::path(folder)))
+        {
+            std::filesystem::create_directory(std::filesystem::path(folder));
+        }
+        // write to disk
         auto ofs = std::ofstream(outPath, std::ios::binary);
         auto pixels = image.imageData.pixels().convertDataToRaw();
         ofs.write(reinterpret_cast<const char *>(pixels.data()), pixels.size());
