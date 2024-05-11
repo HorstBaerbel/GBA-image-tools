@@ -98,3 +98,23 @@ namespace Color
     };
 
 }
+
+// Specialization of std::hash for using class in std::map
+template <>
+struct std::hash<Color::RGB888>
+{
+    std::size_t operator()(const Color::RGB888 &c) const noexcept
+    {
+        return static_cast<uint32_t>(c);
+    }
+};
+
+// Specialization of std::less for using class in std::map
+template <>
+struct std::less<Color::RGB888>
+{
+    bool operator()(const Color::RGB888 &lhs, const Color::RGB888 &rhs) const noexcept
+    {
+        return static_cast<uint32_t>(lhs) < static_cast<uint32_t>(rhs);
+    }
+};

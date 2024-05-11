@@ -37,7 +37,7 @@ public:
 
     auto size() const -> float
     {
-        return m_min == m_max ? 0.0F : T::distance(m_min, m_max);
+        return m_min == m_max ? 0.0F : T::mse(m_min, m_max);
     }
 
 private:

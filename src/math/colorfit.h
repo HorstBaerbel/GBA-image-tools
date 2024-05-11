@@ -112,7 +112,7 @@ public:
                         // find distance to supposed neighbour
                         const auto objectColor = objectIt->first;
                         const auto otherColor = otherIt->first;
-                        if (PIXEL_TYPE::distance(objectColor, otherColor) <= allowedNeighbourDistance)
+                        if (PIXEL_TYPE::mse(objectColor, otherColor) <= allowedNeighbourDistance)
                         {
                             // other is neighbour. add to object
                             object.neighbours.push_back(otherColor);
@@ -311,7 +311,7 @@ private:
         float closestDistance = std::numeric_limits<float>::max();
         while (colorIt != colors.cend())
         {
-            auto colorDistance = PIXEL_TYPE::distance(*colorIt, color);
+            auto colorDistance = PIXEL_TYPE::mse(*colorIt, color);
             if (closestDistance > colorDistance)
             {
                 closestDistance = colorDistance;

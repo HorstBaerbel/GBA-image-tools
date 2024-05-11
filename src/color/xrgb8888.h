@@ -90,3 +90,23 @@ namespace Color
     };
 
 }
+
+// Specialization of std::hash for using class in std::map
+template <>
+struct std::hash<Color::XRGB8888>
+{
+    std::size_t operator()(const Color::XRGB8888 &c) const noexcept
+    {
+        return static_cast<Color::XRGB8888::pixel_type>(c);
+    }
+};
+
+// Specialization of std::less for using class in std::map
+template <>
+struct std::less<Color::XRGB8888>
+{
+    bool operator()(const Color::XRGB8888 &lhs, const Color::XRGB8888 &rhs) const noexcept
+    {
+        return static_cast<Color::XRGB8888::pixel_type>(lhs) < static_cast<Color::XRGB8888::pixel_type>(rhs);
+    }
+};

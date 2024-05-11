@@ -12,7 +12,7 @@ namespace Image
         auto grayscale = data.pixels().convertData<Color::Grayf>();
         std::vector<uint8_t> result;
         std::transform(grayscale.cbegin(), grayscale.cend(), std::back_inserter(result), [threshold](auto v)
-                       { return v.raw() < threshold ? 0 : 1; });
+                       { return v < threshold ? 0 : 1; });
         return ImageData(result, Color::Format::Paletted8, std::vector<Color::XRGB8888>({0x00000000, 0x00FFFFFF}));
     }
 

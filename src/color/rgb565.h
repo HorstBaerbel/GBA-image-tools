@@ -92,3 +92,23 @@ namespace Color
     };
 
 }
+
+// Specialization of std::hash for using class in std::map
+template <>
+struct std::hash<Color::RGB565>
+{
+    std::size_t operator()(const Color::RGB565 &c) const noexcept
+    {
+        return static_cast<Color::RGB565::pixel_type>(c);
+    }
+};
+
+// Specialization of std::less for using class in std::map
+template <>
+struct std::less<Color::RGB565>
+{
+    bool operator()(const Color::RGB565 &lhs, const Color::RGB565 &rhs) const noexcept
+    {
+        return static_cast<Color::RGB565::pixel_type>(lhs) < static_cast<Color::RGB565::pixel_type>(rhs);
+    }
+};

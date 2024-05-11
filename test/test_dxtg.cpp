@@ -48,10 +48,10 @@ TearsOfSteel_676_384x256.png, psnr: 32.29
 
 RGB565
 artificial_384x256.png, psnr: 31.95
-BigBuckBunny_282_384x256.png, psnr: 33.88
+BigBuckBunny_282_384x256.png, psnr: 33.87
 BigBuckBunny_361_384x256.png, psnr: 30.01
 BigBuckBunny_40_384x256.png, psnr: 38.98
-BigBuckBunny_648_384x256.png, psnr: 31.1
+BigBuckBunny_648_384x256.png, psnr: 31.09
 BigBuckBunny_664_384x256.png, psnr: 34.3
 bridge_256x384.png, psnr: 30.25
 flower_foveon_384x256.png, psnr: 35.04

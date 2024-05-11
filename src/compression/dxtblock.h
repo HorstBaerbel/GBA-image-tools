@@ -23,7 +23,7 @@ public:
 
     DXTBlock() = default;
 
-    DXTBlock(uint16_t color0, uint16_t color1, const std::array<uint8_t, Width * Height> &indices)
+    DXTBlock(Color::XRGB1555 color0, Color::XRGB1555 color1, const std::array<uint8_t, Width * Height> &indices)
         : m_color0(color0), m_color1(color1), m_indices(indices)
     {
     }
@@ -32,8 +32,8 @@ public:
     auto toArray() const -> std::array<uint8_t, 4 + (Width * Height * 2) / 8>
     {
         std::array<uint8_t, 4 + (Width * Height * 2) / 8> result;
-        *reinterpret_cast<uint16_t *>(&result[0]) = m_color0;
-        *reinterpret_cast<uint16_t *>(&result[2]) = m_color1;
+        *reinterpret_cast<uint16_t *>(&result[0]) = static_cast<uint16_t>(m_color0);
+        *reinterpret_cast<uint16_t *>(&result[2]) = static_cast<uint16_t>(m_color1);
         auto indexPtr = reinterpret_cast<uint16_t *>(&result[4]);
         uint16_t indices16 = 0;
         uint32_t shiftCount = 0;
@@ -85,7 +85,7 @@ public:
             double bestColorDistance = std::numeric_limits<double>::max();
             for (uint32_t ei = 0; ei < 4; ++ei)
             {
-                auto indexDistance = YCgCoRf::distance(colors[ci], endpoints[ei]);
+                auto indexDistance = YCgCoRf::mse(colors[ci], endpoints[ei]);
                 // check if result improved
                 if (bestColorDistance > indexDistance)
                 {
@@ -100,8 +100,8 @@ public:
     static auto decode(const DXTBlock &block) -> std::array<YCgCoRf, Width * Height>
     {
         std::array<YCgCoRf, 4> colors;
-        colors[0] = Color::convertTo<YCgCoRf>(Color::XRGB1555(block.m_color0));
-        colors[1] = Color::convertTo<YCgCoRf>(Color::XRGB1555(block.m_color1));
+        colors[0] = Color::convertTo<YCgCoRf>(block.m_color0);
+        colors[1] = Color::convertTo<YCgCoRf>(block.m_color1);
         colors[2] = Color::YCgCoRf::roundTo((colors[0].cwiseProduct(Eigen::Vector3f(2, 2, 2)) + colors[1]).cwiseQuotient(Eigen::Vector3f(3, 3, 3)), Color::XRGB1555::Max);
         colors[3] = Color::YCgCoRf::roundTo((colors[0] + colors[1].cwiseProduct(Eigen::Vector3f(2, 2, 2))).cwiseQuotient(Eigen::Vector3f(3, 3, 3)), Color::XRGB1555::Max);
         uint32_t shift = 0;
@@ -114,7 +114,7 @@ public:
     }
 
 private:
-    uint16_t m_color0 = 0;
-    uint16_t m_color1 = 0;
+    Color::XRGB1555 m_color0 = 0;
+    Color::XRGB1555 m_color1 = 0;
     std::array<uint8_t, Width * Height> m_indices;
 };

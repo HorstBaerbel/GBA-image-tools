@@ -77,25 +77,25 @@ constexpr std::pair<int32_t, int32_t> PrevRefOffset{-8191, 8192}; // Block searc
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto distance(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b) -> float
+static auto mse(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b) -> float
 {
     float dist = 0.0F;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
-        dist += YCgCoRf::distance(*aIt, *bIt);
+        dist += YCgCoRf::mse(*aIt, *bIt);
     }
     return dist / (BLOCK_DIM * BLOCK_DIM);
 }
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto distanceBelowThreshold(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
+static auto mseBelowThreshold(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
 {
     bool belowThreshold = true;
     float dist = 0.0F;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
-        auto colorDist = YCgCoRf::distance(*aIt, *bIt);
+        auto colorDist = YCgCoRf::mse(*aIt, *bIt);
         if (belowThreshold)
         {
             belowThreshold = colorDist < threshold;
@@ -308,7 +308,7 @@ public:
     {
         std::vector<XRGB8888> image;
         std::transform(m_colors.cbegin(), m_colors.cend(), std::back_inserter(image), [](const auto &color)
-                       { return convertTo<XRGB8888>(color).raw(); });
+                       { return convertTo<XRGB8888>(color); });
         return image;
     }
 
@@ -320,7 +320,7 @@ public:
         auto bIt = b.m_colors.cbegin();
         while (aIt != m_colors.cend() && bIt != b.m_colors.cend())
         {
-            sum += YCgCoRf::distance(*aIt++, *bIt++);
+            sum += YCgCoRf::mse(*aIt++, *bIt++);
         }
         return sum / m_blocks2.size();
     }
@@ -359,7 +359,7 @@ auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::v
     {
         return std::optional<return_type>();
     }
-    // find blocks that are already encoded in codebook and calculate distance to block
+    // find blocks that are already encoded in codebook and calculate mean squared error compared to block
     std::vector<std::pair<float, int32_t>> candidates;
     auto cIt = std::next(codeBook.cbegin<BLOCK_DIM>(), minIndex);
     auto cEnd = std::next(codeBook.cbegin<BLOCK_DIM>(), maxIndex);
@@ -367,7 +367,7 @@ auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::v
     {
         if (codeBook.isEncoded(*cIt))
         {
-            if (auto dist = distanceBelowThreshold(block, *cIt, maxAllowedError); dist.first)
+            if (auto dist = mseBelowThreshold(block, *cIt, maxAllowedError); dist.first)
             {
                 candidates.push_back({dist.second, index});
             }
@@ -474,7 +474,7 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
         else if constexpr (BLOCK_DIM > CodeBook::BlockMinDim)
         {
             // check if encoded block is below allowed error or we want to split the block
-            auto encodedBlockDist = Color::distance(rawBlock, decodedBlock);
+            auto encodedBlockDist = Color::mse(rawBlock, decodedBlock);
             if (encodedBlockDist < maxAllowedError)
             {
                 // Threshold ok. Store full DXT block

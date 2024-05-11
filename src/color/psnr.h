@@ -49,7 +49,7 @@ namespace Color
         double dist = 0.0;
         for (auto c0It = colors0.cbegin(), c1It = colors1.cbegin(); c0It != colors0.cend() && c1It != colors1.cend(); ++c0It, ++c1It)
         {
-            dist += T::distance(*c0It, *c1It);
+            dist += T::mse(*c0It, *c1It);
         }
         return static_cast<float>(dist / N);
     }

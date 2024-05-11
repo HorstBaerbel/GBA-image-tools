@@ -33,7 +33,7 @@ namespace ColorHelpers
             std::vector<float> distances;
             for (const auto &b : lchColors)
             {
-                distances.push_back(Color::LChf::distance(a, b));
+                distances.push_back(Color::LChf::mse(a, b));
             }
             distancesSqrMap[i] = distances;
         }
