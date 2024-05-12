@@ -48,7 +48,7 @@ namespace ColorHelpers
                   const auto &cb = lchColors.at(ib);
                   // use closest hue distance to make hue wrap around
                   constexpr float OneOver360 = 1.0 / 360.0;
-                  float distH0 = 2.0F * std::abs((ca.H() * OneOver360) - (cb.H() * OneOver360));
+                  float distH0 = 2.0F * std::abs((ca.h() * OneOver360) - (cb.h() * OneOver360));
                   float distH1 = 2.0F - distH0;
                   float distH = distH0 < distH1 ? distH0 : distH1;
                   auto distC = std::abs(cb.C() - ca.C());

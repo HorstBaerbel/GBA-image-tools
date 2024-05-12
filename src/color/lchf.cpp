@@ -16,7 +16,7 @@ namespace Color
         float dL = color0.L() - color1.L(); // [-1,1]
         float dC = color0.C() - color1.C(); // [-1,1]
         // use closest hue distance to make hue wrap around
-        float dH0 = 2.0F * std::abs((color0.H() * OneOver360) - (color1.H() * OneOver360));
+        float dH0 = 2.0F * std::abs((color0.h() * OneOver360) - (color1.h() * OneOver360));
         float dH1 = 2.0F - dH0;
         float dH = dH0 < dH1 ? dH0 : dH1; // [0, 1]
         return (0.5F * dL * dL + 0.3F * dC * dC + 0.2F * dH * dH) / 3.0F;

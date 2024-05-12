@@ -81,3 +81,27 @@ namespace Color
     };
 
 }
+
+// Specialization of std::hash for using class in std::map
+template <>
+struct std::hash<Color::YCgCoRf>
+{
+    std::size_t operator()(const Color::YCgCoRf &c) const noexcept
+    {
+        // get highest 21 bits of floating point number
+        uint64_t x = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.Y())) & 0xFFFFF800) << 32;
+        uint64_t y = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.Cg())) & 0xFFFFF800) << 11;
+        uint64_t z = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.Co())) & 0xFFFFF800) >> 11;
+        return x | y | z;
+    }
+};
+
+// Specialization of std::less for using class in std::map
+template <>
+struct std::less<Color::YCgCoRf>
+{
+    bool operator()(const Color::YCgCoRf &lhs, const Color::YCgCoRf &rhs) const noexcept
+    {
+        return std::hash<Color::YCgCoRf>{}(lhs) < std::hash<Color::YCgCoRf>{}(rhs);
+    }
+};

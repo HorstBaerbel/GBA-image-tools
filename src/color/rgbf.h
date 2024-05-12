@@ -72,3 +72,27 @@ namespace Color
     };
 
 }
+
+// Specialization of std::hash for using class in std::map
+template <>
+struct std::hash<Color::RGBf>
+{
+    std::size_t operator()(const Color::RGBf &c) const noexcept
+    {
+        // get highest 21 bits of floating point number
+        uint64_t x = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.R())) & 0xFFFFF800) << 32;
+        uint64_t y = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.G())) & 0xFFFFF800) << 11;
+        uint64_t z = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.B())) & 0xFFFFF800) >> 11;
+        return x | y | z;
+    }
+};
+
+// Specialization of std::less for using class in std::map
+template <>
+struct std::less<Color::RGBf>
+{
+    bool operator()(const Color::RGBf &lhs, const Color::RGBf &rhs) const noexcept
+    {
+        return std::hash<Color::RGBf>{}(lhs) < std::hash<Color::RGBf>{}(rhs);
+    }
+};

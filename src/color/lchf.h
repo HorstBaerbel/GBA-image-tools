@@ -33,8 +33,8 @@ namespace Color
         inline auto L() -> value_type & { return x(); }
         inline auto C() const -> const value_type & { return y(); }
         inline auto C() -> value_type & { return y(); }
-        inline auto H() const -> const value_type & { return z(); }
-        inline auto H() -> value_type & { return z(); }
+        inline auto h() const -> const value_type & { return z(); }
+        inline auto h() -> value_type & { return z(); }
 
         static constexpr std::array<value_type, 3> Min{0.0F, 0.0F, 0.0F};
         static constexpr std::array<value_type, 3> Max{100.0F, 200.0F, 360.0F};
@@ -45,3 +45,27 @@ namespace Color
     };
 
 }
+
+// Specialization of std::hash for using class in std::map
+template <>
+struct std::hash<Color::LChf>
+{
+    std::size_t operator()(const Color::LChf &c) const noexcept
+    {
+        // get highest 21 bits of floating point number
+        uint64_t x = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.L())) & 0xFFFFF800) << 32;
+        uint64_t y = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.C())) & 0xFFFFF800) << 11;
+        uint64_t z = (static_cast<uint64_t>(std::bit_cast<std::uint32_t>(c.h())) & 0xFFFFF800) >> 11;
+        return x | y | z;
+    }
+};
+
+// Specialization of std::less for using class in std::map
+template <>
+struct std::less<Color::LChf>
+{
+    bool operator()(const Color::LChf &lhs, const Color::LChf &rhs) const noexcept
+    {
+        return std::hash<Color::LChf>{}(lhs) < std::hash<Color::LChf>{}(rhs);
+    }
+};

@@ -97,8 +97,8 @@ namespace Color
         constexpr float KAPPA = 24389.0 / 27.0;
         // convert from LCh(ab) to Lab
         float L = color.L();
-        float a = color.C() * std::cos(color.H() * float(M_PI / 180.0));
-        float b = color.C() * std::sin(color.H() * float(M_PI / 180.0));
+        float a = color.C() * std::cos(color.h() * float(M_PI / 180.0));
+        float b = color.C() * std::sin(color.h() * float(M_PI / 180.0));
         // convert Lab to XYZ
         float fy = (L + 16.0F) / 116.0F;
         float fx = fy + a / 500.0F;
