@@ -39,15 +39,15 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
     auto originAndAxis = lineFit(colors);
     // calculate signed distance from origin
     std::vector<float> distanceFromOrigin(16);
-    std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [origin = originAndAxis.first, axis = originAndAxis.second](const auto &color)
+    std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [axis = originAndAxis.second](const auto &color)
                    { return color.dot(axis); });
     // get the distance of endpoints c0 and c1 on line
     auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
     auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
     auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
     // get colors c0 and c1 on line and round to grid
-    auto c0 = colors[indexC0];
-    auto c1 = colors[indexC1];
+    auto c0 = RGBf::roundTo(colors[indexC0], asRGB565 ? RGB565::Max : XRGB1555::Max);
+    auto c1 = RGBf::roundTo(colors[indexC1], asRGB565 ? RGB565::Max : XRGB1555::Max);
     RGBf endpoints[4] = {c0, c1, {}, {}};
     /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
     {
@@ -61,6 +61,16 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
     std::array<uint32_t, 16> bestIndices = {0};
     for (uint32_t ci = 0; ci < 16; ++ci)
     {
+        if (ci == indexC0)
+        {
+            bestIndices[ci] = 0;
+            continue;
+        }
+        else if (ci == indexC1)
+        {
+            bestIndices[ci] = 1;
+            continue;
+        }
         // calculate minimum distance for each index for this color
         float bestColorDistance = std::numeric_limits<float>::max();
         for (uint32_t ei = 0; ei < 4; ++ei)
