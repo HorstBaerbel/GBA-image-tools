@@ -193,12 +193,9 @@ public:
                 if (!object.visited)
                 {
                     object.visited = true;
-                    if (object.type != ColorObject::Type::Outlier)
+                    if (object.type != ColorObject::Type::Outlier && object.clusterIndex == InvalidClusterIndex)
                     {
-                        if (object.clusterIndex == InvalidClusterIndex)
-                        {
-                            THROW(std::runtime_error, "Unassigned core objects");
-                        }
+                        THROW(std::runtime_error, "Unassigned core objects");
                     }
                 }
             }

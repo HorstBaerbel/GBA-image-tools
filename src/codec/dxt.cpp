@@ -16,15 +16,123 @@
 #include <array>
 #include <deque>
 #include <iostream>
+#include <numeric>
 
 using namespace Color;
 
+#define CLUSTER_FIT
+
+// Fit a line through colors passed using SVD
+auto dxtLineFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::vector<RGBf>
+{
+    // calculate initial line fit through RGB color space
+    auto originAndAxis = lineFit(colors);
+    // calculate signed distance along line from origin
+    std::vector<float> distanceOnLine(16);
+    std::transform(colors.cbegin(), colors.cend(), distanceOnLine.begin(), [axis = originAndAxis.second](const auto &color)
+                   { return color.dot(axis); });
+    // get the distance of endpoints c0 and c1 on line
+    auto minMaxDistance = std::minmax_element(distanceOnLine.cbegin(), distanceOnLine.cend());
+    auto i0 = std::distance(distanceOnLine.cbegin(), minMaxDistance.first);
+    auto i1 = std::distance(distanceOnLine.cbegin(), minMaxDistance.second);
+    // get colors c0 and c1 on line
+    std::vector<RGBf> c(4);
+    c[0] = RGBf::roundTo(colors[i0], asRGB565 ? RGB565::Max : XRGB1555::Max);
+    c[1] = RGBf::roundTo(colors[i1], asRGB565 ? RGB565::Max : XRGB1555::Max);
+    // calculate intermediate colors c2 and c3
+    c[2] = RGBf::roundTo(RGBf((c[0].cwiseProduct(RGBf(2, 2, 2)) + c[1]).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+    c[3] = RGBf::roundTo(RGBf((c[0] + c[1].cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+    return c;
+}
+
+auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> &colors, const bool asRGB565) -> float
+{
+    // calculate minimum distance for all colors to endpoints and calculate error to that endpoint
+    float error = 0.0F;
+    for (uint32_t ci = 0; ci < 16; ++ci)
+    {
+        // calculate minimum distance for each index for this color
+        float bestColorDistance = std::numeric_limits<float>::max();
+        for (uint32_t ei = 0; ei < 4; ++ei)
+        {
+            auto indexDistance = RGBf::mse(colors[ci], endpoints[ei]);
+            // check if result improved
+            if (bestColorDistance > indexDistance)
+            {
+                bestColorDistance = indexDistance;
+            }
+        }
+        error += bestColorDistance;
+    }
+    return error;
+}
+
+constexpr std::size_t ClusterFitMaxIterations = 3;
+constexpr float ClusterFitMinDxtError = 0.001F;
+
+// Heuristically fit colors to two color endpoints and their 1/3 and 2/3 intermediate points
+// Improves PSNR in the range of 1-2 dB
+auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::vector<RGBf>
+{
+    // calculate initial line fit through RGB color space
+    auto endpoints = dxtLineFit(colors, asRGB565);
+    auto bestError = calculateError(endpoints, colors, asRGB565);
+    // return if the error is already optimal
+    if (bestError <= ClusterFitMinDxtError)
+    {
+        return endpoints;
+    }
+    // do some rounds of k-means clustering
+    std::vector<RGBf> centroids = endpoints;
+    for (int iteration = 0; iteration < ClusterFitMaxIterations; ++iteration)
+    {
+        float iterationError = 0.0F;
+        std::vector<std::vector<RGBf>> clusters(4);
+        for (const auto &point : colors)
+        {
+            float minError = std::numeric_limits<float>::max();
+            int closestCentroid = -1;
+            for (int i = 0; i < 4; ++i)
+            {
+                auto error = RGBf::mse(point, centroids[i]);
+                if (error < minError)
+                {
+                    minError = error;
+                    closestCentroid = i;
+                }
+            }
+            clusters[closestCentroid].push_back(point);
+            iterationError += minError;
+        }
+        // update centroids of cluster c0 and c1 defining the line
+        for (int i = 0; i < 2; ++i)
+        {
+            auto sum = RGBf(0, 0, 0);
+            for (const auto &point : clusters[i])
+            {
+                sum += point;
+            }
+            centroids[i] = RGBf::roundTo(sum / (double)clusters[i].size(), asRGB565 ? RGB565::Max : XRGB1555::Max);
+        }
+        // update centroids of intermediate colors c2 and c3
+        centroids[2] = RGBf::roundTo(RGBf((centroids[0].cwiseProduct(RGBf(2, 2, 2)) + centroids[1]).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+        centroids[3] = RGBf::roundTo(RGBf((centroids[0] + centroids[1].cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+        // store endpoints if error improved
+        if (bestError > iterationError)
+        {
+            bestError = iterationError;
+            endpoints = centroids;
+        }
+    }
+    return endpoints;
+}
+
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565)
+auto encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565) -> std::vector<uint8_t>
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
-    std::array<RGBf, 16> colors;
+    std::vector<RGBf> colors(16);
     auto cIt = colors.begin();
     auto pixel = start;
     for (int y = 0; y < 4; y++)
@@ -35,42 +143,15 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
         *cIt++ = convertTo<RGBf>(pixel[3]);
         pixel += pixelsPerScanline;
     }
-    // calculate line fit through RGB color space
-    auto originAndAxis = lineFit(colors);
-    // calculate signed distance from origin
-    std::vector<float> distanceFromOrigin(16);
-    std::transform(colors.cbegin(), colors.cend(), distanceFromOrigin.begin(), [axis = originAndAxis.second](const auto &color)
-                   { return color.dot(axis); });
-    // get the distance of endpoints c0 and c1 on line
-    auto minMaxDistance = std::minmax_element(distanceFromOrigin.cbegin(), distanceFromOrigin.cend());
-    auto indexC0 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.first);
-    auto indexC1 = std::distance(distanceFromOrigin.cbegin(), minMaxDistance.second);
-    // get colors c0 and c1 on line and round to grid
-    auto c0 = RGBf::roundTo(colors[indexC0], asRGB565 ? RGB565::Max : XRGB1555::Max);
-    auto c1 = RGBf::roundTo(colors[indexC1], asRGB565 ? RGB565::Max : XRGB1555::Max);
-    RGBf endpoints[4] = {c0, c1, {}, {}};
-    /*if (toPixel(endpoints[0]) > toPixel(endpoints[1]))
-    {
-        std::swap(c0, c1);
-        std::swap(endpoints[0], endpoints[1]);
-    }*/
-    // calculate intermediate colors c2 and c3 (rounded like in decoder)
-    endpoints[2] = RGBf::roundTo(RGBf((c0.cwiseProduct(RGBf(2, 2, 2)) + c1).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
-    endpoints[3] = RGBf::roundTo(RGBf((c0 + c1.cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
-    // calculate minimum distance for all colors to endpoints
-    std::array<uint32_t, 16> bestIndices = {0};
+#if defined(CLUSTER_FIT)
+    auto endpoints = dxtClusterFit(colors, asRGB565);
+#else
+    auto endpoints = dxtLineFit(colors, asRGB565);
+#endif
+    // calculate minimum distance for all colors to endpoints to assign indices
+    std::vector<uint32_t> endpointIndices(colors.size());
     for (uint32_t ci = 0; ci < 16; ++ci)
     {
-        if (ci == indexC0)
-        {
-            bestIndices[ci] = 0;
-            continue;
-        }
-        else if (ci == indexC1)
-        {
-            bestIndices[ci] = 1;
-            continue;
-        }
         // calculate minimum distance for each index for this color
         float bestColorDistance = std::numeric_limits<float>::max();
         for (uint32_t ei = 0; ei < 4; ++ei)
@@ -80,7 +161,7 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
             if (bestColorDistance > indexDistance)
             {
                 bestColorDistance = indexDistance;
-                bestIndices[ci] = ei;
+                endpointIndices[ci] = ei;
             }
         }
     }
@@ -92,7 +173,7 @@ std::vector<uint8_t> encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t
     *data16++ = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[1])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[1]));
     // add index data in reverse
     uint32_t indices = 0;
-    for (auto iIt = bestIndices.crbegin(); iIt != bestIndices.crend(); ++iIt)
+    for (auto iIt = endpointIndices.crbegin(); iIt != endpointIndices.crend(); ++iIt)
     {
         indices = (indices << 2) | *iIt;
     }
