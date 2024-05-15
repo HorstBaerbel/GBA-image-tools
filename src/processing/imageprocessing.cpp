@@ -378,9 +378,13 @@ namespace Image
         REQUIRE(data.imageData.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "DXT compression is only possible for RGB888 truecolor images");
         REQUIRE(data.size.width() % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
         REQUIRE(data.size.height() % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
+        // get parameter(s)
+        REQUIRE(VariantHelpers::hasTypes<Color::Format>(parameters), std::runtime_error, "compressDXT expects a Color::Format parameter");
+        const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
+        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::RGB565, std::runtime_error, "Output color format must be in [RGB555, RGB565]");
         // convert image using DXT compression
         auto result = data;
-        auto compressedData = DXT::encodeDXT(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height());
+        auto compressedData = DXT::encodeDXT(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height(), format == Color::Format::RGB565);
         result.imageData.pixels() = PixelData(compressedData, Color::Format::Unknown);
         return result;
     }
