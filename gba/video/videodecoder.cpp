@@ -1,8 +1,7 @@
 #include "videodecoder.h"
 
-#include "codec_dxtg.h"
 #include "codec_dxtv.h"
-#include "lz77.h"
+#include "compression/lz77.h"
 #include "memory/memory.h"
 #include "sys/base.h"
 #include "sys/decompress.h"
