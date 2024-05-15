@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace DXTG
+namespace DXT
 {
 
     // Decompresses one DXT1-ish 4x4 block consisting of 2 bytes color0 (RGB555), 2 bytes color1 (RGB555) and 16*2 bit = 4 bytes index information

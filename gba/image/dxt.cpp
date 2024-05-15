@@ -1,13 +1,14 @@
-#include "codec_dxtg.h"
+#include "dxt.h"
 
 #include "sys/base.h"
 
-namespace DXTG
+namespace DXT
 {
 
-    /// @brief Lookup table for c0 vs c1 that returns (c2 << 16 | c3)
-    /// Formula: (round((2.0*floor(i/32)+(i%32))/3.0)) | (round((floor(i/32)+2.0*(i%32))/3.0)<<16), i in [0,32*32]
-    IWRAM_DATA ALIGN(4) const uint32_t C2C3table[1024] = {
+    /// @brief Lookup table for a 5-bit RGB color component (c0 << 5 | c1) that returns (c2 << 16 | c3)
+    /// Formula: (round((2.0*floor(x/32)+(x%32))/3.0)) | (round((floor(x/32)+2.0*(x%32))/3.0)<<16), x in [0,32*32]
+    /// See: https://horstbaerbel.github.io/jslut/index.html?equation=16384%2Fx&xstart=0&xend=159&count=160&bitdepth=int16_t&format=base10
+    IWRAM_DATA ALIGN(4) const uint32_t C2C3_ModeThird_5bit[1024] = {
         0, 65536, 65537, 131073, 196609, 196610, 262146, 327682, 327683, 393219, 458755,
         458756, 524292, 589828, 589829, 655365, 720901, 720902, 786438, 851974, 851975,
         917511, 983047, 983048, 1048584, 1114120, 1114121, 1179657, 1245193, 1245194, 1310730,
@@ -135,11 +136,23 @@ namespace DXTG
                 uint32_t c1 = *colorPtr++;
                 colors[0] = c0;
                 colors[1] = c1;
-                // calculate intermediate colors c2 and c3
-                uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
-                uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
-                uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-                *c2c3Ptr = (C2C3table[b] << 10) | (C2C3table[g] << 5) | C2C3table[r];
+                // check which intermediate colors mode we're using
+                if (c0 > c1)
+                {
+                    // calculate intermediate colors c2 and c3 at 1/3 and 2/3 of c0 and c1
+                    uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
+                    uint32_t g = (c0 & 0x03E0) | ((c1 & 0x03E0) >> 5);
+                    uint32_t r = ((c0 & 0x001F) << 5) | (c1 & 0x001F);
+                    *c2c3Ptr = (C2C3_ModeThird_5bit[b] << 10) | (C2C3_ModeThird_5bit[g] << 5) | C2C3_ModeThird_5bit[r];
+                }
+                else
+                {
+                    // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
+                    uint32_t b = (((c0 & 0x7C00) >> 10) + ((c1 & 0x7C00) >> 10) + 1) >> 1;
+                    uint32_t g = (((c0 & 0x03E0) >> 5) + ((c1 & 0x03E0) >> 5) + 1) >> 1;
+                    uint32_t r = ((c0 & 0x001F) + (c1 & 0x001F) + 1) >> 1;
+                    *c2c3Ptr = (b << 10) | (g << 5) | r;
+                }
                 // get pixel color indices and set pixels accordingly
                 uint32_t indices = *indexPtr++;
                 auto blockDst = blockLineDst;
