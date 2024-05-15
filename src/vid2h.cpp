@@ -50,7 +50,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.blackWhite.cxxOption);
         opts.add_option("", options.paletted.cxxOption);
         opts.add_option("", options.truecolor.cxxOption);
-        opts.add_option("", options.colorformat.cxxOption);
+        opts.add_option("", options.outformat.cxxOption);
         opts.add_option("", options.addColor0.cxxOption);
         opts.add_option("", options.moveColor0.cxxOption);
         opts.add_option("", options.shiftIndices.cxxOption);
@@ -110,6 +110,7 @@ bool readArguments(int argc, const char *argv[])
         // check if exclusive options set
         options.blackWhite.parse(result);
         options.paletted.parse(result);
+        options.truecolor.parse(result);
         if ((options.blackWhite + options.paletted + options.truecolor) == 0)
         {
             std::cerr << "One format option is needed." << std::endl;
@@ -125,8 +126,8 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
             return false;
         }
-        options.colorformat.parse(result);
-        if (!options.colorformat)
+        options.outformat.parse(result);
+        if (!options.outformat)
         {
             std::cerr << "Output color format must be set." << std::endl;
             return false;
@@ -157,8 +158,8 @@ void printUsage()
     std::cout << options.blackWhite.helpString() << std::endl;
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
-    std::cout << "Color format (must be set):" << std::endl;
-    std::cout << options.colorformat.helpString() << std::endl;
+    std::cout << "Output color format (must be set):" << std::endl;
+    std::cout << options.outformat.helpString() << std::endl;
     std::cout << "CONVERT options (all optional):" << std::endl;
     std::cout << options.quantizationmethod.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
@@ -239,16 +240,16 @@ int main(int argc, const char *argv[])
         else if (options.paletted)
         {
             // add palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
         }
         else if (options.commonPalette)
         {
             // add common palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
+            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value});
+            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.truecolor.value});
         }
         // build processing pipeline - conversion
         if (options.paletted)
@@ -293,7 +294,7 @@ int main(int argc, const char *argv[])
         }
         if (options.dxt)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTG, {}, true, true);
+            processing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value}, true, true);
         }
         if (options.dxtv)
         {

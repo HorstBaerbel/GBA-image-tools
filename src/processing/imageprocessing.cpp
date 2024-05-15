@@ -43,7 +43,7 @@ namespace Image
             {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
             {ProcessingType::CompressLZ11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
-            {ProcessingType::CompressDXTG, {"compress DXTG", OperationType::Convert, FunctionType(compressDXT)}},
+            {ProcessingType::CompressDXT, {"compress DXT", OperationType::Convert, FunctionType(compressDXT)}},
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
             {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
             {ProcessingType::PadPixelData, {"pad pixel data", OperationType::Convert, FunctionType(padPixelData)}},
@@ -126,7 +126,7 @@ namespace Image
         std::cout << "Color space has " << colorSpaceMap.size() << " colors" << std::endl;
         // sort histogram colors into closest clusters in parallel
         std::cout << "Sorting colors into max. " << nrOfColors << " clusters... (this might take some time)" << std::endl;
-        auto commonColorMap = colorFit.reduceColors(histogram, nrOfColors);
+        std::vector<Color::XRGB8888> commonColorMap = {}; // colorFit.reduceColors(histogram, nrOfColors);
         // apply color map to all images
         std::cout << "Converting images..." << std::endl;
         std::vector<Data> result;

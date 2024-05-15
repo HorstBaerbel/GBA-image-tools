@@ -54,36 +54,69 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::commonPalette{
         }
     }};
 
-ProcessingOptions::Option ProcessingOptions::truecolor{
+ProcessingOptions::OptionT<Color::Format> ProcessingOptions::truecolor{
     false,
-    {"truecolor", "Convert images to RGB888, RGB565 or RGB555 true-color", cxxopts::value(truecolor.isSet)}};
-
-ProcessingOptions::OptionT<Color::Format> ProcessingOptions::colorformat{
-    false,
-    {"colorformat", "Set output color format (direct pixel color + color map) to RGB888, RGB565 or RGB555", cxxopts::value(colorformat.valueString)},
+    {"truecolor", "Convert images to RGB888, RGB565 or RGB555 true-color", cxxopts::value(truecolor.valueString)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
     {
-        if (r.count(colorformat.cxxOption.opts_))
+        std::string formatUpper;
+        std::transform(truecolor.valueString.cbegin(), truecolor.valueString.cend(), std::back_inserter(formatUpper),
+                       [](unsigned char c)
+                       { return std::toupper(c); });
+        if (r.count(truecolor.cxxOption.opts_))
         {
-            if (colorformat.valueString == "RGB888")
+            if (formatUpper == "RGB888")
             {
-                colorformat.value = Color::Format::XRGB8888;
+                truecolor.value = Color::Format::XRGB8888;
             }
-            else if (colorformat.valueString == "RGB565")
+            else if (formatUpper == "RGB565")
             {
-                colorformat.value = Color::Format::RGB565;
+                truecolor.value = Color::Format::RGB565;
             }
-            else if (colorformat.valueString == "RGB555")
+            else if (formatUpper == "RGB555")
             {
-                colorformat.value = Color::Format::XRGB1555;
+                truecolor.value = Color::Format::XRGB1555;
             }
             else
             {
-                THROW(std::runtime_error, "Format must be RGB888, RGB565 or RGB555");
+                THROW(std::runtime_error, "True-color format must be RGB888, RGB565 or RGB555");
             }
-            colorformat.isSet = true;
+            truecolor.isSet = true;
+        }
+    }};
+
+ProcessingOptions::OptionT<Color::Format> ProcessingOptions::outformat{
+    false,
+    {"outformat", "Set output color format (direct pixel color + color map) to RGB888, RGB565 or RGB555", cxxopts::value(outformat.valueString)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        std::string formatUpper;
+        std::transform(outformat.valueString.cbegin(), outformat.valueString.cend(), std::back_inserter(formatUpper),
+                       [](unsigned char c)
+                       { return std::toupper(c); });
+        if (r.count(outformat.cxxOption.opts_))
+        {
+            if (formatUpper == "RGB888")
+            {
+                outformat.value = Color::Format::XRGB8888;
+            }
+            else if (formatUpper == "RGB565")
+            {
+                outformat.value = Color::Format::RGB565;
+            }
+            else if (formatUpper == "RGB555")
+            {
+                outformat.value = Color::Format::XRGB1555;
+            }
+            else
+            {
+                THROW(std::runtime_error, "Output format must be RGB888, RGB565 or RGB555");
+            }
+            outformat.isSet = true;
         }
     }};
 

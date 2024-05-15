@@ -50,7 +50,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.paletted.cxxOption);
         opts.add_option("", options.commonPalette.cxxOption);
         opts.add_option("", options.truecolor.cxxOption);
-        opts.add_option("", options.colorformat.cxxOption);
+        opts.add_option("", options.outformat.cxxOption);
         opts.add_option("", options.reorderColors.cxxOption);
         opts.add_option("", options.addColor0.cxxOption);
         opts.add_option("", options.moveColor0.cxxOption);
@@ -61,13 +61,14 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.tilemap.cxxOption);
         opts.add_option("", options.delta8.cxxOption);
         opts.add_option("", options.delta16.cxxOption);
+        opts.add_option("", options.interleavePixels.cxxOption);
+        opts.add_option("", options.dxt.cxxOption);
         // opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.lz11.cxxOption);
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.add_option("", options.dumpResults.cxxOption);
-        opts.add_option("", options.interleavePixels.cxxOption);
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
@@ -114,6 +115,7 @@ bool readArguments(int argc, const char *argv[])
         options.blackWhite.parse(result);
         options.paletted.parse(result);
         options.commonPalette.parse(result);
+        options.truecolor.parse(result);
         if ((options.blackWhite + options.paletted + options.commonPalette + options.truecolor) == 0)
         {
             std::cerr << "One format option is needed." << std::endl;
@@ -129,8 +131,8 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
             return false;
         }
-        options.colorformat.parse(result);
-        if (!options.colorformat)
+        options.outformat.parse(result);
+        if (!options.outformat)
         {
             std::cerr << "Output color format must be set." << std::endl;
             return false;
@@ -169,8 +171,8 @@ void printUsage()
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.commonPalette.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
-    std::cout << "Color format (must be set):" << std::endl;
-    std::cout << options.colorformat.helpString() << std::endl;
+    std::cout << "Output color format (must be set):" << std::endl;
+    std::cout << options.outformat.helpString() << std::endl;
     std::cout << "CONVERT options (all optional):" << std::endl;
     std::cout << options.quantizationmethod.helpString() << std::endl;
     std::cout << options.reorderColors.helpString() << std::endl;
@@ -184,6 +186,8 @@ void printUsage()
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
     std::cout << options.interleavePixels.helpString() << std::endl;
+    std::cout << "IMAGE COMPRESS options (mutually exclusive):" << std::endl;
+    std::cout << options.dxt.helpString() << std::endl;
     std::cout << "COMPRESS options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
@@ -290,16 +294,16 @@ int main(int argc, const char *argv[])
         else if (options.paletted)
         {
             // add palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
         }
         else if (options.commonPalette)
         {
             // add common palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.colorformat.value)});
+            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.colorformat.value});
+            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.truecolor.value});
         }
         // build processing pipeline - conversion
         if (options.reorderColors)
@@ -324,7 +328,7 @@ int main(int argc, const char *argv[])
             {
                 processing.addStep(Image::ProcessingType::EqualizeColorMaps, {});
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMap, {options.colorformat.value});
+            processing.addStep(Image::ProcessingType::ConvertColorMap, {options.outformat.value});
         }
         if (options.pruneIndices)
         {
@@ -342,9 +346,16 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::BuildTileMap, {options.tilemap.value});
         }
+        if (options.dxt)
+        {
+            processing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value});
+        }
+        else
+        {
         // convert to raw data
         processing.addStep(Image::ProcessingType::ConvertPixelDataToRaw, {});
         processing.addStep(Image::ProcessingType::ConvertColorMapDataToRaw, {});
+        }
         if (options.delta8)
         {
             processing.addStep(Image::ProcessingType::ConvertDelta8, {});

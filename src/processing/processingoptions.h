@@ -34,8 +34,8 @@ public:
     static OptionT<double> blackWhite;
     static OptionT<uint32_t> paletted;
     static OptionT<uint32_t> commonPalette;
-    static Option truecolor;
-    static OptionT<Color::Format> colorformat;
+    static OptionT<Color::Format> truecolor;
+    static OptionT<Color::Format> outformat;
     static OptionT<Image::Quantization::Method> quantizationmethod;
     static Option reorderColors;
     static OptionT<Color::XRGB8888> addColor0;
