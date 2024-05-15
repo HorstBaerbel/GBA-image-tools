@@ -282,7 +282,7 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
     std::vector<uint8_t> dxtData(nrOfBlocks * 8);
-    // #pragma omp parallel for
+#pragma omp parallel for
     for (int y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
@@ -314,11 +314,13 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
     const auto nrOfBlocks = data.size() / 8;
     REQUIRE(nrOfBlocks == width / 4 * height / 4, std::runtime_error, "Data size does not match image size");
     std::vector<XRGB8888> result(width * height);
-    // set up pointer to source block data
-    auto color16 = reinterpret_cast<const uint16_t *>(data.data());
-    auto indices32 = reinterpret_cast<const uint32_t *>(data.data() + nrOfBlocks * 4);
+#pragma omp parallel for
     for (std::size_t y = 0; y < height; y += 4)
     {
+        // set up pointers to source block data
+        auto blockIndex = y / 4 * width / 4;
+        auto color16 = reinterpret_cast<const uint16_t *>(data.data() + blockIndex * 4);
+        auto indices32 = reinterpret_cast<const uint32_t *>(data.data() + nrOfBlocks * 4 + blockIndex * 4);
         for (std::size_t x = 0; x < width; x += 4)
         {
             // read colors c0 and c1
