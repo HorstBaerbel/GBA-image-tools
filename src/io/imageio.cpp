@@ -112,6 +112,7 @@ namespace IO
         Image::Data data;
         data.size = {img.size().width(), img.size().height()};
         data.imageData = getImageData(img);
+        data.dataType = Image::DataType::Bitmap;
         return data;
     }
 
