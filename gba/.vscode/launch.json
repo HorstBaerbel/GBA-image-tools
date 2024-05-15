@@ -5,45 +5,62 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run in mgba",
+            "name": "Run gbatv in mgba",
             "type": "cppdbg",
+            "preLaunchTask": "${defaultBuildTask}",
             "request": "launch",
-            "preLaunchTask": "build Release",
             "program": "/usr/bin/mgba-qt",
             "args": [
-                "-3",
+                "-2",
                 "${command:cmake.launchTargetPath}"
             ],
             "cwd": "${command:cmake.buildDirectory}"
         },
         {
-            "name": "Debug in mgba",
+            "name": "Launch/Debug gbatv in mgba",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "build Debug",
-            "program": "${command:cmake.buildDirectory}/video.elf",
-            "args": [],
-            "stopAtEntry": false,
+            "preLaunchTask": "${defaultBuildTask}",
+            "program": "${command:cmake.launchTargetPath}",
+            "debugServerPath": "mgba-qt",
+            "debugServerArgs": "-2 -g ${command:cmake.launchTargetPath}",
             "cwd": "${command:cmake.buildDirectory}",
-            "environment": [],
-            "externalConsole": false,
+            //"filterStderr": true,
+            //"filterStdout": false,
+            //"serverStarted": "",
+            "stopAtEntry": false,
             "MIMode": "gdb",
-            "miDebuggerServerAddress": "localhost:2345",
-            "linux": {
-                "miDebuggerPath": "${env:DEVKITARM}/bin/arm-none-eabi-gdb",
-                "setupCommands": [
-                    {
-                        "text": "set print pretty",
-                        "ignoreFailures": false
-                    },
-                    {
-                        "description": "mGBA",
-                        "text": "shell \"/usr/bin/mgba-qt\" -3 -g \"${command:cmake.buildDirectory}/video.elf\" &",
-                        "ignoreFailures": false
-                    }
-                ]
-            },
-            "postDebugTask": "kill mGBA"
+            "miDebuggerPath": "${env:DEVKITARM}/bin/arm-none-eabi-gdb",
+            //"miDebuggerArgs": "-ex \"target remote localhost:2345\" ${command:cmake.launchTargetPath}",
+            //"miDebuggerServerAddress": "localhost:2345",
+            "setupCommands": [
+                {
+                    "text": "set print pretty",
+                    "ignoreFailures": false
+                },
+                {
+                    "text": "file ${command:cmake.launchTargetPath}",
+                    "ignoreFailures": false
+                },
+                {
+                    "text": "target remote localhost:2345",
+                    "ignoreFailures": false
+                },
+                {
+                    "text": "-gdb-set disassembly-flavor arm",
+                    "ignoreFailures": true
+                }
+            ],
+            "externalConsole": false,
+            "showDisplayString": true,
+            "logging": {
+                "traceResponse": true,
+                "moduleLoad": true,
+                "trace": true,
+                "engineLogging": true,
+                "programOutput": true,
+                "exceptions": true
+            }
         },
         {
             "name": "Run in vba",
@@ -53,7 +70,7 @@
             "program": "/usr/bin/vba",
             "args": [
                 "${command:cmake.launchTargetPath}",
-                "-3",
+                "-2",
                 "--agb-print"
             ],
             "cwd": "${command:cmake.buildDirectory}"

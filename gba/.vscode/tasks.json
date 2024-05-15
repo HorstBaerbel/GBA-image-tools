@@ -4,59 +4,20 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build Release",
-            "type": "shell",
-            "command": "cmake --build '${workspaceRoot}/build' --config Release --target all -- -j 6",
-            "options": {
-                "cwd": "${workspaceRoot}"
-            },
+            "type": "cmake",
+            "label": "CMake: build",
+            "command": "build",
+            "targets": [
+                "all"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
-        },
-        {
-            "label": "build Debug",
-            "type": "shell",
-            "command": "cmake --build '${workspaceRoot}/build' --config Debug --target all -- -j 6",
-            "options": {
-                "cwd": "${workspaceRoot}"
             },
-            "group": "build",
-        },
-        {
-            "label": "kill mGBA",
-            "group": "none",
-            "type": "shell",
-            "command": "killall mgba-qt"
-        },
-        {
-            "label": "Run amap",
-            "group": "none",
-            "type": "shell",
-            "command": "amap",
-            "args": [
-                "${command:cmake.buildDirectory}/video.map"
+            "problemMatcher": [
+                "$gcc"
             ],
-            "options": {
-                "cwd": "${workspaceRoot}"
-            },
-            "presentation": {
-                "reveal": "never"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Show .map file",
-            "group": "none",
-            "dependsOn": [
-                "build Release",
-                "Run amap"
-            ],
-            "presentation": {
-                "reveal": "never"
-            },
-            "problemMatcher": []
+            "detail": "CMake build task"
         }
     ]
 }
