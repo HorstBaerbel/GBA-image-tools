@@ -23,6 +23,7 @@ using namespace Color;
 #define CLUSTER_FIT
 
 // Fit a line through colors passed using SVD
+// This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
 auto dxtLineFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::pair<std::vector<RGBf>, std::vector<RGBf>>
 {
     // calculate initial line fit through RGB color space
@@ -78,33 +79,8 @@ constexpr std::size_t ClusterFitMaxIterations = 3;
 constexpr float ClusterFitMinDxtError = 0.01F;
 constexpr float DxtMinC0C1Error = 0.001F;
 
-// DXT-compressed artificial_384x256.png, psnr: 32.99
-// DXT-compressed BigBuckBunny_282_384x256.png, psnr: 34.85
-// DXT-compressed BigBuckBunny_361_384x256.png, psnr: 31.57
-// DXT-compressed BigBuckBunny_40_384x256.png, psnr: 39.19
-// DXT-compressed BigBuckBunny_648_384x256.png, psnr: 32.43
-// DXT-compressed BigBuckBunny_664_384x256.png, psnr: 35.37
-// DXT-compressed bridge_256x384.png, psnr: 31.69
-// DXT-compressed flower_foveon_384x256.png, psnr: 36.47
-// DXT-compressed nightshot_iso_100_384x256.png, psnr: 34.61
-// DXT-compressed squish_384x384.png, psnr: 40.05
-// DXT-compressed TearsOfSteel_1200_384x256.png, psnr: 33.3
-// DXT-compressed TearsOfSteel_676_384x256.png, psnr: 33.93
-// DXT-compressed artificial_384x256.png, psnr: 33.16
-// DXT-compressed BigBuckBunny_282_384x256.png, psnr: 35.22
-// DXT-compressed BigBuckBunny_361_384x256.png, psnr: 31.76
-// DXT-compressed BigBuckBunny_40_384x256.png, psnr: 39.51
-// DXT-compressed BigBuckBunny_648_384x256.png, psnr: 32.62
-// DXT-compressed BigBuckBunny_664_384x256.png, psnr: 35.87
-// DXT-compressed bridge_256x384.png, psnr: 31.89
-// DXT-compressed flower_foveon_384x256.png, psnr: 36.93
-// DXT-compressed nightshot_iso_100_384x256.png, psnr: 34.98
-// DXT-compressed squish_384x384.png, psnr: 41.27
-// DXT-compressed TearsOfSteel_1200_384x256.png, psnr: 33.59
-// DXT-compressed TearsOfSteel_676_384x256.png, psnr: 34.24
-
 // Heuristically fit colors to two color endpoints and their 1/3 and 2/3 intermediate points
-// Improves PSNR in the range of 1-2 dB
+// Improves PSNR about 1-2 dB
 auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::pair<std::vector<RGBf>, bool>
 {
     // calculate initial line fit through RGB color space
@@ -182,7 +158,6 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     return {endpoints, modeThird};
 }
 
-// This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
 auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565) -> std::vector<uint8_t>
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
@@ -327,11 +302,10 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
             std::array<XRGB8888, 4> colors;
             uint16_t c0 = *color16++;
             uint16_t c1 = *color16++;
-            // check if c0 > c1 -> 1/3, 2/3 mode, or if c0 <= c1 -> 1/2 mode
-            const auto modeThird = c0 > c1;
             colors[0] = asRGB565 ? convertTo<XRGB8888>(RGB565(c0)) : convertTo<XRGB8888>(XRGB1555(c0));
             colors[1] = asRGB565 ? convertTo<XRGB8888>(RGB565(c1)) : convertTo<XRGB8888>(XRGB1555(c1));
-            if (modeThird)
+            // check if c0 > c1 -> 1/3, 2/3 mode, or if c0 <= c1 -> 1/2 mode
+            if (c0 > c1)
             {
                 // calculate intermediate colors c2 at 1/3 and c3 at 2/3 using tables
                 uint32_t c2c3;
