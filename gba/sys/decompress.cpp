@@ -3,7 +3,8 @@
 
 namespace BIOS
 {
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
     void LZ77UnCompReadNormalWrite8bit(const void *source, void *dest)
     {
         SYSCALL(0x11);
@@ -43,5 +44,5 @@ namespace BIOS
     {
         SYSCALL(0x18);
     }
-
+#pragma GCC diagnostic pop
 } // namespace Decompression
