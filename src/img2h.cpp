@@ -232,8 +232,9 @@ std::vector<Image::Data> readImages(const std::vector<std::string> &fileNames, c
         const auto imgSize = img.size;
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
         const auto imgFormat = img.imageData.pixels().format();
+        std::cout << Color::formatInfo(imgFormat).name;
         const auto imgIsIndexed = img.imageData.pixels().isIndexed();
-        if (imgIsIndexed)
+        if (ifIt == fileNames.cbegin())
         {
             // set type and size of first image
             commonImgFormat = imgFormat;
@@ -258,6 +259,7 @@ std::vector<Image::Data> readImages(const std::vector<std::string> &fileNames, c
         img.fileName = *ifIt;
         images.push_back(img);
         ifIt++;
+        std::cout << std::endl;
     }
     return images;
 }
@@ -352,9 +354,9 @@ int main(int argc, const char *argv[])
         }
         else
         {
-        // convert to raw data
-        processing.addStep(Image::ProcessingType::ConvertPixelDataToRaw, {});
-        processing.addStep(Image::ProcessingType::ConvertColorMapDataToRaw, {});
+            // convert to raw data
+            processing.addStep(Image::ProcessingType::ConvertPixelDataToRaw, {});
+            processing.addStep(Image::ProcessingType::ConvertColorMapDataToRaw, {});
         }
         if (options.delta8)
         {
