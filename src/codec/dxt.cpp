@@ -23,7 +23,7 @@ using namespace Color;
 #define CLUSTER_FIT
 
 // Fit a line through colors passed using SVD
-auto dxtLineFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::vector<RGBf>
+auto dxtLineFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::pair<std::vector<RGBf>, std::vector<RGBf>>
 {
     // calculate initial line fit through RGB color space
     auto originAndAxis = lineFit(colors);
@@ -36,13 +36,20 @@ auto dxtLineFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::ve
     auto i0 = std::distance(distanceOnLine.cbegin(), minMaxDistance.first);
     auto i1 = std::distance(distanceOnLine.cbegin(), minMaxDistance.second);
     // get colors c0 and c1 on line
-    std::vector<RGBf> c(4);
-    c[0] = RGBf::roundTo(colors[i0], asRGB565 ? RGB565::Max : XRGB1555::Max);
-    c[1] = RGBf::roundTo(colors[i1], asRGB565 ? RGB565::Max : XRGB1555::Max);
-    // calculate intermediate colors c2 and c3
-    c[2] = RGBf::roundTo(RGBf((c[0].cwiseProduct(RGBf(2, 2, 2)) + c[1]).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
-    c[3] = RGBf::roundTo(RGBf((c[0] + c[1].cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
-    return c;
+    std::vector<RGBf> e0(4);
+    e0[0] = RGBf::roundTo(colors[i0], asRGB565 ? RGB565::Max : XRGB1555::Max);
+    e0[1] = RGBf::roundTo(colors[i1], asRGB565 ? RGB565::Max : XRGB1555::Max);
+    // calculate intermediate colors c2 and c3 at 1/3 and 2/3
+    e0[2] = RGBf::roundTo(RGBf((e0[0].cwiseProduct(RGBf(2, 2, 2)) + e0[1]).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+    e0[3] = RGBf::roundTo(RGBf((e0[0] + e0[1].cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+    // get colors c0 and c1 on line
+    std::vector<RGBf> e1(4);
+    e1[0] = e0[0];
+    e1[1] = e0[1];
+    // calculate intermediate color c3 at 1/2 and add black
+    e1[2] = RGBf::roundTo(RGBf((e1[0] + e1[1]).cwiseQuotient(RGBf(2, 2, 2))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+    e1[3] = RGBf(0, 0, 0);
+    return {e0, e1};
 }
 
 auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> &colors, const bool asRGB565) -> float
@@ -53,7 +60,7 @@ auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> 
     {
         // calculate minimum distance for each index for this color
         float bestColorDistance = std::numeric_limits<float>::max();
-        for (uint32_t ei = 0; ei < 4; ++ei)
+        for (uint32_t ei = 0; ei < endpoints.size(); ++ei)
         {
             auto indexDistance = RGBf::mse(colors[ci], endpoints[ei]);
             // check if result improved
@@ -68,67 +75,115 @@ auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> 
 }
 
 constexpr std::size_t ClusterFitMaxIterations = 3;
-constexpr float ClusterFitMinDxtError = 0.001F;
+constexpr float ClusterFitMinDxtError = 0.01F;
+constexpr float DxtMinC0C1Error = 0.001F;
+
+// DXT-compressed artificial_384x256.png, psnr: 32.99
+// DXT-compressed BigBuckBunny_282_384x256.png, psnr: 34.85
+// DXT-compressed BigBuckBunny_361_384x256.png, psnr: 31.57
+// DXT-compressed BigBuckBunny_40_384x256.png, psnr: 39.19
+// DXT-compressed BigBuckBunny_648_384x256.png, psnr: 32.43
+// DXT-compressed BigBuckBunny_664_384x256.png, psnr: 35.37
+// DXT-compressed bridge_256x384.png, psnr: 31.69
+// DXT-compressed flower_foveon_384x256.png, psnr: 36.47
+// DXT-compressed nightshot_iso_100_384x256.png, psnr: 34.61
+// DXT-compressed squish_384x384.png, psnr: 40.05
+// DXT-compressed TearsOfSteel_1200_384x256.png, psnr: 33.3
+// DXT-compressed TearsOfSteel_676_384x256.png, psnr: 33.93
+// DXT-compressed artificial_384x256.png, psnr: 33.16
+// DXT-compressed BigBuckBunny_282_384x256.png, psnr: 35.22
+// DXT-compressed BigBuckBunny_361_384x256.png, psnr: 31.76
+// DXT-compressed BigBuckBunny_40_384x256.png, psnr: 39.51
+// DXT-compressed BigBuckBunny_648_384x256.png, psnr: 32.62
+// DXT-compressed BigBuckBunny_664_384x256.png, psnr: 35.87
+// DXT-compressed bridge_256x384.png, psnr: 31.89
+// DXT-compressed flower_foveon_384x256.png, psnr: 36.93
+// DXT-compressed nightshot_iso_100_384x256.png, psnr: 34.98
+// DXT-compressed squish_384x384.png, psnr: 41.27
+// DXT-compressed TearsOfSteel_1200_384x256.png, psnr: 33.59
+// DXT-compressed TearsOfSteel_676_384x256.png, psnr: 34.24
 
 // Heuristically fit colors to two color endpoints and their 1/3 and 2/3 intermediate points
 // Improves PSNR in the range of 1-2 dB
-auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::vector<RGBf>
+auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::pair<std::vector<RGBf>, bool>
 {
     // calculate initial line fit through RGB color space
-    auto endpoints = dxtLineFit(colors, asRGB565);
-    auto bestError = calculateError(endpoints, colors, asRGB565);
+    auto guess = dxtLineFit(colors, asRGB565);
+    // return if the colors are already VERY close together
+    if (RGBf::mse(guess.second[0], guess.second[1]) <= DxtMinC0C1Error)
+    {
+        return {guess.second, false};
+    }
+    auto bestErrorThird = calculateError(guess.first, colors, asRGB565);
+    auto bestErrorHalf = calculateError(guess.second, colors, asRGB565);
+    bool modeThird = bestErrorThird < bestErrorHalf;
+    std::vector<RGBf> endpoints = modeThird ? guess.first : guess.second;
+    auto bestError = modeThird ? bestErrorThird : bestErrorHalf;
     // return if the error is already optimal
     if (bestError <= ClusterFitMinDxtError)
     {
-        return endpoints;
+        return {endpoints, modeThird};
     }
-    // do some rounds of k-means clustering
-    std::vector<RGBf> centroids = endpoints;
-    for (int iteration = 0; iteration < ClusterFitMaxIterations; ++iteration)
+    // do some rounds of k-means clustering for 1/3, 2/3 mode, then 1/2 mode
+    for (int mode = 0; mode < 2; ++mode)
     {
-        float iterationError = 0.0F;
-        std::vector<std::vector<RGBf>> clusters(4);
-        for (const auto &point : colors)
+        std::vector<RGBf> centroids = mode == 0 ? guess.first : guess.second;
+        for (int iteration = 0; iteration < ClusterFitMaxIterations; ++iteration)
         {
-            float minError = std::numeric_limits<float>::max();
-            int closestCentroid = -1;
-            for (int i = 0; i < 4; ++i)
+            float iterationError = 0.0F;
+            std::vector<std::vector<RGBf>> clusters(4);
+            for (const auto &point : colors)
             {
-                auto error = RGBf::mse(point, centroids[i]);
-                if (error < minError)
+                float minError = std::numeric_limits<float>::max();
+                int closestCentroid = -1;
+                for (int i = 0; i < 4; ++i)
                 {
-                    minError = error;
-                    closestCentroid = i;
+                    auto error = RGBf::mse(point, centroids[i]);
+                    if (error < minError)
+                    {
+                        minError = error;
+                        closestCentroid = i;
+                    }
                 }
+                clusters[closestCentroid].push_back(point);
+                iterationError += minError;
             }
-            clusters[closestCentroid].push_back(point);
-            iterationError += minError;
-        }
-        // update centroids of cluster c0 and c1 defining the line
-        for (int i = 0; i < 2; ++i)
-        {
-            auto sum = RGBf(0, 0, 0);
-            for (const auto &point : clusters[i])
+            // update centroids of cluster c0 and c1 defining the line
+            for (int i = 0; i < 2; ++i)
             {
-                sum += point;
+                auto sum = RGBf(0, 0, 0);
+                for (const auto &point : clusters[i])
+                {
+                    sum += point;
+                }
+                centroids[i] = RGBf::roundTo(sum / (double)clusters[i].size(), asRGB565 ? RGB565::Max : XRGB1555::Max);
             }
-            centroids[i] = RGBf::roundTo(sum / (double)clusters[i].size(), asRGB565 ? RGB565::Max : XRGB1555::Max);
-        }
-        // update centroids of intermediate colors c2 and c3
-        centroids[2] = RGBf::roundTo(RGBf((centroids[0].cwiseProduct(RGBf(2, 2, 2)) + centroids[1]).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
-        centroids[3] = RGBf::roundTo(RGBf((centroids[0] + centroids[1].cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
-        // store endpoints if error improved
-        if (bestError > iterationError)
-        {
-            bestError = iterationError;
-            endpoints = centroids;
+            if (mode == 0)
+            {
+                // update centroids of intermediate colors c2 and c3 at 1/3 and 2/3
+                centroids[2] = RGBf::roundTo(RGBf((centroids[0].cwiseProduct(RGBf(2, 2, 2)) + centroids[1]).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+                centroids[3] = RGBf::roundTo(RGBf((centroids[0] + centroids[1].cwiseProduct(RGBf(2, 2, 2))).cwiseQuotient(RGBf(3, 3, 3))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+            }
+            else
+            {
+                // update centroid of intermediate color c2 at 1/2 and add black
+                centroids[2] = RGBf::roundTo(RGBf((centroids[0] + centroids[1]).cwiseQuotient(RGBf(2, 2, 2))), asRGB565 ? RGB565::Max : XRGB1555::Max);
+                centroids[3] = RGBf(0, 0, 0);
+            }
+            // store endpoints if error improved
+            if (bestError > iterationError)
+            {
+                bestError = iterationError;
+                endpoints = centroids;
+                modeThird = mode == 0;
+            }
         }
     }
-    return endpoints;
+    return {endpoints, modeThird};
 }
 
 // This is basically the "range fit" method from here: http://www.sjbrown.co.uk/2006/01/19/dxt-compression-techniques/
-auto encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565) -> std::vector<uint8_t>
+auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565) -> std::vector<uint8_t>
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
@@ -144,17 +199,55 @@ auto encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t pixelsPerScanli
         pixel += pixelsPerScanline;
     }
 #if defined(CLUSTER_FIT)
-    auto endpoints = dxtClusterFit(colors, asRGB565);
+    auto [endpoints, modeThird] = dxtClusterFit(colors, asRGB565);
 #else
-    auto endpoints = dxtLineFit(colors, asRGB565);
+    auto guess = dxtLineFit(colors, asRGB565);
+    bool modeThird;
+    std::vector<RGBf> endpoints;
+    if (RGBf::mse(guess.second[0], guess.second[1]) <= DxtMinC0C1Error)
+    {
+        // if colors are almost identical, use 1/2 mode and second set of endpoints
+        endpoints = guess.second;
+        modeThird = false;
+    }
+    else
+    {
+        // check if 1/2, 2/3 or 1/2 mode gives lower error
+        auto bestErrorThird = calculateError(guess.first, colors, asRGB565);
+        auto bestErrorHalf = calculateError(guess.second, colors, asRGB565);
+        modeThird = bestErrorThird < bestErrorHalf;
+        endpoints = modeThird ? guess.first : guess.second;
+    }
 #endif
+    // check how we need to encode the endpoint colors
+    auto c0 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[0])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[0]));
+    auto c1 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[1])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[1]));
+    if (modeThird)
+    {
+        // if we're using 1/3, 2/3 intermediates, store so that always c0 > c1. c0 != c1 here due to being checked above
+        if (c0 < c1)
+        {
+            std::swap(c0, c1);
+            std::swap(endpoints[0], endpoints[1]);
+            std::swap(endpoints[2], endpoints[3]);
+        }
+    }
+    else
+    {
+        // if we're using a 1/2 intermediate, store so that always c0 <= c1
+        if (c0 > c1)
+        {
+            std::swap(c0, c1);
+            std::swap(endpoints[0], endpoints[1]);
+        }
+    }
     // calculate minimum distance for all colors to endpoints to assign indices
     std::vector<uint32_t> endpointIndices(colors.size());
     for (uint32_t ci = 0; ci < 16; ++ci)
     {
         // calculate minimum distance for each index for this color
         float bestColorDistance = std::numeric_limits<float>::max();
-        for (uint32_t ei = 0; ei < 4; ++ei)
+        for (uint32_t ei = 0; ei < endpoints.size(); ++ei)
         {
             auto indexDistance = RGBf::mse(colors[ci], endpoints[ei]);
             // check if result improved
@@ -169,8 +262,8 @@ auto encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t pixelsPerScanli
     std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
     // add color endpoints c0 and c1
     auto data16 = reinterpret_cast<uint16_t *>(result.data());
-    *data16++ = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[0])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[0]));
-    *data16++ = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[1])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[1]));
+    *data16++ = c0;
+    *data16++ = c1;
     // add index data in reverse
     uint32_t indices = 0;
     for (auto iIt = endpointIndices.crbegin(); iIt != endpointIndices.crend(); ++iIt)
@@ -181,7 +274,7 @@ auto encodeBlockDXT(const Color::XRGB8888 *start, const uint32_t pixelsPerScanli
     return result;
 }
 
-auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<uint8_t>
+auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<uint8_t>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
@@ -189,7 +282,7 @@ auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t wi
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
     std::vector<uint8_t> dxtData(nrOfBlocks * 8);
-#pragma omp parallel for
+    // #pragma omp parallel for
     for (int y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
@@ -214,13 +307,13 @@ auto DXT::encodeDXT(const std::vector<Color::XRGB8888> &image, const uint32_t wi
     return data;
 }
 
-auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<Color::XRGB8888>
+auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<XRGB8888>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT decompression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT decompression");
     const auto nrOfBlocks = data.size() / 8;
     REQUIRE(nrOfBlocks == width / 4 * height / 4, std::runtime_error, "Data size does not match image size");
-    std::vector<Color::XRGB8888> result(width * height);
+    std::vector<XRGB8888> result(width * height);
     // set up pointer to source block data
     auto color16 = reinterpret_cast<const uint16_t *>(data.data());
     auto indices32 = reinterpret_cast<const uint32_t *>(data.data() + nrOfBlocks * 4);
@@ -229,31 +322,57 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
         for (std::size_t x = 0; x < width; x += 4)
         {
             // read colors c0 and c1
-            std::array<Color::XRGB8888, 4> colors;
-            const uint16_t c0 = *color16++;
-            const uint16_t c1 = *color16++;
-            colors[0] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c0)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c0));
-            colors[1] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c1)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c1));
-            // calculate intermediate colors c2 and c3 using tables
-            uint32_t c2c3 = 0;
-            if (asRGB565)
+            std::array<XRGB8888, 4> colors;
+            uint16_t c0 = *color16++;
+            uint16_t c1 = *color16++;
+            // check if c0 > c1 -> 1/3, 2/3 mode, or if c0 <= c1 -> 1/2 mode
+            const auto modeThird = c0 > c1;
+            colors[0] = asRGB565 ? convertTo<XRGB8888>(RGB565(c0)) : convertTo<XRGB8888>(XRGB1555(c0));
+            colors[1] = asRGB565 ? convertTo<XRGB8888>(RGB565(c1)) : convertTo<XRGB8888>(XRGB1555(c1));
+            if (modeThird)
             {
-                uint32_t b = ((c0 & 0xF800) >> 6) | ((c1 & 0xF800) >> 11);
-                uint32_t g = ((c0 & 0x7E0) << 1) | ((c1 & 0x7E0) >> 5);
-                uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-                c2c3 = (DXTTables::C2C3_5bit[b] << 11) | (DXTTables::C2C3_6bit[g] << 5) | DXTTables::C2C3_5bit[r];
+                // calculate intermediate colors c2 at 1/3 and c3 at 2/3 using tables
+                uint32_t c2c3;
+                if (asRGB565)
+                {
+                    uint32_t b = ((c0 & 0xF800) >> 6) | ((c1 & 0xF800) >> 11);
+                    uint32_t g = ((c0 & 0x7E0) << 1) | ((c1 & 0x7E0) >> 5);
+                    uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
+                    c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 11) | (DXTTables::C2C3_ModeThird_6bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
+                }
+                else
+                {
+                    uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
+                    uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
+                    uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
+                    c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 10) | (DXTTables::C2C3_ModeThird_5bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
+                }
+                uint16_t c2 = (c2c3 & 0x0000FFFF);
+                uint16_t c3 = ((c2c3 & 0xFFFF0000) >> 16);
+                colors[2] = asRGB565 ? convertTo<XRGB8888>(RGB565(c2)) : convertTo<XRGB8888>(XRGB1555(c2));
+                colors[3] = asRGB565 ? convertTo<XRGB8888>(RGB565(c3)) : convertTo<XRGB8888>(XRGB1555(c3));
             }
             else
             {
-                uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
-                uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
-                uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-                c2c3 = (DXTTables::C2C3_5bit[b] << 10) | (DXTTables::C2C3_5bit[g] << 5) | DXTTables::C2C3_5bit[r];
+                // calculate intermediate color c2 at 1/2 and leave c3 at black
+                uint16_t c2;
+                if (asRGB565)
+                {
+                    uint32_t b = (((c0 & 0xF800) >> 11) + ((c1 & 0xF800) >> 11) + 1) >> 1;
+                    uint32_t g = (((c0 & 0x7E0) >> 5) + ((c1 & 0x7E0) >> 5) + 1) >> 1;
+                    uint32_t r = ((c0 & 0x1F) + (c1 & 0x1F) + 1) >> 1;
+                    c2 = ((b << 11) | (g << 5) | r);
+                }
+                else
+                {
+                    uint32_t b = (((c0 & 0x7C00) >> 10) + ((c1 & 0x7C00) >> 10) + 1) >> 1;
+                    uint32_t g = (((c0 & 0x3E0) >> 5) + ((c1 & 0x3E0) >> 5) + 1) >> 1;
+                    uint32_t r = ((c0 & 0x1F) + (c1 & 0x1F) + 1) >> 1;
+                    c2 = ((b << 10) | (g << 5) | r);
+                }
+                colors[2] = asRGB565 ? convertTo<XRGB8888>(RGB565(c2)) : convertTo<XRGB8888>(XRGB1555(c2));
+                colors[3] = XRGB8888(0, 0, 0);
             }
-            const uint16_t c2 = (c2c3 & 0x0000FFFF);
-            const uint16_t c3 = ((c2c3 & 0xFFFF0000) >> 16);
-            colors[2] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c2)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c2));
-            colors[3] = asRGB565 ? convertTo<Color::XRGB8888>(Color::RGB565(c3)) : convertTo<Color::XRGB8888>(Color::XRGB1555(c3));
             // read pixel color indices
             uint32_t indices = *indices32++;
             // and decode colors

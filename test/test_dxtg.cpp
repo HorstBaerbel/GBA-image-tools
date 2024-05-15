@@ -18,52 +18,52 @@ struct TestFile
 };
 
 const std::vector<TestFile> TestFiles = {
-    {"artificial_384x256.png", 31.85F, 32.01F},
-    {"BigBuckBunny_282_384x256.png", 33.68F, 33.96F},
-    {"BigBuckBunny_361_384x256.png", 30.01F, 30.11},
-    {"BigBuckBunny_40_384x256.png", 38.74F, 39.01F},
-    {"BigBuckBunny_648_384x256.png", 31.12F, 31.21F},
-    {"BigBuckBunny_664_384x256.png", 34.1F, 34.45F},
-    {"bridge_256x384.png", 30.24F, 30.36F},
-    {"flower_foveon_384x256.png", 34.98F, 35.3F},
-    {"nightshot_iso_100_384x256.png", 33.21F, 33.46F},
-    {"squish_384x384.png", 39.8F, 40.79F},
-    {"TearsOfSteel_1200_384x256.png", 31.96F, 32.16F},
-    {"TearsOfSteel_676_384x256.png", 32.52F, 32.73F}};
+    {"artificial_384x256.png", 33.27F, 33.50F},
+    {"BigBuckBunny_282_384x256.png", 34.89F, 35.27F},
+    {"BigBuckBunny_361_384x256.png", 31.65F, 31.84F},
+    {"BigBuckBunny_40_384x256.png", 39.40F, 39.73F},
+    {"BigBuckBunny_648_384x256.png", 32.55F, 32.72F},
+    {"BigBuckBunny_664_384x256.png", 35.48F, 35.97F},
+    {"bridge_256x384.png", 31.78F, 31.98F},
+    {"flower_foveon_384x256.png", 36.57F, 37.04F},
+    {"nightshot_iso_100_384x256.png", 34.70F, 35.08F},
+    {"squish_384x384.png", 40.14F, 41.36F},
+    {"TearsOfSteel_1200_384x256.png", 33.43F, 33.70F},
+    {"TearsOfSteel_676_384x256.png", 34.03F, 34.34F}};
 
 /*
 XRGB1555
-artificial_384x256.png, psnr: 31.85
-BigBuckBunny_282_384x256.png, psnr: 33.68
-BigBuckBunny_361_384x256.png, psnr: 30.01
-BigBuckBunny_40_384x256.png, psnr: 38.74
-BigBuckBunny_648_384x256.png, psnr: 31.12
-BigBuckBunny_664_384x256.png, psnr: 34.1
-bridge_256x384.png, psnr: 30.24
-flower_foveon_384x256.png, psnr: 34.98
-nightshot_iso_100_384x256.png, psnr: 33.21
-squish_384x384.png, psnr: 39.8
-TearsOfSteel_1200_384x256.png, psnr: 31.96
-TearsOfSteel_676_384x256.png, psnr: 32.52
+artificial_384x256.png, psnr: 33.28
+BigBuckBunny_282_384x256.png, psnr: 34.9
+BigBuckBunny_361_384x256.png, psnr: 31.66
+BigBuckBunny_40_384x256.png, psnr: 39.41
+BigBuckBunny_648_384x256.png, psnr: 32.56
+BigBuckBunny_664_384x256.png, psnr: 35.49
+bridge_256x384.png, psnr: 31.79
+flower_foveon_384x256.png, psnr: 36.58
+nightshot_iso_100_384x256.png, psnr: 34.71
+squish_384x384.png, psnr: 40.15
+TearsOfSteel_1200_384x256.png, psnr: 33.44
+TearsOfSteel_676_384x256.png, psnr: 34.04
 
 RGB565
-artificial_384x256.png, psnr: 32.01
-BigBuckBunny_282_384x256.png, psnr: 33.96
-BigBuckBunny_361_384x256.png, psnr: 30.11
-BigBuckBunny_40_384x256.png, psnr: 39.01
-BigBuckBunny_648_384x256.png, psnr: 31.21
-BigBuckBunny_664_384x256.png, psnr: 34.45
-bridge_256x384.png, psnr: 30.36
-flower_foveon_384x256.png, psnr: 35.3
-nightshot_iso_100_384x256.png, psnr: 33.46
-squish_384x384.png, psnr: 40.79
-TearsOfSteel_1200_384x256.png, psnr: 32.16
-TearsOfSteel_676_384x256.png, psnr: 32.73
+artificial_384x256.png, psnr: 33.51
+BigBuckBunny_282_384x256.png, psnr: 35.28
+BigBuckBunny_361_384x256.png, psnr: 31.85
+BigBuckBunny_40_384x256.png, psnr: 39.74
+BigBuckBunny_648_384x256.png, psnr: 32.73
+BigBuckBunny_664_384x256.png, psnr: 35.98
+bridge_256x384.png, psnr: 31.99
+flower_foveon_384x256.png, psnr: 37.05
+nightshot_iso_100_384x256.png, psnr: 35.09
+squish_384x384.png, psnr: 41.37
+TearsOfSteel_1200_384x256.png, psnr: 33.71
+TearsOfSteel_676_384x256.png, psnr: 34.35
 */
 
 const std::string DataPath = "../../data/images/test/";
 
-#define WRITE_OUTPUT
+// #define WRITE_OUTPUT
 
 TEST_SUITE("DXT")
 
