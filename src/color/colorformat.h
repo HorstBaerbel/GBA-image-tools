@@ -14,12 +14,16 @@ namespace Color
         Paletted2 = 2, // 2bit paletted format
         Paletted4 = 4, // 4bit paletted format
         Paletted8 = 8, // 8bit paletted format
-        XRGB1555 = 15, // X1R5G5B5 16-bit format for GBA
-        RGB565 = 16,   // R5G6B5 16-bit format for NDS, DXT
+        XRGB1555 = 15, // X1R5G5B5 16-bit format
+        RGB565 = 16,   // R5G6B5 16-bit format
+        XBGR1555 = 17, // X1B5G5R5 16-bit format with swapped red and blue for GBA (has no Color:: class)
+        BGR565 = 18,   // B5G6R5 16-bit format with swappe red and blue for NDS, DXT (has no Color:: class)
         RGB888 = 24,   // R8G8B8 24-bit straight truecolor format
+        BGR888 = 25,   // B8G8R8 24-bit straight truecolor format with swapped red and blue (has no Color:: class)
         XRGB8888 = 32, // X8R8G8B8 32-bit straight truecolor format
-        LChf = 96,     // LCh float truecolor format
-        RGBf = 97,     // RGB float truecolor format
+        XBGR8888 = 33, // X8R8G8B8 32-bit straight truecolor format with swapped red and blue (has no Color:: class)
+        RGBf = 96,     // RGB float truecolor format
+        LChf = 97,     // LCh float truecolor format
         YCgCoRf = 98,  // YCgCoR float truecolor format
         Grayf = 111    // Single-channel float grayscale format
     };
@@ -32,9 +36,10 @@ namespace Color
         uint32_t bitsPerPixel = 0;  // Bits per pixel for input color format
         uint32_t bytesPerPixel = 0; // Bytes per pixel for input color format
         uint32_t channels = 0;      // Color channels in color data
-        bool isIndexed = false;     // If color format is indexed / paletted
-        bool isTruecolor = false;   // If color format is truecolor
-        bool hasAlpha = false;      // If color format has alpah channel
+        bool isIndexed = false;     // True if color format is indexed / paletted
+        bool isTruecolor = false;   // True if color format is truecolor
+        bool hasAlpha = false;      // True if color format has alpah channel
+        bool hasSwappedRedBlue = false; // True if the color has swapped red and blue component
     };
 
     /// @brief Return color format information
