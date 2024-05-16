@@ -14,7 +14,7 @@
 
 #include "data/images_dxt.h"
 
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[IMAGES_DXT_DATA_SIZE / IMAGES_DXT_NR_OF_IMAGES + 2048]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
+IWRAM_DATA ALIGN(4) uint32_t ScratchPad[IMAGES_DXT_DATA_SIZE / IMAGES_DXT_NR_OF_IMAGES + 2048]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {
@@ -26,7 +26,9 @@ int main()
 	// set up text UI
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
-	TUI::printf(0, 10, "   Press A to skip to next");
+	TUI::printf(0, 8, "   DXT1 decompression demo");
+	TUI::printf(0, 10, "       Press A to skip");
+	TUI::printf(0, 11, "        to next image");
 	// wait for keypress
 	do
 	{
