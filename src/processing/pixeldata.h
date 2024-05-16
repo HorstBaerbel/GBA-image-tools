@@ -170,6 +170,47 @@ namespace Image
             THROW(std::runtime_error, "Unsupported pixel format");
         }
 
+        auto convertTo(const Color::Format format) const -> PixelData
+        {
+            if (this->format() == format)
+            {
+                return *this;
+            }
+            else if (format == Color::Format::XRGB1555 || format == Color::Format::XBGR1555)
+            {
+                auto data = convertData<Color::XRGB1555>();
+                return PixelData(format == Color::Format::XBGR1555 ? swapToBGR(data) : data, Color::Format::XRGB1555);
+            }
+            else if (format == Color::Format::RGB565 || format == Color::Format::BGR565)
+            {
+                auto data = convertData<Color::RGB565>();
+                return PixelData(format == Color::Format::BGR565 ? swapToBGR(data) : data, Color::Format::RGB565);
+            }
+            else if (format == Color::Format::RGB888 || format == Color::Format::BGR888)
+            {
+                auto data = convertData<Color::RGB888>();
+                return PixelData(format == Color::Format::BGR888 ? swapToBGR(data) : data, Color::Format::RGB888);
+            }
+            else if (format == Color::Format::XRGB8888 || format == Color::Format::XBGR8888)
+            {
+                auto data = convertData<Color::XRGB8888>();
+                return PixelData(format == Color::Format::XBGR8888 ? swapToBGR(data) : data, Color::Format::XRGB8888);
+            }
+            else if (format == Color::Format::LChf)
+            {
+                return PixelData(convertData<Color::LChf>(), Color::Format::LChf);
+            }
+            else if (format == Color::Format::YCgCoRf)
+            {
+                return PixelData(convertData<Color::YCgCoRf>(), Color::Format::YCgCoRf);
+            }
+            else if (format == Color::Format::Grayf)
+            {
+                return PixelData(convertData<Color::Grayf>(), Color::Format::Grayf);
+            }
+            THROW(std::runtime_error, "Unsupported pixel format");
+        }
+
         auto empty() const -> bool
         {
             return std::visit([](auto arg)
