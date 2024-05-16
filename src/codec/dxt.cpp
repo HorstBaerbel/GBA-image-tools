@@ -158,7 +158,7 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     return {endpoints, modeThird};
 }
 
-auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565) -> std::vector<uint8_t>
+auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
@@ -194,28 +194,6 @@ auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, con
         endpoints = modeThird ? guess.first : guess.second;
     }
 #endif
-    // check how we need to encode the endpoint colors
-    auto c0 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[0])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[0]));
-    auto c1 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[1])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[1]));
-    if (modeThird)
-    {
-        // if we're using 1/3, 2/3 intermediates, store so that always c0 > c1. c0 != c1 here due to being checked above
-        if (c0 < c1)
-        {
-            std::swap(c0, c1);
-            std::swap(endpoints[0], endpoints[1]);
-            std::swap(endpoints[2], endpoints[3]);
-        }
-    }
-    else
-    {
-        // if we're using a 1/2 intermediate, store so that always c0 <= c1
-        if (c0 > c1)
-        {
-            std::swap(c0, c1);
-            std::swap(endpoints[0], endpoints[1]);
-        }
-    }
     // calculate minimum distance for all colors to endpoints to assign indices
     std::vector<uint32_t> endpointIndices(colors.size());
     for (uint32_t ci = 0; ci < 16; ++ci)
@@ -230,6 +208,40 @@ auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, con
             {
                 bestColorDistance = indexDistance;
                 endpointIndices[ci] = ei;
+            }
+        }
+    }
+    // swap to BGR here if needed. we need to do this AFTER assigning indices
+    if (swapToBGR)
+    {
+        endpoints[0] = endpoints[0].swapToBGR();
+        endpoints[1] = endpoints[1].swapToBGR();
+    }
+    // check how we need to encode the endpoint colors
+    auto c0 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[0])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[0]));
+    auto c1 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[1])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[1]));
+    if (modeThird)
+    {
+        // if we're using 1/3, 2/3 intermediates, store so that always c0 > c1. c0 != c1 here due to being checked above
+        if (c0 < c1)
+        {
+            std::swap(c0, c1);
+            for (auto &index : endpointIndices)
+            {
+                index = index == 0 ? 1 : (index == 1 ? 0 : index);
+                index = index == 2 ? 3 : (index == 3 ? 2 : index);
+            }
+        }
+    }
+    else
+    {
+        // if we're using a 1/2 intermediate, store so that always c0 <= c1
+        if (c0 > c1)
+        {
+            std::swap(c0, c1);
+            for (auto &index : endpointIndices)
+            {
+                index = index == 0 ? 1 : (index == 1 ? 0 : index);
             }
         }
     }
@@ -249,7 +261,7 @@ auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, con
     return result;
 }
 
-auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<uint8_t>
+auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
@@ -262,7 +274,7 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
     {
         for (uint32_t x = 0; x < width; x += 4)
         {
-            auto block = encodeBlockDXT(image.data() + y * width + x, width, asRGB565);
+            auto block = encodeBlockDXT(image.data() + y * width + x, width, asRGB565, swapToBGR);
             std::copy(block.cbegin(), block.cend(), std::next(dxtData.begin(), y * yStride + x * 8 / 4));
         }
     }
@@ -282,7 +294,7 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
     return data;
 }
 
-auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565) -> std::vector<XRGB8888>
+auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<XRGB8888>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT decompression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT decompression");
@@ -302,10 +314,16 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
             std::array<XRGB8888, 4> colors;
             uint16_t c0 = *color16++;
             uint16_t c1 = *color16++;
+            const bool modeThird = c0 > c1;
+            if (swapToBGR)
+            {
+                c0 = asRGB565 ? static_cast<uint16_t>(RGB565(c0).swapToBGR()) : static_cast<uint16_t>(XRGB1555(c0).swapToBGR());
+                c1 = asRGB565 ? static_cast<uint16_t>(RGB565(c1).swapToBGR()) : static_cast<uint16_t>(XRGB1555(c1).swapToBGR());
+            }
             colors[0] = asRGB565 ? convertTo<XRGB8888>(RGB565(c0)) : convertTo<XRGB8888>(XRGB1555(c0));
             colors[1] = asRGB565 ? convertTo<XRGB8888>(RGB565(c1)) : convertTo<XRGB8888>(XRGB1555(c1));
             // check if c0 > c1 -> 1/3, 2/3 mode, or if c0 <= c1 -> 1/2 mode
-            if (c0 > c1)
+            if (modeThird)
             {
                 // calculate intermediate colors c2 at 1/3 and c3 at 2/3 using tables
                 uint32_t c2c3;

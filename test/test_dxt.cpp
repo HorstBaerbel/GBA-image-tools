@@ -27,7 +27,7 @@ const std::vector<TestFile> TestFiles = {
     {"bridge_256x384.png", 31.78F, 31.98F},
     {"flower_foveon_384x256.png", 36.57F, 37.04F},
     {"nightshot_iso_100_384x256.png", 34.70F, 35.08F},
-    {"squish_384x384.png", 40.14F, 41.36F},
+    {"squish_384x384.png", 40.10F, 41.32F},
     {"TearsOfSteel_1200_384x256.png", 33.43F, 33.70F},
     {"TearsOfSteel_676_384x256.png", 34.03F, 34.34F}};
 
@@ -42,7 +42,7 @@ BigBuckBunny_664_384x256.png, psnr: 35.49
 bridge_256x384.png, psnr: 31.79
 flower_foveon_384x256.png, psnr: 36.58
 nightshot_iso_100_384x256.png, psnr: 34.71
-squish_384x384.png, psnr: 40.15
+squish_384x384.png, psnr: 40.1
 TearsOfSteel_1200_384x256.png, psnr: 33.44
 TearsOfSteel_676_384x256.png, psnr: 34.04
 
@@ -56,7 +56,7 @@ BigBuckBunny_664_384x256.png, psnr: 35.98
 bridge_256x384.png, psnr: 31.99
 flower_foveon_384x256.png, psnr: 37.05
 nightshot_iso_100_384x256.png, psnr: 35.09
-squish_384x384.png, psnr: 41.37
+squish_384x384.png, psnr: 41.32
 TearsOfSteel_1200_384x256.png, psnr: 33.71
 TearsOfSteel_676_384x256.png, psnr: 34.35
 */
@@ -74,16 +74,20 @@ TEST_CASE("EncodeDecode555")
         auto image = IO::File::readImage(DataPath + testFile.fileName);
         auto inPixels = image.imageData.pixels().convertData<Color::XRGB8888>();
         // IO::File::writeImage(image, "/tmp", "in.png");
-        auto compressedData = DXT::encodeDXT(inPixels, image.size.width(), image.size.height(), false);
-        auto outPixels = DXT::decodeDXT(compressedData, image.size.width(), image.size.height(), false);
-        auto psnr = Color::psnr(inPixels, outPixels);
+        auto compressedDataRGB = DXT::encodeDXT(inPixels, image.size.width(), image.size.height(), false);
+        auto outPixelsRGB = DXT::decodeDXT(compressedDataRGB, image.size.width(), image.size.height(), false);
+        auto psnrRGB = Color::psnr(inPixels, outPixelsRGB);
 #ifdef WRITE_OUTPUT
-        auto xrgb8888 = Image::PixelData(outPixels, Color::Format::XRGB8888);
+        auto xrgb8888 = Image::PixelData(outPixelsRGB, Color::Format::XRGB8888);
         image.imageData.pixels() = Image::PixelData(xrgb8888.convertData<Color::RGB888>(), Color::Format::RGB888);
         IO::File::writeImage(image, "/tmp/test555", testFile.fileName);
 #endif
-        std::cout << "DXT-compressed " << testFile.fileName << ", psnr: " << std::setprecision(4) << psnr << std::endl;
-        CATCH_REQUIRE(psnr >= testFile.minPsnr555);
+        auto compressedDataBGR = DXT::encodeDXT(inPixels, image.size.width(), image.size.height(), false, true);
+        auto outPixelsBGR = DXT::decodeDXT(compressedDataBGR, image.size.width(), image.size.height(), false, true);
+        auto psnrBGR = Color::psnr(inPixels, outPixelsBGR);
+        std::cout << "DXT-compressed " << testFile.fileName << ", psnr: " << std::setprecision(4) << psnrRGB << std::endl;
+        CATCH_REQUIRE(psnrRGB == psnrBGR);
+        CATCH_REQUIRE(psnrRGB >= testFile.minPsnr555);
     }
 }
 
@@ -94,15 +98,19 @@ TEST_CASE("EncodeDecode565")
         auto image = IO::File::readImage(DataPath + testFile.fileName);
         auto inPixels = image.imageData.pixels().convertData<Color::XRGB8888>();
         // IO::File::writeImage(image, "/tmp", "in.png");
-        auto compressedData = DXT::encodeDXT(inPixels, image.size.width(), image.size.height(), true);
-        auto outPixels = DXT::decodeDXT(compressedData, image.size.width(), image.size.height(), true);
-        auto psnr = Color::psnr(inPixels, outPixels);
+        auto compressedDataRGB = DXT::encodeDXT(inPixels, image.size.width(), image.size.height(), true);
+        auto outPixelsRGB = DXT::decodeDXT(compressedDataRGB, image.size.width(), image.size.height(), true);
+        auto psnrRGB = Color::psnr(inPixels, outPixelsRGB);
 #ifdef WRITE_OUTPUT
-        auto xrgb8888 = Image::PixelData(outPixels, Color::Format::XRGB8888);
+        auto xrgb8888 = Image::PixelData(outPixelsRGB, Color::Format::XRGB8888);
         image.imageData.pixels() = Image::PixelData(xrgb8888.convertData<Color::RGB888>(), Color::Format::RGB888);
         IO::File::writeImage(image, "/tmp/test565", testFile.fileName);
 #endif
-        std::cout << "DXT-compressed " << testFile.fileName << ", psnr: " << std::setprecision(4) << psnr << std::endl;
-        CATCH_REQUIRE(psnr >= testFile.minPsnr565);
+        auto compressedDataBGR = DXT::encodeDXT(inPixels, image.size.width(), image.size.height(), true, true);
+        auto outPixelsBGR = DXT::decodeDXT(compressedDataBGR, image.size.width(), image.size.height(), true, true);
+        auto psnrBGR = Color::psnr(inPixels, outPixelsBGR);
+        std::cout << "DXT-compressed " << testFile.fileName << ", psnr: " << std::setprecision(4) << psnrRGB << std::endl;
+        CATCH_REQUIRE(psnrRGB == psnrBGR);
+        CATCH_REQUIRE(psnrRGB >= testFile.minPsnr565);
     }
 }
