@@ -44,6 +44,8 @@ list(APPEND GENCOLORMAPS_SRC
     color/colorhelpers.cpp
     color/lchf.cpp
     color/xrgb1555.cpp
+    color/rgb565.cpp
+    color/rgb888.cpp
     color/xrgb8888.cpp
     color/ycgcorf.cpp
     color/conversions.cpp

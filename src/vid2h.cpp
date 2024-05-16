@@ -277,7 +277,7 @@ int main(int argc, const char *argv[])
             {
                 processing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMap, {Color::Format::XRGB1555});
+            processing.addStep(Image::ProcessingType::ConvertColorMapToRaw, {options.outformat.value});
             processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)
@@ -288,6 +288,7 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::ConvertTiles, {});
         }
+        // image compression
         if (options.deltaImage)
         {
             processing.addStep(Image::ProcessingType::DeltaImage, {});
@@ -304,6 +305,9 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::CompressGVID, {}, true, true);
         }
+        // convert to raw data (only if not raw data already)
+        processing.addStep(Image::ProcessingType::ConvertPixelsToRaw, {options.outformat.value});
+        // entropy compression
         if (options.delta8)
         {
             processing.addStep(Image::ProcessingType::ConvertDelta8, {});

@@ -81,13 +81,9 @@ namespace Image
         static std::vector<Data> toCommonPalette(const std::vector<Data> &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Convert input image to RGB555, RGB565 or RGB888
-        /// @param parameters Truecolor format to convert image to as std::string
+        /// @param parameters Truecolor format to convert image to as Color::Format
         /// @return Returns data as XRGB1555, RGB565 or XRGB8888
         static Data toTruecolor(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
-
-        /// @brief Convert input image and color map to uint8_t raw data stream
-        /// @return Returns image and color map data in uint8_t format
-        static Data toRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         // --- data conversion functions ------------------------------------
 
@@ -175,9 +171,19 @@ namespace Image
 
         // --- misc conversion functions ------------------------------------------------------------------------
 
+        /// @brief Convert pixels to format.
+        /// @param parameters Truecolor format to convert pixels to as Color::Format
+        /// @param Will do nothing if the pixel data raw
+        static Data convertPixelsToRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+
         /// @brief Fill up pixel data with 0s to a multiple of N bytes
         /// @param parameters "Modulo value" as uint32_t. The pixel data will be padded to a multiple of this
         static Data padPixelData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
+
+        /// @brief Convert color map to format.
+        /// @param parameters Truecolor format to convert color map to as Color::Format
+        /// @param Will do nothing if the pixel data raw
+        static Data convertColorMapToRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Fill up map data with 0s to a multiple of N bytes
         /// @param parameters "Modulo value" as uint32_t. The map data will be padded to a multiple of this
@@ -186,10 +192,6 @@ namespace Image
         /// @brief Fill up color map with 0s to a multiple of N colors
         /// @param parameters "Modulo value" as uint32_t. The color map will be padded to a multiple of this
         static Data padColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
-
-        /// @brief Convert color map to raw data
-        /// @param parameters ColorFormat to convert color map to. Only 15, 16, 24 bit format allowed
-        static Data convertColorMap(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Fill up color map raw data with 0s to a multiple of N bytes
         /// @param parameters "Modulo value" as uint32_t. The raw color map data will be padded to a multiple of this

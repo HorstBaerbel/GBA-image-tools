@@ -47,9 +47,10 @@ namespace Image
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
             {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
             {ProcessingType::PadPixelData, {"pad pixel data", OperationType::Convert, FunctionType(padPixelData)}},
-            {ProcessingType::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
-            {ProcessingType::ConvertColorMap, {"convert color map", OperationType::Convert, FunctionType(convertColorMap)}},
+            {ProcessingType::ConvertPixelsToRaw, {"convert pixels", OperationType::Convert, FunctionType(convertPixelsToRaw)}},
             {ProcessingType::PadColorMapData, {"pad color map data", OperationType::Convert, FunctionType(padColorMapData)}},
+            {ProcessingType::ConvertColorMapToRaw, {"convert color map", OperationType::Convert, FunctionType(convertColorMapToRaw)}},
+            {ProcessingType::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
             {ProcessingType::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
             {ProcessingType::DeltaImage, {"pixel diff", OperationType::ConvertState, FunctionType(pixelDiff)}}};
 
@@ -171,14 +172,6 @@ namespace Image
         {
             result.imageData = data.imageData.pixels().convertData<Color::RGB565>();
         }
-        return result;
-    }
-
-    Data Processing::toRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
-    {
-        auto result = data;
-        result.imageData.pixels() = PixelData(result.imageData.pixels().convertDataToRaw(), Color::Format::Unknown);
-        result.imageData.colorMap() = PixelData(result.imageData.colorMap().convertDataToRaw(), Color::Format::Unknown);
         return result;
     }
 
@@ -381,10 +374,12 @@ namespace Image
         // get parameter(s)
         REQUIRE(VariantHelpers::hasTypes<Color::Format>(parameters), std::runtime_error, "compressDXT expects a Color::Format parameter");
         const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
-        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::RGB565, std::runtime_error, "Output color format must be in [RGB555, RGB565]");
+        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::RGB565 ||
+                    format == Color::Format::XBGR1555 || format == Color::Format::BGR565,
+                std::runtime_error, "Output color format must be in [RGB555, RGB565, BGR555, BGR565]");
         // convert image using DXT compression
         auto result = data;
-        auto compressedData = DXT::encodeDXT(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height(), format == Color::Format::RGB565);
+        auto compressedData = DXT::encodeDXT(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height(), format == Color::Format::RGB565, format == Color::Format::XBGR1555 || format == Color::Format::BGR565);
         result.imageData.pixels() = PixelData(compressedData, Color::Format::Unknown);
         return result;
     }
@@ -432,6 +427,24 @@ namespace Image
 
     // ----------------------------------------------------------------------------
 
+    Data Processing::convertPixelsToRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    {
+        // get parameter(s)
+        REQUIRE(VariantHelpers::hasTypes<Color::Format>(parameters), std::runtime_error, "convertPixelsToRaw expects a Color::Format parameter");
+        const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
+        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::RGB565 || format == Color::Format::XRGB8888 ||
+                    format == Color::Format::XBGR1555 || format == Color::Format::BGR565 || format == Color::Format::XBGR8888,
+                std::runtime_error, "Color format must be in [RGB555, RGB565, RGB888, BGR555, BGR565, BGR888]");
+        // if data is already raw return it
+        if (data.imageData.pixels().isRaw())
+        {
+            return data;
+        }
+        auto result = data;
+        result.imageData.pixels() = PixelData(result.imageData.pixels().convertTo(format).convertDataToRaw(), Color::Format::Unknown);
+        return result;
+    }
+
     Data Processing::padPixelData(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(data.imageData.pixels().isRaw(), std::runtime_error, "Pixel data padding is only possible for raw data");
@@ -444,6 +457,11 @@ namespace Image
         return result;
     }
 
+    Data Processing::convertColorMapToRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
+    {
+        return data;
+    }
+
     Data Processing::padMapData(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
     {
         REQUIRE(!data.mapData.empty(), std::runtime_error, "Map data can not be empty");
@@ -453,36 +471,6 @@ namespace Image
         // pad map data
         auto result = data;
         result.mapData = DataHelpers::fillUpToMultipleOf(data.mapData, multipleOf);
-        return result;
-    }
-
-    Data Processing::convertColorMap(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
-    {
-        // get parameter(s)
-        REQUIRE(VariantHelpers::hasTypes<Color::Format>(parameters), std::runtime_error, "convertColorMap expects a Color::Format parameter");
-        auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
-        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::RGB565 || format == Color::Format::XRGB8888, std::runtime_error, "convertColorMap can only convert to XRGB1555, RGB565 and XRGB8888");
-        // check if we need to convert
-        if (data.imageData.colorMap().format() == format)
-        {
-            return data;
-        }
-        // convert colormap
-        auto result = data;
-        switch (format)
-        {
-        case Color::Format::XRGB1555:
-            result.imageData.colorMap() = PixelData(data.imageData.colorMap().convertData<Color::XRGB1555>(), Color::Format::XRGB1555);
-            break;
-        case Color::Format::RGB565:
-            result.imageData.colorMap() = PixelData(data.imageData.colorMap().convertData<Color::RGB565>(), Color::Format::RGB565);
-            break;
-        case Color::Format::XRGB8888:
-            result.imageData.colorMap() = PixelData(data.imageData.colorMap().convertData<Color::XRGB8888>(), Color::Format::XRGB8888);
-            break;
-        default:
-            THROW(std::runtime_error, "Bad target color map format");
-        }
         return result;
     }
 

@@ -10,10 +10,11 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "--shift=128",
-                "--tilemap",
-                "--movecolor0=00ff00",
-                "\"${workspaceFolder}/../Remute-Unity/gfx/glow1.png\"",
+                "--truecolor=rgb888",
+                "--outformat=bgr555",
+                "--dxt",
+                "--lz10",
+                "\"${workspaceFolder}/data/images/240x160/*.png\"",
                 "bla"
             ],
             "stopAtEntry": false,
