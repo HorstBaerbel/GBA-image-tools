@@ -37,7 +37,7 @@ namespace Color
         static constexpr std::array<value_type, 3> Max{1.0F, 1.0F, 1.0F};
 
         /// @brief Return swapped red and blue color channel
-        auto swappedRB() const -> RGBf;
+        auto swapToBGR() const -> RGBf;
 
         /// @brief Round and clamp RGB values to grid positions. The values themselves will stay in [0,1]
         /// Rounding (0.1,0.5,0.9) to (31,31,31) will result in (0.097,0.516,0.903) -> (int ((x * 31) + 0.5)) / 31

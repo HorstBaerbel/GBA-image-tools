@@ -66,7 +66,7 @@ namespace Color
         static constexpr std::array<value_type, 3> Max{255, 255, 255};
 
         /// @brief Return swapped red and blue color channel
-        auto swappedRB() const -> XRGB8888;
+        auto swapToBGR() const -> XRGB8888;
 
         /// @brief Convert from 24-bit hex color string, with or w/o a prefix: RRGGBB or #RRGGBB
         static auto fromHex(const std::string &hex) -> XRGB8888;

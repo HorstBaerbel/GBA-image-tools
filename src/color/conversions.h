@@ -51,4 +51,16 @@ namespace Color
         return result;
     }
 
+    /// @brief Swap red and blue component in color
+    /// @tparam T Color type
+    /// @param color Input color
+    /// @return Converted color
+    template <typename T>
+    static auto swapToBGR(const std::vector<T> &colors) -> std::vector<T>
+    {
+        std::vector<T> result(colors.size());
+        std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
+                       { return c.swapToBGR(); });
+        return result;
+    }
 }

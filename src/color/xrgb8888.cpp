@@ -5,7 +5,7 @@
 namespace Color
 {
 
-    auto XRGB8888::swappedRB() const -> XRGB8888
+    auto XRGB8888::swapToBGR() const -> XRGB8888
     {
         return XRGB8888(B(), G(), R());
     }

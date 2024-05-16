@@ -6,7 +6,7 @@
 namespace Color
 {
 
-    auto RGBf::swappedRB() const -> RGBf
+    auto RGBf::swapToBGR() const -> RGBf
     {
         return RGBf(z(), y(), x());
     }

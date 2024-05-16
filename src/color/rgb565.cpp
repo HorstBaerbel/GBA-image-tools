@@ -3,7 +3,7 @@
 namespace Color
 {
 
-    auto RGB565::swappedRB() const -> RGB565
+    auto RGB565::swapToBGR() const -> RGB565
     {
         return RGB565(v.b, v.g, v.r);
     }

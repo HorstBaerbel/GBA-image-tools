@@ -3,7 +3,7 @@
 namespace Color
 {
 
-    auto XRGB1555::swappedRB() const -> XRGB1555
+    auto XRGB1555::swapToBGR() const -> XRGB1555
     {
         return XRGB1555(v.b, v.g, v.r);
     }

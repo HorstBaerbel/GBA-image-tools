@@ -79,7 +79,7 @@ TEST_CASE("Access")
 TEST_CASE("SwapRB")
 {
     ColorType c1(15, 7, 22);
-    auto c2 = c1.swappedRB();
+    auto c2 = c1.swapToBGR();
     CATCH_REQUIRE(c2.R() == 22);
     CATCH_REQUIRE(c2.G() == 7);
     CATCH_REQUIRE(c2.B() == 15);

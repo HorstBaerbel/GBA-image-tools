@@ -79,7 +79,7 @@ namespace Color
         static constexpr std::array<value_type, 3> Max{31, 31, 31};
 
         /// @brief Return swapped red and blue color channel
-        auto swappedRB() const -> XRGB1555;
+        auto swapToBGR() const -> XRGB1555;
 
         /// @brief Calculate mean squared error between colors using simple metric
         /// @return Returns a value in [0,1]
