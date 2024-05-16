@@ -7,7 +7,7 @@ namespace DXT
 
     /// @brief Lookup table for a 5-bit RGB color component (c0 << 5 | c1) that returns (c2 << 16 | c3)
     /// Formula: (round((2.0*floor(x/32)+(x%32))/3.0)) | (round((floor(x/32)+2.0*(x%32))/3.0)<<16), x in [0,32*32]
-    /// See: https://horstbaerbel.github.io/jslut/index.html?equation=16384%2Fx&xstart=0&xend=159&count=160&bitdepth=int16_t&format=base10
+    // Generated using: https://horstbaerbel.github.io/jslut/index.html?equation=(round((2.0*floor(x%2F32)%2B(x%2532))%2F3.0))%20%7C%20(round((floor(x%2F32)%2B2.0*(x%2532))%2F3.0)%3C%3C16)&xstart=0&xend=(31%3C%3C5)|31&count=32*32&bitdepth=uint32_t&format=base10
     IWRAM_DATA ALIGN(4) const uint32_t C2C3_ModeThird_5bit[1024] = {
         0, 65536, 65537, 131073, 196609, 196610, 262146, 327682, 327683, 393219, 458755,
         458756, 524292, 589828, 589829, 655365, 720901, 720902, 786438, 851974, 851975,
