@@ -26,6 +26,7 @@ const std::vector<TestFile> TestFiles = {
     {"BigBuckBunny_664_384x256.png", 35.48F, 35.97F},
     {"bridge_256x384.png", 31.78F, 31.98F},
     {"flower_foveon_384x256.png", 36.57F, 37.04F},
+    {"gradient_384x256.png", 43.28F, 44.86F},
     {"nightshot_iso_100_384x256.png", 34.70F, 35.08F},
     {"squish_384x384.png", 40.10F, 41.32F},
     {"TearsOfSteel_1200_384x256.png", 33.43F, 33.70F},
@@ -41,6 +42,7 @@ BigBuckBunny_648_384x256.png, psnr: 32.56
 BigBuckBunny_664_384x256.png, psnr: 35.49
 bridge_256x384.png, psnr: 31.79
 flower_foveon_384x256.png, psnr: 36.58
+gradient_384x256.png, psnr: 43.29
 nightshot_iso_100_384x256.png, psnr: 34.71
 squish_384x384.png, psnr: 40.1
 TearsOfSteel_1200_384x256.png, psnr: 33.44
@@ -55,6 +57,7 @@ BigBuckBunny_648_384x256.png, psnr: 32.73
 BigBuckBunny_664_384x256.png, psnr: 35.98
 bridge_256x384.png, psnr: 31.99
 flower_foveon_384x256.png, psnr: 37.05
+gradient_384x256.png, psnr: 44.87
 nightshot_iso_100_384x256.png, psnr: 35.09
 squish_384x384.png, psnr: 41.32
 TearsOfSteel_1200_384x256.png, psnr: 33.71
@@ -63,7 +66,7 @@ TearsOfSteel_676_384x256.png, psnr: 34.35
 
 const std::string DataPath = "../../data/images/test/";
 
-// #define WRITE_OUTPUT
+#define WRITE_OUTPUT
 
 TEST_SUITE("DXT")
 
