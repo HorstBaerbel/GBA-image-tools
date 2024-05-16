@@ -69,7 +69,7 @@ LIST(APPEND IMAGE_SOURCE_FILES
 
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
 # These files will be added to IMAGE_DATA_FILES
-target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=rgb555 --dxt --lz10 --vram=true")
+target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true")
 
 LIST(APPEND TARGET_INCLUDE_DIRS
 	${DEVKITPRO}/libgba/include
