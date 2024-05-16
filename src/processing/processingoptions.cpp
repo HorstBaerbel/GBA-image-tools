@@ -89,7 +89,7 @@ ProcessingOptions::OptionT<Color::Format> ProcessingOptions::truecolor{
 
 ProcessingOptions::OptionT<Color::Format> ProcessingOptions::outformat{
     false,
-    {"outformat", "Set output color format (direct pixel color + color map) to RGB888, RGB565 or RGB555", cxxopts::value(outformat.valueString)},
+    {"outformat", "Set output color format (direct pixel color + color map) to RGB888, RGB565, RGB555, BGR888, BGR565 or BGR555", cxxopts::value(outformat.valueString)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -112,9 +112,21 @@ ProcessingOptions::OptionT<Color::Format> ProcessingOptions::outformat{
             {
                 outformat.value = Color::Format::XRGB1555;
             }
+            else if (formatUpper == "BGR888")
+            {
+                outformat.value = Color::Format::XBGR8888;
+            }
+            else if (formatUpper == "BGR565")
+            {
+                outformat.value = Color::Format::BGR565;
+            }
+            else if (formatUpper == "BGR555")
+            {
+                outformat.value = Color::Format::XBGR1555;
+            }
             else
             {
-                THROW(std::runtime_error, "Output format must be RGB888, RGB565 or RGB555");
+                THROW(std::runtime_error, "Output format must be RGB888, RGB565, RGB555, BGR888, BGR565 or BGR555");
             }
             outformat.isSet = true;
         }
