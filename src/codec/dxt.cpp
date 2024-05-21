@@ -294,7 +294,7 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
     std::vector<uint8_t> dxtData(nrOfBlocks * 8);
-    // #pragma omp parallel for
+#pragma omp parallel for
     for (int y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
@@ -315,8 +315,104 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
         *indexPtr16++ = *srcPtr16++;
         *indexPtr16++ = *srcPtr16++;
     }
-
     return data;
+}
+
+template <unsigned DIMENSION>
+auto decodeBlock(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+{
+    // read colors c0 and c1
+    std::array<XRGB8888, 4> colors;
+    uint16_t c0 = *colorStart++;
+    uint16_t c1 = *colorStart++;
+    const bool modeThird = c0 > c1;
+    if (swapToBGR)
+    {
+        c0 = asRGB565 ? static_cast<uint16_t>(RGB565(c0).swapToBGR()) : static_cast<uint16_t>(XRGB1555(c0).swapToBGR());
+        c1 = asRGB565 ? static_cast<uint16_t>(RGB565(c1).swapToBGR()) : static_cast<uint16_t>(XRGB1555(c1).swapToBGR());
+    }
+    colors[0] = asRGB565 ? convertTo<XRGB8888>(RGB565(c0)) : convertTo<XRGB8888>(XRGB1555(c0));
+    colors[1] = asRGB565 ? convertTo<XRGB8888>(RGB565(c1)) : convertTo<XRGB8888>(XRGB1555(c1));
+    // check if c0 > c1 -> 1/3, 2/3 mode, or if c0 <= c1 -> 1/2 mode
+    if (modeThird)
+    {
+        // calculate intermediate colors c2 at 1/3 and c3 at 2/3 using tables
+        uint32_t c2c3;
+        if (asRGB565)
+        {
+            uint32_t b = ((c0 & 0xF800) >> 6) | ((c1 & 0xF800) >> 11);
+            uint32_t g = ((c0 & 0x7E0) << 1) | ((c1 & 0x7E0) >> 5);
+            uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
+            c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 11) | (DXTTables::C2C3_ModeThird_6bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
+        }
+        else
+        {
+            uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
+            uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
+            uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
+            c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 10) | (DXTTables::C2C3_ModeThird_5bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
+        }
+        uint16_t c2 = (c2c3 & 0x0000FFFF);
+        uint16_t c3 = ((c2c3 & 0xFFFF0000) >> 16);
+        colors[2] = asRGB565 ? convertTo<XRGB8888>(RGB565(c2)) : convertTo<XRGB8888>(XRGB1555(c2));
+        colors[3] = asRGB565 ? convertTo<XRGB8888>(RGB565(c3)) : convertTo<XRGB8888>(XRGB1555(c3));
+    }
+    else
+    {
+        // calculate intermediate color c2 at 1/2 and leave c3 at black
+        uint16_t c2;
+        if (asRGB565)
+        {
+            uint32_t b = (((c0 & 0xF800) >> 11) + ((c1 & 0xF800) >> 11) + 1) >> 1;
+            uint32_t g = (((c0 & 0x7E0) >> 5) + ((c1 & 0x7E0) >> 5) + 1) >> 1;
+            uint32_t r = ((c0 & 0x1F) + (c1 & 0x1F) + 1) >> 1;
+            c2 = ((b << 11) | (g << 5) | r);
+        }
+        else
+        {
+            uint32_t b = (((c0 & 0x7C00) >> 10) + ((c1 & 0x7C00) >> 10) + 1) >> 1;
+            uint32_t g = (((c0 & 0x3E0) >> 5) + ((c1 & 0x3E0) >> 5) + 1) >> 1;
+            uint32_t r = ((c0 & 0x1F) + (c1 & 0x1F) + 1) >> 1;
+            c2 = ((b << 10) | (g << 5) | r);
+        }
+        colors[2] = asRGB565 ? convertTo<XRGB8888>(RGB565(c2)) : convertTo<XRGB8888>(XRGB1555(c2));
+        colors[3] = XRGB8888(0, 0, 0);
+    }
+    // and decode colors
+    uint32_t indices = 0;
+    auto pixel = blockStart;
+    for (std::size_t y = 0; y < DIMENSION; y++)
+    {
+        // read pixel color indices
+        if ((y * DIMENSION) % 16 == 0)
+        {
+            indices = *indexStart++;
+        }
+        for (std::size_t x = 0; x < DIMENSION; x++)
+        {
+            pixel[x] = colors[indices & 0x03];
+            indices >>= 2;
+        }
+        pixel += pixelsPerScanline;
+    }
+}
+
+template <>
+auto DXT::decodeDXTBlock<4>(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+{
+    return decodeBlock<4>(colorStart, indexStart, blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+}
+
+template <>
+auto DXT::decodeDXTBlock<8>(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+{
+    return decodeBlock<8>(colorStart, indexStart, blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+}
+
+template <>
+auto DXT::decodeDXTBlock<16>(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+{
+    return decodeBlock<16>(colorStart, indexStart, blockStart, pixelsPerScanline, asRGB565, swapToBGR);
 }
 
 auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<XRGB8888>
@@ -326,85 +422,20 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
     const auto nrOfBlocks = data.size() / 8;
     REQUIRE(nrOfBlocks == width / 4 * height / 4, std::runtime_error, "Data size does not match image size");
     std::vector<XRGB8888> result(width * height);
-    // #pragma omp parallel for
+#pragma omp parallel for
     for (std::size_t y = 0; y < height; y += 4)
     {
         // set up pointers to source block data
         auto blockIndex = y / 4 * width / 4;
         auto color16 = reinterpret_cast<const uint16_t *>(data.data() + blockIndex * 4);
         auto indices32 = reinterpret_cast<const uint32_t *>(data.data() + nrOfBlocks * 4 + blockIndex * 4);
+        auto blockStart = result.data() + y * width;
         for (std::size_t x = 0; x < width; x += 4)
         {
-            // read colors c0 and c1
-            std::array<XRGB8888, 4> colors;
-            uint16_t c0 = *color16++;
-            uint16_t c1 = *color16++;
-            const bool modeThird = c0 > c1;
-            if (swapToBGR)
-            {
-                c0 = asRGB565 ? static_cast<uint16_t>(RGB565(c0).swapToBGR()) : static_cast<uint16_t>(XRGB1555(c0).swapToBGR());
-                c1 = asRGB565 ? static_cast<uint16_t>(RGB565(c1).swapToBGR()) : static_cast<uint16_t>(XRGB1555(c1).swapToBGR());
-            }
-            colors[0] = asRGB565 ? convertTo<XRGB8888>(RGB565(c0)) : convertTo<XRGB8888>(XRGB1555(c0));
-            colors[1] = asRGB565 ? convertTo<XRGB8888>(RGB565(c1)) : convertTo<XRGB8888>(XRGB1555(c1));
-            // check if c0 > c1 -> 1/3, 2/3 mode, or if c0 <= c1 -> 1/2 mode
-            if (modeThird)
-            {
-                // calculate intermediate colors c2 at 1/3 and c3 at 2/3 using tables
-                uint32_t c2c3;
-                if (asRGB565)
-                {
-                    uint32_t b = ((c0 & 0xF800) >> 6) | ((c1 & 0xF800) >> 11);
-                    uint32_t g = ((c0 & 0x7E0) << 1) | ((c1 & 0x7E0) >> 5);
-                    uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-                    c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 11) | (DXTTables::C2C3_ModeThird_6bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
-                }
-                else
-                {
-                    uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
-                    uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
-                    uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-                    c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 10) | (DXTTables::C2C3_ModeThird_5bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
-                }
-                uint16_t c2 = (c2c3 & 0x0000FFFF);
-                uint16_t c3 = ((c2c3 & 0xFFFF0000) >> 16);
-                colors[2] = asRGB565 ? convertTo<XRGB8888>(RGB565(c2)) : convertTo<XRGB8888>(XRGB1555(c2));
-                colors[3] = asRGB565 ? convertTo<XRGB8888>(RGB565(c3)) : convertTo<XRGB8888>(XRGB1555(c3));
-            }
-            else
-            {
-                // calculate intermediate color c2 at 1/2 and leave c3 at black
-                uint16_t c2;
-                if (asRGB565)
-                {
-                    uint32_t b = (((c0 & 0xF800) >> 11) + ((c1 & 0xF800) >> 11) + 1) >> 1;
-                    uint32_t g = (((c0 & 0x7E0) >> 5) + ((c1 & 0x7E0) >> 5) + 1) >> 1;
-                    uint32_t r = ((c0 & 0x1F) + (c1 & 0x1F) + 1) >> 1;
-                    c2 = ((b << 11) | (g << 5) | r);
-                }
-                else
-                {
-                    uint32_t b = (((c0 & 0x7C00) >> 10) + ((c1 & 0x7C00) >> 10) + 1) >> 1;
-                    uint32_t g = (((c0 & 0x3E0) >> 5) + ((c1 & 0x3E0) >> 5) + 1) >> 1;
-                    uint32_t r = ((c0 & 0x1F) + (c1 & 0x1F) + 1) >> 1;
-                    c2 = ((b << 10) | (g << 5) | r);
-                }
-                colors[2] = asRGB565 ? convertTo<XRGB8888>(RGB565(c2)) : convertTo<XRGB8888>(XRGB1555(c2));
-                colors[3] = XRGB8888(0, 0, 0);
-            }
-            // read pixel color indices
-            uint32_t indices = *indices32++;
-            // and decode colors
-            auto dst = result.data() + y * width + x;
-            for (std::size_t by = 0; by < 4; by++)
-            {
-                for (std::size_t bx = 0; bx < 4; bx++)
-                {
-                    *dst++ = colors[indices & 0x03];
-                    indices >>= 2;
-                }
-                dst += width - 4;
-            }
+            decodeBlock<4>(color16, indices32, blockStart, width, asRGB565, swapToBGR);
+            color16 += 2;
+            indices32 += 1;
+            blockStart += 4;
         }
     }
     return result;
