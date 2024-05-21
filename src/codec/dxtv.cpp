@@ -1,13 +1,14 @@
 #include "dxtv.h"
 
+#include "blockview.h"
+#include "codebook.h"
 #include "color/conversions.h"
 #include "color/psnr.h"
+#include "color/rgbf.h"
 #include "color/xrgb1555.h"
-#include "color/ycgcorf.h"
-#include "compression/dxtblock.h"
+#include "dxtblock.h"
 #include "exception.h"
 #include "math/linefit.h"
-#include "processing/blockview.h"
 #include "processing/datahelpers.h"
 
 #include <Eigen/Core>
@@ -77,25 +78,25 @@ constexpr std::pair<int32_t, int32_t> PrevRefOffset{-8191, 8192}; // Block searc
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto mse(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b) -> float
+static auto mse(const BlockView<RGBf, BLOCK_DIM> &a, const BlockView<RGBf, BLOCK_DIM> &b) -> float
 {
     float dist = 0.0F;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
-        dist += YCgCoRf::mse(*aIt, *bIt);
+        dist += RGBf::mse(*aIt, *bIt);
     }
     return dist / (BLOCK_DIM * BLOCK_DIM);
 }
 
 /// @brief Calculate perceived pixel difference between blocks
 template <std::size_t BLOCK_DIM>
-static auto mseBelowThreshold(const BlockView<YCgCoRf, BLOCK_DIM> &a, const BlockView<YCgCoRf, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
+static auto mseBelowThreshold(const BlockView<RGBf, BLOCK_DIM> &a, const BlockView<RGBf, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
 {
     bool belowThreshold = true;
     float dist = 0.0F;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
     {
-        auto colorDist = YCgCoRf::mse(*aIt, *bIt);
+        auto colorDist = RGBf::mse(*aIt, *bIt);
         if (belowThreshold)
         {
             belowThreshold = colorDist < threshold;
@@ -105,244 +106,12 @@ static auto mseBelowThreshold(const BlockView<YCgCoRf, BLOCK_DIM> &a, const Bloc
     return {belowThreshold, dist / (BLOCK_DIM * BLOCK_DIM)};
 }
 
-/// @brief List of code book entries representing the image
-class CodeBook
-{
-public:
-    using value_type = YCgCoRf;
-    using state_type = bool;
-    static constexpr std::size_t BlockMaxDim = 16;
-    static constexpr std::size_t BlockMinDim = 4;
-    static constexpr std::size_t BlockLevels = 4 - 2; // std::log2(BlockMaxDim) - std::log2(BlockMinDim);
-    using block_type0 = BlockView<value_type, BlockMaxDim, BlockMinDim>;
-    using block_type1 = BlockView<value_type, BlockMaxDim / 2, BlockMinDim>;
-    using block_type2 = BlockView<value_type, BlockMaxDim / 4, BlockMinDim>;
-
-    CodeBook() = default;
-
-    /// @brief Construct a codebook from image data
-    CodeBook(const std::vector<XRGB8888> &image, uint32_t width, uint32_t height, bool encoded = false)
-        : m_width(width), m_height(height)
-    {
-        std::transform(image.cbegin(), image.cend(), std::back_inserter(m_colors), [](const auto &pixel)
-                       { return convertTo<YCgCoRf>(pixel); });
-        for (uint32_t y = 0; y < m_height; y += BlockMaxDim)
-        {
-            for (uint32_t x = 0; x < m_width; x += BlockMaxDim)
-            {
-                m_blocks0.emplace_back(block_type0(m_colors.data(), m_width, m_height, x, y));
-            }
-        }
-        for (uint32_t y = 0; y < m_height; y += BlockMaxDim / 2)
-        {
-            for (uint32_t x = 0; x < m_width; x += BlockMaxDim / 2)
-            {
-                m_blocks1.emplace_back(block_type1(m_colors.data(), m_width, m_height, x, y));
-            }
-        }
-        for (uint32_t y = 0; y < m_height; y += BlockMaxDim / 4)
-        {
-            for (uint32_t x = 0; x < m_width; x += BlockMaxDim / 4)
-            {
-                m_blocks2.emplace_back(block_type2(m_colors.data(), m_width, m_height, x, y));
-            }
-        }
-        m_encoded0 = std::vector<bool>(m_width / BlockMaxDim * m_height / BlockMaxDim, encoded);
-        m_encoded1 = std::vector<bool>(m_width / (BlockMaxDim / 2) * m_height / (BlockMaxDim / 2), encoded);
-        m_encoded2 = std::vector<bool>(m_width / (BlockMaxDim / 4) * m_height / (BlockMaxDim / 4), encoded);
-    }
-
-    /// @brief Block iterator to start of blocks
-    template <std::size_t BLOCK_DIM>
-    auto begin() noexcept
-    {
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.begin();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.begin();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.begin();
-        }
-    }
-
-    /// @brief Block iterator past end of blocks
-    template <std::size_t BLOCK_DIM>
-    auto end() noexcept
-    {
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.end();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.end();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.end();
-        }
-    }
-
-    /// @brief Block iterator to start of blocks
-    template <std::size_t BLOCK_DIM>
-    auto cbegin() const noexcept
-    {
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.cbegin();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.cbegin();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.cbegin();
-        }
-    }
-
-    /// @brief Block iterator past end of blocks
-    template <std::size_t BLOCK_DIM>
-    auto cend() const noexcept
-    {
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.cend();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.cend();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.cend();
-        }
-    }
-
-    /// @brief Check if codebook has blocks
-    template <std::size_t BLOCK_DIM>
-    auto empty() const -> bool
-    {
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.empty();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.empty();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.empty();
-        }
-    }
-
-    /// @brief Get number codebook blocks at specific level
-    template <std::size_t BLOCK_DIM>
-    auto size() const
-    {
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.size();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.size();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.size();
-        }
-    }
-
-    template <std::size_t BLOCK_DIM>
-    auto isEncoded(const BlockView<YCgCoRf, BLOCK_DIM> &block) const
-    {
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_encoded0[block.index()];
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_encoded1[block.index()];
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_encoded2[block.index()];
-        }
-    }
-
-    template <std::size_t BLOCK_DIM>
-    auto setEncoded(const BlockView<YCgCoRf, BLOCK_DIM> &block, bool encoded = true)
-    {
-        auto index = block.index();
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            m_encoded0[index] = encoded;
-            setEncoded<BLOCK_DIM / 2>(block.block(0), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(1), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(2), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(3), encoded);
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            m_encoded1[index] = encoded;
-            setEncoded<BLOCK_DIM / 2>(block.block(0), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(1), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(2), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(3), encoded);
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            m_encoded2[index] = encoded;
-        }
-    }
-
-    /// @brief Convert a codebook to image data
-    auto toImage() const -> std::vector<XRGB8888>
-    {
-        std::vector<XRGB8888> image;
-        std::transform(m_colors.cbegin(), m_colors.cend(), std::back_inserter(image), [](const auto &color)
-                       { return convertTo<XRGB8888>(color); });
-        return image;
-    }
-
-    /// @brief Calculate perceived pixel difference between codebooks
-    auto distance(const CodeBook &b) -> float
-    {
-        float sum = 0.0F;
-        auto aIt = m_colors.cbegin();
-        auto bIt = b.m_colors.cbegin();
-        while (aIt != m_colors.cend() && bIt != b.m_colors.cend())
-        {
-            sum += YCgCoRf::mse(*aIt++, *bIt++);
-        }
-        return sum / m_blocks2.size();
-    }
-
-private:
-    uint32_t m_width = 0;
-    uint32_t m_height = 0;
-    std::vector<YCgCoRf> m_colors;
-    std::vector<block_type0> m_blocks0;
-    std::vector<block_type1> m_blocks1;
-    std::vector<block_type2> m_blocks2;
-    std::vector<bool> m_encoded0;
-    std::vector<bool> m_encoded1;
-    std::vector<bool> m_encoded2;
-};
-
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, entry index) if usable entry found or empty optional, if not
 template <std::size_t BLOCK_DIM>
-auto findBestMatchingBlock(const CodeBook &codeBook, const BlockView<CodeBook::value_type, BLOCK_DIM> &block, float maxAllowedError, int32_t offsetMin, int32_t offsetMax) -> std::optional<std::pair<float, BlockView<CodeBook::value_type, BLOCK_DIM>>>
+auto findBestMatchingBlock(const CodeBook<RGBf> &codeBook, const BlockView<RGBf, BLOCK_DIM> &block, float maxAllowedError, int32_t offsetMin, int32_t offsetMax) -> std::optional<std::pair<float, BlockView<RGBf, BLOCK_DIM>>>
 {
-    using return_type = std::pair<float, BlockView<CodeBook::value_type, BLOCK_DIM>>;
+    using return_type = std::pair<float, BlockView<RGBf, BLOCK_DIM>>;
     if (codeBook.empty<BLOCK_DIM>())
     {
         return std::optional<return_type>();
@@ -396,9 +165,9 @@ struct CompressionState
 };
 
 template <std::size_t BLOCK_DIM>
-auto storeDxtBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BLOCK_DIM> &block, const DXTBlock<BLOCK_DIM, BLOCK_DIM> &encodedBlock, const std::array<YCgCoRf, BLOCK_DIM * BLOCK_DIM> &decodedBlock, CompressionState &state) -> void
+auto storeDxtBlock(CodeBook<RGBf> &currentCodeBook, BlockView<RGBf, BLOCK_DIM> &block, const DXTBlock<BLOCK_DIM, BLOCK_DIM> &encodedBlock, const std::array<RGBf, BLOCK_DIM * BLOCK_DIM> &decodedBlock, CompressionState &state) -> void
 {
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook::BlockMaxDim) - std::log2(BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<RGBf>::BlockMaxDim) - std::log2(BLOCK_DIM);
     auto dxtData = encodedBlock.toArray();
     std::copy(dxtData.cbegin(), dxtData.cend(), std::back_inserter(state.data));
     // mark block as encoded
@@ -407,9 +176,9 @@ auto storeDxtBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BL
 }
 
 template <std::size_t BLOCK_DIM>
-auto storeRefBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BLOCK_DIM> &block, BlockView<CodeBook::value_type, BLOCK_DIM> &srcBlock, CompressionState &state, bool fromPrevCodeBook) -> void
+auto storeRefBlock(CodeBook<RGBf> &currentCodeBook, BlockView<RGBf, BLOCK_DIM> &block, BlockView<RGBf, BLOCK_DIM> &srcBlock, CompressionState &state, bool fromPrevCodeBook) -> void
 {
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook::BlockMaxDim) - std::log2(BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<RGBf>::BlockMaxDim) - std::log2(BLOCK_DIM);
     // get referenced block
     REQUIRE(srcBlock.index() >= 0 && srcBlock.index() <= BLOCK_INDEX_MASK, std::runtime_error, "Frame reference block index out of range");
     auto index = static_cast<uint16_t>(srcBlock.index());
@@ -430,9 +199,9 @@ auto storeRefBlock(CodeBook &currentCodeBook, BlockView<CodeBook::value_type, BL
 }
 
 template <std::size_t BLOCK_DIM>
-auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, BlockView<CodeBook::value_type, BLOCK_DIM> &block, CompressionState &state, float maxAllowedError) -> void
+auto encodeBlock(CodeBook<RGBf> &currentCodeBook, const CodeBook<RGBf> &previousCodeBook, BlockView<RGBf, BLOCK_DIM> &block, CompressionState &state, float maxAllowedError) -> void
 {
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook::BlockMaxDim) - std::log2(BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<RGBf>::BlockMaxDim) - std::log2(BLOCK_DIM);
     // Try to reference block from the previous code book (if available) within error
     auto previousRef = findBestMatchingBlock(previousCodeBook, block, maxAllowedError, PrevRefOffset.first, PrevRefOffset.second);
     // Try to reference block from the current code book within error
@@ -442,7 +211,7 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
     const bool currRefIsBetter = currentRef.has_value() && (!previousRef.has_value() || currentRef.value().first <= previousRef.value().first);
     if (prevRefIsBetter)
     {
-        if constexpr (BLOCK_DIM > CodeBook::BlockMinDim)
+        if constexpr (BLOCK_DIM > CodeBook<RGBf>::BlockMinDim)
         {
             // only store bit for blocks > 4x4
             state.flags.push_back(BLOCK_NO_SPLIT);
@@ -452,7 +221,7 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
     }
     else if (currRefIsBetter)
     {
-        if constexpr (BLOCK_DIM > CodeBook::BlockMinDim)
+        if constexpr (BLOCK_DIM > CodeBook<RGBf>::BlockMinDim)
         {
             // only store bit for blocks > 4x4
             state.flags.push_back(BLOCK_NO_SPLIT);
@@ -466,12 +235,12 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
         auto rawBlock = block.colors();
         auto encodedBlock = DXTBlock<BLOCK_DIM, BLOCK_DIM>::encode(rawBlock);
         auto decodedBlock = DXTBlock<BLOCK_DIM, BLOCK_DIM>::decode(encodedBlock);
-        if constexpr (BLOCK_DIM <= CodeBook::BlockMinDim)
+        if constexpr (BLOCK_DIM <= CodeBook<RGBf>::BlockMinDim)
         {
             //  We can't split anymore. Store 4x4 DXT block
             storeDxtBlock(currentCodeBook, block, encodedBlock, decodedBlock, state);
         }
-        else if constexpr (BLOCK_DIM > CodeBook::BlockMinDim)
+        else if constexpr (BLOCK_DIM > CodeBook<RGBf>::BlockMinDim)
         {
             // check if encoded block is below allowed error or we want to split the block
             auto encodedBlockDist = Color::mse(rawBlock, decodedBlock);
@@ -497,16 +266,16 @@ auto encodeBlock(CodeBook &currentCodeBook, const CodeBook &previousCodeBook, Bl
 auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
 {
     static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
-    REQUIRE(width % CodeBook::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
-    REQUIRE(height % CodeBook::BlockMaxDim == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
+    REQUIRE(width % CodeBook<RGBf>::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
+    REQUIRE(height % CodeBook<RGBf>::BlockMaxDim == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
     REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "Max. block error must be in [0.01,1]");
     // divide max block error to get into internal range
     maxBlockError /= 1000;
     // convert frames to codebooks
-    auto currentCodeBook = CodeBook(image, width, height, false);
-    const CodeBook previousCodeBook = previousImage.empty() || keyFrame ? CodeBook() : CodeBook(previousImage, width, height, true);
+    auto currentCodeBook = CodeBook<RGBf>(image, width, height, false);
+    const CodeBook previousCodeBook = previousImage.empty() || keyFrame ? CodeBook<RGBf>() : CodeBook<RGBf>(previousImage, width, height, true);
     // calculate perceived frame distance
-    const float frameDistance = previousCodeBook.empty<CodeBook::BlockMaxDim>() ? INT_MAX : currentCodeBook.distance(previousCodeBook);
+    const float frameDistance = previousCodeBook.empty<CodeBook<RGBf>::BlockMaxDim>() ? INT_MAX : currentCodeBook.distance(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
     if (!keyFrame && frameDistance < 0.001)
     {
@@ -532,12 +301,12 @@ auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB
     CompressionState state;
     statistics = Statistics();
     // loop through source images blocks
-    for (auto cbIt = currentCodeBook.begin<CodeBook::BlockMaxDim>(); cbIt != currentCodeBook.end<CodeBook::BlockMaxDim>(); ++cbIt)
+    for (auto cbIt = currentCodeBook.begin<CodeBook<RGBf>::BlockMaxDim>(); cbIt != currentCodeBook.end<CodeBook<RGBf>::BlockMaxDim>(); ++cbIt)
     {
         encodeBlock(currentCodeBook, previousCodeBook, *cbIt, state, maxBlockError);
     }
     // print statistics
-    const auto nrOfMinBlocks = width / CodeBook::BlockMinDim * height / CodeBook::BlockMinDim;
+    const auto nrOfMinBlocks = width / CodeBook<RGBf>::BlockMinDim * height / CodeBook<RGBf>::BlockMinDim;
     auto refPercentCurr = static_cast<float>((statistics.refBlocksCurr[0] * 16 + statistics.refBlocksCurr[1] * 4 + statistics.refBlocksCurr[2]) * 100) / nrOfMinBlocks;
     auto refPercentPrev = static_cast<float>((statistics.refBlocksPrev[0] * 16 + statistics.refBlocksPrev[1] * 4 + statistics.refBlocksPrev[2]) * 100) / nrOfMinBlocks;
     auto dxtPercent = static_cast<float>((statistics.dxtBlocks[0] * 16 + statistics.dxtBlocks[1] * 4 + statistics.dxtBlocks[2]) * 100) / nrOfMinBlocks;
