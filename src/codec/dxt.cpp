@@ -158,19 +158,21 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     return {endpoints, modeThird};
 }
 
-auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+template <unsigned DIMENSION>
+auto encodeBlock(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
     REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     // get block colors for all 16 pixels
-    std::vector<RGBf> colors(16);
+    constexpr unsigned NrOfPixels = DIMENSION * DIMENSION;
+    std::vector<RGBf> colors(NrOfPixels);
     auto cIt = colors.begin();
-    auto pixel = start;
-    for (int y = 0; y < 4; y++)
+    auto pixel = blockStart;
+    for (int y = 0; y < DIMENSION; y++)
     {
-        *cIt++ = convertTo<RGBf>(pixel[0]);
-        *cIt++ = convertTo<RGBf>(pixel[1]);
-        *cIt++ = convertTo<RGBf>(pixel[2]);
-        *cIt++ = convertTo<RGBf>(pixel[3]);
+        for (int x = 0; x < DIMENSION; x++)
+        {
+            *cIt++ = convertTo<RGBf>(pixel[x]);
+        }
         pixel += pixelsPerScanline;
     }
 #if defined(CLUSTER_FIT)
@@ -196,7 +198,7 @@ auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, con
 #endif
     // calculate minimum distance for all colors to endpoints to assign indices
     std::vector<uint32_t> endpointIndices(colors.size());
-    for (uint32_t ci = 0; ci < 16; ++ci)
+    for (uint32_t ci = 0; ci < NrOfPixels; ++ci)
     {
         // calculate minimum distance for each index for this color
         float bestColorDistance = std::numeric_limits<float>::max();
@@ -246,19 +248,42 @@ auto encodeBlockDXT(const XRGB8888 *start, const uint32_t pixelsPerScanline, con
         }
     }
     // build result data
-    std::vector<uint8_t> result(2 * 2 + 16 * 2 / 8);
+    std::vector<uint8_t> result(2 * 2 + NrOfPixels * 2 / 8);
     // add color endpoints c0 and c1
     auto data16 = reinterpret_cast<uint16_t *>(result.data());
     *data16++ = c0;
     *data16++ = c1;
     // add index data in reverse
+    auto data32 = reinterpret_cast<uint32_t *>(data16);
     uint32_t indices = 0;
     for (auto iIt = endpointIndices.crbegin(); iIt != endpointIndices.crend(); ++iIt)
     {
         indices = (indices << 2) | *iIt;
+        if ((std::distance(endpointIndices.crbegin(), iIt) + 1) % 16 == 0)
+        {
+            *data32++ = indices;
+            indices = 0;
+        }
     }
-    *(reinterpret_cast<uint32_t *>(data16)) = indices;
     return result;
+}
+
+template <>
+auto DXT::encodeDXTBlock<4>(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+{
+    return encodeBlock<4>(blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+}
+
+template <>
+auto DXT::encodeDXTBlock<8>(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+{
+    return encodeBlock<8>(blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+}
+
+template <>
+auto DXT::encodeDXTBlock<16>(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+{
+    return encodeBlock<16>(blockStart, pixelsPerScanline, asRGB565, swapToBGR);
 }
 
 auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
@@ -269,12 +294,12 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
     const auto yStride = width * 8 / 16;
     const auto nrOfBlocks = width / 4 * height / 4;
     std::vector<uint8_t> dxtData(nrOfBlocks * 8);
-#pragma omp parallel for
+    // #pragma omp parallel for
     for (int y = 0; y < height; y += 4)
     {
         for (uint32_t x = 0; x < width; x += 4)
         {
-            auto block = encodeBlockDXT(image.data() + y * width + x, width, asRGB565, swapToBGR);
+            auto block = encodeDXTBlock<4>(image.data() + y * width + x, width, asRGB565, swapToBGR);
             std::copy(block.cbegin(), block.cend(), std::next(dxtData.begin(), y * yStride + x * 8 / 4));
         }
     }
@@ -301,7 +326,7 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
     const auto nrOfBlocks = data.size() / 8;
     REQUIRE(nrOfBlocks == width / 4 * height / 4, std::runtime_error, "Data size does not match image size");
     std::vector<XRGB8888> result(width * height);
-#pragma omp parallel for
+    // #pragma omp parallel for
     for (std::size_t y = 0; y < height; y += 4)
     {
         // set up pointers to source block data
