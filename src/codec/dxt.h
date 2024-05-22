@@ -19,7 +19,7 @@ public:
     /// Colors can be stored as XRGB1555 or RGB565
     static auto encodeDXT(const std::vector<Color::XRGB8888> &image, uint32_t width, uint32_t height, bool asRGB565 = false, const bool swapToBGR = false) -> std::vector<uint8_t>;
 
-    /// @brief Decompress 4x4, 8x8 or 16x16 block of DTX data
+    /// @brief Decompress 4x4, 8x8 or 16x16 block of DXT data
     template <unsigned DIMENSION>
     static auto decodeDXTBlock(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void;
 

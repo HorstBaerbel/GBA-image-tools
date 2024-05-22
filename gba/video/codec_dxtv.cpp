@@ -211,7 +211,7 @@ namespace DXTV
         return src16;
     }
 
-    /// @brief Uncompress 4x4 DXT block
+    /// @brief Uncompress 8x8 DXT block
     /// @return Pointer past whole DXT block in src
     template <>
     FORCEINLINE auto UncompressBlock<8>(uint16_t *dst16, const uint16_t *src16, uint32_t LineStride16) -> const uint16_t *
@@ -246,7 +246,7 @@ namespace DXTV
         return src16;
     }
 
-    /// @brief Uncompress 4x4 DXT block
+    /// @brief Uncompress 16x16 DXT block
     /// @return Pointer past whole DXT block in src
     template <>
     FORCEINLINE auto UncompressBlock<16>(uint16_t *dst16, const uint16_t *src16, uint32_t LineStride16) -> const uint16_t *

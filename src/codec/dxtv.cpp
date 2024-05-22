@@ -76,36 +76,6 @@ constexpr uint32_t BLOCK_INDEX_MASK = ~(3U << 14); // Mask to get the block inde
 constexpr std::pair<int32_t, int32_t> CurrRefOffset{-16384, -1};  // Block search offsets for current frame for 16, 8, 4
 constexpr std::pair<int32_t, int32_t> PrevRefOffset{-8191, 8192}; // Block search offsets for previous frame for 16, 8, 4
 
-/// @brief Calculate perceived pixel difference between blocks
-template <std::size_t BLOCK_DIM>
-static auto mse(const BlockView<RGBf, BLOCK_DIM> &a, const BlockView<RGBf, BLOCK_DIM> &b) -> float
-{
-    float dist = 0.0F;
-    for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
-    {
-        dist += RGBf::mse(*aIt, *bIt);
-    }
-    return dist / (BLOCK_DIM * BLOCK_DIM);
-}
-
-/// @brief Calculate perceived pixel difference between blocks
-template <std::size_t BLOCK_DIM>
-static auto mseBelowThreshold(const BlockView<RGBf, BLOCK_DIM> &a, const BlockView<RGBf, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
-{
-    bool belowThreshold = true;
-    float dist = 0.0F;
-    for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
-    {
-        auto colorDist = RGBf::mse(*aIt, *bIt);
-        if (belowThreshold)
-        {
-            belowThreshold = colorDist < threshold;
-        }
-        dist += colorDist;
-    }
-    return {belowThreshold, dist / (BLOCK_DIM * BLOCK_DIM)};
-}
-
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, entry index) if usable entry found or empty optional, if not
 template <std::size_t BLOCK_DIM>
@@ -275,9 +245,9 @@ auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB
     auto currentCodeBook = CodeBook<RGBf>(image, width, height, false);
     const CodeBook previousCodeBook = previousImage.empty() || keyFrame ? CodeBook<RGBf>() : CodeBook<RGBf>(previousImage, width, height, true);
     // calculate perceived frame distance
-    const float frameDistance = previousCodeBook.empty<CodeBook<RGBf>::BlockMaxDim>() ? INT_MAX : currentCodeBook.distance(previousCodeBook);
+    const float frameError = previousCodeBook.empty<CodeBook<RGBf>::BlockMaxDim>() ? INT_MAX : currentCodeBook.mse(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
-    if (!keyFrame && frameDistance < 0.001)
+    if (!keyFrame && frameError < 0.001)
     {
         // frame is a duplicate. pass header only
         FrameHeader frameHeader;
@@ -291,7 +261,7 @@ auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB
     // if we don't have a keyframe, check for scene change
     /*if (!keyFrame)
     {
-        if (frameDistance > 0.03)
+        if (frameError > 0.03)
         {
             std::cout << "Inserting key frame " << keyFrames++ << std::endl;
             keyFrame = true;

@@ -223,16 +223,16 @@ public:
     }
 
     /// @brief Calculate perceived pixel difference between codebooks
-    auto distance(const CodeBook &b) -> float
+    auto mse(const CodeBook &b) -> float
     {
-        float sum = 0.0F;
+        double sum = 0.0;
         auto aIt = m_colors.cbegin();
         auto bIt = b.m_colors.cbegin();
         while (aIt != m_colors.cend() && bIt != b.m_colors.cend())
         {
             sum += COLOR_TYPE::mse(*aIt++, *bIt++);
         }
-        return sum / m_blocks2.size();
+        return static_cast<float>(sum / m_blocks2.size());
     }
 
 private:

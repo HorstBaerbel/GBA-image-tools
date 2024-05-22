@@ -327,3 +327,33 @@ private:
     uint32_t m_blockIndex = 0;
     std::array<uint32_t, Dim * Dim> m_indices;
 };
+
+/// @brief Calculate perceived pixel difference between blocks
+template <typename COLOR_TYPE, std::size_t BLOCK_DIM>
+static auto mse(const BlockView<COLOR_TYPE, BLOCK_DIM> &a, const BlockView<COLOR_TYPE, BLOCK_DIM> &b) -> float
+{
+    double dist = 0.0;
+    for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
+    {
+        dist += COLOR_TYPE::mse(*aIt, *bIt);
+    }
+    return static_cast<float>(dist / (BLOCK_DIM * BLOCK_DIM));
+}
+
+/// @brief Calculate perceived pixel difference between blocks
+template <typename COLOR_TYPE, std::size_t BLOCK_DIM>
+static auto mseBelowThreshold(const BlockView<COLOR_TYPE, BLOCK_DIM> &a, const BlockView<COLOR_TYPE, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
+{
+    bool belowThreshold = true;
+    double dist = 0.0;
+    for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
+    {
+        auto colorDist = COLOR_TYPE::mse(*aIt, *bIt);
+        if (belowThreshold)
+        {
+            belowThreshold = colorDist < threshold;
+        }
+        dist += colorDist;
+    }
+    return {belowThreshold, static_cast<float>(dist / (BLOCK_DIM * BLOCK_DIM))};
+}

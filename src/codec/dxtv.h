@@ -14,7 +14,7 @@ public:
     /// - Colors will be stored as RGB555 only
     /// - Blocks are stored sequentially from left to right, top to bottom, but colors and indices are stored separately. First all colors, then all indices
     /// @param keyframe If true B-frame will be output, else a P-frame
-    /// @param maxBlockError Max. allowed error for block references, if above a verbatim block will be stored. Range [0.1,1]
+    /// @param maxBlockError Max. allowed error for block references, if above a verbatim block will be stored. Range [0.01,1]
     /// @return Returns (compressed data, decompressed frame)
     static auto encodeDXTV(const std::vector<Color::XRGB8888> &image, const std::vector<Color::XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<Color::XRGB8888>>;
 
