@@ -379,7 +379,7 @@ namespace Image
                 std::runtime_error, "Output color format must be in [RGB555, RGB565, BGR555, BGR565]");
         // convert image using DXT compression
         auto result = data;
-        auto compressedData = DXT::encodeDXT(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height(), format == Color::Format::RGB565, format == Color::Format::XBGR1555 || format == Color::Format::BGR565);
+        auto compressedData = DXT::encode(data.imageData.pixels().data<Color::XRGB8888>(), data.size.width(), data.size.height(), format == Color::Format::RGB565, format == Color::Format::XBGR1555 || format == Color::Format::BGR565);
         result.imageData.pixels() = PixelData(compressedData, Color::Format::Unknown);
         return result;
     }
@@ -391,17 +391,19 @@ namespace Image
         REQUIRE(data.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
         REQUIRE(data.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
         // get parameter(s)
-        REQUIRE((VariantHelpers::hasTypes<double, double>(parameters)), std::runtime_error, "compressDXTV expects a double keyframe interval and a double max. block error parameter");
-        auto keyFrameInterval = static_cast<int32_t>(VariantHelpers::getValue<double, 0>(parameters));
+        REQUIRE((VariantHelpers::hasTypes<Color::Format, double, double>(parameters)), std::runtime_error, "compressDXTV expects a Color::Format, a double keyframe interval and a double max. block error parameter");
+        const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
+        REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::XBGR1555, std::runtime_error, "Output color format must be in [RGB555, BGR555]");
+        auto keyFrameInterval = static_cast<int32_t>(VariantHelpers::getValue<double, 1>(parameters));
         REQUIRE(keyFrameInterval >= 0 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [0, 60] (0 = none)");
-        auto maxBlockError = VariantHelpers::getValue<double, 1>(parameters);
+        auto maxBlockError = VariantHelpers::getValue<double, 2>(parameters);
         REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01, 1]");
         // check if needs to be a keyframe
         const bool isKeyFrame = keyFrameInterval > 0 ? ((data.index % keyFrameInterval) == 0 || state.empty()) : false;
         // convert image using DXT compression
         auto result = data;
         auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
-        auto compressedData = DXTV::encodeDXTV(data.imageData.pixels().data<Color::XRGB8888>(), previousImage, data.size.width(), data.size.height(), isKeyFrame, maxBlockError);
+        auto compressedData = DXTV::encode(data.imageData.pixels().data<Color::XRGB8888>(), previousImage, data.size.width(), data.size.height(), isKeyFrame, maxBlockError, format == Color::Format::XBGR1555);
         result.imageData.pixels() = PixelData(compressedData.first, Color::Format::Unknown);
         // store decompressed image as state
         state = DataHelpers::convertTo<uint8_t>(compressedData.second);

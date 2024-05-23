@@ -142,9 +142,9 @@ public:
     }
 
     /// @brief Return block colors as deep-copy compact array
-    auto colors() const
+    auto colors() const -> std::vector<value_type>
     {
-        std::array<value_type, Dim * Dim> result;
+        std::vector<value_type> result(Dim * Dim);
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
             result[i] = m_colors[m_indices[i]];
@@ -290,9 +290,9 @@ public:
     }
 
     /// @brief Return block colors as deep-copy compact array
-    auto colors() const
+    auto colors() const -> std::vector<value_type>
     {
-        std::array<value_type, Dim * Dim> result;
+        std::vector<value_type> result(Dim * Dim);
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
             result[i] = m_colors[m_indices[i]];

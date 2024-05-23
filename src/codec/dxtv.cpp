@@ -6,7 +6,7 @@
 #include "color/psnr.h"
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
-#include "dxtblock.h"
+#include "dxt.h"
 #include "exception.h"
 #include "math/linefit.h"
 #include "processing/datahelpers.h"
@@ -79,9 +79,9 @@ constexpr std::pair<int32_t, int32_t> PrevRefOffset{-8191, 8192}; // Block searc
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, entry index) if usable entry found or empty optional, if not
 template <std::size_t BLOCK_DIM>
-auto findBestMatchingBlock(const CodeBook<RGBf> &codeBook, const BlockView<RGBf, BLOCK_DIM> &block, float maxAllowedError, int32_t offsetMin, int32_t offsetMax) -> std::optional<std::pair<float, BlockView<RGBf, BLOCK_DIM>>>
+auto findBestMatchingBlock(const CodeBook<XRGB8888> &codeBook, const BlockView<XRGB8888, BLOCK_DIM> &block, float maxAllowedError, int32_t offsetMin, int32_t offsetMax) -> std::optional<std::pair<float, BlockView<XRGB8888, BLOCK_DIM>>>
 {
-    using return_type = std::pair<float, BlockView<RGBf, BLOCK_DIM>>;
+    using return_type = std::pair<float, BlockView<XRGB8888, BLOCK_DIM>>;
     if (codeBook.empty<BLOCK_DIM>())
     {
         return std::optional<return_type>();
@@ -135,20 +135,19 @@ struct CompressionState
 };
 
 template <std::size_t BLOCK_DIM>
-auto storeDxtBlock(CodeBook<RGBf> &currentCodeBook, BlockView<RGBf, BLOCK_DIM> &block, const DXTBlock<BLOCK_DIM, BLOCK_DIM> &encodedBlock, const std::array<RGBf, BLOCK_DIM * BLOCK_DIM> &decodedBlock, CompressionState &state) -> void
+auto storeDxtBlock(CodeBook<XRGB8888> &currentCodeBook, BlockView<XRGB8888, BLOCK_DIM> &block, const std::vector<uint8_t> &compressedData, const std::vector<Color::XRGB8888> &decodedBlock, CompressionState &state) -> void
 {
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<RGBf>::BlockMaxDim) - std::log2(BLOCK_DIM);
-    auto dxtData = encodedBlock.toArray();
-    std::copy(dxtData.cbegin(), dxtData.cend(), std::back_inserter(state.data));
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<XRGB8888>::BlockMaxDim) - std::log2(BLOCK_DIM);
+    std::copy(compressedData.cbegin(), compressedData.cend(), std::back_inserter(state.data));
     // mark block as encoded
     currentCodeBook.setEncoded<BLOCK_DIM>(block);
     statistics.dxtBlocks[BLOCK_LEVEL]++;
 }
 
 template <std::size_t BLOCK_DIM>
-auto storeRefBlock(CodeBook<RGBf> &currentCodeBook, BlockView<RGBf, BLOCK_DIM> &block, BlockView<RGBf, BLOCK_DIM> &srcBlock, CompressionState &state, bool fromPrevCodeBook) -> void
+auto storeRefBlock(CodeBook<XRGB8888> &currentCodeBook, BlockView<XRGB8888, BLOCK_DIM> &block, BlockView<XRGB8888, BLOCK_DIM> &srcBlock, CompressionState &state, bool fromPrevCodeBook) -> void
 {
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<RGBf>::BlockMaxDim) - std::log2(BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<XRGB8888>::BlockMaxDim) - std::log2(BLOCK_DIM);
     // get referenced block
     REQUIRE(srcBlock.index() >= 0 && srcBlock.index() <= BLOCK_INDEX_MASK, std::runtime_error, "Frame reference block index out of range");
     auto index = static_cast<uint16_t>(srcBlock.index());
@@ -169,9 +168,9 @@ auto storeRefBlock(CodeBook<RGBf> &currentCodeBook, BlockView<RGBf, BLOCK_DIM> &
 }
 
 template <std::size_t BLOCK_DIM>
-auto encodeBlock(CodeBook<RGBf> &currentCodeBook, const CodeBook<RGBf> &previousCodeBook, BlockView<RGBf, BLOCK_DIM> &block, CompressionState &state, float maxAllowedError) -> void
+auto encodeBlock(CodeBook<XRGB8888> &currentCodeBook, const CodeBook<XRGB8888> &previousCodeBook, BlockView<XRGB8888, BLOCK_DIM> &block, CompressionState &state, float maxAllowedError, const bool swapToBGR) -> void
 {
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<RGBf>::BlockMaxDim) - std::log2(BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(CodeBook<XRGB8888>::BlockMaxDim) - std::log2(BLOCK_DIM);
     // Try to reference block from the previous code book (if available) within error
     auto previousRef = findBestMatchingBlock(previousCodeBook, block, maxAllowedError, PrevRefOffset.first, PrevRefOffset.second);
     // Try to reference block from the current code book within error
@@ -181,7 +180,7 @@ auto encodeBlock(CodeBook<RGBf> &currentCodeBook, const CodeBook<RGBf> &previous
     const bool currRefIsBetter = currentRef.has_value() && (!previousRef.has_value() || currentRef.value().first <= previousRef.value().first);
     if (prevRefIsBetter)
     {
-        if constexpr (BLOCK_DIM > CodeBook<RGBf>::BlockMinDim)
+        if constexpr (BLOCK_DIM > CodeBook<XRGB8888>::BlockMinDim)
         {
             // only store bit for blocks > 4x4
             state.flags.push_back(BLOCK_NO_SPLIT);
@@ -191,7 +190,7 @@ auto encodeBlock(CodeBook<RGBf> &currentCodeBook, const CodeBook<RGBf> &previous
     }
     else if (currRefIsBetter)
     {
-        if constexpr (BLOCK_DIM > CodeBook<RGBf>::BlockMinDim)
+        if constexpr (BLOCK_DIM > CodeBook<XRGB8888>::BlockMinDim)
         {
             // only store bit for blocks > 4x4
             state.flags.push_back(BLOCK_NO_SPLIT);
@@ -203,14 +202,14 @@ auto encodeBlock(CodeBook<RGBf> &currentCodeBook, const CodeBook<RGBf> &previous
     {
         // No good references found. DXT-encode full block
         auto rawBlock = block.colors();
-        auto encodedBlock = DXTBlock<BLOCK_DIM, BLOCK_DIM>::encode(rawBlock);
-        auto decodedBlock = DXTBlock<BLOCK_DIM, BLOCK_DIM>::decode(encodedBlock);
-        if constexpr (BLOCK_DIM <= CodeBook<RGBf>::BlockMinDim)
+        auto encodedBlock = DXT::encodeBlock<BLOCK_DIM>(rawBlock, false, swapToBGR);
+        auto decodedBlock = DXT::decodeBlock<BLOCK_DIM>(encodedBlock, false, swapToBGR);
+        if constexpr (BLOCK_DIM <= CodeBook<XRGB8888>::BlockMinDim)
         {
             //  We can't split anymore. Store 4x4 DXT block
             storeDxtBlock(currentCodeBook, block, encodedBlock, decodedBlock, state);
         }
-        else if constexpr (BLOCK_DIM > CodeBook<RGBf>::BlockMinDim)
+        else if constexpr (BLOCK_DIM > CodeBook<XRGB8888>::BlockMinDim)
         {
             // check if encoded block is below allowed error or we want to split the block
             auto encodedBlockDist = Color::mse(rawBlock, decodedBlock);
@@ -224,28 +223,28 @@ auto encodeBlock(CodeBook<RGBf> &currentCodeBook, const CodeBook<RGBf> &previous
             {
                 // Split block and recurse
                 state.flags.push_back(BLOCK_IS_SPLIT);
-                encodeBlock(currentCodeBook, previousCodeBook, block.block(0), state, maxAllowedError);
-                encodeBlock(currentCodeBook, previousCodeBook, block.block(1), state, maxAllowedError);
-                encodeBlock(currentCodeBook, previousCodeBook, block.block(2), state, maxAllowedError);
-                encodeBlock(currentCodeBook, previousCodeBook, block.block(3), state, maxAllowedError);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(0), state, maxAllowedError, swapToBGR);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(1), state, maxAllowedError, swapToBGR);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(2), state, maxAllowedError, swapToBGR);
+                encodeBlock(currentCodeBook, previousCodeBook, block.block(3), state, maxAllowedError, swapToBGR);
             }
         }
     }
 }
 
-auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
+auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError, const bool swapToBGR) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
 {
     static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
-    REQUIRE(width % CodeBook<RGBf>::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
-    REQUIRE(height % CodeBook<RGBf>::BlockMaxDim == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
+    REQUIRE(width % CodeBook<XRGB8888>::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
+    REQUIRE(height % CodeBook<XRGB8888>::BlockMaxDim == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
     REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "Max. block error must be in [0.01,1]");
     // divide max block error to get into internal range
     maxBlockError /= 1000;
     // convert frames to codebooks
-    auto currentCodeBook = CodeBook<RGBf>(image, width, height, false);
-    const CodeBook previousCodeBook = previousImage.empty() || keyFrame ? CodeBook<RGBf>() : CodeBook<RGBf>(previousImage, width, height, true);
+    auto currentCodeBook = CodeBook<XRGB8888>(image, width, height, false);
+    const CodeBook previousCodeBook = previousImage.empty() || keyFrame ? CodeBook<XRGB8888>() : CodeBook<XRGB8888>(previousImage, width, height, true);
     // calculate perceived frame distance
-    const float frameError = previousCodeBook.empty<CodeBook<RGBf>::BlockMaxDim>() ? INT_MAX : currentCodeBook.mse(previousCodeBook);
+    const float frameError = previousCodeBook.empty<CodeBook<XRGB8888>::BlockMaxDim>() ? INT_MAX : currentCodeBook.mse(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
     if (!keyFrame && frameError < 0.001)
     {
@@ -271,12 +270,12 @@ auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB
     CompressionState state;
     statistics = Statistics();
     // loop through source images blocks
-    for (auto cbIt = currentCodeBook.begin<CodeBook<RGBf>::BlockMaxDim>(); cbIt != currentCodeBook.end<CodeBook<RGBf>::BlockMaxDim>(); ++cbIt)
+    for (auto cbIt = currentCodeBook.begin<CodeBook<XRGB8888>::BlockMaxDim>(); cbIt != currentCodeBook.end<CodeBook<XRGB8888>::BlockMaxDim>(); ++cbIt)
     {
-        encodeBlock(currentCodeBook, previousCodeBook, *cbIt, state, maxBlockError);
+        encodeBlock(currentCodeBook, previousCodeBook, *cbIt, state, maxBlockError, swapToBGR);
     }
     // print statistics
-    const auto nrOfMinBlocks = width / CodeBook<RGBf>::BlockMinDim * height / CodeBook<RGBf>::BlockMinDim;
+    const auto nrOfMinBlocks = width / CodeBook<XRGB8888>::BlockMinDim * height / CodeBook<XRGB8888>::BlockMinDim;
     auto refPercentCurr = static_cast<float>((statistics.refBlocksCurr[0] * 16 + statistics.refBlocksCurr[1] * 4 + statistics.refBlocksCurr[2]) * 100) / nrOfMinBlocks;
     auto refPercentPrev = static_cast<float>((statistics.refBlocksPrev[0] * 16 + statistics.refBlocksPrev[1] * 4 + statistics.refBlocksPrev[2]) * 100) / nrOfMinBlocks;
     auto dxtPercent = static_cast<float>((statistics.dxtBlocks[0] * 16 + statistics.dxtBlocks[1] * 4 + statistics.dxtBlocks[2]) * 100) / nrOfMinBlocks;
@@ -320,7 +319,7 @@ auto DXTV::encodeDXTV(const std::vector<XRGB8888> &image, const std::vector<XRGB
     return std::make_pair(compressedData, image);
 }
 
-auto DXTV::decodeDXTV(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<XRGB8888>
+auto DXTV::decode(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<XRGB8888>
 {
     return {};
 }

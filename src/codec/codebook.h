@@ -33,8 +33,15 @@ public:
     CodeBook(const std::vector<T> &image, uint32_t width, uint32_t height, bool encoded = false)
         : m_width(width), m_height(height)
     {
-        std::transform(image.cbegin(), image.cend(), std::back_inserter(m_colors), [](const auto &pixel)
-                       { return convertTo<COLOR_TYPE>(pixel); });
+        if constexpr (std::is_same<T, COLOR_TYPE>())
+        {
+            m_colors = image;
+        }
+        else
+        {
+            std::transform(image.cbegin(), image.cend(), std::back_inserter(m_colors), [](const auto &pixel)
+                           { return convertTo<COLOR_TYPE>(pixel); });
+        }
         for (uint32_t y = 0; y < m_height; y += BlockMaxDim)
         {
             for (uint32_t x = 0; x < m_width; x += BlockMaxDim)
@@ -216,10 +223,17 @@ public:
     template <typename T>
     auto toImage() const -> std::vector<T>
     {
-        std::vector<T> image;
-        std::transform(m_colors.cbegin(), m_colors.cend(), std::back_inserter(image), [](const auto &color)
-                       { return convertTo<T>(color); });
-        return image;
+        if constexpr (std::is_same<T, COLOR_TYPE>())
+        {
+            return m_colors;
+        }
+        else
+        {
+            std::vector<T> image;
+            std::transform(m_colors.cbegin(), m_colors.cend(), std::back_inserter(image), [](const auto &color)
+                           { return convertTo<T>(color); });
+            return image;
+        }
     }
 
     /// @brief Calculate perceived pixel difference between codebooks
