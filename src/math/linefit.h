@@ -26,14 +26,14 @@ auto lineFit(const std::vector<T> &points) -> std::pair<T, T>
     {
         eigenPoints.col(i) = Eigen::Vector3d(points[i].x(), points[i].y(), points[i].z());
     }
-    // center on mean
-    Eigen::Vector3d mean = eigenPoints.rowwise().mean();
-    auto centered = eigenPoints.colwise() - mean;
+    // calculate centroid and center points
+    Eigen::Vector3d centroid = eigenPoints.rowwise().mean();
+    auto centered = eigenPoints.colwise() - centroid;
     // calculate SVD and first eigenvector
     Eigen::JacobiSVD<Eigen::Matrix3Xd, Eigen::QRPreconditioners::FullPivHouseholderQRPreconditioner> svd;
     auto fullU = svd.compute(centered, Eigen::ComputeFullU);
     Eigen::Vector3d axis = fullU.matrixU().col(0).transpose().normalized();
-    return {T(mean.x(), mean.y(), mean.z()), T(axis.x(), axis.y(), axis.z())};
+    return {T(centroid.x(), centroid.y(), centroid.z()), T(axis.x(), axis.y(), axis.z())};
 }
 
 /// @brief Fit a line through points using SVD
@@ -55,12 +55,12 @@ auto lineFit(const std::array<T, N> &points) -> std::pair<T, T>
     {
         eigenPoints.col(i) = Eigen::Vector3d(points[i].x(), points[i].y(), points[i].z());
     }
-    // center on mean
-    Eigen::Vector3d mean = eigenPoints.rowwise().mean();
-    auto centered = eigenPoints.colwise() - mean;
+    // calculate centroid and center points
+    Eigen::Vector3d centroid = eigenPoints.rowwise().mean();
+    auto centered = eigenPoints.colwise() - centroid;
     // calculate SVD and first eigenvector
     Eigen::JacobiSVD<Eigen::Matrix3Xd, Eigen::QRPreconditioners::FullPivHouseholderQRPreconditioner> svd;
     auto fullU = svd.compute(centered, Eigen::ComputeFullU);
     Eigen::Vector3d axis = fullU.matrixU().col(0).transpose().normalized();
-    return {T(mean.x(), mean.y(), mean.z()), T(axis.x(), axis.y(), axis.z())};
+    return {T(centroid.x(), centroid.y(), centroid.z()), T(axis.x(), axis.y(), axis.z())};
 }
