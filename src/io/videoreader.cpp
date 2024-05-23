@@ -161,8 +161,20 @@ auto VideoReader::readFrame() const -> std::vector<uint32_t>
             av_packet_unref(m_state->packet);
             continue;
         }
-        // send packet to codec
-        REQUIRE(avcodec_send_packet(m_state->codecContext, m_state->packet) >= 0, std::runtime_error, "Failed to decode packet");
+        // try to send packet to codec
+        auto sendResult = avcodec_send_packet(m_state->codecContext, m_state->packet);
+        if (sendResult == AVERROR_EOF)
+        {
+            // file has ended. call avcodec_receive_frame to possibly get rest of it
+        }
+        else if (sendResult == AVERROR(EAGAIN))
+        {
+            // we need to avcodec_receive_frame again before we can send another packet
+        }
+        else if (sendResult < 0)
+        {
+            THROW(std::runtime_error, "Failed to send packet to codec");
+        }
         // try to decode frame
         auto receiveResult = avcodec_receive_frame(m_state->codecContext, m_state->frame);
         if (receiveResult == AVERROR_EOF)
