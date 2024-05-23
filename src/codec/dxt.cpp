@@ -29,7 +29,7 @@ auto dxtLineFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::pa
     // calculate initial line fit through RGB color space
     auto originAndAxis = lineFit(colors);
     // calculate signed distance along line from origin
-    std::vector<float> distanceOnLine(16);
+    std::vector<float> distanceOnLine(colors.size());
     std::transform(colors.cbegin(), colors.cend(), distanceOnLine.begin(), [axis = originAndAxis.second](const auto &color)
                    { return color.dot(axis); });
     // get the distance of endpoints c0 and c1 on line
@@ -57,7 +57,7 @@ auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> 
 {
     // calculate minimum distance for all colors to endpoints and calculate error to that endpoint
     float error = 0.0F;
-    for (uint32_t ci = 0; ci < 16; ++ci)
+    for (uint32_t ci = 0; ci < colors.size(); ++ci)
     {
         // calculate minimum distance for each index for this color
         float bestColorDistance = std::numeric_limits<float>::max();
@@ -107,12 +107,12 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
         for (int iteration = 0; iteration < ClusterFitMaxIterations; ++iteration)
         {
             float iterationError = 0.0F;
-            std::vector<std::vector<RGBf>> clusters(4);
+            std::vector<std::vector<RGBf>> clusters(centroids.size());
             for (const auto &point : colors)
             {
                 float minError = std::numeric_limits<float>::max();
-                int closestCentroid = -1;
-                for (int i = 0; i < 4; ++i)
+                int closestCentroid = 0;
+                for (int i = 0; i < centroids.size(); ++i)
                 {
                     auto error = RGBf::mse(point, centroids[i]);
                     if (error < minError)
@@ -121,6 +121,7 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
                         closestCentroid = i;
                     }
                 }
+                REQUIRE(closestCentroid >= 0 && closestCentroid < clusters.size(), std::runtime_error, "Bad cluster index");
                 clusters[closestCentroid].push_back(point);
                 iterationError += minError;
             }
@@ -158,22 +159,24 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     return {endpoints, modeThird};
 }
 
+// ------------------------------------------------------------------------------------------------
+
 template <unsigned DIMENSION>
-auto encodeBlock(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+auto encodeBlockInternal(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
-    REQUIRE(pixelsPerScanline % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
-    // get block colors for all 16 pixels
+    REQUIRE(pixelsPerScanline % DIMENSION == 0, std::runtime_error, "Image width must be a multiple of " << DIMENSION << " for DXT compression");
+    // get block colors for all pixels
     constexpr unsigned NrOfPixels = DIMENSION * DIMENSION;
     std::vector<RGBf> colors(NrOfPixels);
     auto cIt = colors.begin();
-    auto pixel = blockStart;
+    auto pixels = blockStart;
     for (int y = 0; y < DIMENSION; y++)
     {
         for (int x = 0; x < DIMENSION; x++)
         {
-            *cIt++ = convertTo<RGBf>(pixel[x]);
+            *cIt++ = convertTo<RGBf>(pixels[x]);
         }
-        pixel += pixelsPerScanline;
+        pixels += pixelsPerScanline;
     }
 #if defined(CLUSTER_FIT)
     auto [endpoints, modeThird] = dxtClusterFit(colors, asRGB565);
@@ -197,7 +200,7 @@ auto encodeBlock(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, c
     }
 #endif
     // calculate minimum distance for all colors to endpoints to assign indices
-    std::vector<uint32_t> endpointIndices(colors.size());
+    std::vector<uint32_t> endpointIndices(NrOfPixels);
     for (uint32_t ci = 0; ci < NrOfPixels; ++ci)
     {
         // calculate minimum distance for each index for this color
@@ -269,24 +272,27 @@ auto encodeBlock(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, c
 }
 
 template <>
-auto DXT::encodeDXTBlock<4>(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+auto DXT::encodeBlock<4>(const std::vector<Color::XRGB8888> &block, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
-    return encodeBlock<4>(blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+    REQUIRE(block.size() == 16, std::runtime_error, "Number of pixels in block must be 16");
+    return encodeBlockInternal<4>(block.data(), 4, asRGB565, swapToBGR);
 }
 
 template <>
-auto DXT::encodeDXTBlock<8>(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+auto DXT::encodeBlock<8>(const std::vector<Color::XRGB8888> &block, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
-    return encodeBlock<8>(blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+    REQUIRE(block.size() == 64, std::runtime_error, "Number of pixels in block must be 64");
+    return encodeBlockInternal<8>(block.data(), 8, asRGB565, swapToBGR);
 }
 
 template <>
-auto DXT::encodeDXTBlock<16>(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+auto DXT::encodeBlock<16>(const std::vector<Color::XRGB8888> &block, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
-    return encodeBlock<16>(blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+    REQUIRE(block.size() == 256, std::runtime_error, "Number of pixels in block must be 256");
+    return encodeBlockInternal<16>(block.data(), 16, asRGB565, swapToBGR);
 }
 
-auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
+auto DXT::encode(const std::vector<XRGB8888> &image, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT compression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT compression");
@@ -299,7 +305,7 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
     {
         for (uint32_t x = 0; x < width; x += 4)
         {
-            auto block = encodeDXTBlock<4>(image.data() + y * width + x, width, asRGB565, swapToBGR);
+            auto block = encodeBlockInternal<4>(image.data() + y * width + x, width, asRGB565, swapToBGR);
             std::copy(block.cbegin(), block.cend(), std::next(dxtData.begin(), y * yStride + x * 8 / 4));
         }
     }
@@ -318,8 +324,10 @@ auto DXT::encodeDXT(const std::vector<XRGB8888> &image, const uint32_t width, co
     return data;
 }
 
+// ------------------------------------------------------------------------------------------------
+
 template <unsigned DIMENSION>
-auto decodeBlock(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+auto decodeBlockInternal(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
 {
     // read colors c0 and c1
     std::array<XRGB8888, 4> colors;
@@ -398,24 +406,33 @@ auto decodeBlock(const uint16_t *colorStart, const uint32_t *indexStart, Color::
 }
 
 template <>
-auto DXT::decodeDXTBlock<4>(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+auto DXT::decodeBlock<4>(const std::vector<uint8_t> &data, const bool asRGB565, const bool swapToBGR) -> std::vector<Color::XRGB8888>
 {
-    return decodeBlock<4>(colorStart, indexStart, blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+    REQUIRE(data.size() == 2 + 2 + 16 * 2 / 8, std::runtime_error, "Data size must be 8");
+    std::vector<Color::XRGB8888> block(16);
+    decodeBlockInternal<4>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint32_t *>(data.data() + 4), block.data(), 4, asRGB565, swapToBGR);
+    return block;
 }
 
 template <>
-auto DXT::decodeDXTBlock<8>(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+auto DXT::decodeBlock<8>(const std::vector<uint8_t> &data, const bool asRGB565, const bool swapToBGR) -> std::vector<Color::XRGB8888>
 {
-    return decodeBlock<8>(colorStart, indexStart, blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+    REQUIRE(data.size() == 2 + 2 + 64 * 2 / 8, std::runtime_error, "Data size must be 20");
+    std::vector<Color::XRGB8888> block(64);
+    decodeBlockInternal<8>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint32_t *>(data.data() + 4), block.data(), 8, asRGB565, swapToBGR);
+    return block;
 }
 
 template <>
-auto DXT::decodeDXTBlock<16>(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+auto DXT::decodeBlock<16>(const std::vector<uint8_t> &data, const bool asRGB565, const bool swapToBGR) -> std::vector<Color::XRGB8888>
 {
-    return decodeBlock<16>(colorStart, indexStart, blockStart, pixelsPerScanline, asRGB565, swapToBGR);
+    REQUIRE(data.size() == 2 + 2 + 256 * 2 / 8, std::runtime_error, "Data size must be 68");
+    std::vector<Color::XRGB8888> block(256);
+    decodeBlockInternal<16>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint32_t *>(data.data() + 4), block.data(), 16, asRGB565, swapToBGR);
+    return block;
 }
 
-auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<XRGB8888>
+auto DXT::decode(const std::vector<uint8_t> &data, const uint32_t width, const uint32_t height, const bool asRGB565, const bool swapToBGR) -> std::vector<XRGB8888>
 {
     REQUIRE(width % 4 == 0, std::runtime_error, "Image width must be a multiple of 4 for DXT decompression");
     REQUIRE(height % 4 == 0, std::runtime_error, "Image height must be a multiple of 4 for DXT decompression");
@@ -432,7 +449,7 @@ auto DXT::decodeDXT(const std::vector<uint8_t> &data, const uint32_t width, cons
         auto blockStart = result.data() + y * width;
         for (std::size_t x = 0; x < width; x += 4)
         {
-            decodeBlock<4>(color16, indices32, blockStart, width, asRGB565, swapToBGR);
+            decodeBlockInternal<4>(color16, indices32, blockStart, width, asRGB565, swapToBGR);
             color16 += 2;
             indices32 += 1;
             blockStart += 4;
