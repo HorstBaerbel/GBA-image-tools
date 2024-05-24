@@ -32,7 +32,7 @@ namespace DXTV
     //
     // Frame header format:
     // uint16_t flags;     // e.g. FRAME_IS_PFRAME
-    // uint16_t nrOfFlags; // # of blocks > MinDim in frame (determines the size of flags block)
+    // uint16_t nrOfFlagBits; // # of blocks > MinDim in frame (determines the size of flags block)
     //
     // then follows data
 
@@ -438,9 +438,9 @@ namespace DXTV
         // set up some variables
         uint32_t splitFlags = 0;                                                                     // Block split bit flags for blocks
         uint32_t splitFlagsAvailable = 0;                                                            // How many bits we have left in flags
-        uint32_t nrOfFlags = *src16++;                                                               // # of 16x16 and 8x8 block flags stored
+        uint32_t nrOfFlagBits = *src16++;                                                            // # of 16x16 and 8x8 block flags stored
         auto srcSplitFlagPtr = src16;                                                                // flags that define encoding state of blocks
-        const uint32_t nrOfFlagHwords = ((static_cast<uint32_t>(nrOfFlags) + 31) & 0xFFFFFFE0) >> 4; // round # of flags up to multiple of 32 and divide by 16
+        const uint32_t nrOfFlagHwords = ((static_cast<uint32_t>(nrOfFlagBits) + 31) & 0xFFFFFFE0) >> 4; // round # of flags up to multiple of 32 and divide by 16
         auto srcDataPtr = srcSplitFlagPtr + nrOfFlagHwords;                                          // DXT block data. offset is nrOfRefBlocks bytes
         auto currentDst32 = dst;
         for (uint32_t blockY = 0; blockY < height / 16; blockY++)

@@ -27,14 +27,22 @@ using namespace Color;
 struct FrameHeader
 {
     uint16_t flags = 0;     // e.g. FRAME_IS_PFRAME
-    uint16_t nrOfFlags = 0; // # of blocks > MinDim in frame (determines the size of flags block)
+    uint16_t nrOfFlagBits = 0; // # of blocks > MinDim in frame (determines the size of flags block)
 
-    std::array<uint8_t, 4> toArray() const
+    std::vector<uint8_t> toVector() const
     {
-        std::array<uint8_t, 4> result;
-        *reinterpret_cast<uint16_t *>(&result[0]) = flags;
-        *reinterpret_cast<uint16_t *>(&result[2]) = nrOfFlags;
+        std::vector<uint8_t> result(4);
+        *reinterpret_cast<uint16_t *>(result.data() + 0) = flags;
+        *reinterpret_cast<uint16_t *>(result.data() + 2) = nrOfFlagBits;
         return result;
+    }
+
+    static auto fromVector(const std::vector<uint8_t> &data) -> FrameHeader
+    {
+        REQUIRE(data.size() >= 4, std::runtime_error, "Data size must be >= 4");
+        auto flags = *reinterpret_cast<const uint16_t *>(data.data() + 0);
+        auto nrOfFlagBits = *reinterpret_cast<const uint16_t *>(data.data() + 2);
+        return {flags, nrOfFlagBits};
     }
 };
 
@@ -252,10 +260,9 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
         FrameHeader frameHeader;
         frameHeader.flags = FRAME_KEEP;
         std::vector<uint8_t> compressedData;
-        auto headerData = frameHeader.toArray();
+        auto headerData = frameHeader.toVector();
         assert((headerData.size() % 4) == 0);
-        std::copy(headerData.cbegin(), headerData.cend(), std::back_inserter(compressedData));
-        return std::make_pair(compressedData, previousImage);
+        return std::make_pair(headerData, previousImage);
     }
     // if we don't have a keyframe, check for scene change
     /*if (!keyFrame)
@@ -286,10 +293,11 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
     std::vector<uint8_t> compressedData;
     FrameHeader frameHeader;
     frameHeader.flags = keyFrame ? 0 : FRAME_IS_PFRAME;
-    frameHeader.nrOfFlags = static_cast<uint16_t>(state.flags.size());
-    auto headerData = frameHeader.toArray();
+    REQUIRE(state.flags.size() <= std::numeric_limits<uint16_t>::max(), std::runtime_error, "Too many flags");
+    frameHeader.nrOfFlagBits = static_cast<uint16_t>(state.flags.size());
+    auto headerData = frameHeader.toVector();
     assert((headerData.size() % 4) == 0);
-    std::copy(headerData.cbegin(), headerData.cend(), std::back_inserter(compressedData));
+    compressedData = headerData;
     // expand block flags to multiple of 32 bits
     while ((state.flags.size() % 32) != 0)
     {
@@ -319,7 +327,21 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
     return std::make_pair(compressedData, image);
 }
 
-auto DXTV::decode(const std::vector<uint8_t> &data, uint32_t width, uint32_t height) -> std::vector<XRGB8888>
+auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height) -> std::vector<XRGB8888>
 {
-    return {};
+    const auto frameHeader = FrameHeader::fromVector(data);
+    if (frameHeader.flags == FRAME_KEEP)
+    {
+        REQUIRE(previousImage.size() == width * height, std::runtime_error, "Frame should be repeated, but previous image is empty or has wrong size");
+        return previousImage;
+    }
+    if (frameHeader.flags == FRAME_IS_PFRAME)
+    {
+        REQUIRE(previousImage.size() == width * height, std::runtime_error, "Frame is P-frame, but previous image is empty or has wrong size");
+    }
+    // Read all state flags. Data was filled up to a multiple of 32 Bit
+    auto nrOfFlagHalfWords = ((frameHeader.nrOfFlagBits + 31) / 32) * 2;
+    std::vector<uint16_t> flags(nrOfFlagHalfWords);
+    std::memcpy(flags.data(), data.data() + sizeof(FrameHeader), nrOfFlagHalfWords * 2);
+    return previousImage;
 }
