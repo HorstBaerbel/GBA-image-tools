@@ -43,7 +43,7 @@ private:
     std::size_t m_position = 0;
 };
 
-/// @brief Struct describing an N*N block of colors that references part of an image.
+/// @brief Struct describing an N*N block of pixels that references part of an image.
 /// It does not hold the color data itself, but merely references it.
 template <typename T, std::size_t N, size_t MIN_DIM = 4>
 class BlockView
@@ -63,8 +63,8 @@ public:
 
     BlockView() = default;
 
-    BlockView(value_type *colors, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
-        : m_colors(colors), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
+    BlockView(value_type *pixels, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
+        : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
     {
         auto offset = m_y * m_width + m_x;
         auto index = 0;
@@ -78,47 +78,59 @@ public:
         }
         if constexpr (Dim > MinDim)
         {
-            m_subblocks[0] = BlockView<value_type, Dim / 2, MinDim>(m_colors, m_width, m_height, x, y);
-            m_subblocks[1] = BlockView<value_type, Dim / 2, MinDim>(m_colors, m_width, m_height, x + Dim / 2, y);
-            m_subblocks[2] = BlockView<value_type, Dim / 2, MinDim>(m_colors, m_width, m_height, x, y + Dim / 2);
-            m_subblocks[3] = BlockView<value_type, Dim / 2, MinDim>(m_colors, m_width, m_height, x + Dim / 2, y + Dim / 2);
+            m_subblocks[0] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x, y);
+            m_subblocks[1] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x + Dim / 2, y);
+            m_subblocks[2] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x, y + Dim / 2);
+            m_subblocks[3] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x + Dim / 2, y + Dim / 2);
         }
     }
 
-    BlockView &operator=(const std::array<value_type, Dim * Dim> &colors)
+    BlockView &operator=(const std::array<value_type, Dim * Dim> &pixels)
     {
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_colors[m_indices[i]] = colors[i];
+            m_pixels[m_indices[i]] = pixels[i];
         }
         return *this;
     }
 
     /// @brief Return block index in image. Blocks are stored row-wise.
     /// Each block level has their own block indices
-    auto index() const -> uint32_t
+    auto index() const
     {
         return m_blockIndex;
     }
 
+    /// @brief Return x-position
+    auto x() const
+    {
+        return m_x;
+    }
+
+    /// @brief Return y-position
+    auto y() const
+    {
+        return m_y;
+    }
+
     Iterator begin() noexcept
     {
-        return Iterator(m_colors, m_indices.data(), 0);
+        return Iterator(m_pixels, m_indices.data(), 0);
     }
 
     Iterator end() noexcept
     {
-        return Iterator(m_colors, m_indices.data(), m_indices.size());
+        return Iterator(m_pixels, m_indices.data(), m_indices.size());
     }
 
     ConstIterator cbegin() const noexcept
     {
-        return ConstIterator(m_colors, m_indices.data(), 0);
+        return ConstIterator(m_pixels, m_indices.data(), 0);
     }
 
     ConstIterator cend() const noexcept
     {
-        return ConstIterator(m_colors, m_indices.data(), m_indices.size());
+        return ConstIterator(m_pixels, m_indices.data(), m_indices.size());
     }
 
     auto empty() const -> bool
@@ -133,40 +145,41 @@ public:
 
     auto operator[](std::size_t index) const -> const value_type &
     {
-        return m_colors[m_indices[index]];
+        return m_pixels[m_indices[index]];
     }
 
     auto operator[](std::size_t index) -> value_type &
     {
-        return m_colors[m_indices[index]];
+        return m_pixels[m_indices[index]];
     }
 
-    /// @brief Return block colors as deep-copy compact array
-    auto colors() const -> std::vector<value_type>
+    /// @brief Return block pixels as deep-copy compact array
+    auto pixels() const -> std::vector<value_type>
     {
         std::vector<value_type> result(Dim * Dim);
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            result[i] = m_colors[m_indices[i]];
+            result[i] = m_pixels[m_indices[i]];
         }
         return result;
     }
 
-    /// @brief Deep copy colors from other block into this one
-    auto copyColorsFrom(const BlockView &other) -> void
+    /// @brief Deep copy pixels from other block into this one
+    auto copyPixelsFrom(const BlockView &other) -> void
     {
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_colors[m_indices[i]] = other.m_colors[other.m_indices[i]];
+            m_pixels[m_indices[i]] = other.m_pixels[other.m_indices[i]];
         }
     }
 
-    /// @brief Deep copy colors from other block into this one
-    auto copyColorsFrom(const std::array<value_type, Dim * Dim> &colors) -> void
+    /// @brief Deep copy pixels from other block into this one
+    auto copyPixelsFrom(const std::vector<value_type> &pixels) -> void
     {
+        REQUIRE(pixels.size() == Dim * Dim, std::runtime_error, "Data must have same size as block");
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_colors[m_indices[i]] = colors[i];
+            m_pixels[m_indices[i]] = pixels[i];
         }
     }
 
@@ -195,7 +208,7 @@ public:
     }
 
 private:
-    value_type *m_colors = nullptr;
+    value_type *m_pixels = nullptr;
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     uint32_t m_x = 0;
@@ -218,8 +231,8 @@ public:
 
     BlockView() = default;
 
-    BlockView(value_type *colors, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
-        : m_colors(colors), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
+    BlockView(value_type *pixels, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
+        : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
     {
         auto offset = m_y * m_width + m_x;
         auto index = 0;
@@ -233,11 +246,11 @@ public:
         }
     }
 
-    BlockView &operator=(const std::array<value_type, Dim * Dim> &colors)
+    BlockView &operator=(const std::array<value_type, Dim * Dim> &pixels)
     {
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_colors[m_indices[i]] = colors[i];
+            m_pixels[m_indices[i]] = pixels[i];
         }
         return *this;
     }
@@ -249,24 +262,36 @@ public:
         return m_blockIndex;
     }
 
+    /// @brief Return x-position
+    auto x() const
+    {
+        return m_x;
+    }
+
+    /// @brief Return y-position
+    auto y() const
+    {
+        return m_y;
+    }
+
     Iterator begin() noexcept
     {
-        return Iterator(m_colors, m_indices.data(), 0);
+        return Iterator(m_pixels, m_indices.data(), 0);
     }
 
     Iterator end() noexcept
     {
-        return Iterator(m_colors, m_indices.data(), m_indices.size());
+        return Iterator(m_pixels, m_indices.data(), m_indices.size());
     }
 
     ConstIterator cbegin() const noexcept
     {
-        return ConstIterator(m_colors, m_indices.data(), 0);
+        return ConstIterator(m_pixels, m_indices.data(), 0);
     }
 
     ConstIterator cend() const noexcept
     {
-        return ConstIterator(m_colors, m_indices.data(), m_indices.size());
+        return ConstIterator(m_pixels, m_indices.data(), m_indices.size());
     }
 
     auto empty() const -> bool
@@ -281,45 +306,46 @@ public:
 
     auto operator[](std::size_t index) const -> const value_type &
     {
-        return m_colors[m_indices[index]];
+        return m_pixels[m_indices[index]];
     }
 
     auto operator[](std::size_t index) -> value_type &
     {
-        return m_colors[m_indices[index]];
+        return m_pixels[m_indices[index]];
     }
 
-    /// @brief Return block colors as deep-copy compact array
-    auto colors() const -> std::vector<value_type>
+    /// @brief Return block pixels as deep-copy compact array
+    auto pixels() const -> std::vector<value_type>
     {
         std::vector<value_type> result(Dim * Dim);
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            result[i] = m_colors[m_indices[i]];
+            result[i] = m_pixels[m_indices[i]];
         }
         return result;
     }
 
-    /// @brief Deep copy colors from other block into this one
-    auto copyColorsFrom(const BlockView &other) -> void
+    /// @brief Deep copy pixels from other block into this one
+    auto copyPixelsFrom(const BlockView &other) -> void
     {
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_colors[m_indices[i]] = other.m_colors[other.m_indices[i]];
+            m_pixels[m_indices[i]] = other.m_pixels[other.m_indices[i]];
         }
     }
 
-    /// @brief Deep copy colors from other block into this one
-    auto copyColorsFrom(const std::array<value_type, Dim * Dim> &colors) -> void
+    /// @brief Deep copy pixels from other block into this one
+    auto copyPixelsFrom(const std::vector<value_type> &pixels) -> void
     {
+        REQUIRE(pixels.size() == Dim * Dim, std::runtime_error, "Data must have same size as block");
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_colors[m_indices[i]] = colors[i];
+            m_pixels[m_indices[i]] = pixels[i];
         }
     }
 
 private:
-    value_type *m_colors = nullptr;
+    value_type *m_pixels = nullptr;
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     uint32_t m_x = 0;
