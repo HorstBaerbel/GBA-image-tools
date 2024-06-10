@@ -1,11 +1,11 @@
-#include "videoreader.h"
+#include "ffmpegreader.h"
 
 extern "C"
 {
+#include <inttypes.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
-#include <inttypes.h>
 }
 
 #include "exception.h"
@@ -29,7 +29,7 @@ static AVPixelFormat CorrectDeprecatedPixelFormat(AVPixelFormat format)
 }
 
 /// @brief FFmpeg state for a video reader
-struct VideoReader::ReaderState
+struct FFmpegReader::ReaderState
 {
     AVFormatContext *formatContext = nullptr;
     AVCodecParameters *codecParameters = nullptr;
@@ -48,17 +48,17 @@ struct VideoReader::ReaderState
     SwsContext *swsContext = nullptr;
 };
 
-VideoReader::VideoReader()
+FFmpegReader::FFmpegReader()
     : m_state(std::make_shared<ReaderState>())
 {
 }
 
-VideoReader::~VideoReader()
+FFmpegReader::~FFmpegReader()
 {
     close();
 }
 
-auto VideoReader::open(const std::string &filePath) -> void
+auto FFmpegReader::open(const std::string &filePath) -> void
 {
     REQUIRE(!filePath.empty(), std::runtime_error, "Empty file path passed");
     REQUIRE(m_state->formatContext == nullptr, std::runtime_error, "Reader already open. Call close() first");
@@ -138,14 +138,14 @@ auto VideoReader::open(const std::string &filePath) -> void
     }
 }
 
-auto VideoReader::getInfo() const -> VideoReader::VideoInfo
+auto FFmpegReader::getInfo() const -> FFmpegReader::VideoInfo
 {
     REQUIRE(m_state->formatContext != nullptr, std::runtime_error, "Reader not open. Call open() first");
     auto duration = static_cast<float>(static_cast<double>(m_state->duration) * static_cast<double>(m_state->timeBase.num) / static_cast<double>(m_state->timeBase.den));
     return {m_state->codecName, static_cast<uint32_t>(m_state->videoStreamIndex), static_cast<uint32_t>(m_state->width), static_cast<uint32_t>(m_state->height), m_state->fps, static_cast<uint64_t>(m_state->nrOfFrames), duration};
 }
 
-auto VideoReader::readFrame() const -> std::vector<uint32_t>
+auto FFmpegReader::readFrame() const -> std::vector<uint32_t>
 {
     while (true)
     {
@@ -221,7 +221,7 @@ auto VideoReader::readFrame() const -> std::vector<uint32_t>
     return frame;
 }
 
-auto VideoReader::close() -> void
+auto FFmpegReader::close() -> void
 {
     if (m_state->packet)
     {

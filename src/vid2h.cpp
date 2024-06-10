@@ -1,9 +1,9 @@
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "compression/lzss.h"
-#include "io/textio.h"
+#include "io/ffmpegreader.h"
 #include "io/streamio.h"
-#include "io/videoreader.h"
+#include "io/textio.h"
 #include "processing/datahelpers.h"
 #include "processing/imagehelpers.h"
 #include "processing/imageprocessing.h"
@@ -216,8 +216,8 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // fire up video reader and open video file
-        VideoReader videoReader;
-        VideoReader::VideoInfo videoInfo;
+        FFmpegReader videoReader;
+        FFmpegReader::VideoInfo videoInfo;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;

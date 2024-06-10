@@ -6,7 +6,7 @@
 #include <vector>
 
 /// @brief Video reader class that uses FFmpeg and returns data in XRGB8888 format
-class VideoReader
+class FFmpegReader
 {
 public:
     /// @brief Video information about opened video file
@@ -22,10 +22,10 @@ public:
     };
 
     /// @brief Constructor
-    VideoReader();
+    FFmpegReader();
 
     /// @brief Destruktor. Calls close()
-    ~VideoReader();
+    ~FFmpegReader();
 
     /// @brief Open FFmpeg reader on a file so you can later readFrame() from it
     /// @throw Throws a std::runtime_errror if anything goes wrong
