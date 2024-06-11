@@ -34,7 +34,7 @@ namespace Video
         virtual auto getInfo() const -> VideoInfo = 0;
 
         /// @brief Read next XRGB8888 frame from video. Will return empty data if EOF
-        virtual auto readFrame() const -> std::vector<uint32_t> = 0;
+        virtual auto readFrame() -> std::vector<uint32_t> = 0;
 
         /// @brief Close reader opened with open()
         virtual auto close() -> void;

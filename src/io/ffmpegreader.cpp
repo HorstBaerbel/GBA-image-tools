@@ -148,7 +148,7 @@ namespace Video
         return {m_state->codecName, static_cast<uint32_t>(m_state->videoStreamIndex), static_cast<uint32_t>(m_state->width), static_cast<uint32_t>(m_state->height), m_state->fps, static_cast<uint64_t>(m_state->nrOfFrames), duration};
     }
 
-    auto FFmpegReader::readFrame() const -> std::vector<uint32_t>
+    auto FFmpegReader::readFrame() -> std::vector<uint32_t>
     {
         while (true)
         {
