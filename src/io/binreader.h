@@ -17,7 +17,7 @@ namespace Video
     {
     public:
         /// @brief Constructor
-        BinReader();
+        BinReader() = default;
 
         /// @brief Destruktor. Calls close()
         virtual ~BinReader() = default;

@@ -102,6 +102,7 @@
                 "tensor": "cpp",
                 "source_location": "cpp",
                 "stdfloat": "cpp",
-                "text_encoding": "cpp"
+                "text_encoding": "cpp",
+                "nonlinearoptimization": "cpp"
         }
 }

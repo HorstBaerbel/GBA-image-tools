@@ -69,6 +69,11 @@ list(APPEND VID2H_SRC
     ${HELPERS_SRC}
 )
 
+list(APPEND VIDPLAY_SRC
+    vidplay.cpp
+    ${HELPERS_SRC}
+)
+
 #-------------------------------------------------------------------------------
 # Define targets
 
@@ -84,6 +89,8 @@ add_executable(img2h ${IMG2H_SRC})
 target_link_libraries(img2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
 add_executable(vid2h ${VID2H_SRC})
 target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+add_executable(vidplay ${VIDPLAY_SRC})
+target_link_libraries(vidplay PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
 
 #-------------------------------------------------------------------------------
 # Define install files for CPack
@@ -93,6 +100,7 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/hex2gba"
     "${CMAKE_CURRENT_BINARY_DIR}/img2h"
     "${CMAKE_CURRENT_BINARY_DIR}/vid2h"
+    "${CMAKE_CURRENT_BINARY_DIR}/vidplay"
     "${PROJECT_SOURCE_DIR}/colormap555.png"
     "${PROJECT_SOURCE_DIR}/colormap565.png"
     "${PROJECT_SOURCE_DIR}/README.md"

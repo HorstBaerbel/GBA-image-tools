@@ -217,7 +217,7 @@ int main(int argc, const char *argv[])
         }
         // fire up video reader and open video file
         Video::FFmpegReader videoReader;
-        Video::FFmpegReader::VideoInfo videoInfo;
+        Video::Reader::VideoInfo videoInfo;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
