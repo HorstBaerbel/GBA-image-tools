@@ -1,10 +1,14 @@
 #include "videoreader.h"
 
-VideoReader::~VideoReader()
+namespace Video
 {
-    close();
-}
 
-auto VideoReader::close() -> void
-{
+    Reader::~Reader()
+    {
+        close();
+    }
+
+    auto Reader::close() -> void
+    {
+    }
 }
