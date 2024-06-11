@@ -11,13 +11,16 @@ namespace IO
         auto frameData = frame.imageData.pixels().convertDataToRaw();
         const uint32_t frameSize = frameData.size();
         os.write(reinterpret_cast<const char *>(&frameSize), sizeof(frameSize));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write frame size for frame #" << frame.index << " to stream");
         // write frame data
         os.write(reinterpret_cast<const char *>(frameData.data()), frameData.size());
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");
         // check if we're using a color map and write that
         if (frame.imageData.pixels().isIndexed())
         {
             auto colorMapData = frame.imageData.colorMap().convertDataToRaw();
             os.write(reinterpret_cast<const char *>(colorMapData.data()), colorMapData.size());
+            REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map data for frame #" << frame.index << " to stream");
         }
         return os;
     }
@@ -48,7 +51,36 @@ namespace IO
         fileHeader.colorMapEntries = frameHasColorMap ? frameData.colorMap().size() : 0;
         fileHeader.maxMemoryNeeded = maxMemoryNeeded;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(fileHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write file header to stream");
         return os;
     }
 
+    auto Stream::readFileHeader(std::istream &is) -> FileHeader
+    {
+        REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
+        FileHeader fileHeader;
+        is.read(reinterpret_cast<char *>(&fileHeader), sizeof(FileHeader));
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to read file header from stream");
+        return fileHeader;
+    }
+
+    auto Stream::readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<std::vector<uint8_t>, std::vector<uint8_t>>
+    {
+        uint32_t frameSize = 0;
+        is.read(reinterpret_cast<char *>(&frameSize), sizeof(frameSize));
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to read frame size from stream");
+        const bool frameHasColorMap = fileHeader.colorMapEntries != 0;
+        const uint32_t frameDataSize = frameHasColorMap ? frameSize - fileHeader.colorMapEntries * ((fileHeader.bitsPerColor + 7) / 8) : frameSize;
+        const uint32_t colorMapDataSize = frameSize - frameDataSize;
+        std::vector<uint8_t> frameData(frameDataSize);
+        std::vector<uint8_t> colorMapData(colorMapDataSize);
+        is.read(reinterpret_cast<char *>(frameData.data()), frameData.size());
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to read pixel data from stream");
+        if (frameHasColorMap)
+        {
+            is.read(reinterpret_cast<char *>(colorMapData.data()), colorMapData.size());
+            REQUIRE(!is.fail(), std::runtime_error, "Failed to read color map data from stream");
+        }
+        return {frameData, colorMapData};
+    }
 }

@@ -25,14 +25,20 @@ namespace IO
             uint32_t maxMemoryNeeded = 0; // Max. intermediate memory needed to decompress an image. 0 if data can be directly written to destination (single compression stage)
         } __attribute__((aligned(4), packed));
 
-        /// @brief Write frame data to output stream, adding compressed size as 3 byte value at the front
+        /// @brief Write frame data to output stream, adding compressed size as 4 byte value at the front
         static auto writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &;
 
-        /// @brief Write frame data to output stream, adding compressed size as 3 byte value at the front
+        /// @brief Write frame data to output stream, adding compressed size as 4 byte value at the front
         static auto writeFrames(std::ostream &os, const std::vector<Image::Data> &frames) -> std::ostream &;
 
         /// @brief Write frames to output stream. Will get width / height / color format from first frame in vector
         static auto writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &;
+
+        /// @brief Read file header from input stream
+        static auto readFileHeader(std::istream &is) -> FileHeader;
+
+        /// @brief Read frame data from input stream
+        static auto readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<std::vector<uint8_t>, std::vector<uint8_t>>;
     };
 
 }
