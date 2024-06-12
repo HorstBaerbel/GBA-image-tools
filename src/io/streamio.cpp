@@ -3,6 +3,8 @@
 namespace IO
 {
 
+    const std::array<char, 4> Stream::VID2H_MAGIC = {'v', '2', 'h', '_'};
+
     auto Stream::writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &
     {
         REQUIRE((frame.imageData.pixels().size() & 3) == 0, std::runtime_error, "Frame data size is not a multiple of 4");
@@ -42,6 +44,7 @@ namespace IO
         const bool frameHasColorMap = frameData.pixels().isIndexed();
         // generate file header and store it
         FileHeader fileHeader;
+        fileHeader.magic = VID2H_MAGIC;
         fileHeader.nrOfFrames = frames.size();
         fileHeader.width = static_cast<uint16_t>(frames.front().size.width());
         fileHeader.height = static_cast<uint16_t>(frames.front().size.height());

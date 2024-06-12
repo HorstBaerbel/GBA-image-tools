@@ -3,6 +3,7 @@
 #include "exception.h"
 #include "processing/imagestructs.h"
 
+#include <array>
 #include <cstdint>
 #include <variant>
 #include <vector>
@@ -13,8 +14,11 @@ namespace IO
     class Stream
     {
     public:
+        static const std::array<char, 4> VID2H_MAGIC; // Expected magic bytes at the start of the file
+
         struct FileHeader
         {
+            std::array<char, 4> magic;    // Magic bytes at the start of the file
             uint32_t nrOfFrames = 0;      // Number of frames in file
             uint16_t width = 0;           // Width in pixels
             uint16_t height = 0;          // Height in pixels

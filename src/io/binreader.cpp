@@ -11,6 +11,7 @@ namespace Video
         m_is = std::move(fileStream);
         // try reading video info
         m_fileHeader = IO::Stream::readFileHeader(m_is);
+        REQUIRE(m_fileHeader.magic == IO::Stream::VID2H_MAGIC, std::runtime_error, "Wrong file magic");
         REQUIRE(m_fileHeader.width != 0 && m_fileHeader.height != 0, std::runtime_error, "Width or height can not be 0");
         REQUIRE(m_fileHeader.nrOfFrames != 0, std::runtime_error, "Number of frames can not be 0");
         REQUIRE(m_fileHeader.fps != 0, std::runtime_error, "Frames rate can not be 0");
