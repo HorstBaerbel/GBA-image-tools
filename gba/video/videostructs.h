@@ -8,6 +8,7 @@ namespace Video
     /// @brief File header describing the video data
     struct FileHeader
     {
+        uint32_t magic = 0;           // Magick must be "v2h_"
         uint32_t nrOfFrames = 0;      // Number of frames in file
         uint16_t width = 0;           // Width in pixels
         uint16_t height = 0;          // Height in pixels
