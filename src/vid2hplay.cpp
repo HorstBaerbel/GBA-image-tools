@@ -41,7 +41,7 @@ bool readArguments(int argc, const char *argv[])
 {
     try
     {
-        cxxopts::Options opts("vidplay", "Play vid2h video file");
+        cxxopts::Options opts("vid2hplay", "Play vid2h video file");
         opts.add_option("", {"h,help", "Print help"});
         opts.add_option("", {"infile", "Input video file, e.g. \"foo.bin\"", cxxopts::value<std::string>()});
         opts.parse_positional({"infile"});
@@ -87,7 +87,7 @@ void printUsage()
 {
     // 80 chars:  --------------------------------------------------------------------------------
     std::cout << "Play vid2h video file" << std::endl;
-    std::cout << "Usage: vidplay INFILE" << std::endl;
+    std::cout << "Usage: vid2hplay INFILE" << std::endl;
 }
 
 int main(int argc, const char *argv[])

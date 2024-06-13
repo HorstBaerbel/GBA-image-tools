@@ -49,6 +49,7 @@ vid2h will store binary file header fields and frame header fields:
 | Field                                      | Size     |                                                                               |
 | ------------------------------------------ | -------- | ----------------------------------------------------------------------------- |
 | *File / Video*                             |
+| Magic bytes "v2h_"                         | 4 bytes  | To identify the file type
 | Number of frames in file                   | 4 bytes  |
 | Frame width in pixels                      | 2 bytes  |
 | Frame height in pixels                     | 2 bytes  |
@@ -60,16 +61,16 @@ vid2h will store binary file header fields and frame header fields:
 | *Frame #0*                                 |
 | &emsp; Frame data chunk size               | 4 bytes  | Padded size of frame data chunk (NOT including the color map size)            |
 | &emsp; *Frame data chunk #0*               |
-| &emsp; &emsp; Processing type              | 1 byte   | See following table and [imageprocessing.h](src/processing/imageprocessing.h) |
+| &emsp; &emsp; Processing type              | 1 byte   | See following table and [processingtypes.h](src/processing/processingtypes.h) |
 | &emsp; &emsp; Uncompressed frame data size | 3 bytes  |
 | &emsp; &emsp; Frame data                   | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)           |
 | &emsp; Color map data                      | M colors | Only if M > 0. Padded to multiple of 4                                        |
 | *Frame #1*                                 |
 | ...                                        |
 
-Note that (if the file header is aligned to 4 bytes) every *Frame* and every *Data Chunk* in the file will be aligned to 4 bytes. If you use aligned memory as a scratchpad when decoding, again, every *Chunk Data* will be aligned too.
+Note that (if the file header is aligned to 4 bytes) every *Frame* and every *Data chunk* in the file will be aligned to 4 bytes. If you use aligned memory as a scratchpad when decoding, again, every *Chunk data* will be aligned too.
 
-Processing type meaning:
+Processing type meaning (see also [processingtypes.h](src/processing/processingtypes.h)):
 
 | Processing type byte | Meaning                                                         |
 | -------------------- | --------------------------------------------------------------- |
@@ -80,11 +81,15 @@ Processing type meaning:
 | 60                   | Image data is compressed using LZ77 variant 10                  |
 | 61                   | Image data is compressed using LZ77 variant 11                  |
 | 65                   | Image data is compressed using run-length-encoding              |
-| 70                   | Image data is compressed using DXTG                             |
-| 71                   | Image data is compressed using DXTV                             |
+| 70                   | Image data is compressed using DXT                              |
+| 71                   | Image data is compressed using DXTV(ideo)                       |
 | 128 (ORed w/ type)   | Final compression / processing step on data                     |
 
 Thus a processing chain could be `50, 65, 188` meaning `8-bit deltas, RLE, LZ77 10 (final step)`. A chain of DXVT + LZ10 is a good fit for video.
+
+## Decompression on PC
+
+Use [vid2hplay](src/vid2hplay.cpp) to play back vid2h files.
 
 ## Decompression on GBA
 
