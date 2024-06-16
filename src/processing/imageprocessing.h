@@ -139,11 +139,6 @@ namespace Image
         /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
         static Data compressLZ10(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
-        /// @brief Compress image data using LZ77 variant 11
-        /// @param parameters:
-        /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
-        static Data compressLZ11(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
-
         /// @brief Compress image data using RLE
         /// @param parameters:
         /// - Flag for VRAM-compatible compression as bool. Pass true to turn on

@@ -27,15 +27,14 @@ Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COM
   * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--rle```](#compressing-data) - Use RLE compression ["RLUnComp"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--lz10```](#compressing-data) - Use LZ77 compression ["LZ77UnComp variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--lz11```](#compressing-data) - Use LZ77 compression ["LZ77UnComp variant 11"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
+    * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
 * ```OPTIONS``` are optional:
   * ```--dryrun``` - Process data, but do not write output files.
 * ```INFILE``` specifies the input video file. Must be readable with FFmpeg.
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_". Binary output will be written as "abc.bin".
 
-The order of the operations performed is: Read input file ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxtg / dxtv ➜ diff8 / diff16 ➜ rle ➜ lz10 / lz11 ➜ Write output
+The order of the operations performed is: Read input file ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxtg / dxtv ➜ diff8 / diff16 ➜ rle ➜ lz10 ➜ Write output
 
 Some general information:
 

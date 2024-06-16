@@ -24,7 +24,6 @@ Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn..
   * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--rle```](#compressing-data) - Use RLE compression (http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--lz10```](#compressing-data) - Use LZ77 compression ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--lz11```](#compressing-data) - Use LZ77 compression ["variant 11"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
 * ```OPTIONS``` are optional:
@@ -33,7 +32,7 @@ Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn..
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here, e.g. "dir/file\*.png".
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
-The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ delta8 / delta16 ➜ rle ➜ lz10 / lz11 ➜ interleavepixels ➜ Write output
+The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ delta8 / delta16 ➜ rle ➜ lz10 ➜ interleavepixels ➜ Write output
 
 Some general information:
 
@@ -112,7 +111,7 @@ This will put image pixel 0 of file 0 and image pixel 0 of file 1 next to each o
 
 ### Compressing data
 
-You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible) and ```--lz11``` (LZ77 ["variant 11"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions)). To be able to safely decompress LZ-compressed data to VRAM, add the option ```--vram```. LZ-compression needs the [devKitPro](https://devkitpro.org) tool [gbalzss](https://github.com/devkitPro/gba-tools) which it will try to find through the ```$DEVKITPRO``` environment variable or in ```$PATH```.  
+You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible). To be able to safely decompress LZ-compressed data to VRAM, add the option ```--vram```.  
 To improve compression you can apply run-length-encoding using ```--rle``` (See ["RLUnComp"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions)) or apply diff- / delta-encoding using ```--diff8``` or ```--diff16``` which will store the difference of consecutive 8- or 16-bit values instead of the actual data (See ["Diff8bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions)).
 
 ## General hints for processing images in paint programs

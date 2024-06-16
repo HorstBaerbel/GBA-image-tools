@@ -41,7 +41,6 @@ namespace Image
             {ProcessingType::ConvertDelta8, {"delta-8", OperationType::Convert, FunctionType(toDelta8)}},
             {ProcessingType::ConvertDelta16, {"delta-16", OperationType::Convert, FunctionType(toDelta16)}},
             {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
-            {ProcessingType::CompressLZ11, {"compress LZ11", OperationType::Convert, FunctionType(compressLZ11)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXT, {"compress DXT", OperationType::Convert, FunctionType(compressDXT)}},
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
@@ -338,19 +337,7 @@ namespace Image
         const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
         // compress data
         auto result = data;
-        result.imageData.pixels() = PixelData(Compression::compressLzss(result.imageData.pixels().convertDataToRaw(), vramCompatible, false), Color::Format::Unknown);
-        // result.data = LZSS::encodeLZSS(image.data, vramCompatible);
-        return result;
-    }
-
-    Data Processing::compressLZ11(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics)
-    {
-        // get parameter(s)
-        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ11 expects a bool VRAMcompatible parameter");
-        const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
-        // compress data
-        auto result = data;
-        result.imageData.pixels() = PixelData(Compression::compressLzss(result.imageData.pixels().convertDataToRaw(), vramCompatible, true), Color::Format::Unknown);
+        result.imageData.pixels() = PixelData(Compression::encodeLZ10(result.imageData.pixels().convertDataToRaw(), vramCompatible), Color::Format::Unknown);
         return result;
     }
 

@@ -65,7 +65,6 @@ bool readArguments(int argc, const char *argv[])
         // opts.add_option("", options.gvid.cxxOption);
         // opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
-        opts.add_option("", options.lz11.cxxOption);
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.parse_positional({"infile", "outname"});
@@ -121,11 +120,6 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Only a single format option is allowed." << std::endl;
             return false;
         }
-        if (options.lz10 && options.lz11)
-        {
-            std::cerr << "Only a single LZ-compression option is allowed." << std::endl;
-            return false;
-        }
         options.outformat.parse(result);
         if (!options.outformat)
         {
@@ -178,10 +172,8 @@ void printUsage()
     std::cout << "COMPRESS options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
-    std::cout << options.lz11.helpString() << std::endl;
     std::cout << "COMPRESS modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
-    std::cout << "You must have DevkitPro installed or the gbalzss executable must be in PATH." << std::endl;
     std::cout << "INFILE: Input video file to convert, e.g. \"foo.avi\"" << std::endl;
     std::cout << "OUTNAME: is determined from the first non-existant file path. It can be an " << std::endl;
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
@@ -191,7 +183,7 @@ void printUsage()
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
     std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites, tiles," << std::endl;
-    std::cout << "deltaimage, dxtg / dtxv / gvid, delta8 / delta16, rle, lz10 / lz11, output" << std::endl;
+    std::cout << "deltaimage, dxtg / dtxv / gvid, delta8 / delta16, rle, lz10, output" << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -323,10 +315,6 @@ int main(int argc, const char *argv[])
         if (options.lz10)
         {
             processing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true);
-        }
-        if (options.lz11)
-        {
-            processing.addStep(Image::ProcessingType::CompressLZ11, {options.vram.isSet}, true);
         }
         processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
         // create statistics window

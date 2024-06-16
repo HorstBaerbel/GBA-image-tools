@@ -49,7 +49,6 @@ public:
     static Option delta8;
     static Option delta16;
     static Option lz10;
-    static Option lz11;
     // static Option rle;
     static Option vram;
     static Option dxt;

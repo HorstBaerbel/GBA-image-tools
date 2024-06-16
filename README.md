@@ -42,8 +42,6 @@ All of this is under the [MIT License](LICENSE). It uses:
 
   ```apt install libsdl2-dev``` or ```dnf install SDL2-devel```
 
-* For compressing data with LZ77 you need to have [devkitPro / devKitARM](https://devkitpro.org) [installed](https://devkitpro.org/wiki/Getting_Started) and the environment variable ```$DEVKITPRO``` set, or the [gbalzss](https://github.com/devkitPro/gba-tools) tool in your ```$PATH```.
-
 ## Building
 
 ### From the command line
@@ -76,4 +74,4 @@ make package
 * More TESTS!
 * More modern C++ constructs
 * Get rid of ImageMagick altogether (only used for image I/O atm)
-* Clean up and use internal RLE + LZ77 + Huffman compression
+* Clean up and use internal RLE + Huffman compression
