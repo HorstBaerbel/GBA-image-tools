@@ -14,7 +14,7 @@ std::string ProcessingOptions::Option::helpString() const
 
 ProcessingOptions::OptionT<double> ProcessingOptions::blackWhite{
     false,
-    {"blackwhite", "Convert images to b/w image with intensity threshold at N. N must be in [0.0, 1.0].", cxxopts::value(blackWhite.value)},
+    {"blackwhite=N", "Convert images to b/w image with intensity threshold at N. N must be in [0.0, 1.0].", cxxopts::value(blackWhite.value)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -28,7 +28,7 @@ ProcessingOptions::OptionT<double> ProcessingOptions::blackWhite{
 
 ProcessingOptions::OptionT<uint32_t> ProcessingOptions::paletted{
     false,
-    {"paletted", "Convert images to paletted images with N colors using dithering. N must be in [2, 256].", cxxopts::value(paletted.value)},
+    {"paletted=N", "Convert images to paletted images with N colors using dithering. N must be in [2, 256].", cxxopts::value(paletted.value)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -42,7 +42,7 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::paletted{
 
 ProcessingOptions::OptionT<uint32_t> ProcessingOptions::commonPalette{
     false,
-    {"commonpalette", "Convert images to a paletted images with a common palette of N colors using dithering. N must be in [2, 256].", cxxopts::value(commonPalette.value)},
+    {"commonpalette=N", "Convert images to a paletted images with a common palette of N colors using dithering. N must be in [2, 256].", cxxopts::value(commonPalette.value)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -56,7 +56,7 @@ ProcessingOptions::OptionT<uint32_t> ProcessingOptions::commonPalette{
 
 ProcessingOptions::OptionT<Color::Format> ProcessingOptions::truecolor{
     false,
-    {"truecolor", "Convert images to RGB888, RGB565 or RGB555 true-color", cxxopts::value(truecolor.valueString)},
+    {"truecolor=X", "Convert images to RGB888, RGB565 or RGB555 true-color", cxxopts::value(truecolor.valueString)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -89,7 +89,7 @@ ProcessingOptions::OptionT<Color::Format> ProcessingOptions::truecolor{
 
 ProcessingOptions::OptionT<Color::Format> ProcessingOptions::outformat{
     false,
-    {"outformat", "Set output color format (direct pixel color + color map) to RGB888, RGB565, RGB555, BGR888, BGR565 or BGR555", cxxopts::value(outformat.valueString)},
+    {"outformat=X", "Set output color format (direct pixel color / color map) to RGB888, RGB565, RGB555, BGR888, BGR565 or BGR555", cxxopts::value(outformat.valueString)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -255,7 +255,7 @@ ProcessingOptions::Option ProcessingOptions::tiles{
 
 ProcessingOptions::OptionT<bool> ProcessingOptions::tilemap{
     false,
-    {"tilemap", "Output optimized screen and tile map for the input image. Will detect flipped tiles if --tilemap=true. Implies --tiles. The image needs to be paletted and its width and height must be a multiple of 8 pixels.", cxxopts::value(tilemap.value)},
+    {"tilemap", "Output optimized screen and tile map for the input image. Implies --tiles. Will detect flipped tiles if --tilemap=true. The image needs to be paletted and its width and height must be a multiple of 8 pixels.", cxxopts::value(tilemap.value)},
     false,
     {},
     [](const cxxopts::ParseResult &r)
