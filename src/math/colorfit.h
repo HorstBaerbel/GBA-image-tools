@@ -64,7 +64,7 @@ public:
     // - Snap important outlier objects to colorspace color
     // - Repeat while adjusting allowedNeighbourDistance until important outliers + clusters ~= nrOfColors
     // @note This can be quite slow and take quite a bit of RAM. You have been warned...
-    auto reduceColors(const std::map<PIXEL_TYPE, uint64_t> &colorHistogram, std::size_t nrOfColors) const -> std::vector<PIXEL_TYPE>
+    auto reduceColors(const std::map<PIXEL_TYPE, uint64_t> &colorHistogram, std::size_t nrOfColors) const -> std::map<PIXEL_TYPE, std::vector<PIXEL_TYPE>>
     {
         REQUIRE(nrOfColors > 1 && nrOfColors <= 256, std::runtime_error, "Bad number of colors. Must be in range [2,256]");
         std::size_t iterationsLeft = 5;
@@ -292,10 +292,11 @@ public:
             }
         } while (--iterationsLeft > 0);
         REQUIRE(clusters.size() > 0 && clusters.size() <= nrOfColors, std::runtime_error, "Bad number of clusters");
-        std::vector<PIXEL_TYPE> result;
-        std::transform(clusters.cbegin(), clusters.cend(), std::back_inserter(result), [](const auto &c)
-                       { return c.center; });
-        return result;
+        // return reduced set of colors and mapping from reduced set of colors to original colors
+        std::map<PIXEL_TYPE, std::vector<PIXEL_TYPE>> colorMapping;
+        std::transform(clusters.cbegin(), clusters.cend(), std::inserter(colorMapping, colorMapping.end()), [](const auto &c)
+                       { return std::make_pair(c.center, c.objects); });
+        return colorMapping;
     }
 
 private:
