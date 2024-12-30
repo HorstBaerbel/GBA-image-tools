@@ -70,6 +70,6 @@ namespace ColorHelpers
         {
             return buildColorMapRGB565();
         }
-        return {};
+        THROW(std::runtime_error, "Unsupported color format");
     }
 }

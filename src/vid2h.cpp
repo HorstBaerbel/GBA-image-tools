@@ -232,12 +232,36 @@ int main(int argc, const char *argv[])
         else if (options.paletted)
         {
             // add palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
+            std::vector<Color::XRGB8888> colorSpaceMap;
+            switch (options.outformat.value)
+            {
+            case Color::Format::XBGR1555:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::XRGB1555);
+                break;
+            case Color::Format::BGR565:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::RGB565);
+                break;
+            default:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
+            }
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, colorSpaceMap});
         }
         else if (options.commonPalette)
         {
             // add common palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
+            std::vector<Color::XRGB8888> colorSpaceMap;
+            switch (options.outformat.value)
+            {
+            case Color::Format::XBGR1555:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::XRGB1555);
+                break;
+            case Color::Format::BGR565:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::RGB565);
+                break;
+            default:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
+            }
+            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, colorSpaceMap});
         }
         else if (options.truecolor)
         {

@@ -22,7 +22,7 @@ namespace ColorHelpers
     /// @brief Build a color map with all colors in the RGB565 color space the NDS or DXT use
     auto buildColorMapRGB565() -> std::vector<Color::XRGB8888>;
 
-    /// @brief Build a color map for color format color space. Only works for XRGB1555 and RGB565. All other formats will return empty color maps
+    /// @brief Build a color map for color format color space. Only works for XRGB1555 and RGB565. All other formats will throw
     auto buildColorMapFor(Color::Format format) -> std::vector<Color::XRGB8888>;
 
     /// @brief Find color closest to input color in list of colors

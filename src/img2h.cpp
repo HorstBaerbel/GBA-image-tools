@@ -239,9 +239,10 @@ std::vector<Image::Data> readImages(const std::vector<std::string> &fileNames, c
             REQUIRE(commonImgSize == imgSize, std::runtime_error, "Image sizes do not match");
         }
         // if we want to convert to tiles or sprites make sure data is multiple of 8 pixels in width and height
-        if ((options.sprites || options.tiles) && (!imgIsIndexed || imgSize.width() % 8 != 0 || imgSize.height() % 8 != 0))
+        if ((options.sprites || options.tiles))
         {
-            THROW(std::runtime_error, "Image must be paletted and width / height must be a multiple of 8");
+            REQUIRE(imgSize.width() % 8 == 0 || imgSize.height() % 8 == 0, std::runtime_error, "Image width / height must be a multiple of 8");
+            REQUIRE(imgIsIndexed || options.blackWhite || options.commonPalette || options.paletted, std::runtime_error, "Image format must be binary or paletted");
         }
         if (options.sprites && (imgSize.width() % options.sprites.value.front() != 0 || imgSize.height() % options.sprites.value.back() != 0))
         {
@@ -288,12 +289,36 @@ int main(int argc, const char *argv[])
         else if (options.paletted)
         {
             // add palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
+            std::vector<Color::XRGB8888> colorSpaceMap;
+            switch (options.outformat.value)
+            {
+            case Color::Format::XBGR1555:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::XRGB1555);
+                break;
+            case Color::Format::BGR565:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::RGB565);
+                break;
+            default:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
+            }
+            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, colorSpaceMap});
         }
         else if (options.commonPalette)
         {
             // add common palette conversion using a RGB555 or RGB565 reference color map
-            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, ColorHelpers::buildColorMapFor(options.outformat.value)});
+            std::vector<Color::XRGB8888> colorSpaceMap;
+            switch (options.outformat.value)
+            {
+            case Color::Format::XBGR1555:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::XRGB1555);
+                break;
+            case Color::Format::BGR565:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(Color::Format::RGB565);
+                break;
+            default:
+                colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
+            }
+            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, colorSpaceMap});
         }
         else if (options.truecolor)
         {
