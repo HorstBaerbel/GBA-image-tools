@@ -35,10 +35,10 @@ namespace Memory
 
 	// PLEASE NOTE: We're on ARM, so word means 32-bits, half-word means 16-bit!
 
-	/// @brief Copy dwords from source to destination.
+	/// @brief Copy words from source to destination.
 	/// @param destination Copy destination.
 	/// @param source Copy source.
-	/// @param nrOfWords Number of dwords to copy.
+	/// @param nrOfWords Number of words to copy.
 	extern "C" void memcpy32(void *destination, const void *source, uint32_t nrOfWords) IWRAM_FUNC;
 
 	/// @brief Set words in destination to value.
@@ -47,10 +47,10 @@ namespace Memory
 	/// @param nrOfHwords Number of half-words to set.
 	extern "C" void memset16(void *destination, uint16_t value, uint32_t nrOfHwords) IWRAM_FUNC;
 
-	/// @brief Set dwords in destination to value.
+	/// @brief Set words in destination to value.
 	/// @param destination Set destination.
 	/// @param value Value to set destination dwords to.
-	/// @param nrOfWords Number of dwords to set.
+	/// @param nrOfWords Number of words to set.
 	extern "C" void memset32(void *destination, uint32_t value, uint32_t nrOfWords) IWRAM_FUNC;
 
 } // namespace Memory
