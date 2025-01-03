@@ -50,4 +50,7 @@ namespace Color
     template <typename PIXEL_TYPE>
     auto toFormat() -> Format;
 
+    /// @brief Calculate size for an image composed of format pixels
+    /// @note Will round up to the nearest byte for pixel formats with bits < 8!
+    auto bytesPerImage(Format format, uint32_t nrOfPixels) -> uint32_t;
 }

@@ -93,4 +93,21 @@ namespace Color
         return Format::Grayf;
     }
 
+    auto bytesPerImage(Format format, uint32_t nrOfPixels) -> uint32_t
+    {
+        switch (format)
+        {
+        case Format::Paletted1:
+            nrOfPixels += nrOfPixels % 8;
+            return nrOfPixels / 8;
+        case Format::Paletted2:
+            nrOfPixels += (nrOfPixels * 2) % 8;
+            return nrOfPixels * 2 / 8;
+        case Format::Paletted4:
+            nrOfPixels += (nrOfPixels * 4) % 8;
+            return nrOfPixels * 4 / 8;
+        default:
+            return nrOfPixels * formatInfo(format).bytesPerPixel;
+        }
+    }
 }
