@@ -6,7 +6,7 @@
 namespace IO
 {
 
-    void Text::writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &mapData, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages, bool asTiles)
+    auto Text::writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages, bool asTiles) -> void
     {
         hFile << "#pragma once" << std::endl;
         hFile << "#include <stdint.h>" << std::endl
@@ -25,10 +25,6 @@ namespace IO
             hFile << "#define " << varName << "_BYTES_PER_IMAGE " << bytesPerImage << " // bytes for one complete image" << std::endl;
             hFile << "#define " << varName << "_DATA_SIZE " << data.size() << " // size of image data in 4 byte units" << std::endl;
         }
-        if (!mapData.empty())
-        {
-            hFile << "#define " << varName << "_MAPDATA_SIZE " << mapData.size() << " // size of screen map data in 4 byte units" << std::endl;
-        }
         if (nrOfImages > 1)
         {
             if (asTiles)
@@ -42,24 +38,21 @@ namespace IO
             }
         }
         hFile << "extern const uint32_t " << varName << "_DATA[" << varName << "_DATA_SIZE];" << std::endl;
+    }
+
+    auto Text::writeMapInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void
+    {
         if (!mapData.empty())
         {
+            hFile << "#define " << varName << "_MAPDATA_SIZE " << mapData.size() << " // size of screen map data in 4 byte units" << std::endl;
             hFile << "extern const uint32_t " << varName << "_MAPDATA[" << varName << "_MAPDATA_SIZE];" << std::endl;
         }
     }
 
-    void Text::writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &dataStartIndices, const std::vector<uint32_t> &mapData, bool asTiles)
+    auto Text::writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &dataStartIndices, bool asTiles) -> void
     {
         cFile << "#include \"" << hFileBaseName << ".h\"" << std::endl
               << std::endl;
-        // write map data if passed
-        if (!mapData.empty())
-        {
-            cFile << "const _Alignas(4) uint32_t " << varName << "_MAPDATA[" << varName << "_MAPDATA_SIZE] = { " << std::endl;
-            writeValues(cFile, mapData, true);
-            cFile << "};" << std::endl
-                  << std::endl;
-        }
         // write data start indices if passed
         if (dataStartIndices.size() > 1)
         {
@@ -75,4 +68,14 @@ namespace IO
               << std::endl;
     }
 
+    auto Text::writeMapDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void
+    {
+        if (!mapData.empty())
+        {
+            cFile << "const _Alignas(4) uint32_t " << varName << "_MAPDATA[" << varName << "_MAPDATA_SIZE] = { " << std::endl;
+            writeValues(cFile, mapData, true);
+            cFile << "};" << std::endl
+                  << std::endl;
+        }
+    }
 }

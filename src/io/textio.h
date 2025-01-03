@@ -16,7 +16,7 @@ namespace IO
     private:
         /// @brief Write values as a comma-separated array of hex numbers.
         template <typename T>
-        static void writeValues(std::ofstream &outFile, const std::vector<T> &data, bool asHex = false)
+        static auto writeValues(std::ofstream &outFile, const std::vector<T> &data, bool asHex = false) -> void
         {
             auto flags = outFile.flags();
             size_t loopCount = 0;
@@ -44,11 +44,14 @@ namespace IO
 
     public:
         /// @brief Write image information to a .h file.
-        static void writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &mapData, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages = 1, bool asTiles = false);
+        static auto writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages = 1, bool asTiles = false) -> void;
+
+        /// @brief Write map data information to a .h file. Use after write writeImageInfoToH.
+        static auto writeMapInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void;
 
         /// @brief Write additional palette information to a .h file. Use after write writeImageInfoToH.
         template <typename T>
-        static void writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<T> &data, uint32_t nrOfColors, bool singleColorMap = true, bool asTiles = false)
+        static auto writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<T> &data, uint32_t nrOfColors, bool singleColorMap = true, bool asTiles = false) -> void
         {
             hFile << "#define " << varName << "_PALETTE_LENGTH " << nrOfColors << " // # of palette entries per palette" << std::endl;
             hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data" << std::endl;
@@ -60,11 +63,14 @@ namespace IO
         }
 
         /// @brief Write image data to a .c file.
-        static void writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), const std::vector<uint32_t> &mapData = std::vector<uint32_t>(), bool asTiles = false);
+        static auto writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false) -> void;
+
+        /// @brief Write map data to a .c file. Use after write writeImageDataToC.
+        static auto writeMapDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void;
 
         /// @brief Write palette data to a .c file. Use after write writeImageDataToC.
         template <typename T>
-        static void writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<T> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false)
+        static auto writePaletteDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<T> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false) -> void
         {
             // write palette start indices if more than one palette
             if (startIndices.size() > 1)
