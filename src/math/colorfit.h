@@ -291,7 +291,7 @@ public:
                 break;
             }
         } while (--iterationsLeft > 0);
-        REQUIRE(clusters.size() > 0 && clusters.size() <= nrOfColors, std::runtime_error, "Bad number of clusters");
+        REQUIRE(clusters.size() > 0 && clusters.size() <= nrOfColors, std::runtime_error, "Failed to find expected number of clusters");
         // return reduced set of colors and mapping from reduced set of colors to original colors
         std::map<PIXEL_TYPE, std::vector<PIXEL_TYPE>> colorMapping;
         std::transform(clusters.cbegin(), clusters.cend(), std::inserter(colorMapping, colorMapping.end()), [](const auto &c)
