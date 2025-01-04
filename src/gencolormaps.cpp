@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
     }
     Image::ImageData pixels555(colors555);
     Image::Data data555;
-    data555.size = {256, 128};
-    data555.imageData = pixels555;
+    data555.image.size = {256, 128};
+    data555.image.data = pixels555;
     IO::File::writeImage(data555, ".", "colormap555.png");
     // Generate RGB565 colors
     std::vector<Color::XRGB8888> colors565;
@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
     }
     Image::ImageData pixels565(colors565);
     Image::Data data565;
-    data565.size = {256, 256};
-    data565.imageData = pixels565;
+    data565.image.size = {256, 256};
+    data565.image.data = pixels565;
     IO::File::writeImage(data565, ".", "colormap565.png");
     return 0;
 }

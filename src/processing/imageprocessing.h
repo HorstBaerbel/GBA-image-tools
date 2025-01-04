@@ -166,18 +166,18 @@ namespace Image
 
         // --- misc conversion functions ------------------------------------------------------------------------
 
-        /// @brief Convert pixels to format.
+        /// @brief Convert pixel color format and convert image data to raw data
         /// @param parameters Truecolor format to convert pixels to as Color::Format
-        /// @param Will do nothing if the pixel data raw
+        /// @note Will do nothing if the pixel data is already in raw format
         static Data convertPixelsToRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Fill up pixel data with 0s to a multiple of N bytes
         /// @param parameters "Modulo value" as uint32_t. The pixel data will be padded to a multiple of this
         static Data padPixelData(const Data &image, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
-        /// @brief Convert color map to format.
+        /// @brief Convert color map color format and convert color map to raw data
         /// @param parameters Truecolor format to convert color map to as Color::Format
-        /// @param Will do nothing if the pixel data raw
+        /// @note Will do nothing if the color map data is already in raw format
         static Data convertColorMapToRaw(const Data &data, const std::vector<Parameter> &parameters, Statistics::Container::SPtr statistics);
 
         /// @brief Fill up map data with 0s to a multiple of N bytes
@@ -203,11 +203,11 @@ namespace Image
     private:
         struct ProcessingStep
         {
-            ProcessingType type;
-            std::vector<Parameter> parameters;
-            bool prependProcessingInfo = false;
-            bool addStatistics = false;
-            std::vector<uint8_t> state;
+            ProcessingType type;                // Type of processing operation applied
+            std::vector<Parameter> parameters;  // Input parameters for operation
+            bool prependProcessingInfo = false; // If processing information should stored in the data
+            bool addStatistics = false;         // If operation statistics should be written to
+            std::vector<uint8_t> state;         // The input / output state for stateful operations
         };
         std::vector<ProcessingStep> m_steps;
         Statistics::Container::SPtr m_statistics;
@@ -228,9 +228,9 @@ namespace Image
 
         struct ProcessingFunc
         {
-            std::string description;
-            OperationType type;
-            FunctionType func;
+            std::string description; // Processing operation description
+            OperationType type;      // Of what type the operation is
+            FunctionType func;       // Actual processing function
         };
         static const std::map<ProcessingType, ProcessingFunc> ProcessingFunctions;
     };

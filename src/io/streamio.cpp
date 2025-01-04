@@ -7,10 +7,10 @@ namespace IO
 
     auto Stream::writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &
     {
-        REQUIRE((frame.imageData.pixels().size() & 3) == 0, std::runtime_error, "Frame data size is not a multiple of 4");
-        REQUIRE((frame.imageData.colorMap().size() & 3) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
+        REQUIRE((frame.image.data.pixels().size() & 3) == 0, std::runtime_error, "Frame data size is not a multiple of 4");
+        REQUIRE((frame.image.data.colorMap().size() & 3) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
         // store compressed frame data size. this might include a prepended processing type / uncompressed size
-        auto frameData = frame.imageData.pixels().convertDataToRaw();
+        auto frameData = frame.image.data.pixels().convertDataToRaw();
         const uint32_t frameSize = frameData.size();
         os.write(reinterpret_cast<const char *>(&frameSize), sizeof(frameSize));
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write frame size for frame #" << frame.index << " to stream");
@@ -18,9 +18,9 @@ namespace IO
         os.write(reinterpret_cast<const char *>(frameData.data()), frameData.size());
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");
         // check if we're using a color map and write that
-        if (frame.imageData.pixels().isIndexed())
+        if (frame.image.data.pixels().isIndexed())
         {
-            auto colorMapData = frame.imageData.colorMap().convertDataToRaw();
+            auto colorMapData = frame.image.data.colorMap().convertDataToRaw();
             os.write(reinterpret_cast<const char *>(colorMapData.data()), colorMapData.size());
             REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map data for frame #" << frame.index << " to stream");
         }
@@ -39,15 +39,15 @@ namespace IO
     auto Stream::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &
     {
         REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
-        const auto &frameData = frames.front().imageData;
+        const auto &frameData = frames.front().image.data;
         // check if we're using a color map
         const bool frameHasColorMap = frameData.pixels().isIndexed();
         // generate file header and store it
         FileHeader fileHeader;
         fileHeader.magic = VID2H_MAGIC;
         fileHeader.nrOfFrames = frames.size();
-        fileHeader.width = static_cast<uint16_t>(frames.front().size.width());
-        fileHeader.height = static_cast<uint16_t>(frames.front().size.height());
+        fileHeader.width = static_cast<uint16_t>(frames.front().image.size.width());
+        fileHeader.height = static_cast<uint16_t>(frames.front().image.size.height());
         fileHeader.fps = fps;
         fileHeader.bitsPerPixel = static_cast<uint8_t>(Color::formatInfo(frameData.pixels().format()).bitsPerPixel);
         fileHeader.bitsPerColor = frameHasColorMap ? static_cast<uint8_t>(Color::formatInfo(frameData.colorMap().format()).bitsPerPixel) : 0;

@@ -110,9 +110,10 @@ namespace IO
             THROW(std::runtime_error, "Failed to read image: " << ex.what());
         }
         Image::Data data;
-        data.size = {img.size().width(), img.size().height()};
-        data.imageData = getImageData(img);
-        data.dataType = Image::DataType::Bitmap;
+        data.type = Image::DataType::Flags::Bitmap;
+        data.image.size = {img.size().width(), img.size().height()};
+        data.image.data = getImageData(img);
+        data.image.pixelFormat = data.image.data.pixels().format();
         return data;
     }
 
@@ -156,20 +157,20 @@ namespace IO
 
     auto File::writeImage(const Image::Data &image, const std::string &folder, const std::string &fileName) -> void
     {
-        REQUIRE(image.imageData.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
-        REQUIRE(image.size.width() > 0 && image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(image.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(image.image.size.width() > 0 && image.image.size.height() > 0, std::runtime_error, "Bad image size");
         REQUIRE(!image.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
-        Magick::Image temp({image.size.width(), image.size.height()}, "black");
-        const bool isIndexed = !image.imageData.colorMap().empty();
+        Magick::Image temp({image.image.size.width(), image.image.size.height()}, "black");
+        const bool isIndexed = !image.image.data.colorMap().empty();
         temp.type(isIndexed ? Magick::ImageType::PaletteType : Magick::ImageType::TrueColorType);
         temp.modifyImage();
         if (isIndexed)
         {
-            writePaletted(temp, image.imageData);
+            writePaletted(temp, image.image.data);
         }
         else
         {
-            writeTrueColor(temp, image.imageData);
+            writeTrueColor(temp, image.image.data);
         }
         temp.syncPixels();
         // convert to sRGB color space
@@ -195,8 +196,8 @@ namespace IO
 
     auto File::writeRawImage(const Image::Data &image, const std::string &folder, const std::string &fileName) -> void
     {
-        REQUIRE(image.imageData.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
-        REQUIRE(image.size.width() > 0 && image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(image.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(image.image.size.width() > 0 && image.image.size.height() > 0, std::runtime_error, "Bad image size");
         REQUIRE(!image.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
         // create paths if neccessary
         auto outName = !fileName.empty() ? fileName : image.fileName;
@@ -207,7 +208,7 @@ namespace IO
         }
         // write to disk
         auto ofs = std::ofstream(outPath, std::ios::binary);
-        auto pixels = image.imageData.pixels().convertDataToRaw();
+        auto pixels = image.image.data.pixels().convertDataToRaw();
         ofs.write(reinterpret_cast<const char *>(pixels.data()), pixels.size());
     }
 }

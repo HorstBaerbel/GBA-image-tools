@@ -32,7 +32,7 @@ Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn..
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here, e.g. "dir/file\*.png".
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
-The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ delta8 / delta16 ➜ rle ➜ lz10 ➜ interleavepixels ➜ Write output
+The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ sprites ➜ tiles ➜ prune ➜ delta8 / delta16 ➜ rle ➜ lz10 ➜ interleavepixels ➜ Write output
 
 Some general information:
 
@@ -40,7 +40,6 @@ Some general information:
 * All image and color map data stored to output files will be aligned to 4 bytes and padded to 4 bytes. Zero bytes will be added if necessary.
 * When processing **multiple input images** they **will be stored in a single .h / .c file**. Thus they must have the same width, height and bit depth.
 * When processing multiple paletted input images, their palettes will be padded with black colors / zero bytes to the size of the biggest palette.
-* Truecolor data will be converted to RGB555.
 
 ## Options
 
@@ -67,7 +66,7 @@ COLORVALUE is an RGB hex color value, e.g. "AA2345" or "123def".
 
 ### Pruning index values
 
-There's no way to store regular paletted images with 4-bit indices only, but 4-bit data is needed for 16-color tiles or -sprites. When a 256-color paletted image contains only 16 or less colors you can reduce index data to 4-bit values by passing the option ```--prune=4```. After the conversion an 8x8@4 tile will use 4 bytes, a 8x8@8 tile will use 8 bytes. ```N``` can also be set to 1 or 2 for storing masks or saving ROM space.
+There's no way to store regular paletted images with 4-bit indices only, but 4-bit data is needed for 16-color tiles or sprites. When a 256-color paletted image contains only 16 or less colors you can reduce index data to 4-bit values by passing the option ```--prune=4```. After the conversion an 8x8@4 tile will use 4 bytes, a 8x8@8 tile will use 8 bytes. ```N``` can also be set to 1 or 2 bits for storing masks or saving ROM space.
 
 ### Shifting index values
 

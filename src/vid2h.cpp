@@ -361,7 +361,9 @@ int main(int argc, const char *argv[])
             }
             REQUIRE(frame.size() == videoInfo.width * videoInfo.height, std::runtime_error, "Unexpected frame size");
             // build image from frame and apply processing
-            images.push_back(processing.processStream(Image::Data{frameIndex++, "", {videoInfo.width, videoInfo.height}, Image::DataType::Bitmap, {}, Color::convertTo<Color::XRGB8888>(frame)}));
+            Image::ImageInfo imageInfo = {{videoInfo.width, videoInfo.height}, Color::Format::Unknown, Color::Format::Unknown, 0, Color::convertTo<Color::XRGB8888>(frame), 0};
+            Image::MapInfo mapInfo = {{0, 0}, {}};
+            images.push_back(processing.processStream(Image::Data{frameIndex++, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, mapInfo}));
             // calculate progress
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
             if (lastProgress != newProgress)
@@ -383,7 +385,7 @@ int main(int argc, const char *argv[])
         const auto inputSize = videoInfo.width * videoInfo.height * 3 * videoInfo.nrOfFrames;
         std::cout << "Input size: " << static_cast<double>(inputSize) / (1024 * 1024) << " MB" << std::endl;
         const auto compressedSize = std::accumulate(images.cbegin(), images.cend(), 0, [](const auto &v, const auto &img)
-                                                    { return v + img.imageData.pixels().size() + (options.paletted ? img.imageData.colorMap().size() * 2 : 0); });
+                                                    { return v + img.image.data.pixels().size() + (options.paletted ? img.image.data.colorMap().size() * 2 : 0); });
         std::cout << "Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
         std::cout << "Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
         std::cout << "Avg. frame size: " << std::fixed << std::setprecision(1) << static_cast<double>(compressedSize) / images.size() << " Byte" << std::endl;
@@ -396,8 +398,8 @@ int main(int argc, const char *argv[])
         }
         // find out the max. memory needed to decompress
         const auto maxMemoryNeeded = std::max_element(images.cbegin(), images.cend(), [](const auto &img0, const auto &img1)
-                                                      { return img0.maxMemoryNeeded < img1.maxMemoryNeeded; })
-                                         ->maxMemoryNeeded;
+                                                      { return img0.image.maxMemoryNeeded < img1.image.maxMemoryNeeded; })
+                                         ->image.maxMemoryNeeded;
         std::cout << "Max. intermediate memory for decompression: " << maxMemoryNeeded << " Byte" << std::endl;
         // check if we want to write output files
         if (!options.dryRun)

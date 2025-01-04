@@ -20,13 +20,13 @@ namespace Image
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
-                       { return img.imageData.pixels().convertDataToRaw(); });
+                       { return img.image.data.pixels().convertDataToRaw(); });
         if (interleavePixels)
         {
             const auto allDataSameSize = std::find_if_not(temp8.cbegin(), temp8.cend(), [refSize = temp8.front().size()](const auto &d)
                                                           { return d.size() == refSize; }) == temp8.cend();
             REQUIRE(allDataSameSize, std::runtime_error, "The image pixel data size of all images must be the same for interleaving");
-            return {DataHelpers::convertTo<OUT_TYPE>(DataHelpers::interleave(temp8, Color::formatInfo(images.front().imageData.pixels().format()).bitsPerPixel)), std::vector<uint32_t>()};
+            return {DataHelpers::convertTo<OUT_TYPE>(DataHelpers::interleave(temp8, Color::formatInfo(images.front().image.data.pixels().format()).bitsPerPixel)), std::vector<uint32_t>()};
         }
         else
         {
@@ -46,7 +46,7 @@ namespace Image
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
-                       { return DataHelpers::convertTo<uint8_t>(img.mapData); });
+                       { return DataHelpers::convertTo<uint8_t>(img.map.data); });
         auto startIndices = DataHelpers::getStartIndices(temp8);
         for (auto index : startIndices)
         {
@@ -62,7 +62,7 @@ namespace Image
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
-                       { return img.imageData.colorMap().convertDataToRaw(); });
+                       { return img.image.data.colorMap().convertDataToRaw(); });
         auto startIndices = DataHelpers::getStartIndices(temp8);
         for (auto index : startIndices)
         {
