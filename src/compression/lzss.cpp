@@ -10,6 +10,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <map>
 
 namespace Compression
 {
@@ -18,9 +19,15 @@ namespace Compression
     constexpr uint32_t MAX_MATCH_LENGTH = 18;      // We have max. 4 bits to encode match length [3,18]
     constexpr uint32_t MAX_MATCH_DISTANCE = 0xFFF; // We have max. 12 bits to encode match distance
 
-    auto findBestMatch(std::vector<uint8_t>::const_iterator beginIt, std::vector<uint8_t>::const_iterator startIt, std::vector<uint8_t>::const_iterator endIt, int32_t minLength, int32_t maxLength, bool vramCompatible) -> std::pair<int32_t, int32_t>
+    struct MatchInfo
     {
-        std::pair<int32_t, int32_t> bestMatch = {0, 0};
+        int32_t distance = 0;
+        int32_t length = 0;
+    };
+
+    auto findBestMatch(std::vector<uint8_t>::const_iterator beginIt, std::vector<uint8_t>::const_iterator startIt, std::vector<uint8_t>::const_iterator endIt, int32_t minLength, int32_t maxLength, bool vramCompatible) -> MatchInfo
+    {
+        MatchInfo bestMatch = {0, 0};
         for (int32_t matchLength = minLength; matchLength <= maxLength; ++matchLength)
         {
             // make sure we have enough bytes for a match of matchLength
@@ -67,71 +74,103 @@ namespace Compression
         REQUIRE(!src.empty(), std::runtime_error, "Data too small");
         REQUIRE(src.size() < 2 ^ 24, std::runtime_error, "Data too big");
         const auto srcSize = src.size();
-        auto srcIt = src.cbegin();
-        // // store uncompressed size and LZ10 marker flag at start of destination
+        // store uncompressed size and LZ10 marker flag at start of destination
         std::vector<uint8_t> dst(4, 0);
         *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | 0x10;
-        // compress source
+        // build match information for every byte
+        std::map<uint32_t, MatchInfo> matches;
+        auto srcIt = src.cbegin();
+        while (srcIt != src.cend())
+        {
+            auto match = findBestMatch(src.cbegin(), srcIt, src.cend(), MIN_MATCH_LENGTH, MAX_MATCH_LENGTH, vramCompatible);
+            if (match.length >= MIN_MATCH_LENGTH)
+            {
+                matches[std::distance(src.cbegin(), srcIt)] = match;
+            }
+            ++srcIt;
+        }
+        // if we haven't found any matches, no need to check them
+        if (!matches.empty())
+        {
+            // optimize match cost
+            std::vector<uint32_t> cost(src.size(), 0);
+            uint32_t currentCost = 0;
+            // iterate through the matches in reverse until the first match
+            for (uint32_t srcPosition = src.size() - 1; srcPosition > matches.cbegin()->first; --srcPosition)
+            {
+                auto matchIt = matches.find(srcPosition);
+                if (matchIt != matches.cend())
+                {
+                    // here we are at a match. calculate cost
+                    auto bestCost = 2 + currentCost;
+                    auto bestLength = matchIt->second.length;
+                    auto currMatchLength = bestLength;
+                    while (currMatchLength >= MIN_MATCH_LENGTH)
+                    {
+                        // cost of this match is the cost of the match plus the cost of the rest of the new encoding
+                        // which is stored at cost[match_position + match_length]
+                        const auto matchCost = 2 + cost[srcPosition + currMatchLength];
+                        if (bestCost > matchCost)
+                        {
+                            bestCost = matchCost;
+                            bestLength = currMatchLength;
+                            matchIt->second.length = currMatchLength;
+                        }
+                        --currMatchLength;
+                    }
+                    // check if storing literals is cheaper than the best current match
+                    const auto literalCost = 1 + cost[srcPosition + 1];
+                    if (literalCost < bestCost)
+                    {
+                        bestCost = literalCost;
+                        bestLength = 1;
+                        // remove match from list. it is not needed anymore
+                        matches.erase(srcPosition);
+                    }
+                    // store current match cost
+                    cost[srcPosition] = bestCost;
+                    currentCost = bestCost;
+                }
+                else
+                {
+                    // here we have a literal
+                    cost[srcPosition] = ++currentCost;
+                }
+            }
+        }
+        // compress source by iterating through matches
         std::size_t dstFlagPosition = 0;
         int32_t flagBitIndex = 7;
-        while (srcIt < src.cend())
+        std::size_t srcPosition = 0;
+        while (srcPosition < src.size())
         {
-            uint32_t distance = std::distance(src.cbegin(), srcIt);
             if (flagBitIndex++ == 7)
             {
                 // insert flag byte for later and store its location
-                dstFlagPosition = std::distance(dst.cbegin(), dst.cend());
+                dstFlagPosition = dst.size();
                 dst.push_back(0);
                 flagBitIndex = 0;
             }
-            // prime destination with one verbatim character
-            if (srcIt == src.cbegin())
-            {
-                dst.push_back(*srcIt++);
-                continue;
-            }
-            // try to find next match
-            auto [matchDistance, matchLength] = findBestMatch(src.cbegin(), srcIt, src.cend(), MIN_MATCH_LENGTH, MAX_MATCH_LENGTH, vramCompatible);
-            /*// The comment code is what GBALZSS does, but it fails to produce the same data. Go figure...
-            if (matchLength >= MIN_MATCH_LENGTH)
-            {
-                // we've found a match. check how long the next match after this is
-                auto [nextDistance, nextLength] = findBestMatch(src.cbegin(), std::next(srcIt, matchLength), src.cend(), MIN_MATCH_LENGTH, MAX_MATCH_LENGTH, vramCompatible);
-                if (nextLength < MIN_MATCH_LENGTH)
-                {
-                    nextLength = 1;
-                }
-                // check how long the match after the next byte is
-                auto [skipDistance, skipLength] = findBestMatch(src.cbegin(), std::next(srcIt, 1), src.cend(), MIN_MATCH_LENGTH, MAX_MATCH_LENGTH, vramCompatible);
-                if (skipLength < MIN_MATCH_LENGTH)
-                {
-                    skipLength = 1;
-                }
-                // is it worth compressing this match?
-                if ((matchLength + nextLength) <= (skipLength + 1))
-                {
-                    // not worth it. byte will be encoded verbatim
-                    matchLength = 1;
-                }
-            }*/
-            if (matchLength < MIN_MATCH_LENGTH)
-            {
-                // no matches found, store verbatim byte and "not compressed" zero flag
-                dst.push_back(*srcIt++);
-            }
-            else
+            // check if the current byte will be a match
+            if (auto matchIt = matches.find(srcPosition); matchIt != matches.cend())
             {
                 // yes. compress the match
-                srcIt += matchLength;
-                auto storedMatchLength = matchLength - MIN_MATCH_LENGTH;
-                REQUIRE(storedMatchLength >= 0 && storedMatchLength < 16, std::runtime_error, "Match length out of range [0,15]");
-                auto storedDistance = matchDistance - 1;
-                REQUIRE(storedDistance >= 0 && storedDistance <= MAX_MATCH_DISTANCE, std::runtime_error, "Match distance out of range[0,0xFFF]");
+                auto storedMatchLength = matchIt->second.length - MIN_MATCH_LENGTH;
+                REQUIRE(storedMatchLength >= 0 && storedMatchLength < 16, std::runtime_error, "Stored match length out of range [0,15]");
+                auto storedDistance = matchIt->second.distance - 1;
+                REQUIRE(storedDistance >= 0 && storedDistance <= MAX_MATCH_DISTANCE, std::runtime_error, "Stored match distance out of range [0,0xFFF]");
                 // store 4 bits of match length and 12 bits of match distance
                 dst.push_back((storedMatchLength << 4) | (storedDistance >> 8));
                 dst.push_back(storedDistance & 0xFF);
                 // store "compressed" flag
                 dst[dstFlagPosition] |= (0x80 >> flagBitIndex);
+                // skip match length bytes in source
+                srcPosition += matchIt->second.length;
+            }
+            else
+            {
+                // no matches found, store verbatim byte and "not compressed" zero flag
+                dst.push_back(src[srcPosition++]);
             }
         }
         // resize to multiple of 4
