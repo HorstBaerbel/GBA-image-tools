@@ -17,11 +17,11 @@ struct TestFile
 };
 
 const std::vector<TestFile> TestFiles = {
-    {"lorem_ipsum_2k.txt", 856},
-    {"artificial_240x160.raw", 64208},
-    {"BigBuckBunny_40_240x160.raw", 20748},
+    {"lorem_ipsum_2k.txt", 852},
+    {"artificial_240x160.raw", 63860},
+    {"BigBuckBunny_40_240x160.raw", 20564},
     {"black_240x160.raw", 13616},
-    {"squish_240x160.raw", 74772}};
+    {"squish_240x160.raw", 72488}};
 
 const std::string DataPath = "../../data/data/";
 
