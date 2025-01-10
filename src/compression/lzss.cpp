@@ -2,12 +2,6 @@
 
 #include "exception.h"
 
-#ifdef _MSC_VER
-#include <process.h>
-#else
-#include <unistd.h>
-#endif
-
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -25,22 +19,22 @@ namespace Compression
         int32_t length = 0;
     };
 
-    auto findBestMatch(std::vector<uint8_t>::const_iterator beginIt, std::vector<uint8_t>::const_iterator startIt, std::vector<uint8_t>::const_iterator endIt, int32_t minLength, int32_t maxLength, bool vramCompatible) -> MatchInfo
+    auto findBestMatch(const std::vector<uint8_t> &src, const int32_t startPosition, const int32_t minLength, const int32_t maxLength, const bool vramCompatible) -> MatchInfo
     {
         MatchInfo bestMatch = {0, 0};
         for (int32_t matchLength = minLength; matchLength <= maxLength; ++matchLength)
         {
             // make sure we have enough bytes for a match of matchLength
-            if (std::next(startIt, matchLength) >= endIt)
+            if ((startPosition + matchLength) >= src.size())
             {
                 // we can't get better as don't have more bytes
                 return bestMatch;
             }
             // start matching matchLength bytes backwards and move towards front of buffer
-            for (auto matchIt = std::prev(startIt, matchLength); matchIt >= beginIt; --matchIt)
+            for (auto matchPosition = startPosition - matchLength; matchPosition >= 0; --matchPosition)
             {
                 // calculate match distance and make sure it stays below the max. allowed distance
-                int32_t distance = std::distance(matchIt, startIt);
+                int32_t distance = startPosition - matchPosition;
                 if ((distance - 1) > MAX_MATCH_DISTANCE)
                 {
                     break;
@@ -53,7 +47,7 @@ namespace Compression
                 bool match = true;
                 for (int32_t i = 0; i < matchLength; ++i)
                 {
-                    if (matchIt[i] != startIt[i])
+                    if (src[matchPosition + i] != src[startPosition + i])
                     {
                         match = false;
                         break;
@@ -79,15 +73,15 @@ namespace Compression
         *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | 0x10;
         // build match information for every byte
         std::map<uint32_t, MatchInfo> matches;
-        auto srcIt = src.cbegin();
-        while (srcIt != src.cend())
+#pragma omp parallel for
+        for (int srcPosition = 0; srcPosition < static_cast<int>(src.size()); ++srcPosition)
         {
-            auto match = findBestMatch(src.cbegin(), srcIt, src.cend(), MIN_MATCH_LENGTH, MAX_MATCH_LENGTH, vramCompatible);
+            auto match = findBestMatch(src, srcPosition, MIN_MATCH_LENGTH, MAX_MATCH_LENGTH, vramCompatible);
             if (match.length >= MIN_MATCH_LENGTH)
+#pragma omp critical
             {
-                matches[std::distance(src.cbegin(), srcIt)] = match;
+                matches[srcPosition] = match;
             }
-            ++srcIt;
         }
         // if we haven't found any matches, no need to check them
         if (!matches.empty())
