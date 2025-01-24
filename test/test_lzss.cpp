@@ -21,6 +21,7 @@ const std::vector<TestFile> TestFiles = {
     {"artificial_240x160.raw", 63860},
     {"BigBuckBunny_40_240x160.raw", 20564},
     {"black_240x160.raw", 13616},
+    {"mask6.raw", 516},
     {"squish_240x160.raw", 72488}};
 
 const std::string DataPath = "../../data/data/";
