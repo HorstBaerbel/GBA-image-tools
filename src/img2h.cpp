@@ -401,17 +401,13 @@ int main(int argc, const char *argv[])
         uint32_t maxColorMapColors = 0;
         if (Color::formatInfo(data0.image.pixelFormat).isIndexed)
         {
-            if (data.size() == 1)
-            {
-                maxColorMapColors = data0.image.nrOfColorMapEntries;
-            }
-            else
+            maxColorMapColors = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
+                                                 { return imgA.image.nrOfColorMapEntries < imgB.image.nrOfColorMapEntries; })
+                                    ->image.nrOfColorMapEntries;
+            if (data.size() > 1)
             {
                 allColorMapsSame = std::find_if_not(data.cbegin(), data.cend(), [&refColorMap = data0.image.data.colorMap()](const auto &img)
                                                     { return img.image.data.colorMap() == refColorMap; }) == data.cend();
-                maxColorMapColors = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
-                                                     { return imgA.image.nrOfColorMapEntries < imgB.image.nrOfColorMapEntries; })
-                                        ->image.nrOfColorMapEntries;
             }
             std::cout << "Saving " << (allColorMapsSame ? 1 : data.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
         }
@@ -515,8 +511,16 @@ int main(int argc, const char *argv[])
                     if (maxColorMapColors > 0)
                     {
                         auto [paletteData, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(data0.image.data.colorMap().convertDataToRaw(), std::vector<uint32_t>()) : Image::combineRawColorMapData<uint8_t>(data));
-                        IO::Text::writePaletteInfoToHeader(hFile, varName, paletteData, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
+                        IO::Text::writePaletteInfoToH(hFile, varName, paletteData, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
                         IO::Text::writePaletteDataToC(cFile, varName, paletteData, colorMapsStartIndices, storeTileOrSpriteWise);
+                    }
+                    if (data0.type.isCompressed())
+                    {
+                        // find max memory needed for decompression
+                        const auto maxMemoryNeeded = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
+                                                                      { return imgA.image.maxMemoryNeeded < imgB.image.maxMemoryNeeded; })
+                                                         ->image.maxMemoryNeeded;
+                        IO::Text::writeCompressionInfoToH(hFile, varName, maxMemoryNeeded);
                     }
                     hFile << std::endl;
                     hFile.close();

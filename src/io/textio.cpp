@@ -49,6 +49,11 @@ namespace IO
         }
     }
 
+    auto Text::writeCompressionInfoToH(std::ofstream &hFile, const std::string &varName, uint32_t maxMemoryNeeded) -> void
+    {
+        hFile << "#define " << varName << "_DECOMPRESSION_BUFFER_SIZE " << maxMemoryNeeded << " // max. decompression buffer size needed for everything EXCEPT the last step" << std::endl;
+    }
+
     auto Text::writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &dataStartIndices, bool asTiles) -> void
     {
         cFile << "#include \"" << hFileBaseName << ".h\"" << std::endl

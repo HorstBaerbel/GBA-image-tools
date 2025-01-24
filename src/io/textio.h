@@ -51,7 +51,7 @@ namespace IO
 
         /// @brief Write additional palette information to a .h file. Use after write writeImageInfoToH.
         template <typename T>
-        static auto writePaletteInfoToHeader(std::ofstream &hFile, const std::string &varName, const std::vector<T> &data, uint32_t nrOfColors, bool singleColorMap = true, bool asTiles = false) -> void
+        static auto writePaletteInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<T> &data, uint32_t nrOfColors, bool singleColorMap = true, bool asTiles = false) -> void
         {
             hFile << "#define " << varName << "_PALETTE_LENGTH " << nrOfColors << " // # of palette entries per palette" << std::endl;
             hFile << "#define " << varName << "_PALETTE_SIZE " << data.size() << " // size of palette data" << std::endl;
@@ -61,6 +61,9 @@ namespace IO
             }
             hFile << "extern const uint16_t " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE];" << std::endl;
         }
+
+        /// @brief Write compression information to a .h file.
+        static auto writeCompressionInfoToH(std::ofstream &hFile, const std::string &varName, uint32_t maxMemoryNeeded) -> void;
 
         /// @brief Write image data to a .c file.
         static auto writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false) -> void;
