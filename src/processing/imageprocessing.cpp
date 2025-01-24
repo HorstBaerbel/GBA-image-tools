@@ -397,8 +397,8 @@ namespace Image
     {
         REQUIRE(data.type.isBitmap(), std::runtime_error, "compressDXTV expects bitmaps as input data");
         REQUIRE(data.image.data.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "DXTV compression is only possible for RGB888 truecolor images");
-        REQUIRE(data.image.size.width() % 16 == 0, std::runtime_error, "Image width must be a multiple of 16 for DXTV compression");
-        REQUIRE(data.image.size.height() % 16 == 0, std::runtime_error, "Image height must be a multiple of 16 for DXTV compression");
+        REQUIRE(data.image.size.width() % 8 == 0, std::runtime_error, "Image width must be a multiple of 8 for DXTV compression");
+        REQUIRE(data.image.size.height() % 8 == 0, std::runtime_error, "Image height must be a multiple of 8 for DXTV compression");
         // get parameter(s)
         REQUIRE((VariantHelpers::hasTypes<Color::Format, double, double>(parameters)), std::runtime_error, "compressDXTV expects a Color::Format, a double keyframe interval and a double max. block error parameter");
         const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
