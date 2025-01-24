@@ -14,7 +14,7 @@
 
 #include "data/images_dxt.h"
 
-IWRAM_DATA ALIGN(4) uint32_t ScratchPad[IMAGES_DXT_DATA_SIZE / IMAGES_DXT_NR_OF_IMAGES + 2048]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
+IWRAM_DATA ALIGN(4) uint32_t ScratchPad[IMAGES_DXT_DECOMPRESSION_BUFFER_SIZE / 4]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {
