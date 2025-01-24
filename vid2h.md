@@ -78,7 +78,6 @@ Processing type meaning (see also [processingtypes.h](src/processing/processingt
 | 51                   | Image data is 16-bit deltas                                     |
 | 55                   | Image data is signed pixel difference between successive images |
 | 60                   | Image data is compressed using LZ77 variant 10                  |
-| 61                   | Image data is compressed using LZ77 variant 11                  |
 | 65                   | Image data is compressed using run-length-encoding              |
 | 70                   | Image data is compressed using DXT                              |
 | 71                   | Image data is compressed using DXTV(ideo)                       |
@@ -97,7 +96,7 @@ An example for a small video player (no audio) can be found in the [gba](gba) su
 ## Todo
 
 * Much faster DXTV decompression
-* Improve DXTV compression (Cluster-fit DXT block compression + still 2-3 unused bits per block)
+* Improve DXTV compression (Still 2-3 unused bits per block)
 * VQ-based compression using YCgCoR. Should yield better compression ratio and decompress faster
 * Clean up SDLWindow class
 * Better image / video preview (in + out)
