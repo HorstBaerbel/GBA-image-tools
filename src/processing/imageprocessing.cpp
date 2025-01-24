@@ -389,6 +389,8 @@ namespace Image
         auto result = data;
         auto compressedData = DXT::encode(data.image.data.pixels().data<Color::XRGB8888>(), data.image.size.width(), data.image.size.height(), format == Color::Format::RGB565, format == Color::Format::XBGR1555 || format == Color::Format::BGR565);
         result.image.data.pixels() = PixelData(compressedData, Color::Format::Unknown);
+        result.image.pixelFormat = format;
+        result.image.colorMapFormat = Color::Format::Unknown;
         result.type.setCompressed();
         return result;
     }
@@ -414,6 +416,8 @@ namespace Image
         auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
         auto compressedData = DXTV::encode(data.image.data.pixels().data<Color::XRGB8888>(), previousImage, data.image.size.width(), data.image.size.height(), isKeyFrame, maxBlockError, format == Color::Format::XBGR1555);
         result.image.data.pixels() = PixelData(compressedData.first, Color::Format::Unknown);
+        result.image.pixelFormat = format;
+        result.image.colorMapFormat = Color::Format::Unknown;
         result.type.setCompressed();
         // store decompressed image as state
         state = DataHelpers::convertTo<uint8_t>(compressedData.second);
@@ -434,6 +438,8 @@ namespace Image
         auto result = data;
         auto compressedData = GVID::encodeGVID(data.image.data.pixels().data<Color::XRGB8888>(), data.image.size.width(), data.image.size.height());
         result.image.data.pixels() = PixelData(compressedData, Color::Format::Unknown);
+        result.image.pixelFormat = Color::Format::YCgCoRf;
+        result.image.colorMapFormat = Color::Format::Unknown;
         result.type.setCompressed();
         return result;
     }
