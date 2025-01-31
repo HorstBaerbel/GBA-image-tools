@@ -161,18 +161,18 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
 
 // ------------------------------------------------------------------------------------------------
 
-template <unsigned DIMENSION>
+template <unsigned BLOCK_DIM>
 auto encodeBlockInternal(const XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> std::vector<uint8_t>
 {
-    REQUIRE(pixelsPerScanline % DIMENSION == 0, std::runtime_error, "Image width must be a multiple of " << DIMENSION << " for DXT compression");
+    REQUIRE(pixelsPerScanline % BLOCK_DIM == 0, std::runtime_error, "Image width must be a multiple of " << BLOCK_DIM << " for DXT compression");
     // get block colors for all pixels
-    constexpr unsigned NrOfPixels = DIMENSION * DIMENSION;
+    constexpr unsigned NrOfPixels = BLOCK_DIM * BLOCK_DIM;
     std::vector<RGBf> colors(NrOfPixels);
     auto cIt = colors.begin();
     auto pixels = blockStart;
-    for (int y = 0; y < DIMENSION; y++)
+    for (int y = 0; y < BLOCK_DIM; y++)
     {
-        for (int x = 0; x < DIMENSION; x++)
+        for (int x = 0; x < BLOCK_DIM; x++)
         {
             *cIt++ = convertTo<RGBf>(pixels[x]);
         }
@@ -326,7 +326,7 @@ auto DXT::encode(const std::vector<XRGB8888> &image, const uint32_t width, const
 
 // ------------------------------------------------------------------------------------------------
 
-template <unsigned DIMENSION>
+template <unsigned BLOCK_DIM>
 auto decodeBlockInternal(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
 {
     // read colors c0 and c1
@@ -389,14 +389,14 @@ auto decodeBlockInternal(const uint16_t *colorStart, const uint32_t *indexStart,
     // and decode colors
     uint32_t indices = 0;
     auto pixel = blockStart;
-    for (std::size_t y = 0; y < DIMENSION; y++)
+    for (std::size_t y = 0; y < BLOCK_DIM; y++)
     {
         // read pixel color indices
-        if ((y * DIMENSION) % 16 == 0)
+        if ((y * BLOCK_DIM) % 16 == 0)
         {
             indices = *indexStart++;
         }
-        for (std::size_t x = 0; x < DIMENSION; x++)
+        for (std::size_t x = 0; x < BLOCK_DIM; x++)
         {
             pixel[x] = colors[indices & 0x03];
             indices >>= 2;
