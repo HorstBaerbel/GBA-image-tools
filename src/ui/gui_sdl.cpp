@@ -92,6 +92,12 @@ namespace Ui
                             case ColorFormat::RGB565:
                                 surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 16, SDL_PIXELFORMAT_RGB565);
                                 break;
+                            case ColorFormat::XBGR1555:
+                                surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 15, SDL_PIXELFORMAT_BGR555);
+                                break;
+                            case ColorFormat::BGR565:
+                                surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 16, SDL_PIXELFORMAT_BGR565);
+                                break;
                             case ColorFormat::XRGB8888:
                                 surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 32, SDL_PIXELFORMAT_XRGB8888);
                                 break;

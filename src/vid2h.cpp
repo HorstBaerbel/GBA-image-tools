@@ -343,7 +343,6 @@ int main(int argc, const char *argv[])
         processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
         // create statistics window
         Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height);
-        processing.setStatisticsContainer(window.getStatisticsContainer());
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;
@@ -351,6 +350,7 @@ int main(int argc, const char *argv[])
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
         uint32_t frameIndex = 0;
+        auto statistics = window.getStatisticsContainer();
         std::vector<Image::Data> images;
         do
         {
@@ -363,7 +363,7 @@ int main(int argc, const char *argv[])
             // build image from frame and apply processing
             Image::ImageInfo imageInfo = {{videoInfo.width, videoInfo.height}, Color::Format::Unknown, Color::Format::Unknown, 0, Color::convertTo<Color::XRGB8888>(frame), 0};
             Image::MapInfo mapInfo = {{0, 0}, {}};
-            images.push_back(processing.processStream(Image::Data{frameIndex++, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, mapInfo}));
+            images.push_back(processing.processStream(Image::Data{frameIndex++, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, mapInfo}, statistics));
             // calculate progress
             uint32_t newProgress = ((100 * images.size()) / videoInfo.nrOfFrames);
             if (lastProgress != newProgress)
