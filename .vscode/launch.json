@@ -10,11 +10,11 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "--truecolor=rgb888",
+                "--blackwhite=0.7",
                 "--outformat=bgr555",
-                "--dxt",
-                "--lz10",
-                "\"${workspaceFolder}/data/images/240x160/*.png\"",
+                "--tiles",
+                "--prune=1",
+                "\"${workspaceFolder}/data/images/240x160/BigBuckBunny_40_240x160.png\"",
                 "image"
             ],
             "stopAtEntry": false,
@@ -82,7 +82,9 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": [],
+            "args": [
+                "DXTV*"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/test",
             "environment": [],
@@ -92,6 +94,11 @@
                 {
                     "description": "Automatische Strukturierung und Einrückung für \"gdb\" aktivieren",
                     "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Do not step into library code",
+                    "text": "-interpreter-exec console \"skip -gfi /usr/include/c++/*/*/*\nskip -gfi /usr/include/c++/*/*\nskip -gfi /usr/include/c++/*\"",
                     "ignoreFailures": true
                 }
             ]

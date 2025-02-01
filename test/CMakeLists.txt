@@ -37,6 +37,7 @@ add_subdirectory(Catch2)
 set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/codec/dxt.cpp
     ${PROJECT_SOURCE_DIR}/src/codec/dxttables.cpp
+    ${PROJECT_SOURCE_DIR}/src/codec/dxtv.cpp
     ${PROJECT_SOURCE_DIR}/src/color/conversions.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorformat.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorhelpers.cpp
@@ -53,10 +54,12 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/processing/datahelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/imagehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/spritehelpers.cpp
+    ${PROJECT_SOURCE_DIR}/src/statistics/statistics.cpp
 )
 
 set(TARGET_INCLUDES
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/codec
 )
 
 file(GLOB TESTS_SRC CONFIGURE_DEPENDS "*.cpp")

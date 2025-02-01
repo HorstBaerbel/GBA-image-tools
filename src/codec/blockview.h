@@ -1,5 +1,7 @@
 #pragma once
 
+#include "exception.h"
+
 #include <array>
 #include <cstdint>
 #include <memory>

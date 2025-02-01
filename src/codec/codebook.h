@@ -88,21 +88,21 @@ public:
     }
 
     /// @brief Width of codebook in blocks
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto blockWidth() const
     {
         return m_width / BLOCK_DIM;
     }
 
     /// @brief Height of codebook in blocks
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto blockHeight() const
     {
         return m_height / BLOCK_DIM;
     }
 
     /// @brief Block iterator to start of blocks
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto begin() noexcept
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -120,7 +120,7 @@ public:
     }
 
     /// @brief Block iterator past end of blocks
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto end() noexcept
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -138,7 +138,7 @@ public:
     }
 
     /// @brief Block iterator to start of blocks
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto cbegin() const noexcept
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -156,7 +156,7 @@ public:
     }
 
     /// @brief Block iterator past end of blocks
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto cend() const noexcept
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -174,7 +174,7 @@ public:
     }
 
     /// @brief Check if codebook has blocks
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto empty() const -> bool
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -192,7 +192,7 @@ public:
     }
 
     /// @brief Get number of codebook blocks at specific level
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto size() const
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -209,7 +209,7 @@ public:
         }
     }
 
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto isEncoded(const BlockView<COLOR_TYPE, BLOCK_DIM> &block) const
     {
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
@@ -226,7 +226,7 @@ public:
         }
     }
 
-    template <std::size_t BLOCK_DIM>
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto setEncoded(const BlockView<COLOR_TYPE, BLOCK_DIM> &block, bool encoded = true)
     {
         auto index = block.index();
