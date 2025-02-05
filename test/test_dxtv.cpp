@@ -68,14 +68,15 @@ TearsOfSteel_676_384x256.png, psnr: 34.35
 
 const std::string DataPath = "../../data/images/test/";
 
-const float MaxBlockError = 1.0F;
+const float MaxBlockErrorNonSplit = 0.1F;
+const float MaxBlockErrorSplit = 0.025F;
 
 // #define WRITE_OUTPUT
 
 TEST_SUITE("DXTV")
 
 /// @brief Encode/decode single 8x8 block as DXTV
-auto testEncodeBlock(const std::vector<Color::XRGB8888> &image, const Image::DataSize &size, const float allowedPsnr, bool swapToBGR) -> void
+auto testEncodeBlock(const std::vector<Color::XRGB8888> &image, const Image::DataSize &size, const float maxBlockError, const float allowedPsnr, bool swapToBGR) -> void
 {
     // input image
     auto currentCodeBook = DXTV::CodeBook8x8(image, size.width(), size.height(), false);
@@ -84,7 +85,7 @@ auto testEncodeBlock(const std::vector<Color::XRGB8888> &image, const Image::Dat
     // output image
     std::vector<Color::XRGB8888> outImage(image.size());
     // compress block
-    auto [blockSplitFlag, compressedData] = DXTV::encodeBlock<DXTV::MAX_BLOCK_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, DXTV::MAX_BLOCK_DIM>(), *inIt, MaxBlockError, swapToBGR);
+    auto [blockSplitFlag, compressedData] = DXTV::encodeBlock<DXTV::MAX_BLOCK_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, DXTV::MAX_BLOCK_DIM>(), *inIt, maxBlockError, swapToBGR);
     // uncompress block
     auto dataPtr = reinterpret_cast<const uint16_t *>(compressedData.data());
     auto currPtr = outImage.data();
@@ -113,6 +114,8 @@ TEST_CASE("EncodeDecodeBlock555")
 {
     auto image = IO::File::readImage(DataPath + "BigBuckBunny_361_384x256.png");
     auto pixels = image.image.data.pixels().convertData<Color::XRGB8888>();
-    testEncodeBlock(pixels, image.image.size, 14.06F, false);
-    testEncodeBlock(pixels, image.image.size, 14.06F, true);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorNonSplit, 14.06F, false);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorNonSplit, 14.06F, true);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorSplit, 22.96F, false);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorSplit, 22.96F, true);
 }

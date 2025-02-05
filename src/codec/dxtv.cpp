@@ -131,7 +131,7 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
     bool blockWasSplit = DXTV::BLOCK_NO_SPLIT;
     std::vector<uint8_t> data;
     // Try to find x/y motion block within error from previous frame
-    /*auto prevRef = findBestMatchingBlockMotion(previousCodeBook, block, maxAllowedError, true);
+    auto prevRef = findBestMatchingBlockMotion(previousCodeBook, block, maxAllowedError, true);
     // Try to find x/y motion block within error from current frame
     auto currRef = findBestMatchingBlockMotion(currentCodeBook, block, maxAllowedError, false);
     // Choose the better one of both block references
@@ -142,8 +142,8 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         // check offset range
         auto offsetX = std::get<1>(prevRef.value());
         auto offsetY = std::get<2>(prevRef.value());
-        REQUIRE(PrevMotionHOffset.first <= offsetX && offsetX <= PrevMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for previous frame");
-        REQUIRE(PrevMotionVOffset.first <= offsetY && offsetY <= PrevMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for previous frame");
+        REQUIRE(DXTV::PrevMotionHOffset.first <= offsetX && offsetX <= DXTV::PrevMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for previous frame");
+        REQUIRE(DXTV::PrevMotionVOffset.first <= offsetY && offsetY <= DXTV::PrevMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for previous frame");
         uint16_t refData = DXTV::BLOCK_IS_REF;
         refData |= DXTV::BLOCK_FROM_PREV;
         // convert offsets to unsigned value
@@ -162,8 +162,8 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         // check offset range
         auto offsetX = std::get<1>(currRef.value());
         auto offsetY = std::get<2>(currRef.value());
-        REQUIRE(CurrMotionHOffset.first <= offsetX && offsetX <= CurrMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for current frame");
-        REQUIRE(CurrMotionVOffset.first <= offsetY && offsetY <= CurrMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for current frame");
+        REQUIRE(DXTV::CurrMotionHOffset.first <= offsetX && offsetX <= DXTV::CurrMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for current frame");
+        REQUIRE(DXTV::CurrMotionVOffset.first <= offsetY && offsetY <= DXTV::CurrMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for current frame");
         uint16_t refData = DXTV::BLOCK_IS_REF;
         refData |= DXTV::BLOCK_FROM_CURR;
         // convert offsets to unsigned value
@@ -178,43 +178,43 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         Statistics::incValue(statistics, "motionBlocksCurr", 1, BLOCK_LEVEL);
     }
     else
-    {*/
-    // No good references found. DXT-encode full block
-    auto rawBlock = block.pixels();
-    auto encodedBlock = DXT::encodeBlock<BLOCK_DIM>(rawBlock, false, swapToBGR);
-    auto decodedBlock = DXT::decodeBlock<BLOCK_DIM>(encodedBlock, false, swapToBGR);
-    //        if constexpr (BLOCK_DIM <= Codebook::BlockMinDim)
-    //        {
-    // We can't split anymore. Store 4x4 DXT block
-    data = encodedBlock;
-    currentCodeBook.setEncoded<BLOCK_DIM>(block);
-    block.copyPixelsFrom(decodedBlock);
-    Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
-    /*        }
-            else if constexpr (BLOCK_DIM > Codebook::BlockMinDim)
+    {
+        // No good references found. DXT-encode full block
+        auto rawBlock = block.pixels();
+        auto encodedBlock = DXT::encodeBlock<BLOCK_DIM>(rawBlock, false, swapToBGR);
+        auto decodedBlock = DXT::decodeBlock<BLOCK_DIM>(encodedBlock, false, swapToBGR);
+        if constexpr (BLOCK_DIM <= DXTV::CodeBook8x8::BlockMinDim)
+        {
+            // We can't split anymore. Store 4x4 DXT block
+            data = encodedBlock;
+            currentCodeBook.setEncoded<BLOCK_DIM>(block);
+            block.copyPixelsFrom(decodedBlock);
+            Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
+        }
+        else if constexpr (BLOCK_DIM > DXTV::CodeBook8x8::BlockMinDim)
+        {
+            // We can still split. Check if encoded block is below allowed error or we want to split the block
+            auto encodedBlockError = Color::mse(rawBlock, decodedBlock);
+            if (encodedBlockError < maxAllowedError)
             {
-                // We can still split. Check if encoded block is below allowed error or we want to split the block
-                auto encodedBlockError = Color::mse(rawBlock, decodedBlock);
-                if (encodedBlockError < maxAllowedError)
+                // Error ok. Store full DXT block
+                data = encodedBlock;
+                currentCodeBook.setEncoded<BLOCK_DIM>(block);
+                block.copyPixelsFrom(decodedBlock);
+                Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
+            }
+            else
+            {
+                // Split block to improve error and recurse
+                blockWasSplit = true;
+                for (uint32_t i = 0; i < 4; ++i)
                 {
-                    // Error ok. Store full DXT block
-                    data = encodedBlock;
-                    currentCodeBook.setEncoded<BLOCK_DIM>(block);
-                    block.copyPixelsFrom(decodedBlock);
-                    Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
-                }
-                else
-                {
-                    // Split block to improve error and recurse
-                    blockWasSplit = true;
-                    for (uint32_t i = 0; i < 4; ++i)
-                    {
-                        auto [dummyFlag, blockData] = encodeBlock(statistics, currentCodeBook, previousCodeBook, block.block(i), maxAllowedError, swapToBGR);
-                        std::copy(blockData.cbegin(), blockData.cend(), std::back_inserter(data));
-                    }
+                    auto [dummyFlag, blockData] = encodeBlockInternal<BLOCK_DIM / 2>(currentCodeBook, previousCodeBook, block.block(i), maxAllowedError, swapToBGR, statistics);
+                    std::copy(blockData.cbegin(), blockData.cend(), std::back_inserter(data));
                 }
             }
-        }*/
+        }
+    }
     return {blockWasSplit, data};
 }
 
