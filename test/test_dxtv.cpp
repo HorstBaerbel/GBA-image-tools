@@ -68,8 +68,8 @@ TearsOfSteel_676_384x256.png, psnr: 34.35
 
 const std::string DataPath = "../../data/images/test/";
 
-const float MaxBlockErrorNonSplit = 0.1F;
-const float MaxBlockErrorSplit = 0.025F;
+const float MaxBlockErrorDXT8x8 = 0.1F;
+const float MaxBlockErrorDXT4x4 = 0.001F;
 
 // #define WRITE_OUTPUT
 
@@ -114,8 +114,8 @@ TEST_CASE("EncodeDecodeBlock555")
 {
     auto image = IO::File::readImage(DataPath + "BigBuckBunny_361_384x256.png");
     auto pixels = image.image.data.pixels().convertData<Color::XRGB8888>();
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorNonSplit, 14.06F, false);
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorNonSplit, 14.06F, true);
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorSplit, 22.96F, false);
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorSplit, 22.96F, true);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT8x8, 14.06F, false);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT8x8, 14.06F, true);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT4x4, 22.96F, false);
+    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT4x4, 22.96F, true);
 }
