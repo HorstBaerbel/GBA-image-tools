@@ -76,14 +76,16 @@ const float MaxBlockErrorDXT4x4 = 0.001F;
 TEST_SUITE("DXTV")
 
 /// @brief Encode/decode single 8x8 block as DXTV
-auto testEncodeBlock(const std::vector<Color::XRGB8888> &image, const Image::DataSize &size, const float maxBlockError, const float allowedPsnr, bool swapToBGR) -> void
+auto testEncodeBlock(const Image::Data &data, const float maxBlockError, const float allowedPsnr, bool swapToBGR) -> void
 {
+
     // input image
-    auto currentCodeBook = DXTV::CodeBook8x8(image, size.width(), size.height(), false);
+    const auto size = data.image.size;
+    auto currentCodeBook = DXTV::CodeBook8x8(data.image.data.pixels().convertData<Color::XRGB8888>(), size.width(), size.height(), false);
     auto inIt = currentCodeBook.begin();
-    auto inPixels = inIt->pixels();
+    const auto inPixels = inIt->pixels();
     // output image
-    std::vector<Color::XRGB8888> outImage(image.size());
+    std::vector<Color::XRGB8888> outImage(data.image.data.pixels().size());
     // compress block
     auto [blockSplitFlag, compressedData] = DXTV::encodeBlock<DXTV::MAX_BLOCK_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, DXTV::MAX_BLOCK_DIM>(), *inIt, maxBlockError, swapToBGR);
     // uncompress block
@@ -110,12 +112,25 @@ auto testEncodeBlock(const std::vector<Color::XRGB8888> &image, const Image::Dat
     CATCH_REQUIRE(psnr >= allowedPsnr);
 }
 
-TEST_CASE("EncodeDecodeBlock555")
+/// @brief Encode/decode single image as DXTV
+auto testEncode(const Image::Data &data, const float maxBlockError, const float allowedPsnr, bool swapToBGR) -> void
+{
+    // input image
+    const auto size = data.image.size;
+    const auto inPixels = data.image.data.pixels().convertData<Color::XRGB8888>();
+    // compress image
+    const auto [compressedData, inputImage] = DXTV::encode(inPixels, {}, size.width(), size.height(), true, maxBlockError, false);
+    auto outPixels = DXTV::decode(compressedData, {}, size.width(), size.height(), false);
+    auto psnr = Color::psnr(inPixels, outPixels);
+    std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << DXTV::MAX_BLOCK_DIM << "x" << DXTV::MAX_BLOCK_DIM << " block, psnr: " << std::setprecision(4) << psnr << std::endl;
+    CATCH_REQUIRE(psnr >= allowedPsnr);
+}
+
+TEST_CASE("EncodeDecodeBlock")
 {
     auto image = IO::File::readImage(DataPath + "BigBuckBunny_361_384x256.png");
-    auto pixels = image.image.data.pixels().convertData<Color::XRGB8888>();
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT8x8, 14.06F, false);
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT8x8, 14.06F, true);
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT4x4, 22.96F, false);
-    testEncodeBlock(pixels, image.image.size, MaxBlockErrorDXT4x4, 22.96F, true);
+    testEncodeBlock(image, MaxBlockErrorDXT8x8, 14.06F, false);
+    testEncodeBlock(image, MaxBlockErrorDXT8x8, 14.06F, true);
+    testEncodeBlock(image, MaxBlockErrorDXT4x4, 22.96F, false);
+    testEncodeBlock(image, MaxBlockErrorDXT4x4, 22.96F, true);
 }
