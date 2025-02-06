@@ -127,7 +127,8 @@ auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockV
 template <std::size_t BLOCK_DIM>
 auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, BLOCK_DIM> &block, float maxAllowedError, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
 {
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(DXTV::CodeBook8x8::BlockMaxDim) - std::log2(BLOCK_DIM);
+    static_assert(DXTV::MAX_BLOCK_DIM >= BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(DXTV::MAX_BLOCK_DIM) - std::log2(BLOCK_DIM);
     bool blockWasSplit = DXTV::BLOCK_NO_SPLIT;
     std::vector<uint8_t> data;
     // Try to find x/y motion block within error from previous frame
@@ -343,6 +344,10 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
 template <std::size_t BLOCK_DIM>
 auto decodeBlockInternal(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *
 {
+    static_assert(DXTV::MAX_BLOCK_DIM >= BLOCK_DIM);
+    REQUIRE(data != nullptr, std::runtime_error, "Data can not be nullptr");
+    REQUIRE(currBlock != nullptr, std::runtime_error, "currBlock can not be nullptr");
+    REQUIRE(width > 0, std::runtime_error, "width must be > 0");
     auto dstPtr = currBlock;
     auto data0 = *data;
     if (data0 & DXTV::BLOCK_IS_REF)
@@ -402,6 +407,9 @@ auto DXTV::decodeBlock<8>(const uint16_t *data, XRGB8888 *currBlock, const XRGB8
 
 auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, const bool swapToBGR) -> std::vector<XRGB8888>
 {
+    REQUIRE(data.size() > sizeof(FrameHeader), std::runtime_error, "Not enough data to decode");
+    REQUIRE(width > 0, std::runtime_error, "width must be > 0");
+    REQUIRE(height > 0, std::runtime_error, "height must be > 0");
     const auto frameHeader = FrameHeader::fromVector(data);
     if (frameHeader.frameFlags == FRAME_KEEP)
     {

@@ -148,6 +148,16 @@ TEST_CASE("Initialization")
     BlockView<uint32_t, 4> bv42(Pixels16x16.data(), 16, 16, 12, 12);
 }
 
+TEST_CASE("Size")
+{
+    BlockView<uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
+    CATCH_CHECK(bv16.empty() == false);
+    CATCH_CHECK(bv16.size() == 256);
+    BlockView<uint32_t, 4> bv4(Pixels16x16.data(), 16, 16, 0, 0);
+    CATCH_CHECK(bv4.empty() == false);
+    CATCH_CHECK(bv4.size() == 16);
+}
+
 TEST_CASE("Pixel access")
 {
     BlockView<uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
