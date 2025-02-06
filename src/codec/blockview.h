@@ -47,6 +47,16 @@ private:
 
 /// @brief Struct describing an N*N block of pixels that references part of an image.
 /// It does not hold the color data itself, but merely references it.
+/// Layout for a 16x16 BlockView:
+/// First level 8x8 indices:
+/// 0  1
+/// 2  3
+/// Second level 4x4 indices:
+///  0  1 |  2  3
+///  4  5 |  6  7
+/// ------+------
+///  8  9 | 10 11
+/// 12 13 | 14 15
 template <typename T, std::size_t N, size_t MIN_DIM = 4>
 class BlockView
 {
@@ -68,6 +78,10 @@ public:
     BlockView(value_type *pixels, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
         : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
     {
+        REQUIRE(width % Dim == 0, std::runtime_error, "Width " << width << " is not a multiple of " << Dim);
+        REQUIRE(height % Dim == 0, std::runtime_error, "Height " << height << " is not a multiple of " << Dim);
+        REQUIRE(x + Dim <= width, std::runtime_error, "Block with size " << Dim << " at x = " << x << " out of bounds (width = " << width << ")");
+        REQUIRE(y + Dim <= height, std::runtime_error, "Block with size " << Dim << " at y = " << y << " out of bounds (height = " << height << ")");
         auto offset = m_y * m_width + m_x;
         auto index = 0;
         for (std::size_t j = 0; j < Dim; ++j)
@@ -236,6 +250,10 @@ public:
     BlockView(value_type *pixels, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
         : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
     {
+        REQUIRE(width % Dim == 0, std::runtime_error, "Width " << width << " is not a multiple of " << Dim);
+        REQUIRE(height % Dim == 0, std::runtime_error, "Height " << height << " is not a multiple of " << Dim);
+        REQUIRE(x + Dim <= width, std::runtime_error, "Block with size " << Dim << " at x = " << x << " out of bounds (width = " << width << ")");
+        REQUIRE(y + Dim <= height, std::runtime_error, "Block with size " << Dim << " at y = " << y << " out of bounds (height = " << height << ")");
         auto offset = m_y * m_width + m_x;
         auto index = 0;
         for (std::size_t j = 0; j < Dim; ++j)
