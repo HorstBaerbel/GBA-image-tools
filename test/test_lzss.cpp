@@ -24,7 +24,7 @@ const std::vector<TestFile> TestFiles = {
     {"mask6.raw", 516},
     {"squish_240x160.raw", 72488}};
 
-const std::string DataPath = "../../data/data/";
+const std::string DataPathTest = "../../data/data/";
 
 using namespace Compression;
 
@@ -177,7 +177,7 @@ TEST_CASE("LZ10 ratio")
     for (auto &testFile : TestFiles)
     {
         // open test file
-        std::ifstream fs(DataPath + testFile.fileName, std::ios::binary | std::ios::in);
+        std::ifstream fs(DataPathTest + testFile.fileName, std::ios::binary | std::ios::in);
         REQUIRE(fs.is_open(), std::runtime_error, "Failed to open " << testFile.fileName << " for reading");
         // read all of the file data
         std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(fs)), (std::istreambuf_iterator<char>()));

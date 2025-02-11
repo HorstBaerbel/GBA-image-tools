@@ -64,7 +64,7 @@ TearsOfSteel_1200_384x256.png, psnr: 33.71
 TearsOfSteel_676_384x256.png, psnr: 34.35
 */
 
-const std::string DataPath = "../../data/images/test/";
+const std::string DataPathTest = "../../data/images/test/";
 
 // #define WRITE_OUTPUT
 
@@ -95,7 +95,7 @@ auto testEncodeBlock(const std::vector<Color::XRGB8888> &image, const std::size_
 
 TEST_CASE("EncodeDecodeBlock555")
 {
-    auto image = IO::File::readImage(DataPath + "BigBuckBunny_361_384x256.png");
+    auto image = IO::File::readImage(DataPathTest + "BigBuckBunny_361_384x256.png");
     auto pixels = image.image.data.pixels().convertData<Color::XRGB8888>();
     testEncodeBlock<4>(pixels, image.image.size.width(), false, 21.69F);
     testEncodeBlock<8>(pixels, image.image.size.width(), false, 14.06F);
@@ -104,7 +104,7 @@ TEST_CASE("EncodeDecodeBlock555")
 
 TEST_CASE("EncodeDecodeBlock565")
 {
-    auto image = IO::File::readImage(DataPath + "BigBuckBunny_361_384x256.png");
+    auto image = IO::File::readImage(DataPathTest + "BigBuckBunny_361_384x256.png");
     auto pixels = image.image.data.pixels().convertData<Color::XRGB8888>();
     testEncodeBlock<4>(pixels, image.image.size.width(), true, 22.23F);
     testEncodeBlock<8>(pixels, image.image.size.width(), true, 14.14F);
@@ -115,7 +115,7 @@ TEST_CASE("EncodeDecode555")
 {
     for (auto &testFile : TestFiles)
     {
-        auto image = IO::File::readImage(DataPath + testFile.fileName);
+        auto image = IO::File::readImage(DataPathTest + testFile.fileName);
         auto inPixels = image.image.data.pixels().convertData<Color::XRGB8888>();
         // IO::File::writeImage(image, "/tmp", "in.png");
         auto compressedDataRGB = DXT::encode(inPixels, image.image.size.width(), image.image.size.height(), false);
@@ -139,7 +139,7 @@ TEST_CASE("EncodeDecode565")
 {
     for (auto &testFile : TestFiles)
     {
-        auto image = IO::File::readImage(DataPath + testFile.fileName);
+        auto image = IO::File::readImage(DataPathTest + testFile.fileName);
         auto inPixels = image.image.data.pixels().convertData<Color::XRGB8888>();
         // IO::File::writeImage(image, "/tmp", "in.png");
         auto compressedDataRGB = DXT::encode(inPixels, image.image.size.width(), image.image.size.height(), true);
