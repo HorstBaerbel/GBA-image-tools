@@ -91,6 +91,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto blockWidth() const
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         return m_width / BLOCK_DIM;
     }
 
@@ -98,6 +100,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto blockHeight() const
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         return m_height / BLOCK_DIM;
     }
 
@@ -105,6 +109,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto begin() noexcept
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
             return m_blocks0.begin();
@@ -123,6 +129,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto end() noexcept
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
             return m_blocks0.end();
@@ -141,6 +149,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto cbegin() const noexcept
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
             return m_blocks0.cbegin();
@@ -159,6 +169,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto cend() const noexcept
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
             return m_blocks0.cend();
@@ -177,6 +189,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto empty() const -> bool
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
             return m_blocks0.empty();
@@ -195,6 +209,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto size() const
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
             return m_blocks0.size();
@@ -212,6 +228,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto isEncoded(const BlockView<COLOR_TYPE, BLOCK_DIM> &block) const
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
             return m_encoded0[block.index()];
@@ -229,6 +247,8 @@ public:
     template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto setEncoded(const BlockView<COLOR_TYPE, BLOCK_DIM> &block, bool encoded = true)
     {
+        // Block size must be inside allowed range of power-of-two
+        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
         auto index = block.index();
         if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
         {
