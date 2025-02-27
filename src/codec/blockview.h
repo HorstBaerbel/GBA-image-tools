@@ -57,16 +57,17 @@ private:
 /// ------+------
 ///  8  9 | 10 11
 /// 12 13 | 14 15
-template <typename T, std::size_t N, size_t MIN_DIM = 4>
+template <typename VALUE_TYPE, typename BLOCK_DATA_TYPE, std::size_t N, size_t MIN_DIM = 4>
 class BlockView
 {
 };
 
-template <typename T, std::size_t N>
-class BlockView<T, N, 4>
+template <typename VALUE_TYPE, typename BLOCK_DATA_TYPE, std::size_t N>
+class BlockView<VALUE_TYPE, BLOCK_DATA_TYPE, N, 4>
 {
 public:
-    using value_type = T;
+    using value_type = VALUE_TYPE;
+    using block_data_type = BLOCK_DATA_TYPE;
     static constexpr std::size_t Dim = N;
     static constexpr std::size_t MinDim = 4;
 
@@ -76,7 +77,7 @@ public:
     BlockView() = default;
 
     BlockView(value_type *pixels, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
-        : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
+        : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex((m_y / Dim) * (m_width / Dim) + m_x / Dim)
     {
         REQUIRE(width % Dim == 0, std::runtime_error, "Width " << width << " is not a multiple of " << Dim);
         REQUIRE(height % Dim == 0, std::runtime_error, "Height " << height << " is not a multiple of " << Dim);
@@ -88,16 +89,16 @@ public:
         {
             for (std::size_t i = 0; i < Dim; ++i)
             {
-                m_indices[index++] = offset + i;
+                m_indices.at(index++) = offset + i;
             }
             offset += m_width;
         }
         if constexpr (Dim > MinDim)
         {
-            m_subblocks[0] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x, y);
-            m_subblocks[1] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x + Dim / 2, y);
-            m_subblocks[2] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x, y + Dim / 2);
-            m_subblocks[3] = BlockView<value_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x + Dim / 2, y + Dim / 2);
+            m_subblocks.at(0) = BlockView<value_type, block_data_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x, y);
+            m_subblocks.at(1) = BlockView<value_type, block_data_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x + Dim / 2, y);
+            m_subblocks.at(2) = BlockView<value_type, block_data_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x, y + Dim / 2);
+            m_subblocks.at(3) = BlockView<value_type, block_data_type, Dim / 2, MinDim>(m_pixels, m_width, m_height, x + Dim / 2, y + Dim / 2);
         }
     }
 
@@ -161,12 +162,12 @@ public:
 
     auto operator[](std::size_t index) const -> const value_type &
     {
-        return m_pixels[m_indices[index]];
+        return m_pixels[m_indices.at(index)];
     }
 
     auto operator[](std::size_t index) -> value_type &
     {
-        return m_pixels[m_indices[index]];
+        return m_pixels[m_indices.at(index)];
     }
 
     /// @brief Return block pixels as deep-copy compact array
@@ -175,7 +176,7 @@ public:
         std::vector<value_type> result(Dim * Dim);
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            result[i] = m_pixels[m_indices[i]];
+            result[i] = m_pixels[m_indices.at(i)];
         }
         return result;
     }
@@ -185,7 +186,7 @@ public:
     {
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_pixels[m_indices[i]] = other.m_pixels[other.m_indices[i]];
+            m_pixels[m_indices.at(i)] = other.m_pixels[other.m_indices.at(i)];
         }
     }
 
@@ -195,7 +196,7 @@ public:
         REQUIRE(pixels.size() == Dim * Dim, std::runtime_error, "Data must have same size as block");
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
-            m_pixels[m_indices[i]] = pixels[i];
+            m_pixels[m_indices.at(i)] = pixels[i];
         }
     }
 
@@ -214,31 +215,43 @@ public:
     /// @brief Get sub-block of this one. Blocks are stored row-wise
     const auto &block(std::size_t index) const
     {
-        return m_subblocks[index];
+        return m_subblocks.at(index);
     }
 
     /// @brief Get sub-block of this one. Blocks are stored row-wise
     auto &block(std::size_t index)
     {
-        return m_subblocks[index];
+        return m_subblocks.at(index);
+    }
+
+    auto data() const -> const block_data_type &
+    {
+        return m_blockData;
+    }
+
+    auto data() -> block_data_type &
+    {
+        return m_blockData;
     }
 
 private:
     value_type *m_pixels = nullptr;
+    block_data_type m_blockData{};
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     uint32_t m_x = 0;
     uint32_t m_y = 0;
     uint32_t m_blockIndex = 0;
     std::array<uint32_t, Dim * Dim> m_indices;
-    std::array<BlockView<value_type, Dim / 2, MinDim>, 4> m_subblocks;
+    std::array<BlockView<value_type, block_data_type, Dim / 2, MinDim>, 4> m_subblocks;
 };
 
-template <typename T>
-class BlockView<T, 4, 4>
+template <typename VALUE_TYPE, typename BLOCK_DATA_TYPE>
+class BlockView<VALUE_TYPE, BLOCK_DATA_TYPE, 4, 4>
 {
 public:
-    using value_type = T;
+    using value_type = VALUE_TYPE;
+    using block_data_type = BLOCK_DATA_TYPE;
     static constexpr std::size_t Dim = 4;
     static constexpr std::size_t MinDim = 4;
 
@@ -248,7 +261,7 @@ public:
     BlockView() = default;
 
     BlockView(value_type *pixels, uint32_t width, uint32_t height, uint32_t x, uint32_t y)
-        : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex(m_y / Dim * m_width / Dim + m_x / Dim)
+        : m_pixels(pixels), m_width(width), m_height(height), m_x(x), m_y(y), m_blockIndex((m_y / Dim) * (m_width / Dim) + m_x / Dim)
     {
         REQUIRE(width % Dim == 0, std::runtime_error, "Width " << width << " is not a multiple of " << Dim);
         REQUIRE(height % Dim == 0, std::runtime_error, "Height " << height << " is not a multiple of " << Dim);
@@ -364,8 +377,19 @@ public:
         }
     }
 
+    auto data() const -> const block_data_type &
+    {
+        return m_blockData;
+    }
+
+    auto data() -> block_data_type &
+    {
+        return m_blockData;
+    }
+
 private:
     value_type *m_pixels = nullptr;
+    block_data_type m_blockData{};
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     uint32_t m_x = 0;
@@ -375,8 +399,8 @@ private:
 };
 
 /// @brief Calculate perceived pixel difference between blocks
-template <typename COLOR_TYPE, std::size_t BLOCK_DIM>
-static auto mse(const BlockView<COLOR_TYPE, BLOCK_DIM> &a, const BlockView<COLOR_TYPE, BLOCK_DIM> &b) -> float
+template <typename COLOR_TYPE, typename DATA_TYPE, std::size_t BLOCK_DIM>
+static auto mse(const BlockView<COLOR_TYPE, DATA_TYPE, BLOCK_DIM> &a, const BlockView<COLOR_TYPE, DATA_TYPE, BLOCK_DIM> &b) -> float
 {
     double dist = 0.0;
     for (auto aIt = a.cbegin(), bIt = b.cbegin(); aIt != a.cend() && bIt != b.cend(); ++aIt, ++bIt)
@@ -387,8 +411,8 @@ static auto mse(const BlockView<COLOR_TYPE, BLOCK_DIM> &a, const BlockView<COLOR
 }
 
 /// @brief Calculate perceived pixel difference between blocks
-template <typename COLOR_TYPE, std::size_t BLOCK_DIM>
-static auto mseBelowThreshold(const BlockView<COLOR_TYPE, BLOCK_DIM> &a, const BlockView<COLOR_TYPE, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
+template <typename COLOR_TYPE, typename DATA_TYPE, std::size_t BLOCK_DIM>
+static auto mseBelowThreshold(const BlockView<COLOR_TYPE, DATA_TYPE, BLOCK_DIM> &a, const BlockView<COLOR_TYPE, DATA_TYPE, BLOCK_DIM> &b, float threshold) -> std::pair<bool, float>
 {
     bool belowThreshold = true;
     double dist = 0.0;

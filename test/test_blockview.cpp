@@ -127,46 +127,139 @@ TEST_SUITE("Block view")
 
 TEST_CASE("Bad initialization throws")
 {
-    BlockView<uint32_t, 16> badsize16;
-    CATCH_REQUIRE_THROWS(badsize16 = BlockView<uint32_t, 16>(Pixels16x16.data(), 15, 16, 0, 0));
-    CATCH_REQUIRE_THROWS(badsize16 = BlockView<uint32_t, 16>(Pixels16x16.data(), 16, 9, 0, 0));
-    BlockView<uint32_t, 4> badsize4;
-    CATCH_REQUIRE_THROWS(badsize4 = BlockView<uint32_t, 4>(Pixels16x16.data(), 5, 16, 0, 0));
-    CATCH_REQUIRE_THROWS(badsize4 = BlockView<uint32_t, 4>(Pixels16x16.data(), 16, 7, 0, 0));
-    BlockView<uint32_t, 16> outofbounds16;
-    CATCH_REQUIRE_THROWS(outofbounds16 = BlockView<uint32_t, 16>(Pixels16x16.data(), 16, 16, 1, 0));
-    CATCH_REQUIRE_THROWS(outofbounds16 = BlockView<uint32_t, 16>(Pixels16x16.data(), 16, 16, 0, 1));
-    BlockView<uint32_t, 4> outofbounds4;
-    CATCH_REQUIRE_THROWS(outofbounds4 = BlockView<uint32_t, 4>(Pixels16x16.data(), 16, 16, 13, 0));
-    CATCH_REQUIRE_THROWS(outofbounds4 = BlockView<uint32_t, 4>(Pixels16x16.data(), 16, 16, 0, 13));
+    BlockView<uint32_t, bool, 16> badsize16;
+    CATCH_REQUIRE_THROWS(badsize16 = BlockView<uint32_t, bool, 16>(Pixels16x16.data(), 15, 16, 0, 0));
+    CATCH_REQUIRE_THROWS(badsize16 = BlockView<uint32_t, bool, 16>(Pixels16x16.data(), 16, 9, 0, 0));
+    BlockView<uint32_t, bool, 4> badsize4;
+    CATCH_REQUIRE_THROWS(badsize4 = BlockView<uint32_t, bool, 4>(Pixels16x16.data(), 5, 16, 0, 0));
+    CATCH_REQUIRE_THROWS(badsize4 = BlockView<uint32_t, bool, 4>(Pixels16x16.data(), 16, 7, 0, 0));
+    BlockView<uint32_t, bool, 16> outofbounds16;
+    CATCH_REQUIRE_THROWS(outofbounds16 = BlockView<uint32_t, bool, 16>(Pixels16x16.data(), 16, 16, 1, 0));
+    CATCH_REQUIRE_THROWS(outofbounds16 = BlockView<uint32_t, bool, 16>(Pixels16x16.data(), 16, 16, 0, 1));
+    BlockView<uint32_t, bool, 4> outofbounds4;
+    CATCH_REQUIRE_THROWS(outofbounds4 = BlockView<uint32_t, bool, 4>(Pixels16x16.data(), 16, 16, 13, 0));
+    CATCH_REQUIRE_THROWS(outofbounds4 = BlockView<uint32_t, bool, 4>(Pixels16x16.data(), 16, 16, 0, 13));
 }
 
 TEST_CASE("Initialization")
 {
-    BlockView<uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
-    BlockView<uint32_t, 4> bv41(Pixels16x16.data(), 16, 16, 0, 0);
-    BlockView<uint32_t, 4> bv42(Pixels16x16.data(), 16, 16, 12, 12);
+    BlockView<uint32_t, bool, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
+    BlockView<uint32_t, bool, 4> bv41(Pixels16x16.data(), 16, 16, 0, 0);
+    BlockView<uint32_t, bool, 4> bv42(Pixels16x16.data(), 16, 16, 12, 12);
 }
 
 TEST_CASE("Size")
 {
-    BlockView<uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
+    BlockView<uint32_t, bool, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
     CATCH_CHECK(bv16.empty() == false);
     CATCH_CHECK(bv16.size() == 256);
-    BlockView<uint32_t, 4> bv4(Pixels16x16.data(), 16, 16, 0, 0);
+    BlockView<uint32_t, bool, 4> bv4(Pixels16x16.data(), 16, 16, 0, 0);
     CATCH_CHECK(bv4.empty() == false);
     CATCH_CHECK(bv4.size() == 16);
 }
 
 TEST_CASE("Pixel access")
 {
-    BlockView<uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
+    BlockView<uint32_t, bool, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
     CATCH_CHECK(bv16.pixels() == Pixels16x16);
+}
+
+TEST_CASE("Block data access")
+{
+    BlockView<uint32_t, uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
+    {
+        CATCH_CHECK(bv16.data() == 0);
+        // 8x8 blocks
+        CATCH_CHECK(bv16.block(0).data() == 0);
+        CATCH_CHECK(bv16.block(1).data() == 0);
+        CATCH_CHECK(bv16.block(2).data() == 0);
+        CATCH_CHECK(bv16.block(3).data() == 0);
+        // 4x4 sub-blocks
+        const auto &b80 = bv16.block(0);
+        CATCH_CHECK(b80.block(0).data() == 0);
+        CATCH_CHECK(b80.block(1).data() == 0);
+        CATCH_CHECK(b80.block(2).data() == 0);
+        CATCH_CHECK(b80.block(3).data() == 0);
+        const auto &b81 = bv16.block(1);
+        CATCH_CHECK(b81.block(0).data() == 0);
+        CATCH_CHECK(b81.block(1).data() == 0);
+        CATCH_CHECK(b81.block(2).data() == 0);
+        CATCH_CHECK(b81.block(3).data() == 0);
+        const auto &b82 = bv16.block(2);
+        CATCH_CHECK(b82.block(0).data() == 0);
+        CATCH_CHECK(b82.block(1).data() == 0);
+        CATCH_CHECK(b82.block(2).data() == 0);
+        CATCH_CHECK(b82.block(3).data() == 0);
+        const auto &b83 = bv16.block(3);
+        CATCH_CHECK(b83.block(0).data() == 0);
+        CATCH_CHECK(b83.block(1).data() == 0);
+        CATCH_CHECK(b83.block(2).data() == 0);
+        CATCH_CHECK(b83.block(3).data() == 0);
+    }
+    {
+        // set data
+        bv16.data() = 1;
+        // 8x8 blocks
+        bv16.block(0).data() = 2;
+        bv16.block(1).data() = 3;
+        bv16.block(2).data() = 4;
+        bv16.block(3).data() = 5;
+        // 4x4 sub-blocks
+        auto &b80 = bv16.block(0);
+        b80.block(0).data() = 6;
+        b80.block(1).data() = 7;
+        b80.block(2).data() = 8;
+        b80.block(3).data() = 9;
+        auto &b81 = bv16.block(1);
+        b81.block(0).data() = 10;
+        b81.block(1).data() = 11;
+        b81.block(2).data() = 12;
+        b81.block(3).data() = 13;
+        auto &b82 = bv16.block(2);
+        b82.block(0).data() = 14;
+        b82.block(1).data() = 15;
+        b82.block(2).data() = 16;
+        b82.block(3).data() = 17;
+        auto &b83 = bv16.block(3);
+        b83.block(0).data() = 18;
+        b83.block(1).data() = 19;
+        b83.block(2).data() = 20;
+        b83.block(3).data() = 21;
+    }
+    {
+        CATCH_CHECK(bv16.data() == 1);
+        // 8x8 blocks
+        CATCH_CHECK(bv16.block(0).data() == 2);
+        CATCH_CHECK(bv16.block(1).data() == 3);
+        CATCH_CHECK(bv16.block(2).data() == 4);
+        CATCH_CHECK(bv16.block(3).data() == 5);
+        // 4x4 sub-blocks
+        const auto &b80 = bv16.block(0);
+        CATCH_CHECK(b80.block(0).data() == 6);
+        CATCH_CHECK(b80.block(1).data() == 7);
+        CATCH_CHECK(b80.block(2).data() == 8);
+        CATCH_CHECK(b80.block(3).data() == 9);
+        const auto &b81 = bv16.block(1);
+        CATCH_CHECK(b81.block(0).data() == 10);
+        CATCH_CHECK(b81.block(1).data() == 11);
+        CATCH_CHECK(b81.block(2).data() == 12);
+        CATCH_CHECK(b81.block(3).data() == 13);
+        const auto &b82 = bv16.block(2);
+        CATCH_CHECK(b82.block(0).data() == 14);
+        CATCH_CHECK(b82.block(1).data() == 15);
+        CATCH_CHECK(b82.block(2).data() == 16);
+        CATCH_CHECK(b82.block(3).data() == 17);
+        const auto &b83 = bv16.block(3);
+        CATCH_CHECK(b83.block(0).data() == 18);
+        CATCH_CHECK(b83.block(1).data() == 19);
+        CATCH_CHECK(b83.block(2).data() == 20);
+        CATCH_CHECK(b83.block(3).data() == 21);
+    }
 }
 
 TEST_CASE("Block access")
 {
-    BlockView<uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
+    BlockView<uint32_t, bool, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
     // 8x8 blocks
     CATCH_CHECK(bv16.block(0).index() == 0);
     CATCH_CHECK(bv16.block(1).index() == 1);
@@ -203,9 +296,9 @@ TEST_CASE("Block access")
     CATCH_CHECK(b83.block(3).index() == 15);
 }
 
-TEST_CASE("Sub-blocks data 16x16")
+TEST_CASE("Sub-blocks 16x16")
 {
-    BlockView<uint32_t, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
+    BlockView<uint32_t, bool, 16> bv16(Pixels16x16.data(), 16, 16, 0, 0);
     // use blocks() to access 8x8 sub-blocks
     auto bv8 = bv16.blocks();
     auto a8It = Pixels8x8.cbegin();

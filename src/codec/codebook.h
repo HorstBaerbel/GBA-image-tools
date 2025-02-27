@@ -25,9 +25,7 @@ public:
     static constexpr std::size_t BlockMinDim = BLOCK_MIN_DIM;
     static constexpr std::size_t BlockLevels = std::log2(BlockMaxDim) - std::log2(BlockMinDim) + 1;
     static constexpr bool HasBlockLevel2 = BlockMaxDim / 4 >= BlockMinDim;
-    using block_type0 = BlockView<value_type, BlockMaxDim, BlockMinDim>;
-    using block_type1 = BlockView<value_type, BlockMaxDim / 2, BlockMinDim>;
-    using block_type2 = BlockView<value_type, BlockMaxDim / 4, BlockMinDim>;
+    using block_type = BlockView<value_type, state_type, BlockMaxDim, BlockMinDim>;
 
     CodeBook() = default;
 
@@ -52,28 +50,8 @@ public:
         {
             for (uint32_t x = 0; x < m_width; x += BlockMaxDim)
             {
-                m_blocks0.emplace_back(block_type0(m_pixels.data(), m_width, m_height, x, y));
+                m_blocks.emplace_back(block_type(m_pixels.data(), m_width, m_height, x, y));
             }
-        }
-        m_encoded0 = std::vector<bool>(m_width / BlockMaxDim * m_height / BlockMaxDim, encoded);
-        for (uint32_t y = 0; y < m_height; y += BlockMaxDim / 2)
-        {
-            for (uint32_t x = 0; x < m_width; x += BlockMaxDim / 2)
-            {
-                m_blocks1.emplace_back(block_type1(m_pixels.data(), m_width, m_height, x, y));
-            }
-        }
-        m_encoded1 = std::vector<bool>(m_width / (BlockMaxDim / 2) * m_height / (BlockMaxDim / 2), encoded);
-        if constexpr (HasBlockLevel2)
-        {
-            for (uint32_t y = 0; y < m_height; y += BlockMaxDim / 4)
-            {
-                for (uint32_t x = 0; x < m_width; x += BlockMaxDim / 4)
-                {
-                    m_blocks2.emplace_back(block_type2(m_pixels.data(), m_width, m_height, x, y));
-                }
-            }
-            m_encoded2 = std::vector<bool>(m_width / (BlockMaxDim / 4) * m_height / (BlockMaxDim / 4), encoded);
         }
     }
 
@@ -105,174 +83,40 @@ public:
         return m_height / BLOCK_DIM;
     }
 
-    /// @brief Block iterator to start of blocks
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
-    auto begin() noexcept
+    /// @brief Get code book blocks on highest level / block size
+    const auto &blocks() const
     {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.begin();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.begin();
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.begin();
-        }
+        return m_blocks;
     }
 
-    /// @brief Block iterator past end of blocks
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
-    auto end() noexcept
+    /// @brief Get code book blocks on highest level / block size
+    auto &blocks()
     {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.end();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.end();
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.end();
-        }
+        return m_blocks;
     }
 
-    /// @brief Block iterator to start of blocks
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
-    auto cbegin() const noexcept
+    /// @brief Get code book block on highest level / block size
+    const auto &block(std::size_t index) const
     {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.cbegin();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.cbegin();
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.cbegin();
-        }
+        return m_blocks.at(index);
     }
 
-    /// @brief Block iterator past end of blocks
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
-    auto cend() const noexcept
+    /// @brief Get code book block on highest level / block size
+    auto &block(std::size_t index)
     {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.cend();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.cend();
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.cend();
-        }
+        return m_blocks.at(index);
     }
 
     /// @brief Check if codebook has blocks
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto empty() const -> bool
     {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.empty();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.empty();
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.empty();
-        }
+        return m_blocks.empty();
     }
 
     /// @brief Get number of codebook blocks at specific level
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
     auto size() const
     {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_blocks0.size();
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_blocks1.size();
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_blocks2.size();
-        }
-    }
-
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
-    auto isEncoded(const BlockView<COLOR_TYPE, BLOCK_DIM> &block) const
-    {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            return m_encoded0[block.index()];
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            return m_encoded1[block.index()];
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            return m_encoded2[block.index()];
-        }
-    }
-
-    template <std::size_t BLOCK_DIM = BlockMaxDim>
-    auto setEncoded(const BlockView<COLOR_TYPE, BLOCK_DIM> &block, bool encoded = true)
-    {
-        // Block size must be inside allowed range of power-of-two
-        static_assert(BLOCK_DIM <= BLOCK_MAX_DIM && BLOCK_DIM >= BLOCK_MIN_DIM && (BLOCK_DIM & (BLOCK_DIM - 1)) == 0);
-        auto index = block.index();
-        if constexpr (BLOCK_DIM == decltype(m_blocks0)::value_type::Dim)
-        {
-            m_encoded0[index] = encoded;
-            setEncoded<BLOCK_DIM / 2>(block.block(0), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(1), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(2), encoded);
-            setEncoded<BLOCK_DIM / 2>(block.block(3), encoded);
-        }
-        else if constexpr (BLOCK_DIM == decltype(m_blocks1)::value_type::Dim)
-        {
-            m_encoded1[index] = encoded;
-            if constexpr (HasBlockLevel2)
-            {
-                setEncoded<BLOCK_DIM / 2>(block.block(0), encoded);
-                setEncoded<BLOCK_DIM / 2>(block.block(1), encoded);
-                setEncoded<BLOCK_DIM / 2>(block.block(2), encoded);
-                setEncoded<BLOCK_DIM / 2>(block.block(3), encoded);
-            }
-        }
-        else if constexpr (HasBlockLevel2 && BLOCK_DIM == decltype(m_blocks2)::value_type::Dim)
-        {
-            m_encoded2[index] = encoded;
-        }
+        return m_blocks.size();
     }
 
     /// @brief Get codebook pixel data at full resolution
@@ -301,31 +145,12 @@ public:
     /// @brief Calculate perceived pixel difference between codebooks
     auto mse(const CodeBook &b) -> float
     {
-        double sum = 0.0;
-        auto aIt = m_pixels.cbegin();
-        auto bIt = b.m_pixels.cbegin();
-        while (aIt != m_pixels.cend() && bIt != b.m_pixels.cend())
-        {
-            sum += COLOR_TYPE::mse(*aIt++, *bIt++);
-        }
-        if constexpr (HasBlockLevel2)
-        {
-            return static_cast<float>(sum / m_blocks2.size());
-        }
-        else
-        {
-            return static_cast<float>(sum / m_blocks1.size());
-        }
+        return Color::mse(m_pixels, b.pixels());
     }
 
 private:
     uint32_t m_width = 0;
     uint32_t m_height = 0;
     std::vector<COLOR_TYPE> m_pixels;
-    std::vector<block_type0> m_blocks0;
-    std::vector<block_type1> m_blocks1;
-    [[no_unique_address]] std::conditional_t<HasBlockLevel2, std::vector<block_type2>, std::monostate> m_blocks2;
-    std::vector<bool> m_encoded0;
-    std::vector<bool> m_encoded1;
-    [[no_unique_address]] std::conditional_t<HasBlockLevel2, std::vector<bool>, std::monostate> m_encoded2;
+    std::vector<block_type> m_blocks;
 };
