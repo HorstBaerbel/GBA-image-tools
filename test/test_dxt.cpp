@@ -17,7 +17,7 @@ struct TestFile
     float minPsnr565;
 };
 
-const std::vector<TestFile> TestFiles = {
+static const std::vector<TestFile> TestFiles = {
     {"artificial_384x256.png", 33.27F, 33.50F},
     {"BigBuckBunny_282_384x256.png", 34.89F, 35.27F},
     {"BigBuckBunny_361_384x256.png", 31.65F, 31.84F},
@@ -64,7 +64,7 @@ TearsOfSteel_1200_384x256.png, psnr: 33.71
 TearsOfSteel_676_384x256.png, psnr: 34.35
 */
 
-const std::string DataPathTest = "../../data/images/test/";
+static const std::string DataPathTest = "../../data/images/test/";
 
 // #define WRITE_OUTPUT
 

@@ -402,13 +402,13 @@ namespace Image
         REQUIRE(data.image.size.width() % 8 == 0, std::runtime_error, "Image width must be a multiple of 8 for DXTV compression");
         REQUIRE(data.image.size.height() % 8 == 0, std::runtime_error, "Image height must be a multiple of 8 for DXTV compression");
         // get parameter(s)
-        REQUIRE((VariantHelpers::hasTypes<Color::Format, double, double>(parameters)), std::runtime_error, "compressDXTV expects a Color::Format, a double keyframe interval and a double max. block error parameter");
+        REQUIRE((VariantHelpers::hasTypes<Color::Format, double, double>(parameters)), std::runtime_error, "compressDXTV expects a Color::Format, a double keyframe interval and a double quality parameter");
         const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
         REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::XBGR1555, std::runtime_error, "Output color format must be in [RGB555, BGR555]");
         auto keyFrameInterval = static_cast<int32_t>(VariantHelpers::getValue<double, 1>(parameters));
         REQUIRE(keyFrameInterval >= 0 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [0, 60] (0 = none)");
         auto maxBlockError = VariantHelpers::getValue<double, 2>(parameters);
-        REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "compressDXTV max. block error must be in [0.01, 1]");
+        REQUIRE(maxBlockError >= 0 && maxBlockError <= 100, std::runtime_error, "compressDXTV quality must be in [0, 100]");
         // check if needs to be a keyframe
         const bool isKeyFrame = keyFrameInterval > 0 ? ((data.index % keyFrameInterval) == 0 || state.empty()) : false;
         // convert image using DXT compression

@@ -24,7 +24,7 @@ public:
     static constexpr uint16_t BLOCK_FROM_PREV = (1 << 14); // The reference block is from from the previous frame
 
     static constexpr uint32_t BLOCK_MOTION_BITS = 6;                                         // Bits available for pixel motion
-    static constexpr uint16_t BLOCK_MOTION_MASK = ~((uint16_t(1) << BLOCK_MOTION_BITS) - 1); // Block x pixel motion mask
+    static constexpr uint16_t BLOCK_MOTION_MASK = (uint16_t(1) << BLOCK_MOTION_BITS) - 1;    // Block x pixel motion mask
     static constexpr uint16_t BLOCK_MOTION_Y_SHIFT = BLOCK_MOTION_BITS;                      // Block y pixel motion shift
 
     static constexpr std::pair<int32_t, int32_t> CurrMotionHOffset{-((1 << BLOCK_MOTION_BITS) / 2 - 1), (1 << BLOCK_MOTION_BITS) / 2}; // Block position search offsets for current frame for 8, 4
@@ -36,15 +36,15 @@ public:
 
     /// @brief Compress image block to DXTV format
     template <std::size_t BLOCK_DIM>
-    static auto encodeBlock(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<Color::XRGB8888, BLOCK_DIM> &block, float maxAllowedError, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<bool, std::vector<uint8_t>>;
+    static auto encodeBlock(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<Color::XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<bool, std::vector<uint8_t>>;
 
     /// @brief Compress image data to format similar to DXT1. See: https://www.khronos.org/opengl/wiki/S3_Texture_Compression#DXT1_Format
     // DXT1 compresses one 4x4 block to 2 bytes color0, 2 bytes color1 and 16*2 bit = 4 bytes index information
     /// Difference is that colors will be stored as RGB555 only
     /// @param keyframe If true B-frame will be output, else a P-frame
-    /// @param maxBlockError Max. allowed error for block references, if above a verbatim block will be stored. Range [0.01,1]
+    /// @param quality Quality for block references and splitting of blocks. The higher, the better quality. Range [0,100]
     /// @return Returns (compressed data, decompressed frame)
-    static auto encode(const std::vector<Color::XRGB8888> &image, const std::vector<Color::XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<std::vector<uint8_t>, std::vector<Color::XRGB8888>>;
+    static auto encode(const std::vector<Color::XRGB8888> &image, const std::vector<Color::XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float quality, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<std::vector<uint8_t>, std::vector<Color::XRGB8888>>;
 
     /// @brief Decompress block from DXTV format
     template <std::size_t BLOCK_DIM>

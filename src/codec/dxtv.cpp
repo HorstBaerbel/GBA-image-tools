@@ -80,10 +80,10 @@ struct FrameHeader
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, x offset, y offset) if usable entry found or empty optional, if not
 template <std::size_t BLOCK_DIM>
-auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockView<XRGB8888, BLOCK_DIM> &block, float maxAllowedError, bool fromPrevCodeBook) -> std::optional<std::tuple<float, int32_t, int32_t>>
+auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockView<XRGB8888, bool, BLOCK_DIM> &block, float allowedError, bool fromPrevCodeBook) -> std::optional<std::tuple<float, int32_t, int32_t>>
 {
     using return_type = std::tuple<float, int32_t, int32_t>;
-    if (codeBook.empty<BLOCK_DIM>())
+    if (codeBook.empty())
     {
         return std::optional<return_type>();
     }
@@ -115,26 +115,28 @@ auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockV
         for (int32_t x = xStart; x <= hEnd; ++x)
         {
             auto error = mse(framePixels, codeBook.width(), blockPixels, x, y, BLOCK_DIM, BLOCK_DIM);
-            if (error < maxAllowedError && error < std::get<0>(bestMotion))
+            if (error < allowedError && error < std::get<0>(bestMotion))
             {
                 bestMotion = {error, x - blockX, y - blockY};
             }
         }
     }
-    return std::get<0>(bestMotion) < maxAllowedError ? bestMotion : std::optional<return_type>();
+    return std::get<0>(bestMotion) < allowedError ? bestMotion : std::optional<return_type>();
 }
 
 template <std::size_t BLOCK_DIM>
-auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, BLOCK_DIM> &block, float maxAllowedError, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
+auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
 {
     static_assert(DXTV::MAX_BLOCK_DIM >= BLOCK_DIM);
     static constexpr std::size_t BLOCK_LEVEL = std::log2(DXTV::MAX_BLOCK_DIM) - std::log2(BLOCK_DIM);
     bool blockWasSplit = DXTV::BLOCK_NO_SPLIT;
     std::vector<uint8_t> data;
+    // calculate allowed MSE for blocks. Map from [0, 100] to [0.25, 0]
+    const float allowedError = ((100.0F - quality) / 100.0F) * 0.25F;
     // Try to find x/y motion block within error from previous frame
-    auto prevRef = findBestMatchingBlockMotion(previousCodeBook, block, maxAllowedError, true);
+    auto prevRef = findBestMatchingBlockMotion(previousCodeBook, block, allowedError, true);
     // Try to find x/y motion block within error from current frame
-    auto currRef = findBestMatchingBlockMotion(currentCodeBook, block, maxAllowedError, false);
+    auto currRef = findBestMatchingBlockMotion(currentCodeBook, block, allowedError, false);
     // Choose the better one of both block references
     const bool prevRefIsBetter = prevRef.has_value() && (!currRef.has_value() || std::get<0>(prevRef.value()) <= std::get<0>(currRef.value()));
     const bool currRefIsBetter = currRef.has_value() && (!prevRef.has_value() || std::get<0>(currRef.value()) <= std::get<0>(prevRef.value()));
@@ -155,7 +157,6 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         // store reference to previous frame
         data.push_back(refData & 0xFF);
         data.push_back((refData >> 8) & 0xFF);
-        currentCodeBook.setEncoded<BLOCK_DIM>(block);
         Statistics::incValue(statistics, "motionBlocksPrev", 1, BLOCK_LEVEL);
     }
     else if (currRefIsBetter)
@@ -175,7 +176,6 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         // store reference to current frame
         data.push_back(refData & 0xFF);
         data.push_back((refData >> 8) & 0xFF);
-        currentCodeBook.setEncoded<BLOCK_DIM>(block);
         Statistics::incValue(statistics, "motionBlocksCurr", 1, BLOCK_LEVEL);
     }
     else
@@ -186,9 +186,8 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         auto decodedBlock = DXT::decodeBlock<BLOCK_DIM>(encodedBlock, false, swapToBGR);
         if constexpr (BLOCK_DIM <= DXTV::CodeBook8x8::BlockMinDim)
         {
-            // We can't split anymore. Store 4x4 DXT block
+            // We can't split anymore and can't get better error-wise. Store 4x4 DXT block
             data = encodedBlock;
-            currentCodeBook.setEncoded<BLOCK_DIM>(block);
             block.copyPixelsFrom(decodedBlock);
             Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
         }
@@ -196,11 +195,10 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         {
             // We can still split. Check if encoded block is below allowed error or we want to split the block
             auto encodedBlockError = Color::mse(rawBlock, decodedBlock);
-            if (encodedBlockError < maxAllowedError)
+            if (encodedBlockError < allowedError)
             {
                 // Error ok. Store full DXT block
                 data = encodedBlock;
-                currentCodeBook.setEncoded<BLOCK_DIM>(block);
                 block.copyPixelsFrom(decodedBlock);
                 Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
             }
@@ -210,37 +208,36 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
                 blockWasSplit = true;
                 for (uint32_t i = 0; i < 4; ++i)
                 {
-                    auto [dummyFlag, blockData] = encodeBlockInternal<BLOCK_DIM / 2>(currentCodeBook, previousCodeBook, block.block(i), maxAllowedError, swapToBGR, statistics);
+                    auto [dummyFlag, blockData] = encodeBlockInternal<BLOCK_DIM / 2>(currentCodeBook, previousCodeBook, block.block(i), quality, swapToBGR, statistics);
                     std::copy(blockData.cbegin(), blockData.cend(), std::back_inserter(data));
                 }
             }
         }
     }
+    block.data() = true; // mark block as encoded
     return {blockWasSplit, data};
 }
 
 template <>
-auto DXTV::encodeBlock<4>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, 4> &block, float maxAllowedError, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
+auto DXTV::encodeBlock<4>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, 4> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
 {
     REQUIRE(block.size() == 16, std::runtime_error, "Number of pixels in block must be 16");
-    return encodeBlockInternal<4>(currentCodeBook, previousCodeBook, block, maxAllowedError, swapToBGR, statistics);
+    return encodeBlockInternal<4>(currentCodeBook, previousCodeBook, block, quality, swapToBGR, statistics);
 }
 
 template <>
-auto DXTV::encodeBlock<8>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, 8> &block, float maxAllowedError, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
+auto DXTV::encodeBlock<8>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, 8> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
 {
     REQUIRE(block.size() == 64, std::runtime_error, "Number of pixels in block must be 64");
-    return encodeBlockInternal<8>(currentCodeBook, previousCodeBook, block, maxAllowedError, swapToBGR, statistics);
+    return encodeBlockInternal<8>(currentCodeBook, previousCodeBook, block, quality, swapToBGR, statistics);
 }
 
-auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float maxBlockError, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
+auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
 {
     static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
     REQUIRE(width % CodeBook8x8::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of " << CodeBook8x8::BlockMaxDim << " for DXTV compression");
     REQUIRE(height % CodeBook8x8::BlockMaxDim == 0, std::runtime_error, "Image height must be a multiple of " << CodeBook8x8::BlockMaxDim << " for DXTV compression");
-    REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "Max. block error must be in [0.01,1]");
-    // divide max block error to get into internal range
-    maxBlockError /= 1000;
+    REQUIRE(quality >= 0 && quality <= 100, std::runtime_error, "Max. block error must be in [0,100]");
     // convert frames to codebooks
     auto currentCodeBook = CodeBook8x8(image, width, height, false);
     const auto previousCodeBook = previousImage.empty() || keyFrame ? CodeBook8x8() : CodeBook8x8(previousImage, width, height, true);
@@ -274,32 +271,31 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
     frameHeader.frameFlags = keyFrame ? 0 : FRAME_IS_PFRAME;
     auto headerData = frameHeader.toVector();
     assert((headerData.size() % 4) == 0);
-    std::vector<uint8_t> compressedFrameData;
-    compressedFrameData = headerData;
+    std::vector<uint8_t> compressedFrameData = headerData;
     // build vector of one block result per line for parallel execution
     std::vector<std::vector<uint8_t>> compressedBlockData(currentCodeBook.blockHeight());
-#pragma omp parallel for
-    // loop through source images in lines
+    // #pragma omp parallel for
+    //  loop through source images in lines
     for (int by = 0; by < currentCodeBook.blockHeight(); ++by)
     {
         // reserve maximum compressed data size
         std::vector<uint8_t> &compressedLineData = compressedBlockData.at(by);
         compressedLineData.reserve(blockFlagBytesPerLine + currentCodeBook.blockWidth() * 32);
-        // compress one BlockMaxDim line of blocks
-        auto bIt = std::next(currentCodeBook.begin(), by * currentCodeBook.blockWidth());
-        // process in blocks of 16 to correctly store flags in intervals
-        for (std::size_t bi = 0; bi < (currentCodeBook.blockWidth() + 15) / 16; ++bi)
+        // process in runs of 16 to correctly store flags in intervals
+        for (std::size_t chunkIndex = 0; chunkIndex < (currentCodeBook.blockWidth() + 15) / 16; ++chunkIndex)
         {
+            const auto blockStart = by * currentCodeBook.blockWidth() + chunkIndex * 16;
             // insert empty flag data into line data
             uint16_t flags16 = 0;
             const auto flagsIndex = compressedLineData.size();
             compressedLineData.push_back(0);
             compressedLineData.push_back(0);
             // compress 16 blocks
-            const auto restBlockCount = std::min(currentCodeBook.blockWidth() - bi * 16, std::size_t(16));
-            for (std::size_t bx = 0; bx < restBlockCount; ++bx, ++bIt)
+            const auto restBlockCount = std::min(currentCodeBook.blockWidth() - chunkIndex * 16, std::size_t(16));
+            for (std::size_t bx = 0; bx < restBlockCount; ++bx)
             {
-                auto [blockSplitFlag, blockData] = encodeBlockInternal(currentCodeBook, previousCodeBook, *bIt, maxBlockError, swapToBGR, statistics);
+                auto &block = currentCodeBook.block(blockStart + bx);
+                auto [blockSplitFlag, blockData] = encodeBlockInternal(currentCodeBook, previousCodeBook, block, quality, swapToBGR, statistics);
                 std::copy(blockData.cbegin(), blockData.cend(), std::back_inserter(compressedLineData));
                 flags16 = (flags16 >> 1) | (blockSplitFlag ? 0x8000 : 0);
             }
@@ -360,7 +356,7 @@ auto decodeBlockInternal(const uint16_t *data, XRGB8888 *currBlock, const XRGB88
         auto offsetX = static_cast<int32_t>(data0 & DXTV::BLOCK_MOTION_MASK) - ((1 << DXTV::BLOCK_MOTION_BITS) / 2 - 1);
         auto offsetY = static_cast<int32_t>((data0 >> DXTV::BLOCK_MOTION_Y_SHIFT) & DXTV::BLOCK_MOTION_MASK) - ((1 << DXTV::BLOCK_MOTION_BITS) / 2 - 1);
         // calculate start of block to copy
-        srcPtr += offsetY * width + offsetX;
+        srcPtr += offsetY * static_cast<int32_t>(width) + offsetX;
         // copy pixels to output block
         for (uint32_t y = 0; y < BLOCK_DIM; ++y)
         {
@@ -371,7 +367,7 @@ auto decodeBlockInternal(const uint16_t *data, XRGB8888 *currBlock, const XRGB88
             srcPtr += width;
             dstPtr += width;
         }
-        ++data;
+        return data + 1; // MC blocks use 2 bytes
     }
     else
     {
@@ -383,14 +379,14 @@ auto decodeBlockInternal(const uint16_t *data, XRGB8888 *currBlock, const XRGB88
         auto srcIt = decompressed.cbegin();
         for (uint32_t y = 0; y < BLOCK_DIM; ++y)
         {
-            for (uint32_t x = 0; x < BLOCK_DIM; ++x, ++srcIt)
+            for (uint32_t x = 0; x < BLOCK_DIM; ++x)
             {
-                dstPtr[x] = *srcIt;
+                dstPtr[x] = *srcIt++;
             }
             dstPtr += width;
         }
+        return data + 1 + 1 + (BLOCK_DIM * BLOCK_DIM / 8); // DXT blocks use 8 or 20 bytes
     }
-    return data;
 }
 
 template <>

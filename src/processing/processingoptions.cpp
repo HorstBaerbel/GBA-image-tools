@@ -296,18 +296,18 @@ ProcessingOptions::Option ProcessingOptions::dxt{
 
 ProcessingOptions::OptionT<std::vector<double>> ProcessingOptions::dxtv{
     false,
-    {"dxtv", "Use DXT1-ish RGB555 compression. With intra- and inter-frame compression. Parameters are keyframe interval in [0,60] (0 = none) and max. block error in [0.01,1], e.g. \"--dxtv=5,0.15\"", cxxopts::value(dxtv.value)},
+    {"dxtv", "Use DXT1-ish RGB555 compression. With intra- and inter-frame compression. Parameters are keyframe interval in [0,60] (0 = none) and quality in [0,100], e.g. \"--dxtv=5,50\"", cxxopts::value(dxtv.value)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
     {
         if (r.count(dxtv.cxxOption.opts_))
         {
-            REQUIRE(dxtv.value.size() == 2, std::runtime_error, "DXTV parameter format must be \"Keyframe interval, Max. block error\", e.g. \"--dxtv=5,0.15\"");
+            REQUIRE(dxtv.value.size() == 2, std::runtime_error, "DXTV parameter format must be \"Keyframe interval, Max. block error\", e.g. \"--dxtv=5,50\"");
             auto keyframeInterval = static_cast<int32_t>(dxtv.value.at(0));
             REQUIRE(keyframeInterval >= 0 && keyframeInterval <= 60, std::runtime_error, "Keyframe interval must be in [0,60] (0 = none)");
-            auto maxBlockError = dxtv.value.at(1);
-            REQUIRE(maxBlockError >= 0.01 && maxBlockError <= 1, std::runtime_error, "Max. block error must be in [0.01,1]");
+            auto quality = dxtv.value.at(1);
+            REQUIRE(quality >= 0 && quality <= 100, std::runtime_error, "Quality must be in [0,100]");
             dxtv.isSet = true;
         }
     }};

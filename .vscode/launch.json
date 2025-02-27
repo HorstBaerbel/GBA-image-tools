@@ -38,7 +38,7 @@
             "args": [
                 "--truecolor=rgb888",
                 "--outformat=bgr555",
-                "--dxtv=15,0.1",
+                "--dxtv=15,90",
                 "--lz10",
                 "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
                 "video"
