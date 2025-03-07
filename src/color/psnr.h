@@ -44,26 +44,6 @@ namespace Color
         return static_cast<float>(10.0 * std::log10(1.0 / mse));
     }
 
-    /// @brief Calculate mean squared error between pixels and block in image (scalar product)
-    /// @return Returns average color distance in [0,1]
-    template <typename T>
-    static auto mse(const std::vector<T> &image, const uint32_t pixelsPerScanline, const std::vector<T> &block, const uint32_t blockX, const uint32_t blockY, const uint32_t blockWidth, const uint32_t blockHeight) -> float
-    {
-        REQUIRE(block.size() == blockWidth * blockHeight, std::runtime_error, "Data size must be the same as width * height");
-        double dist = 0.0;
-        auto iIt = std::next(image.cbegin(), blockY * pixelsPerScanline + blockX);
-        auto bIt = block.cbegin();
-        for (uint32_t y = 0; y < blockHeight; ++y)
-        {
-            for (uint32_t x = 0; x < blockWidth; ++x, ++iIt, ++bIt)
-            {
-                dist += T::mse(*iIt, *bIt);
-            }
-            iIt = std::next(iIt, pixelsPerScanline - blockWidth);
-        }
-        return static_cast<float>(dist / block.size());
-    }
-
     /// @brief Calculate mean squared error between colors (scalar product)
     /// @return Returns average color distance in [0,1]
     template <typename T>

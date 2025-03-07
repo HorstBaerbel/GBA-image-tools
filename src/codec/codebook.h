@@ -142,10 +142,49 @@ public:
         }
     }
 
+    /// @brief Get pixel data for an arbitrary block at full resolution
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
+    auto blockPixels(uint32_t blockX, uint32_t blockY) const -> std::vector<COLOR_TYPE>
+    {
+        REQUIRE(blockX + BLOCK_DIM <= m_width, std::runtime_error, "Block x out of range");
+        REQUIRE(blockY + BLOCK_DIM <= m_height, std::runtime_error, "Block y out of range");
+        std::vector<COLOR_TYPE> result;
+        result.reserve(BLOCK_DIM * BLOCK_DIM);
+        auto pIt = std::next(m_pixels.cbegin(), blockY * m_width + blockX);
+        for (uint32_t v = 0; v < BLOCK_DIM; ++v)
+        {
+            std::copy(pIt, std::next(pIt, BLOCK_DIM), std::back_inserter(result));
+            pIt = std::next(pIt, m_width);
+        }
+        return result;
+    }
+
     /// @brief Calculate perceived pixel difference between codebooks
     auto mse(const CodeBook &b) -> float
     {
         return Color::mse(m_pixels, b.pixels());
+    }
+
+    /// @brief Calculate mean squared error between pixels and block in image (scalar product)
+    /// @return Returns average color distance in [0,1]
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
+    auto mse(const std::vector<COLOR_TYPE> &block, const uint32_t x, const uint32_t y) const -> float
+    {
+        REQUIRE(block.size() == BLOCK_DIM * BLOCK_DIM, std::runtime_error, "Block size does not match");
+        REQUIRE(x + BLOCK_DIM <= m_width, std::runtime_error, "Block x out of range");
+        REQUIRE(y + BLOCK_DIM <= m_height, std::runtime_error, "Block y out of range");
+        double dist = 0.0;
+        auto bIt = block.cbegin();
+        auto pIt = std::next(m_pixels.cbegin(), y * m_width + x);
+        for (uint32_t v = 0; v < BLOCK_DIM; ++v)
+        {
+            for (uint32_t u = 0; u < BLOCK_DIM; ++u, ++bIt)
+            {
+                dist += COLOR_TYPE::mse(pIt[u], *bIt);
+            }
+            pIt = std::next(pIt, m_width);
+        }
+        return static_cast<float>(dist / (BLOCK_DIM * BLOCK_DIM));
     }
 
 private:

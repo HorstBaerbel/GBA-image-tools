@@ -72,7 +72,7 @@ static const std::string DataPathGBA = "../../data/images/240x160/";
 static constexpr float BlockQualityDXTV8x8 = 70;
 static constexpr float BlockQualityDXTV4x4 = 99;
 
-static constexpr float ImageQualityDXT8x8 = 70;
+static constexpr float ImageQualityDXT8x8 = 95;
 static constexpr float ImageQualityDXT4x4 = 100;
 
 // #define WRITE_OUTPUT
@@ -121,13 +121,16 @@ auto testEncode(const Image::Data &data, const float quality, const float allowe
     const auto size = data.image.size;
     const auto inPixels = data.image.data.pixels().convertData<Color::XRGB8888>();
     // compress image
-    const auto [compressedData, inputImage] = DXTV::encode(inPixels, {}, size.width(), size.height(), true, quality, false);
+    const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, {}, size.width(), size.height(), true, quality, false);
     auto outPixels = DXTV::decode(compressedData, {}, size.width(), size.height(), false);
     auto psnr = Color::psnr(inPixels, outPixels);
-    std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << DXTV::MAX_BLOCK_DIM << "x" << DXTV::MAX_BLOCK_DIM << " block, psnr: " << std::setprecision(4) << psnr << std::endl;
-    auto result = data;
-    result.image.data.pixels() = Image::PixelData(outPixels, Color::Format::XRGB8888);
-    IO::File::writeImage(result, "/tmp", "dxtv_dump.png");
+    std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << "image, psnr: " << std::setprecision(4) << psnr << std::endl;
+    auto encoded = data;
+    encoded.image.data.pixels() = Image::PixelData(frameBuffer, Color::Format::XRGB8888);
+    auto decoded = data;
+    decoded.image.data.pixels() = Image::PixelData(outPixels, Color::Format::XRGB8888);
+    IO::File::writeImage(encoded, "/tmp", "dxtv_encoded.png");
+    IO::File::writeImage(decoded, "/tmp", "dxtv_decoded.png");
     CATCH_REQUIRE(psnr >= allowedPsnr);
 }
 
@@ -143,8 +146,8 @@ TEST_CASE("EncodeDecodeBlock")
 TEST_CASE("EncodeDecodeImage")
 {
     auto image = IO::File::readImage(DataPathGBA + "BigBuckBunny_361_240x160.png");
-    testEncode(image, ImageQualityDXT8x8, 34.06F, false);
-    testEncode(image, ImageQualityDXT8x8, 34.06F, true);
-    testEncode(image, ImageQualityDXT4x4, 42.96F, false);
-    testEncode(image, ImageQualityDXT4x4, 42.96F, true);
+    testEncode(image, ImageQualityDXT8x8, 28.04F, false);
+    testEncode(image, ImageQualityDXT8x8, 28.04F, true);
+    testEncode(image, ImageQualityDXT4x4, 30.46F, false);
+    testEncode(image, ImageQualityDXT4x4, 30.46F, true);
 }
