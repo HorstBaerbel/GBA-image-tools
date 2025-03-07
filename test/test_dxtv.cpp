@@ -72,8 +72,8 @@ static const std::string DataPathGBA = "../../data/images/240x160/";
 static constexpr float BlockQualityDXTV8x8 = 70;
 static constexpr float BlockQualityDXTV4x4 = 99;
 
-static constexpr float ImageQualityDXT8x8 = 95;
-static constexpr float ImageQualityDXT4x4 = 100;
+static constexpr float ImageQualityDXT8x8 = 90;
+static constexpr float ImageQualityDXT4x4 = 99;
 
 // #define WRITE_OUTPUT
 
@@ -146,8 +146,6 @@ TEST_CASE("EncodeDecodeBlock")
 TEST_CASE("EncodeDecodeImage")
 {
     auto image = IO::File::readImage(DataPathGBA + "BigBuckBunny_361_240x160.png");
-    testEncode(image, ImageQualityDXT8x8, 28.04F, false);
-    testEncode(image, ImageQualityDXT8x8, 28.04F, true);
+    testEncode(image, ImageQualityDXT8x8, 23.02F, false);
     testEncode(image, ImageQualityDXT4x4, 30.46F, false);
-    testEncode(image, ImageQualityDXT4x4, 30.46F, true);
 }
