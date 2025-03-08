@@ -36,7 +36,7 @@ namespace IO
         return os;
     }
 
-    auto Stream::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, uint8_t fps, uint32_t maxMemoryNeeded) -> std::ostream &
+    auto Stream::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t maxMemoryNeeded) -> std::ostream &
     {
         REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
         const auto &frameData = frames.front().image.data;
@@ -48,9 +48,10 @@ namespace IO
         fileHeader.nrOfFrames = frames.size();
         fileHeader.width = static_cast<uint16_t>(frames.front().image.size.width());
         fileHeader.height = static_cast<uint16_t>(frames.front().image.size.height());
-        fileHeader.fps = fps;
+        fileHeader.fps = static_cast<uint32_t>(std::round(fps * 65536.0));
         fileHeader.bitsPerPixel = static_cast<uint8_t>(Color::formatInfo(frameData.pixels().format()).bitsPerPixel);
         fileHeader.bitsPerColor = frameHasColorMap ? static_cast<uint8_t>(Color::formatInfo(frameData.colorMap().format()).bitsPerPixel) : 0;
+        fileHeader.swappedRedBlue = (frameHasColorMap ? Color::formatInfo(frameData.colorMap().format()).hasSwappedRedBlue : Color::formatInfo(frameData.pixels().format()).hasSwappedRedBlue) ? 1 : 0;
         fileHeader.colorMapEntries = frameHasColorMap ? frameData.colorMap().size() : 0;
         fileHeader.maxMemoryNeeded = maxMemoryNeeded;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(fileHeader));

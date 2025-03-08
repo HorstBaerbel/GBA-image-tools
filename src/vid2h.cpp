@@ -389,13 +389,6 @@ int main(int argc, const char *argv[])
         std::cout << "Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
         std::cout << "Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(compressedSize) / 1024) / videoInfo.durationS << " kB/s" << std::endl;
         std::cout << "Avg. frame size: " << std::fixed << std::setprecision(1) << static_cast<double>(compressedSize) / images.size() << " Byte" << std::endl;
-        if (videoInfo.fps > 255 || (videoInfo.fps - std::round(videoInfo.fps)) != 0)
-        {
-            std::cout << "Frame rate of " << std::fixed << std::setprecision(2) << videoInfo.fps << " will be set to ";
-            videoInfo.fps = std::round(videoInfo.fps);
-            videoInfo.fps = videoInfo.fps > 255 ? 255 : videoInfo.fps;
-            std::cout << videoInfo.fps << std::endl;
-        }
         // find out the max. memory needed to decompress
         const auto maxMemoryNeeded = std::max_element(images.cbegin(), images.cend(), [](const auto &img0, const auto &img1)
                                                       { return img0.image.maxMemoryNeeded < img1.image.maxMemoryNeeded; })
@@ -411,7 +404,7 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    IO::Stream::writeFileHeader(binFile, images, static_cast<uint8_t>(videoInfo.fps), maxMemoryNeeded);
+                    IO::Stream::writeFileHeader(binFile, images, videoInfo.fps, maxMemoryNeeded);
                     IO::Stream::writeFrames(binFile, images);
                 }
                 catch (const std::runtime_error &e)
