@@ -110,7 +110,8 @@ TEST_CASE("EncodeDecodeVideo")
     {
         images.push_back(IO::File::readImage(DataPathGBAVideos + file));
     }
-    const bool swapToBGR = false;
+    constexpr bool swapToBGR = true;
+    constexpr float allowedPsnr = 22.73F;
     std::vector<Color::XRGB8888> prevPixels;
     for (const auto &data : images)
     {
@@ -122,6 +123,7 @@ TEST_CASE("EncodeDecodeVideo")
         auto outPixels = DXTV::decode(compressedData, prevPixels, size.width(), size.height(), swapToBGR);
         auto psnr = Color::psnr(inPixels, outPixels);
         std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << "frame, psnr: " << std::setprecision(4) << psnr << std::endl;
+        CATCH_REQUIRE(psnr >= allowedPsnr);
         prevPixels = frameBuffer;
     }
 }
