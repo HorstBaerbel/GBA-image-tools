@@ -148,7 +148,7 @@ namespace Video
         return {m_state->codecName, static_cast<uint32_t>(m_state->videoStreamIndex), static_cast<uint32_t>(m_state->width), static_cast<uint32_t>(m_state->height), m_state->fps, static_cast<uint64_t>(m_state->nrOfFrames), duration};
     }
 
-    auto FFmpegReader::readFrame() -> std::vector<uint32_t>
+    auto FFmpegReader::readFrame() -> std::vector<Color::XRGB8888>
     {
         while (true)
         {
@@ -215,7 +215,7 @@ namespace Video
             }
         }
         // convert pixel format using sw scaler
-        std::vector<uint32_t> frame(m_state->width * m_state->height);
+        std::vector<Color::XRGB8888> frame(m_state->width * m_state->height);
         uint8_t *const dst[4] = {reinterpret_cast<uint8_t *>(frame.data()), nullptr, nullptr, nullptr};
         int const dstStride[4] = {m_state->width * 4, 0, 0, 0};
         sws_scale(m_state->swsContext, m_state->frame->data, m_state->frame->linesize, 0, m_state->frame->height, dst, dstStride);

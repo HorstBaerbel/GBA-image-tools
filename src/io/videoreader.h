@@ -1,5 +1,7 @@
 #pragma once
 
+#include "color/xrgb8888.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -34,7 +36,7 @@ namespace Video
         virtual auto getInfo() const -> VideoInfo = 0;
 
         /// @brief Read next XRGB8888 frame from video. Will return empty data if EOF
-        virtual auto readFrame() -> std::vector<uint32_t> = 0;
+        virtual auto readFrame() -> std::vector<Color::XRGB8888> = 0;
 
         /// @brief Close reader opened with open()
         virtual auto close() -> void;

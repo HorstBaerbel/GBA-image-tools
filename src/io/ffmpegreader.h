@@ -28,7 +28,7 @@ namespace Video
         virtual auto getInfo() const -> VideoInfo override;
 
         /// @brief Read next XRGB8888 frame from video. Will return empty data if EOF
-        virtual auto readFrame() -> std::vector<uint32_t> override;
+        virtual auto readFrame() -> std::vector<Color::XRGB8888> override;
 
         /// @brief Close FFmpeg reader opened with open()
         virtual auto close() -> void override;
