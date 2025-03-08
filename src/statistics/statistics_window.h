@@ -17,6 +17,7 @@ namespace Statistics
 
         auto getStatisticsContainer() -> Container::SPtr;
 
+        /// @brief Update window with latest frame data
         auto update() -> void;
 
     private:

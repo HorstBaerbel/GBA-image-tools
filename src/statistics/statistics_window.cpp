@@ -16,9 +16,9 @@ namespace Statistics
     auto Window::update() -> void
     {
         auto frames = m_container->getFrames();
-        for (const auto &frame : frames)
+        if (!frames.empty())
         {
-            auto images = frame->getImages();
+            auto images = frames.back()->getImages();
             for (const auto &image : images)
             {
                 const auto &data = image.second;
