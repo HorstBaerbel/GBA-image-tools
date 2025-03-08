@@ -407,20 +407,20 @@ namespace Image
         REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::XBGR1555, std::runtime_error, "Output color format must be in [RGB555, BGR555]");
         auto keyFrameInterval = static_cast<int32_t>(VariantHelpers::getValue<double, 1>(parameters));
         REQUIRE(keyFrameInterval >= 0 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [0, 60] (0 = none)");
-        auto maxBlockError = VariantHelpers::getValue<double, 2>(parameters);
-        REQUIRE(maxBlockError >= 0 && maxBlockError <= 100, std::runtime_error, "compressDXTV quality must be in [0, 100]");
+        auto quality = VariantHelpers::getValue<double, 2>(parameters);
+        REQUIRE(quality >= 0 && quality <= 100, std::runtime_error, "compressDXTV quality must be in [0, 100]");
         // check if needs to be a keyframe
         const bool isKeyFrame = keyFrameInterval > 0 ? ((data.index % keyFrameInterval) == 0 || state.empty()) : false;
         // convert image using DXT compression
         auto result = data;
         auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
-        auto compressedData = DXTV::encode(data.image.data.pixels().data<Color::XRGB8888>(), previousImage, data.image.size.width(), data.image.size.height(), isKeyFrame, maxBlockError, format == Color::Format::XBGR1555);
+        auto compressedData = DXTV::encode(data.image.data.pixels().data<Color::XRGB8888>(), previousImage, data.image.size.width(), data.image.size.height(), isKeyFrame, quality, format == Color::Format::XBGR1555);
         result.image.data.pixels() = PixelData(compressedData.first, Color::Format::Unknown);
         result.image.pixelFormat = format;
         result.image.colorMapFormat = Color::Format::Unknown;
         result.type.setCompressed();
         // store decompressed image as state
-        state = DataHelpers::convertTo<uint8_t>(DXTV::decode(compressedData.first, previousImage, data.image.size.width(), data.image.size.height(), format == Color::Format::XBGR1555));
+        state = DataHelpers::convertTo<uint8_t>(compressedData.second);
         // add statistics
         if (statistics != nullptr)
         {
