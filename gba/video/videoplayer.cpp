@@ -60,8 +60,8 @@ namespace Video
             // set up timer to increase with frame interval
             irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
             irqEnable(irqMASKS::IRQ_TIMER2);
-            // Timer interval = 1 / fps (where 65536 == 1s)
-            REG_TM2CNT_L = 65536 - (65536 / m_videoInfo.fps);
+            // Timer interval = 1 / fps (where 65536 == 1s). frames/s are in 16:15 format
+            REG_TM2CNT_L = 65536 - ((65536U << 15) / m_videoInfo.fps);
             // Timer divider 2 == 256 -> 16*1024*1024 cycles/s / 256 = 65536/s
             REG_TM2CNT_H = TIMER_START | TIMER_IRQ | 2;
         }

@@ -15,6 +15,5 @@ namespace Video
     /// @param info File data information. Read with GetInfo()
     /// @param previous Previous frame. When starting to read frames, insert an empty Frame here
     /// @note Will return the first frame passing the last frame in previousFrame
-    Frame GetNextFrame(const Info &info, const Frame &previous);
-
+    FrameData GetNextFrame(const Info &info, const FrameData &previous);
 }

@@ -30,22 +30,27 @@ namespace Video
 
     Frame GetNextFrame(const Info &info, const Frame &previous)
     {
-        static_assert(sizeof(Frame::compressedSize) % 4 == 0);
-        static_assert(sizeof(DataChunk) % 4 == 0);
+        static_assert(sizeof(FrameHeader) % 4 == 0);
         Frame frame;
+        uint32_t *frameStart = nullptr;
         if (previous.index < 0 || previous.index >= static_cast<int32_t>(info.nrOfFrames - 1))
         {
             // read first frame
             frame.index = 0;
-            frame.data = info.fileData + sizeof(FileHeader) / 4;
+            frameStart = info.fileData + sizeof(FileHeader) / 4;
         }
         else
         {
             frame.index = previous.index + 1;
-            frame.data = previous.data + (sizeof(Frame::compressedSize) + previous.compressedSize + info.colorMapSize) / 4;
+            const uint32_t previousFrameSize = previous.pixelDataSize + previous.colorMapDataSize + previous.audioDataSize;
+            frameStart = previous.frame + sizeof(FrameHeader) / 4 + previousFrameSize / 4;
         }
-        frame.compressedSize = *frame.data;
-        frame.colorMapOffset = info.colorMapEntries > 0 ? (sizeof(Frame::compressedSize) + frame.compressedSize) : 0;
+        frame.frame = frameStart;
+        frame.data = frameStart + sizeof(FrameHeader) / 4;
+        auto header = reinterpret_cast<const FrameHeader *>(frameStart);
+        frame.pixelDataSize = header->pixelDataSize;
+        frame.colorMapDataSize = header->colorMapDataSize;
+        frame.audioDataSize = header->audioDataSize;
         return frame;
     }
 

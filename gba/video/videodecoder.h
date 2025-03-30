@@ -12,5 +12,4 @@ namespace Video
     /// @param frame Video frame to decode
     /// @return Returns pointer to decoded frame
     auto decode(uint32_t *scratchPad, uint32_t scratchPadSize, const Info &info, const Frame &frame) -> const uint32_t *;
-
 }

@@ -13,16 +13,16 @@ namespace Video
 
     IWRAM_FUNC auto decode(uint32_t *scratchPad, uint32_t scratchPadSize, const Info &info, const Frame &frame) -> const uint32_t *
     {
-        static_assert(sizeof(DataChunk) % 4 == 0);
-        // get pointer to start of data chunk
-        auto currentChunk = frame.data + sizeof(DataChunk) / 4;
+        static_assert(sizeof(ChunkHeader) % 4 == 0);
+        // get pointer to start of data chunk. audio data is stored first
+        auto currentChunk = frame.data + frame.audioDataSize / 4;
         uint32_t *currentDst = nullptr;
         do
         {
-            const auto chunk = reinterpret_cast<const DataChunk *>(currentChunk);
+            const auto chunk = reinterpret_cast<const ChunkHeader *>(currentChunk);
             const auto isFinal = (chunk->processingType & Image::ProcessingTypeFinal) != 0;
             // get pointer to start of frame data
-            auto currentSrc = currentChunk + sizeof(DataChunk) / 4;
+            auto currentSrc = currentChunk + sizeof(ChunkHeader) / 4;
             // if we're reading from start of scratchpad, write to the end and vice versa
             currentDst = currentChunk == scratchPad ? scratchPad + ((scratchPadSize / 4) - ((chunk->uncompressedSize + 3) / 4)) : scratchPad;
             // check wether destination is in VRAM (no 8-bit writes possible)
