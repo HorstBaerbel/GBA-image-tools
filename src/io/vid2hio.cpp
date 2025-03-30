@@ -48,7 +48,7 @@ namespace IO
         return os;
     }
 
-    auto Vid2h::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t maxMemoryNeeded) -> std::ostream &
+    auto Vid2h::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t videoMemoryNeeded) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
         const auto &frameData = frames.front().image.data;
@@ -65,7 +65,7 @@ namespace IO
         fileHeader.bitsPerColor = frameHasColorMap ? static_cast<uint8_t>(Color::formatInfo(frameData.colorMap().format()).bitsPerPixel) : 0;
         fileHeader.swappedRedBlue = (frameHasColorMap ? Color::formatInfo(frameData.colorMap().format()).hasSwappedRedBlue : Color::formatInfo(frameData.pixels().format()).hasSwappedRedBlue) ? 1 : 0;
         fileHeader.colorMapEntries = frameHasColorMap ? frameData.colorMap().size() : 0;
-        fileHeader.maxMemoryNeeded = maxMemoryNeeded;
+        fileHeader.videoMemoryNeeded = videoMemoryNeeded;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(fileHeader));
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write file header to stream");
         return os;

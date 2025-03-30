@@ -59,7 +59,7 @@ namespace IO
         static auto writeFrames(std::ostream &os, const std::vector<Image::Data> &frames) -> std::ostream &;
 
         /// @brief Write frames to output stream. Will get width / height / color format from first frame in vector
-        static auto writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t maxMemoryNeeded) -> std::ostream &;
+        static auto writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t videoMemoryNeeded) -> std::ostream &;
 
         /// @brief Read file header from input stream
         static auto readFileHeader(std::istream &is) -> FileHeader;

@@ -8,7 +8,7 @@ namespace Video
     /// @brief Header for a vid2h binary video stream
     struct FileHeader
     {
-        std::array<char, 4> magic;      // Magic bytes at the start of the file: "v2h" plus a version number, atm "v2h0"
+        uint32_t magic = 0;             // Magic bytes at the start of the file: "v2h" plus a version number, atm "v2h0"
         uint32_t nrOfFrames = 0;        // Number of frames in file
         uint16_t width = 0;             // Width in pixels
         uint16_t height = 0;            // Height in pixels
