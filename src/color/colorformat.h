@@ -50,6 +50,13 @@ namespace Color
     template <typename PIXEL_TYPE>
     auto toFormat() -> Format;
 
+    /// @brief Find a color format based on the input info
+    /// @param bitsPerPixel Bits per pixel for pixel data
+    /// @param isIndexed If true the pixel format is an indexed format, else a true-color format
+    /// @param swappedRedBlue If true format has red and blue color channel swapped
+    /// @return Most probable color format or Format::Unknown
+    auto findFormat(uint32_t bitsPerPixel, bool isIndexed, bool swappedRedBlue = false) -> Format;
+
     /// @brief Calculate size for an image composed of format pixels
     /// @note Will round up to the nearest byte for pixel formats with bits < 8!
     auto bytesPerImage(Format format, uint32_t nrOfPixels) -> uint32_t;

@@ -22,7 +22,7 @@ namespace Color
         {Format::Paletted4, {Format::Paletted4, "Paletted 4-bit", 4, 1, 1, true, false, false, false}},
         {Format::Paletted8, {Format::Paletted8, "Paletted 8-bit", 8, 1, 1, true, false, false, false}},
         {Format::XRGB1555, {Format::XRGB1555, "XRGB1555", 15, sizeof(Color::RGB565::pixel_type), Color::RGB565::Channels, false, true, false, false}},
-        {Format::XBGR1555, {Format::XBGR1555, "XBGR1555", 15, sizeof(Color::RGB565::pixel_type), Color::RGB565::Channels, false, true, false, false}},
+        {Format::XBGR1555, {Format::XBGR1555, "XBGR1555", 15, sizeof(Color::RGB565::pixel_type), Color::RGB565::Channels, false, true, false, true}},
         {Format::RGB565, {Format::RGB565, "RGB565", sizeof(Color::RGB565::pixel_type) * 8, sizeof(Color::RGB565::pixel_type), Color::RGB565::Channels, false, true, false, false}},
         {Format::BGR565, {Format::BGR565, "BGR565", sizeof(Color::RGB565::pixel_type) * 8, sizeof(Color::RGB565::pixel_type), Color::RGB565::Channels, false, true, false, true}},
         {Format::RGB888, {Format::RGB888, "RGB888", sizeof(Color::RGB888::pixel_type) * 8, sizeof(Color::RGB888::pixel_type), Color::RGB888::Channels, false, true, false, false}},
@@ -91,6 +91,17 @@ namespace Color
     auto toFormat<Grayf>() -> Format
     {
         return Format::Grayf;
+    }
+
+    auto findFormat(uint32_t bitsPerPixel, bool isIndexed, bool swappedRedBlue = false) -> Format
+    {
+        auto fimIt = std::find(FormatInfoMap.cbegin(), FormatInfoMap.cend(), [bitsPerPixel, isIndexed, swappedRedBlue](const auto &f)
+                               { return f.second.bitsPerPixel == bitsPerPixel && f.second.isIndexed == isIndexed && f.second.hasSwappedRedBlue == swappedRedBlue; });
+        if (fimIt != FormatInfoMap.cend())
+        {
+            return fimIt->first;
+        }
+        return Format::Unknown;
     }
 
     auto bytesPerImage(Format format, uint32_t nrOfPixels) -> uint32_t
