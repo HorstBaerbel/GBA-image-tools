@@ -217,7 +217,7 @@ namespace Video
         // convert pixel format using sw scaler
         std::vector<Color::XRGB8888> frame(m_state->width * m_state->height);
         uint8_t *const dst[4] = {reinterpret_cast<uint8_t *>(frame.data()), nullptr, nullptr, nullptr};
-        int const dstStride[4] = {m_state->width * 4, 0, 0, 0};
+        int const dstStride[4] = {m_state->width * sizeof(Color::XRGB8888), 0, 0, 0};
         sws_scale(m_state->swsContext, m_state->frame->data, m_state->frame->linesize, 0, m_state->frame->height, dst, dstStride);
         // release FFmpeg frame
         av_frame_unref(m_state->frame);

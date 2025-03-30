@@ -1,11 +1,11 @@
-#include "streamio.h"
+#include "vid2hio.h"
 
 namespace IO
 {
 
-    const std::array<char, 4> Stream::VID2H_MAGIC = {'v', '2', 'h', '_'};
+    const std::array<char, 4> Vid2h::VID2H_MAGIC = {'v', '2', 'h', '_'};
 
-    auto Stream::writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &
+    auto Vid2h::writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &
     {
         REQUIRE((frame.image.data.pixels().size() & 3) == 0, std::runtime_error, "Frame data size is not a multiple of 4");
         REQUIRE((frame.image.data.colorMap().size() & 3) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
@@ -27,7 +27,7 @@ namespace IO
         return os;
     }
 
-    auto Stream::writeFrames(std::ostream &os, const std::vector<Image::Data> &frames) -> std::ostream &
+    auto Vid2h::writeFrames(std::ostream &os, const std::vector<Image::Data> &frames) -> std::ostream &
     {
         for (const auto &f : frames)
         {
@@ -36,7 +36,7 @@ namespace IO
         return os;
     }
 
-    auto Stream::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t maxMemoryNeeded) -> std::ostream &
+    auto Vid2h::writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t maxMemoryNeeded) -> std::ostream &
     {
         REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
         const auto &frameData = frames.front().image.data;
@@ -48,7 +48,7 @@ namespace IO
         fileHeader.nrOfFrames = frames.size();
         fileHeader.width = static_cast<uint16_t>(frames.front().image.size.width());
         fileHeader.height = static_cast<uint16_t>(frames.front().image.size.height());
-        fileHeader.fps = static_cast<uint32_t>(std::round(fps * 65536.0));
+        fileHeader.fps = static_cast<uint32_t>(std::round(fps * 32768.0));
         fileHeader.bitsPerPixel = static_cast<uint8_t>(Color::formatInfo(frameData.pixels().format()).bitsPerPixel);
         fileHeader.bitsPerColor = frameHasColorMap ? static_cast<uint8_t>(Color::formatInfo(frameData.colorMap().format()).bitsPerPixel) : 0;
         fileHeader.swappedRedBlue = (frameHasColorMap ? Color::formatInfo(frameData.colorMap().format()).hasSwappedRedBlue : Color::formatInfo(frameData.pixels().format()).hasSwappedRedBlue) ? 1 : 0;
@@ -59,7 +59,7 @@ namespace IO
         return os;
     }
 
-    auto Stream::readFileHeader(std::istream &is) -> FileHeader
+    auto Vid2h::readFileHeader(std::istream &is) -> FileHeader
     {
         REQUIRE((sizeof(FileHeader) & 3) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
         FileHeader fileHeader;
@@ -68,7 +68,7 @@ namespace IO
         return fileHeader;
     }
 
-    auto Stream::readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<std::vector<uint8_t>, std::vector<uint8_t>>
+    auto Vid2h::readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<std::vector<uint8_t>, std::vector<uint8_t>>
     {
         uint32_t frameSize = 0;
         is.read(reinterpret_cast<char *>(&frameSize), sizeof(frameSize));

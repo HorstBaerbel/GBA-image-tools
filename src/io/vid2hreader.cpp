@@ -1,43 +1,46 @@
-#include "binreader.h"
+#include "vid2hreader.h"
 
 namespace Video
 {
 
-    auto BinReader::open(const std::string &filePath) -> void
+    auto Vid2hReader::open(const std::string &filePath) -> void
     {
         // open input file
-        auto fileStream = std::ifstream(filePath, std::ios::in | std::ios::binary);
-        REQUIRE(fileStream.is_open() && !m_is.fail(), std::runtime_error, "Failed to open " << filePath << " for reading");
-        m_is = std::move(fileStream);
+        auto fileVid2h = std::ifstream(filePath, std::ios::in | std::ios::binary);
+        REQUIRE(fileVid2h.is_open() && !m_is.fail(), std::runtime_error, "Failed to open " << filePath << " for reading");
+        m_is = std::move(fileVid2h);
         // try reading video info
-        m_fileHeader = IO::Stream::readFileHeader(m_is);
-        REQUIRE(m_fileHeader.magic == IO::Stream::VID2H_MAGIC, std::runtime_error, "Wrong file magic");
+        m_fileHeader = IO::Vid2h::readFileHeader(m_is);
+        REQUIRE(m_fileHeader.magic == IO::Vid2h::VID2H_MAGIC, std::runtime_error, "Wrong file magic");
         REQUIRE(m_fileHeader.width != 0 && m_fileHeader.height != 0, std::runtime_error, "Width or height can not be 0");
         REQUIRE(m_fileHeader.nrOfFrames != 0, std::runtime_error, "Number of frames can not be 0");
         REQUIRE(m_fileHeader.fps != 0, std::runtime_error, "Frames rate can not be 0");
     }
 
-    auto BinReader::getInfo() const -> VideoInfo
+    auto Vid2hReader::getInfo() const -> VideoInfo
     {
         VideoInfo info;
         info.codecName = "vid2h";
         info.videoStreamIndex = 0;
         info.width = m_fileHeader.width;
         info.height = m_fileHeader.height;
-        info.fps = m_fileHeader.fps;
+        info.fps = static_cast<double>(m_fileHeader.fps) / 32768.0;
         info.nrOfFrames = m_fileHeader.nrOfFrames;
         info.durationS = static_cast<double>(m_fileHeader.nrOfFrames) / m_fileHeader.fps;
         return info;
     }
 
-    auto BinReader::readFrame() -> std::vector<uint32_t>
+    auto Vid2hReader::readFrame() -> std::vector<Color::XRGB8888>
     {
         REQUIRE(m_is.is_open() && !m_is.fail(), std::runtime_error, "File stream not open");
-        auto data = IO::Stream::readFrame(m_is, m_fileHeader);
+        auto data = IO::Vid2h::readFrame(m_is, m_fileHeader);
+        REQUIRE(!data.first.empty(), std::runtime_error, "Frame data empty");
+        // decode data
+
         return {};
     }
 
-    auto BinReader::close() -> void
+    auto Vid2hReader::close() -> void
     {
         m_is.close();
     }

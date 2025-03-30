@@ -2,8 +2,8 @@
 #include "color/conversions.h"
 #include "compression/lzss.h"
 #include "io/ffmpegreader.h"
-#include "io/streamio.h"
 #include "io/textio.h"
+#include "io/vid2hio.h"
 #include "processing/datahelpers.h"
 #include "processing/imagehelpers.h"
 #include "processing/imageprocessing.h"
@@ -404,8 +404,8 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    IO::Stream::writeFileHeader(binFile, images, videoInfo.fps, maxMemoryNeeded);
-                    IO::Stream::writeFrames(binFile, images);
+                    IO::Vid2h::writeFileHeader(binFile, images, videoInfo.fps, maxMemoryNeeded);
+                    IO::Vid2h::writeFrames(binFile, images);
                 }
                 catch (const std::runtime_error &e)
                 {

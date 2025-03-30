@@ -1,9 +1,9 @@
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "compression/lzss.h"
-#include "io/binreader.h"
-#include "io/streamio.h"
 #include "io/textio.h"
+#include "io/vid2hio.h"
+#include "io/vid2hreader.h"
 #include "processing/datahelpers.h"
 #include "processing/imagehelpers.h"
 #include "processing/imageprocessing.h"
@@ -107,7 +107,7 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // fire up video reader and open video file
-        Video::BinReader videoReader;
+        Video::Vid2hReader videoReader;
         Video::Reader::VideoInfo videoInfo;
         try
         {
@@ -126,7 +126,6 @@ int main(int argc, const char *argv[])
         Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height);
         // read video file
         uint32_t frameIndex = 0;
-        std::vector<Image::Data> images;
         do
         {
             auto frame = videoReader.readFrame();
