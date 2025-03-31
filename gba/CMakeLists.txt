@@ -71,7 +71,7 @@ LIST(APPEND IMAGE_SOURCE_FILES
 # These files will be added to IMAGE_DATA_FILES
 target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true")
 
-LIST(APPEND TARGET_INCLUDE_DIRS
+LIST(APPEND INCLUDE_DIRS
 	${DEVKITPRO}/libgba/include
 	${DEVKITARM}/arm-none-eabi/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../src
@@ -83,23 +83,28 @@ LIST(APPEND TARGET_INCLUDE_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}/sys
 )
 
-LIST(APPEND TARGET_LIB_DIRS
+LIST(APPEND LIB_DIRS
 	${DEVKITPRO}/libgba/lib
 )
 
-LIST(APPEND TARGET_LIBS
+LIST(APPEND LIBS
 	gba
 )
 
-link_directories(${TARGET_LIB_DIRS})
-include_directories(${TARGET_INCLUDE_DIRS})
-
 # Video example
-add_executable(video.elf ${VIDEO_SOURCE_FILES}) # Create the elf file
-add_gba_executable(video.elf) # Generate the .gba from the elf
-target_link_libraries(video.elf ${TARGET_LIBS}) # Link the application and the demo framework
+add_executable(video ${VIDEO_SOURCE_FILES}) # Create the elf file
+add_gba_executables(video "GBAIT_VIDEO" "GITV" "HB" 1) # Generate the .gba from the elf
+add_map_file(video)
+add_sections_file(video)
+target_include_directories(video PRIVATE ${INCLUDE_DIRS})
+target_link_directories(video PRIVATE  ${LIB_DIRS})
+target_link_libraries(video ${LIBS}) # Link the application and the demo framework
 
 # Image example
-add_executable(image.elf ${IMAGE_SOURCE_FILES} ${IMAGE_DATA_FILES}) # Create the elf file
-add_gba_executable(image.elf) # Generate the .gba from the elf
-target_link_libraries(image.elf ${TARGET_LIBS}) # Link the application and the demo framework
+add_executable(image ${IMAGE_SOURCE_FILES} ${IMAGE_DATA_FILES}) # Create the elf file
+add_gba_executables(image "GBAIT_IMAGE" "GITI" "HB" 1) # Generate the .gba from the elf
+add_map_file(image)
+add_sections_file(image)
+target_include_directories(image PRIVATE ${INCLUDE_DIRS})
+target_link_directories(image PRIVATE ${LIB_DIRS})
+target_link_libraries(image ${LIBS}) # Link the application and the demo framework

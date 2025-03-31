@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run gbatv in mgba",
+            "name": "Run in mgba",
             "type": "cppdbg",
             "preLaunchTask": "${defaultBuildTask}",
             "request": "launch",
@@ -17,7 +17,7 @@
             "cwd": "${command:cmake.buildDirectory}"
         },
         {
-            "name": "Launch/Debug gbatv in mgba",
+            "name": "Launch/Debug in mgba",
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "${defaultBuildTask}",
