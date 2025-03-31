@@ -93,10 +93,10 @@ namespace Color
         return Format::Grayf;
     }
 
-    auto findFormat(uint32_t bitsPerPixel, bool isIndexed, bool swappedRedBlue = false) -> Format
+    auto findFormat(uint32_t bitsPerPixel, bool isIndexed, bool swappedRedBlue) -> Format
     {
-        auto fimIt = std::find(FormatInfoMap.cbegin(), FormatInfoMap.cend(), [bitsPerPixel, isIndexed, swappedRedBlue](const auto &f)
-                               { return f.second.bitsPerPixel == bitsPerPixel && f.second.isIndexed == isIndexed && f.second.hasSwappedRedBlue == swappedRedBlue; });
+        auto fimIt = std::find_if(FormatInfoMap.cbegin(), FormatInfoMap.cend(), [bitsPerPixel, isIndexed, swappedRedBlue](const auto &f)
+                                  { return f.second.bitsPerPixel == bitsPerPixel && f.second.isIndexed == isIndexed && f.second.hasSwappedRedBlue == swappedRedBlue; });
         if (fimIt != FormatInfoMap.cend())
         {
             return fimIt->first;
