@@ -37,6 +37,8 @@ namespace Video
 
     private:
         IO::Vid2h::FileHeader m_fileHeader;
+        VideoInfo m_info;
+        std::vector<Color::XRGB8888> m_previousFrame;
         std::ifstream m_is;
     };
 

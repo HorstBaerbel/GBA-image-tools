@@ -44,6 +44,13 @@ namespace IO
             uint16_t audioDataSize = 0;    // Size of frame audio data chunk in bytes
         } __attribute__((aligned(4), packed));
 
+        /// @brief Chunk of compressed data
+        struct ChunkHeader
+        {
+            uint8_t processingType : 8;     // Processing / compression type used on data in this chunk
+            uint32_t uncompressedSize : 24; // Uncompressed size of data in this chunk
+        } __attribute__((aligned(4), packed));
+
         /// @brief Raw frame data returned when reading a vid2h binary video stream
         struct FrameData
         {
@@ -66,6 +73,9 @@ namespace IO
 
         /// @brief Read frame data from input stream
         static auto readFrame(std::istream &is, const FileHeader &fileHeader) -> FrameData;
+
+        /// @brief Split data into chunk header and chunk data
+        static auto splitChunk(std::vector<uint8_t> &data) -> std::pair<ChunkHeader, std::vector<uint8_t>>;
     };
 
 }
