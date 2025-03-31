@@ -36,5 +36,6 @@ namespace Video
     private:
         struct ReaderState;
         std::shared_ptr<ReaderState> m_state;
+        VideoInfo m_info;
     };
 }

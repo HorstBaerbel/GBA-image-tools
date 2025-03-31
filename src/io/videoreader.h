@@ -23,6 +23,8 @@ namespace Video
             double fps = 0;
             uint64_t nrOfFrames = 0;
             double durationS = 0;
+            Color::Format pixelFormat = Color::Format::Unknown;
+            Color::Format colorMapFormat = Color::Format::Unknown;
         };
 
         /// @brief Destruktor. Calls close()
