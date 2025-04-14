@@ -83,7 +83,6 @@ namespace IO
 
     auto Vid2h::readFrame(std::istream &is, const FileHeader &fileHeader) -> FrameData
     {
-        static_assert(sizeof(ChunkHeader) % 4 == 0);
         // read frame header
         FrameHeader frameHeader;
         is.read(reinterpret_cast<char *>(&frameHeader), sizeof(frameHeader));
@@ -116,13 +115,14 @@ namespace IO
 
     auto Vid2h::splitChunk(std::vector<uint8_t> &data) -> std::pair<ChunkHeader, std::vector<uint8_t>>
     {
+        static_assert(sizeof(ChunkHeader) % 4 == 0);
         REQUIRE(data.size() > sizeof(ChunkHeader), std::runtime_error, "Bad data size");
         ChunkHeader outHeader;
         auto dataHeader = reinterpret_cast<const ChunkHeader *>(data.data());
         outHeader.processingType = dataHeader->processingType;
         outHeader.uncompressedSize = dataHeader->uncompressedSize;
         std::vector<uint8_t> outData(data.size() - sizeof(ChunkHeader));
-        std::copy(data.cbegin(), data.cend(), outData.begin());
+        std::copy(std::next(data.cbegin(), sizeof(ChunkHeader)), data.cend(), outData.begin());
         return {outHeader, outData};
     }
 }
