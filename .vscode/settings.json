@@ -103,6 +103,8 @@
                 "source_location": "cpp",
                 "stdfloat": "cpp",
                 "text_encoding": "cpp",
-                "nonlinearoptimization": "cpp"
+                "nonlinearoptimization": "cpp",
+                "iterativelinearsolvers": "cpp",
+                "polynomials": "cpp"
         }
 }
