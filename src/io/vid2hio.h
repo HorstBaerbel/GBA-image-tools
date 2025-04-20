@@ -59,14 +59,14 @@ namespace IO
             std::vector<uint8_t> colorMapData; // Raw color map data. Usually uncompressed
         };
 
+        /// @brief Write dummy frame header to output stream. Use to inialize file. Then rewind and use writeFileHeader() to write a proper header when you have all the information
+        static auto writeDummyFileHeader(std::ostream &os) -> std::ostream &;
+
+        /// @brief Write frame header to output stream. Will get width / height / color format from first frame in vector
+        static auto writeFileHeader(std::ostream &os, const Image::ImageInfo &frameInfo, uint32_t nrOfFrames, double fps, uint32_t videoMemoryNeeded) -> std::ostream &;
+
         /// @brief Write frame data to output stream, adding compressed size as 4 byte value at the front
         static auto writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &;
-
-        /// @brief Write frame data to output stream, adding compressed size as 4 byte value at the front
-        static auto writeFrames(std::ostream &os, const std::vector<Image::Data> &frames) -> std::ostream &;
-
-        /// @brief Write frames to output stream. Will get width / height / color format from first frame in vector
-        static auto writeFileHeader(std::ostream &os, const std::vector<Image::Data> &frames, double fps, uint32_t videoMemoryNeeded) -> std::ostream &;
 
         /// @brief Read file header from input stream
         static auto readFileHeader(std::istream &is) -> FileHeader;
