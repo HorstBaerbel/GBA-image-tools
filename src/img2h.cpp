@@ -278,6 +278,9 @@ int main(int argc, const char *argv[])
             std::cerr << "No output file passed. Aborting." << std::endl;
             return 1;
         }
+        // set up number of cores for parallel processing
+        const auto nrOfProcessors = omp_get_num_procs();
+        omp_set_num_threads(nrOfProcessors);
         // read image(s) from disk
         auto images = readImages(m_inFile, options);
         // build processing pipeline - input

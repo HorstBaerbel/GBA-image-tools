@@ -106,6 +106,9 @@ int main(int argc, const char *argv[])
             std::cerr << "No input file passed. Aborting." << std::endl;
             return 1;
         }
+        // set up number of cores for parallel processing
+        const auto nrOfProcessors = omp_get_num_procs();
+        omp_set_num_threads(nrOfProcessors);
         // fire up video reader and open video file
         Video::Vid2hReader videoReader;
         Video::Reader::VideoInfo videoInfo;
@@ -123,7 +126,7 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // create statistics window
-        Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height);
+        Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height, "vid2hplay");
         // read video file
         uint32_t frameIndex = 0;
         do
@@ -134,8 +137,8 @@ int main(int argc, const char *argv[])
                 break;
             }
             REQUIRE(frame.size() == videoInfo.width * videoInfo.height, std::runtime_error, "Unexpected frame size");
-            // ...
             // update statistics
+            window.displayImage(reinterpret_cast<const uint8_t *>(frame.data()), frame.size() * sizeof(std::remove_reference<decltype(frame.front())>::type), Ui::ColorFormat::XRGB8888, videoInfo.width, videoInfo.height);
             window.update();
         } while (true);
     }

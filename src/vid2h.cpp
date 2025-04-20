@@ -207,6 +207,9 @@ int main(int argc, const char *argv[])
             std::cerr << "No output name passed. Aborting." << std::endl;
             return 1;
         }
+        // set up number of cores for parallel processing
+        const auto nrOfProcessors = omp_get_num_procs();
+        omp_set_num_threads(nrOfProcessors);
         // fire up video reader and open video file
         Video::FFmpegReader videoReader;
         Video::Reader::VideoInfo videoInfo;
@@ -342,7 +345,7 @@ int main(int argc, const char *argv[])
         }
         processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
         // create statistics window
-        Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height);
+        Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height, "vid2h");
         // apply image processing pipeline
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;

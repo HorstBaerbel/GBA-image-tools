@@ -115,9 +115,6 @@ namespace Image
         REQUIRE(nrOfColors >= 2 && nrOfColors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
         const auto colorSpaceMap = VariantHelpers::getValue<std::vector<Color::XRGB8888>, 2>(parameters);
         REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "colorSpaceMap can not be empty");
-        // set up number of cores for parallel processing
-        const auto nrOfProcessors = omp_get_num_procs();
-        omp_set_num_threads(nrOfProcessors);
         // build histogram of colors used in all input images
         std::cout << "Building histogram..." << std::endl;
         std::map<Color::XRGB8888, uint64_t> histogram;
@@ -411,7 +408,7 @@ namespace Image
         REQUIRE(quality >= 0 && quality <= 100, std::runtime_error, "compressDXTV quality must be in [0, 100]");
         // check if needs to be a keyframe
         const bool isKeyFrame = keyFrameInterval > 0 ? ((data.index % keyFrameInterval) == 0 || state.empty()) : false;
-        // convert image using DXT compression
+        // convert image using DXTV compression
         auto result = data;
         auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
         auto compressedData = DXTV::encode(data.image.data.pixels().data<Color::XRGB8888>(), previousImage, data.image.size.width(), data.image.size.height(), isKeyFrame, quality, format == Color::Format::XBGR1555);
