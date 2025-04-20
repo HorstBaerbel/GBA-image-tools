@@ -252,7 +252,7 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
     // calculate perceived frame distance
     const float frameError = previousCodeBook.empty() ? INT_MAX : currentCodeBook.mse(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
-    if (!keyFrame && frameError < 0.001)
+    if (!keyFrame && frameError < 0.0001)
     {
         // frame is a duplicate. pass header only
         FrameHeader frameHeader;
