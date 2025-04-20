@@ -415,8 +415,6 @@ int main(int argc, const char *argv[])
             // update statistics
             window.update();
         }
-        while (true)
-            ;
         // write final file header to start of stream
         if (!options.dryRun && binFile.is_open())
         {
