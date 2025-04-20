@@ -411,7 +411,7 @@ auto DXTV::decodeBlock<8>(const uint16_t *data, XRGB8888 *currBlock, const XRGB8
 
 auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, const bool swapToBGR) -> std::vector<XRGB8888>
 {
-    REQUIRE(data.size() > sizeof(FrameHeader), std::runtime_error, "Not enough data to decode");
+    REQUIRE(data.size() >= sizeof(FrameHeader), std::runtime_error, "Not enough data to decode");
     REQUIRE(width > 0, std::runtime_error, "width must be > 0");
     REQUIRE(height > 0, std::runtime_error, "height must be > 0");
     const auto frameHeader = FrameHeader::fromVector(data);
