@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "cxxopts/include/cxxopts.hpp"
 
@@ -128,19 +129,20 @@ int main(int argc, const char *argv[])
         // create statistics window
         Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height, "vid2hplay");
         // read video file
-        uint32_t frameIndex = 0;
-        do
+        const auto startTime = std::chrono::steady_clock::now();
+        const double frameInterval = 1.0 / videoInfo.fps;
+        for (uint32_t frameIndex = 0; frameIndex < videoInfo.nrOfFrames; ++frameIndex)
         {
             auto frame = videoReader.readFrame();
-            if (frame.empty())
-            {
-                break;
-            }
+            REQUIRE(!frame.empty(), std::runtime_error, "Failed to read frame #" << frameIndex);
             REQUIRE(frame.size() == videoInfo.width * videoInfo.height, std::runtime_error, "Unexpected frame size");
             // update statistics
+            while ((std::chrono::steady_clock::now() - startTime) < std::chrono::duration<double>(frameIndex * frameInterval))
+            {
+                std::this_thread::yield();
+            }
             window.displayImage(reinterpret_cast<const uint8_t *>(frame.data()), frame.size() * sizeof(std::remove_reference<decltype(frame.front())>::type), Ui::ColorFormat::XRGB8888, videoInfo.width, videoInfo.height);
-            window.update();
-        } while (true);
+        }
     }
     catch (const std::runtime_error &e)
     {
