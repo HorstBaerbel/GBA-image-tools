@@ -3,8 +3,8 @@
 namespace Statistics
 {
 
-    Window::Window(uint32_t width, uint32_t height)
-        : SDLWindow(width, height), m_container(std::make_shared<Container>())
+    Window::Window(uint32_t width, uint32_t height, const std::string &title)
+        : SDLWindow(width, height, title), m_container(std::make_shared<Container>())
     {
     }
 

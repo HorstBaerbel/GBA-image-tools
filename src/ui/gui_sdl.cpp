@@ -9,8 +9,8 @@
 namespace Ui
 {
 
-    SDLWindow::SDLWindow(uint32_t width, uint32_t height)
-        : m_width(width), m_height(height)
+    SDLWindow::SDLWindow(uint32_t width, uint32_t height, const std::string &title)
+        : m_width(width), m_height(height), m_title(title)
     {
         SDL_InitSubSystem(SDL_INIT_VIDEO);
         m_mutex = SDL_CreateMutex();
@@ -47,7 +47,7 @@ namespace Ui
             std::cerr << "Bad object pointer" << std::endl;
             return -1;
         }
-        SDL_Window *sdlWindow = SDL_CreateWindow("vid2h", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w->m_width, w->m_height, SDL_WINDOW_VULKAN);
+        SDL_Window *sdlWindow = SDL_CreateWindow(w->m_title.data(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w->m_width, w->m_height, SDL_WINDOW_VULKAN);
         if (sdlWindow == nullptr)
         {
             std::cerr << "Failed to create SDL window" << std::endl;
@@ -134,13 +134,33 @@ namespace Ui
         return 0;
     }
 
-    auto SDLWindow::displayImage(const std::vector<uint8_t> &image, ColorFormat format, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
+    auto SDLWindow::displayImage(const std::vector<uint8_t> &data, ColorFormat format, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
     {
         if (!m_quit)
         {
             // copy data to thread event queue
             SDL_LockMutex(m_mutex);
-            m_eventData.emplace_back(DisplayImage{format, image, width, height, x, y});
+            m_eventData.emplace_back(DisplayImage{format, data, width, height, x, y});
+            SDL_UnlockMutex(m_mutex);
+            // notify SDL thread about event
+            SDL_Event e;
+            e.type = SDL_USEREVENT;
+            e.user.code = 0;
+            e.user.data1 = nullptr;
+            e.user.data2 = nullptr;
+            SDL_PushEvent(&e);
+        }
+    }
+
+    auto SDLWindow::displayImage(const uint8_t *data, std::size_t size, ColorFormat format, uint32_t width, uint32_t height, int32_t x, int32_t y) -> void
+    {
+        if (!m_quit)
+        {
+            SDL_assert(data != nullptr);
+            SDL_assert(size != 0);
+            // copy data to thread event queue
+            SDL_LockMutex(m_mutex);
+            m_eventData.emplace_back(DisplayImage{format, std::vector<uint8_t>(data, data + size), width, height, x, y});
             SDL_UnlockMutex(m_mutex);
             // notify SDL thread about event
             SDL_Event e;

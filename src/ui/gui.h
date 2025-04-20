@@ -19,6 +19,7 @@ namespace Ui
     class Window
     {
         virtual auto displayImage(const std::vector<uint8_t> &image, ColorFormat format, uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) -> void = 0;
+        virtual auto displayImage(const uint8_t *image, std::size_t size, ColorFormat format, uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) -> void = 0;
     };
 
 }

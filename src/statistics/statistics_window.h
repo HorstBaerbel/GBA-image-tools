@@ -4,6 +4,7 @@
 #include "ui/gui_sdl.h"
 
 #include <memory>
+#include <string>
 
 namespace Statistics
 {
@@ -13,7 +14,7 @@ namespace Statistics
     public:
         using SPtr = std::shared_ptr<Window>;
 
-        Window(uint32_t width, uint32_t height);
+        Window(uint32_t width, uint32_t height, const std::string &title);
 
         auto getStatisticsContainer() -> Container::SPtr;
 

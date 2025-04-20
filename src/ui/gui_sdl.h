@@ -4,9 +4,10 @@
 
 #include <SDL.h>
 
-#include <deque>
-#include <variant>
 #include <atomic>
+#include <deque>
+#include <string>
+#include <variant>
 
 namespace Ui
 {
@@ -14,10 +15,11 @@ namespace Ui
     class SDLWindow : public Window
     {
     public:
-        SDLWindow(uint32_t width, uint32_t height);
+        SDLWindow(uint32_t width, uint32_t height, const std::string &name = "");
         ~SDLWindow();
 
         auto displayImage(const std::vector<uint8_t> &image, ColorFormat format, uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) -> void override;
+        auto displayImage(const uint8_t *image, std::size_t size, ColorFormat format, uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) -> void override;
 
     private:
         struct DisplayImage
@@ -38,6 +40,7 @@ namespace Ui
         std::deque<std::variant<DisplayImage>> m_eventData;
         uint32_t m_width = 0;
         uint32_t m_height = 0;
+        std::string m_title;
     };
 
 }
