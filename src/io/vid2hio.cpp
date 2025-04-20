@@ -53,9 +53,9 @@ namespace IO
     auto Vid2h::writeFileHeader(std::ostream &os, const Image::ImageInfo &frameInfo, uint32_t nrOfFrames, double fps, uint32_t videoMemoryNeeded) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
-        const auto &frameData = frameInfo.data;
-        // check if we're using a color map
-        const bool frameHasColorMap = frameData.pixels().isIndexed();
+        // check what color formats we're using
+        const auto &pixelInfo = Color::formatInfo(frameInfo.pixelFormat);
+        const auto &colorMapInfo = Color::formatInfo(frameInfo.colorMapFormat);
         // generate file header and store it
         FileHeader fileHeader;
         fileHeader.magic = VID2H_MAGIC;
@@ -63,10 +63,10 @@ namespace IO
         fileHeader.width = static_cast<uint16_t>(frameInfo.size.width());
         fileHeader.height = static_cast<uint16_t>(frameInfo.size.height());
         fileHeader.fps = static_cast<uint32_t>(std::round(fps * 32768.0));
-        fileHeader.bitsPerPixel = static_cast<uint8_t>(Color::formatInfo(frameData.pixels().format()).bitsPerPixel);
-        fileHeader.bitsPerColor = frameHasColorMap ? static_cast<uint8_t>(Color::formatInfo(frameData.colorMap().format()).bitsPerPixel) : 0;
-        fileHeader.swappedRedBlue = (frameHasColorMap ? Color::formatInfo(frameData.colorMap().format()).hasSwappedRedBlue : Color::formatInfo(frameData.pixels().format()).hasSwappedRedBlue) ? 1 : 0;
-        fileHeader.colorMapEntries = frameHasColorMap ? frameData.colorMap().size() : 0;
+        fileHeader.bitsPerPixel = static_cast<uint8_t>(pixelInfo.bitsPerPixel);
+        fileHeader.bitsPerColor = pixelInfo.isIndexed ? static_cast<uint8_t>(colorMapInfo.bitsPerPixel) : 0;
+        fileHeader.swappedRedBlue = (pixelInfo.isIndexed ? colorMapInfo.hasSwappedRedBlue : pixelInfo.hasSwappedRedBlue) ? 1 : 0;
+        fileHeader.colorMapEntries = pixelInfo.isIndexed ? frameInfo.nrOfColorMapEntries : 0;
         fileHeader.videoMemoryNeeded = videoMemoryNeeded;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write file header to stream");
