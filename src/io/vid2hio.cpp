@@ -75,7 +75,6 @@ namespace IO
 
     auto Vid2h::readFileHeader(std::istream &is) -> FileHeader
     {
-        REQUIRE((sizeof(FileHeader) % 4) == 0, std::runtime_error, "FileHeader size is not a multiple of 4");
         FileHeader fileHeader;
         is.read(reinterpret_cast<char *>(&fileHeader), sizeof(FileHeader));
         REQUIRE(!is.fail(), std::runtime_error, "Failed to read file header from stream");

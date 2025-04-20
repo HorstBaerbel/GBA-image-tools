@@ -120,6 +120,7 @@ int main(int argc, const char *argv[])
             videoInfo = videoReader.getInfo();
             std::cout << "Video stream #" << videoInfo.videoStreamIndex << ": " << videoInfo.codecName << ", " << videoInfo.width << "x" << videoInfo.height << "@" << videoInfo.fps;
             std::cout << ", duration " << videoInfo.durationS << "s, " << videoInfo.nrOfFrames << " frames" << std::endl;
+            std::cout << "Pixel format " << Color::formatInfo(videoInfo.pixelFormat).name << ", color map format " << Color::formatInfo(videoInfo.colorMapFormat).name << std::endl;
         }
         catch (const std::runtime_error &e)
         {
