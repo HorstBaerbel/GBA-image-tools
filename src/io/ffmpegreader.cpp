@@ -161,10 +161,16 @@ namespace Video
         while (true)
         {
             auto readResult = av_read_frame(m_state->formatContext, m_state->packet);
-            if (readResult < 0)
+            if (readResult == AVERROR_EOF)
             {
+                // last packet. we need to keep receiving frames still queued in the decoder
+                // the last packet will have ->data == NULL and ->size == 0 to mark it as a flush packet
+            }
+            else if (readResult < 0)
+            {
+                // some other read error
                 av_packet_unref(m_state->packet);
-                return {};
+                THROW(std::runtime_error, "Failed to read frame: " << readResult);
             }
             // check if it is the correct stream index
             if (m_state->packet->stream_index != m_state->videoStreamIndex)
@@ -176,7 +182,7 @@ namespace Video
             auto sendResult = avcodec_send_packet(m_state->codecContext, m_state->packet);
             if (sendResult == AVERROR_EOF)
             {
-                // file has ended. call avcodec_receive_frame to possibly get rest of it
+                // file has ended. don't bail, but call avcodec_receive_frame to possibly get remaining frames
             }
             else if (sendResult == AVERROR(EAGAIN))
             {
@@ -184,13 +190,14 @@ namespace Video
             }
             else if (sendResult < 0)
             {
-                THROW(std::runtime_error, "Failed to send packet to codec");
+                av_packet_unref(m_state->packet);
+                THROW(std::runtime_error, "Failed to send packet to codec: " << sendResult);
             }
             // try to decode frame
             auto receiveResult = avcodec_receive_frame(m_state->codecContext, m_state->frame);
             if (receiveResult == AVERROR_EOF)
             {
-                // end of video file encountered
+                // end of frames encountered
                 avcodec_flush_buffers(m_state->codecContext);
                 av_packet_unref(m_state->packet);
                 return {};
@@ -203,7 +210,8 @@ namespace Video
             }
             else if (receiveResult < 0)
             {
-                THROW(std::runtime_error, "Failed to decode packet");
+                av_packet_unref(m_state->packet);
+                THROW(std::runtime_error, "Failed to decode packet: " << receiveResult);
             }
             // here the frame has been successfully decoded
             av_packet_unref(m_state->packet);

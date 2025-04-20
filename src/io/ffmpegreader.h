@@ -21,7 +21,7 @@ namespace Video
         virtual ~FFmpegReader();
 
         /// @brief Open FFmpeg reader on a file so you can later readFrame() from it
-        /// @throw Throws a std::runtime_errror if anything goes wrong
+        /// @throw Throws a std::runtime_error if anything goes wrong
         virtual auto open(const std::string &filePath) -> void override;
 
         /// @brief Get information about opened video file
