@@ -85,7 +85,7 @@ namespace TUI
 
     uint16_t printBool(int32_t value, uint16_t x, uint16_t y, Color backColor, Color textColor)
     {
-        btoa(value, PrintBuffer);
+        btoa(value != 0, PrintBuffer);
         return printString(PrintBuffer, x, y, backColor, textColor);
     }
 
