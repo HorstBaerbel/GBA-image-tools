@@ -62,7 +62,7 @@ namespace IO
         fileHeader.nrOfFrames = nrOfFrames;
         fileHeader.width = static_cast<uint16_t>(frameInfo.size.width());
         fileHeader.height = static_cast<uint16_t>(frameInfo.size.height());
-        fileHeader.fps = static_cast<uint32_t>(std::round(fps * 32768.0));
+        fileHeader.fps = static_cast<uint32_t>(std::round(fps * 65536.0));
         fileHeader.bitsPerPixel = static_cast<uint8_t>(pixelInfo.bitsPerPixel);
         fileHeader.bitsPerColor = pixelInfo.isIndexed ? static_cast<uint8_t>(colorMapInfo.bitsPerPixel) : 0;
         fileHeader.swappedRedBlue = (pixelInfo.isIndexed ? colorMapInfo.hasSwappedRedBlue : pixelInfo.hasSwappedRedBlue) ? 1 : 0;

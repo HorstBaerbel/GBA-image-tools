@@ -23,7 +23,7 @@ namespace IO
             uint32_t nrOfFrames = 0;        // Number of frames in file
             uint16_t width = 0;             // Width in pixels
             uint16_t height = 0;            // Height in pixels
-            uint32_t fps = 0;               // Frames / s in 16:15 fixed-point format
+            uint32_t fps = 0;               // Frames / s in 16:16 fixed-point format
             uint8_t bitsPerPixel = 0;       // Image data bits per pixel (1, 2, 4, 8, 15, 16, 24)
             uint8_t bitsPerColor = 0;       // Color table bits per color (0 - no color table, 15, 16, 24)
             uint8_t swappedRedBlue = 0;     // If != 0 red and blue color channels are swapped

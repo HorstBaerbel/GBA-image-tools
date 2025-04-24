@@ -24,7 +24,7 @@ namespace Video
         m_info.videoStreamIndex = 0;
         m_info.width = m_fileHeader.width;
         m_info.height = m_fileHeader.height;
-        m_info.fps = static_cast<double>(m_fileHeader.fps) / 32768.0;
+        m_info.fps = static_cast<double>(m_fileHeader.fps) / 65536.0;
         m_info.nrOfFrames = m_fileHeader.nrOfFrames;
         m_info.durationS = static_cast<double>(m_fileHeader.nrOfFrames) / m_info.fps;
         m_info.pixelFormat = Color::findFormat(m_fileHeader.bitsPerPixel, m_fileHeader.colorMapEntries != 0, m_fileHeader.swappedRedBlue);

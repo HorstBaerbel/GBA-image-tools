@@ -12,7 +12,7 @@ namespace Video
         Memory::memcpy32(&info, data, sizeof(FileHeader) / 4);
         info.fileData = data;
         info.colorMapSize = info.colorMapEntries;
-        switch (info.bitsInColorMap)
+        switch (info.bitsPerColor)
         {
         case 15:
         case 16:
@@ -32,7 +32,7 @@ namespace Video
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
         Frame frame;
-        uint32_t *frameStart = nullptr;
+        const uint32_t *frameStart = nullptr;
         if (previous.index < 0 || previous.index >= static_cast<int32_t>(info.nrOfFrames - 1))
         {
             // read first frame

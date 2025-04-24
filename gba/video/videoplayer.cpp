@@ -51,17 +51,19 @@ namespace Video
         if (!m_playing)
         {
             m_videoFrame.index = -1;
+            m_videoFrame.frame = nullptr;
             m_videoFrame.data = nullptr;
-            m_videoFrame.compressedSize = 0;
-            m_videoFrame.colorMapOffset = 0;
+            m_videoFrame.pixelDataSize = 0;
+            m_videoFrame.colorMapDataSize = 0;
+            m_videoFrame.audioDataSize = 0;
             m_playing = true;
             m_framesDecoded = 0;
             m_framesRequested = 1;
             // set up timer to increase with frame interval
             irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
             irqEnable(irqMASKS::IRQ_TIMER2);
-            // Timer interval = 1 / fps (where 65536 == 1s). frames/s are in 16:15 format
-            REG_TM2CNT_L = 65536 - ((65536U << 15) / m_videoInfo.fps);
+            // Timer interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
+            REG_TM2CNT_L = 65536U - ((uint64_t(65536U) << 16) / m_videoInfo.fps);
             // Timer divider 2 == 256 -> 16*1024*1024 cycles/s / 256 = 65536/s
             REG_TM2CNT_H = TIMER_START | TIMER_IRQ | 2;
         }
