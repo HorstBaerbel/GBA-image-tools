@@ -11,11 +11,10 @@
 class DXTV
 {
 public:
-    static constexpr uint32_t MAX_BLOCK_DIM = 8; // Maximum block size is 8x8 pixels
-
     static constexpr uint16_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames with only intra-frame compression, 1 for P-frames with inter-frame compression ("predicted frame")
     static constexpr uint16_t FRAME_KEEP = 0x40;      // 1 for frames that are considered a direct copy of the previous frame and can be kept
 
+    static constexpr uint32_t BLOCK_MAX_DIM = 8;           // Maximum block size is 8x8 pixels
     static constexpr bool BLOCK_NO_SPLIT = false;          // The block is a full block
     static constexpr bool BLOCK_IS_SPLIT = true;           // The block is split into smaller sub-blocks
     static constexpr uint16_t BLOCK_IS_DXT = 0;            // The block is a verbatim DXT block
@@ -32,7 +31,17 @@ public:
     static constexpr std::pair<int32_t, int32_t> PrevMotionHOffset{-((1 << BLOCK_MOTION_BITS) / 2 - 1), (1 << BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
     static constexpr std::pair<int32_t, int32_t> PrevMotionVOffset{-((1 << BLOCK_MOTION_BITS) / 2 - 1), (1 << BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
 
-    using CodeBook8x8 = CodeBook<Color::XRGB8888, MAX_BLOCK_DIM>; // Code book for storing 8x8 RGB pixel blocks
+    using CodeBook8x8 = CodeBook<Color::XRGB8888, BLOCK_MAX_DIM>; // Code book for storing 8x8 RGB pixel blocks
+
+    /// @brief Frame header for one DTXV frame
+    struct FrameHeader
+    {
+        uint16_t frameFlags = 0; // General frame flags, e.g. FRAME_IS_PFRAME or FRAME_KEEP
+        uint16_t dummy = 0;      // currently unused
+
+        std::vector<uint8_t> toVector() const;
+        static auto fromVector(const std::vector<uint8_t> &data) -> FrameHeader;
+    };
 
     /// @brief Compress image block to DXTV format
     template <std::size_t BLOCK_DIM>

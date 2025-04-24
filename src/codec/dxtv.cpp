@@ -25,28 +25,16 @@
 
 using namespace Color;
 
-struct FrameHeader
-{
-    uint16_t frameFlags = 0; // General frame flags, e.g. FRAME_IS_PFRAME or FRAME_KEEP
-    uint16_t dummy = 0;      // currently unused
-
-    std::vector<uint8_t> toVector() const
-    {
-        std::vector<uint8_t> result(4);
-        *reinterpret_cast<uint16_t *>(result.data() + 0) = frameFlags;
-        *reinterpret_cast<uint16_t *>(result.data() + 2) = 0;
-        return result;
-    }
-
-    static auto fromVector(const std::vector<uint8_t> &data) -> FrameHeader
-    {
-        REQUIRE(data.size() >= 4, std::runtime_error, "Data size must be >= 4");
-        auto frameFlags = *reinterpret_cast<const uint16_t *>(data.data() + 0);
-        return {frameFlags, 0};
-    }
-};
-
-// The image is split into 8x8 pixel blocks which can be futher split into 4x4 blocks.
+// DXTV encoding:
+//
+// Header:
+//
+// uint16_t frameFlags -> General frame flags, e.g. FRAME_IS_PFRAME or FRAME_KEEP
+// uint16_t dummy -> empty atm
+//
+// Image data:
+//
+// The image is split into 8x8 pixel blocks (BLOCK_MAX_DIM) which can be futher split into 4x4 blocks.
 //
 // Every 8x8 block (block size 0) has one flag:
 // Bit 0: Block handled entirely (0) or block split into 4x4 (1)
@@ -75,7 +63,21 @@ struct FrameHeader
 //   Bit 13+12: Currently unused
 //   Bit 11-6: y pixel motion of referenced block [-31,32] from top-left corner
 //   Bit  5-0: x pixel motion of referenced block [-31,32] from top-left corner
-//
+
+std::vector<uint8_t> DXTV::FrameHeader::toVector() const
+{
+    std::vector<uint8_t> result(4);
+    *reinterpret_cast<uint16_t *>(result.data() + 0) = frameFlags;
+    *reinterpret_cast<uint16_t *>(result.data() + 2) = 0;
+    return result;
+}
+
+auto DXTV::FrameHeader::fromVector(const std::vector<uint8_t> &data) -> DXTV::FrameHeader
+{
+    REQUIRE(data.size() >= 4, std::runtime_error, "Data size must be >= 4");
+    auto frameFlags = *reinterpret_cast<const uint16_t *>(data.data() + 0);
+    return {frameFlags, 0};
+}
 
 /// @brief Search for entry in codebook with minimum error
 /// @return Returns (error, x offset, y offset) if usable entry found or empty optional, if not
@@ -100,8 +102,8 @@ auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockV
     const int32_t yStart = (blockY + offsetV.first) < 0 ? 0 : (blockY + offsetV.first);
     const int32_t yEnd = (blockY + offsetV.second) > yMax ? yMax : (blockY + offsetV.second);
     // if we're searching in the current codebook, do not allow searching past the already decoded macro-block
-    const int32_t yMacroBlock = blockY - (blockY % DXTV::MAX_BLOCK_DIM);
-    const int32_t vEnd = fromCurrCodeBook && yEnd > (yMacroBlock + DXTV::MAX_BLOCK_DIM - BLOCK_DIM) ? (yMacroBlock + DXTV::MAX_BLOCK_DIM - BLOCK_DIM) : yEnd;
+    const int32_t yMacroBlock = blockY - (blockY % DXTV::BLOCK_MAX_DIM);
+    const int32_t vEnd = fromCurrCodeBook && yEnd > (yMacroBlock + DXTV::BLOCK_MAX_DIM - BLOCK_DIM) ? (yMacroBlock + DXTV::BLOCK_MAX_DIM - BLOCK_DIM) : yEnd;
     // search similar blocks
     const auto blockPixels = block.pixels();
     return_type bestMotion = {std::numeric_limits<float>::max(), 0, 0};
@@ -129,8 +131,8 @@ auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockV
 template <std::size_t BLOCK_DIM>
 auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
 {
-    static_assert(DXTV::MAX_BLOCK_DIM >= BLOCK_DIM);
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(DXTV::MAX_BLOCK_DIM) - std::log2(BLOCK_DIM);
+    static_assert(DXTV::BLOCK_MAX_DIM >= BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(DXTV::BLOCK_MAX_DIM) - std::log2(BLOCK_DIM);
     bool blockWasSplit = DXTV::BLOCK_NO_SPLIT;
     std::vector<uint8_t> data;
     // calculate allowed MSE for blocks. Map from [0, 100] to [1, 0]
@@ -348,7 +350,7 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
 template <std::size_t BLOCK_DIM>
 auto decodeBlockInternal(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *
 {
-    static_assert(DXTV::MAX_BLOCK_DIM >= BLOCK_DIM);
+    static_assert(DXTV::BLOCK_MAX_DIM >= BLOCK_DIM);
     REQUIRE(data != nullptr, std::runtime_error, "Data can not be nullptr");
     REQUIRE(currBlock != nullptr, std::runtime_error, "currBlock can not be nullptr");
     REQUIRE(width > 0, std::runtime_error, "width must be > 0");
@@ -427,13 +429,13 @@ auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> 
     auto frameData = data.data() + sizeof(FrameHeader);
     auto dataPtr = reinterpret_cast<const uint16_t *>(frameData);
     std::vector<XRGB8888> image(width * height);
-    for (uint32_t by = 0; by < height / MAX_BLOCK_DIM; ++by)
+    for (uint32_t by = 0; by < height / BLOCK_MAX_DIM; ++by)
     {
         uint16_t flags = 0;
         uint32_t flagsAvailable = 0;
-        auto currPtr = image.data() + by * width * MAX_BLOCK_DIM;
-        auto prevPtr = previousImage.empty() ? nullptr : previousImage.data() + by * width * MAX_BLOCK_DIM;
-        for (uint32_t bx = 0; bx < width / MAX_BLOCK_DIM; ++bx)
+        auto currPtr = image.data() + by * width * BLOCK_MAX_DIM;
+        auto prevPtr = previousImage.empty() ? nullptr : previousImage.data() + by * width * BLOCK_MAX_DIM;
+        for (uint32_t bx = 0; bx < width / BLOCK_MAX_DIM; ++bx)
         {
             // read flags if we need to
             if (flagsAvailable < 1)
