@@ -43,6 +43,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	print/output.cpp
 	sys/decompress.cpp
 	compression/lz77.s
+	image/dxt_tables.cpp
 	video/codec_dxtv.cpp
 	video/videodecoder.cpp
 	video/videoreader.cpp
@@ -64,6 +65,7 @@ LIST(APPEND IMAGE_SOURCE_FILES
 	sys/decompress.cpp
 	compression/lz77.s
 	image/dxt.cpp
+	image/dxt_tables.cpp
 	data/font_8x8.c
 )
 
