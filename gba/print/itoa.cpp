@@ -1,8 +1,9 @@
 #include "itoa.h"
 
+static const constexpr char ITOA_CHARS[] = "fedcba9876543210123456789abcdef";
+
 char *itoa(uint32_t value, char *result, uint32_t base)
 {
-	static const char chars[] = "fedcba9876543210123456789abcdef";
 	// check that the base if valid
 	if (base < 2 || base > 16)
 	{
@@ -17,7 +18,7 @@ char *itoa(uint32_t value, char *result, uint32_t base)
 	{
 		tmp_value = value;
 		value /= base;
-		*ptr++ = chars[15 + (tmp_value - value * base)];
+		*ptr++ = ITOA_CHARS[15 + (tmp_value - value * base)];
 		count++;
 	} while (value);
 	if (base != 10)
@@ -39,7 +40,6 @@ char *itoa(uint32_t value, char *result, uint32_t base)
 
 char *itoa(int32_t value, char *result, uint32_t base)
 {
-	static const char chars[] = "fedcba9876543210123456789abcdef";
 	// check that the base if valid
 	if (base < 2 || base > 16)
 	{
@@ -55,7 +55,7 @@ char *itoa(int32_t value, char *result, uint32_t base)
 	{
 		tmp_value = value;
 		value /= base;
-		*ptr++ = chars[15 + (tmp_value - value * base)];
+		*ptr++ = ITOA_CHARS[15 + (tmp_value - value * base)];
 	} while (value);
 	// Apply negative sign
 	if (sign)
@@ -72,7 +72,6 @@ char *itoa(int32_t value, char *result, uint32_t base)
 
 char *itoa(uint64_t value, char *result, uint32_t base)
 {
-	static const char chars[] = "fedcba9876543210123456789abcdef";
 	// check that the base if valid
 	if (base < 2 || base > 16)
 	{
@@ -87,7 +86,7 @@ char *itoa(uint64_t value, char *result, uint32_t base)
 	{
 		tmp_value = value;
 		value /= base;
-		*ptr++ = chars[15 + (tmp_value - value * base)];
+		*ptr++ = ITOA_CHARS[15 + (tmp_value - value * base)];
 		count++;
 	} while (value);
 	if (base != 10)
@@ -109,7 +108,6 @@ char *itoa(uint64_t value, char *result, uint32_t base)
 
 char *itoa(int64_t value, char *result, uint32_t base)
 {
-	static const char chars[] = "fedcba9876543210123456789abcdef";
 	// check that the base if valid
 	if (base < 2 || base > 16)
 	{
@@ -125,7 +123,7 @@ char *itoa(int64_t value, char *result, uint32_t base)
 	{
 		tmp_value = value;
 		value /= base;
-		*ptr++ = chars[15 + (tmp_value - value * base)];
+		*ptr++ = ITOA_CHARS[15 + (tmp_value - value * base)];
 	} while (value);
 	// Apply negative sign
 	if (sign)
