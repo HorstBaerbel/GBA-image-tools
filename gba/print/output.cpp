@@ -57,15 +57,11 @@ namespace Debug
 			if (expectType)
 			{
 				expectType = false;
-				if (*fmt == 'd')
+				if (*fmt == 'b')
 				{
-					auto i = va_arg(args, int32_t);
-					buffer = itoa(i, buffer, 10);
-				}
-				else if (*fmt == 'x')
-				{
-					auto i = va_arg(args, int32_t);
-					buffer = itoa(i, buffer, 16);
+					// note automatic conversion to integral type
+					auto c = va_arg(args, int32_t);
+					buffer = btoa(c != 0, buffer);
 				}
 				else if (*fmt == 'c')
 				{
@@ -73,10 +69,20 @@ namespace Debug
 					auto c = va_arg(args, int32_t);
 					buffer = itoa(c, buffer, 10);
 				}
+				else if (*fmt == 'd')
+				{
+					auto i = va_arg(args, int32_t);
+					buffer = itoa(i, buffer, 10);
+				}
 				else if (*fmt == 'f')
 				{
 					auto f = va_arg(args, int32_t);
 					buffer = fptoa(f, buffer, 16, 2);
+				}
+				else if (*fmt == 'x')
+				{
+					auto i = va_arg(args, int32_t);
+					buffer = itoa(i, buffer, 16);
 				}
 				else
 				{

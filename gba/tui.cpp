@@ -83,6 +83,12 @@ namespace TUI
         return nrOfCharsPrinted;
     }
 
+    uint16_t printBool(int32_t value, uint16_t x, uint16_t y, Color backColor, Color textColor)
+    {
+        btoa(value, PrintBuffer);
+        return printString(PrintBuffer, x, y, backColor, textColor);
+    }
+
     uint16_t printInt(int32_t value, uint32_t base, uint16_t x, uint16_t y, Color backColor, Color textColor)
     {
         itoa(value, PrintBuffer, base);
@@ -95,8 +101,10 @@ namespace TUI
         return printString(PrintBuffer, x, y, backColor, textColor);
     }
 
-    void setColor(Color backColor, Color textColor)
+    void setColor(Color back, Color text)
     {
+        backColor = back;
+        textColor = text;
     }
 
     void printf(uint16_t x, uint16_t y, const char *fmt...)
@@ -110,15 +118,11 @@ namespace TUI
             if (expectType)
             {
                 expectType = false;
-                if (*fmt == 'd')
+                if (*fmt == 'b')
                 {
-                    auto i = va_arg(args, int32_t);
-                    currentX += printInt(i, 10, currentX, y, backColor, textColor);
-                }
-                else if (*fmt == 'x')
-                {
-                    auto i = va_arg(args, int32_t);
-                    currentX += printInt(i, 16, currentX, y, backColor, textColor);
+                    // note automatic conversion to integral type
+                    auto c = va_arg(args, int32_t);
+                    currentX += printBool(c, currentX, y, backColor, textColor);
                 }
                 else if (*fmt == 'c')
                 {
@@ -126,10 +130,20 @@ namespace TUI
                     auto c = va_arg(args, int32_t);
                     printChar(c, currentX++, y, backColor, textColor);
                 }
+                else if (*fmt == 'd')
+                {
+                    auto i = va_arg(args, int32_t);
+                    currentX += printInt(i, 10, currentX, y, backColor, textColor);
+                }
                 else if (*fmt == 'f')
                 {
                     auto f = va_arg(args, int32_t);
                     currentX += printFloat(f, currentX, y, backColor, textColor);
+                }
+                else if (*fmt == 'x')
+                {
+                    auto i = va_arg(args, int32_t);
+                    currentX += printInt(i, 16, currentX, y, backColor, textColor);
                 }
                 else
                 {

@@ -140,6 +140,20 @@ char *itoa(int64_t value, char *result, uint32_t base)
 	return result;
 }
 
+char *btoa(bool value, char *result)
+{
+	static const char *trueString = "true";
+	static const char *falseString = "false";
+	auto src = value ? trueString : falseString;
+	auto ptr = result;
+	while (*src != '\0')
+	{
+		*ptr++ = *src++;
+	}
+	*ptr = '\0';
+	return result;
+}
+
 char *fptoa(int32_t value, char *result, uint32_t BITSF, uint32_t precision)
 {
 	static const char chars[] = "0123456789----------";
