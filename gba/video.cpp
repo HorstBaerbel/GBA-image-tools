@@ -30,12 +30,16 @@ int main()
 	const auto &videoInfo = Video::getInfo();
 	// print video info
 	TUI::printf(0, 0, "Video decompression demo");
-	TUI::printf(0, 1, "Frames: %d, Fps: %d", videoInfo.nrOfFrames, videoInfo.fps);
+	TUI::printf(0, 1, "Frames: %d, Fps: %f", videoInfo.nrOfFrames, videoInfo.fps);
 	TUI::printf(0, 2, "Size: %dx%d", videoInfo.width, videoInfo.height);
 	TUI::printf(0, 3, "Bits / pixel: %d", videoInfo.bitsPerPixel);
 	TUI::printf(0, 4, "Colors in colormap: %d", videoInfo.colorMapEntries);
-	TUI::printf(0, 5, "Bits / color: %d", videoInfo.bitsInColorMap);
-	TUI::printf(0, 6, "Memory needed: %d", videoInfo.maxMemoryNeeded);
+	TUI::printf(0, 5, "Bits / color: %d", videoInfo.bitsPerColor);
+	TUI::printf(0, 6, "Red-Blue swapped: %b", videoInfo.swappedRedBlue);
+	TUI::printf(0, 7, "Video mem needed: %d", videoInfo.videoMemoryNeeded);
+	TUI::printf(0, 8, "Audio format: %d Hz, %d Bit", videoInfo.audioSampleRate, videoInfo.audioSampleBits);
+	TUI::printf(0, 9, "Audio codec: %d", videoInfo.audioCodec);
+	TUI::printf(0, 10, "Audio mem needed: %d", videoInfo.audioMemoryNeeded);
 	TUI::printf(0, 19, "       Press A to play");
 	// wait for keypress
 	do
