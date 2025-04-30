@@ -19,31 +19,13 @@ namespace DXT
         const uint32_t nrOfBlocks = width / 4 * height / 4;
         auto colorPtr = src;
         auto indexPtr = reinterpret_cast<const uint32_t *>(src + nrOfBlocks * 8 / 4);
-        auto c2c3Ptr = reinterpret_cast<uint32_t *>(&blockColors[2]);
         for (uint32_t blockY = 0; blockY < height / 4; blockY++)
         {
             auto blockLineDst = dst;
             for (uint32_t blockX = 0; blockX < width / 4; blockX++)
             {
-                // get anchor colors c0 and c1
-                uint32_t c0 = *colorPtr++;
-                uint32_t c1 = *colorPtr++;
-                blockColors[0] = c0;
-                blockColors[1] = c1;
-                uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
-                uint32_t g = (c0 & 0x03E0) | ((c1 & 0x03E0) >> 5);
-                uint32_t r = ((c0 & 0x001F) << 5) | (c1 & 0x001F);
-                // check which intermediate colors mode we're using
-                if (c0 > c1)
-                {
-                    // calculate intermediate colors c2 and c3 at 1/3 and 2/3 of c0 and c1
-                    *c2c3Ptr = (C2C3_ModeThird_5bit[b] << 10) | (C2C3_ModeThird_5bit[g] << 5) | C2C3_ModeThird_5bit[r];
-                }
-                else
-                {
-                    // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
-                    *c2c3Ptr = (C2_ModeHalf_5bit[b] << 10) | (C2_ModeHalf_5bit[g] << 5) | C2_ModeHalf_5bit[r];
-                }
+                // get DXT block colors
+                colorPtr = getBlockColors(colorPtr, blockColors);
                 // get pixel color indices and set pixels accordingly
                 uint32_t indices = *indexPtr++;
                 auto blockDst = blockLineDst;
