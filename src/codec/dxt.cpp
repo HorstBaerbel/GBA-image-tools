@@ -256,15 +256,14 @@ auto encodeBlockInternal(const XRGB8888 *blockStart, const uint32_t pixelsPerSca
     auto data16 = reinterpret_cast<uint16_t *>(result.data());
     *data16++ = c0;
     *data16++ = c1;
-    // add index data in reverse
-    auto data32 = reinterpret_cast<uint32_t *>(data16);
-    uint32_t indices = 0;
-    for (auto iIt = endpointIndices.crbegin(); iIt != endpointIndices.crend(); ++iIt)
+    // add index data making sure the lower indices are in the lower bits
+    uint16_t indices = 0;
+    for (auto iIt = endpointIndices.cbegin(); iIt != endpointIndices.cend(); ++iIt)
     {
-        indices = (indices << 2) | *iIt;
-        if ((std::distance(endpointIndices.crbegin(), iIt) + 1) % 16 == 0)
+        indices = (indices >> 2) | (*iIt << 14);
+        if ((std::distance(endpointIndices.cbegin(), iIt) + 1) % 8 == 0)
         {
-            *data32++ = indices;
+            *data16++ = indices;
             indices = 0;
         }
     }
@@ -327,7 +326,7 @@ auto DXT::encode(const std::vector<XRGB8888> &image, const uint32_t width, const
 // ------------------------------------------------------------------------------------------------
 
 template <unsigned BLOCK_DIM>
-auto decodeBlockInternal(const uint16_t *colorStart, const uint32_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
+auto decodeBlockInternal(const uint16_t *colorStart, const uint16_t *indexStart, Color::XRGB8888 *blockStart, const uint32_t pixelsPerScanline, const bool asRGB565, const bool swapToBGR) -> void
 {
     // read colors c0 and c1
     std::array<XRGB8888, 4> colors;
@@ -387,12 +386,12 @@ auto decodeBlockInternal(const uint16_t *colorStart, const uint32_t *indexStart,
         colors[3] = XRGB8888(0, 0, 0);
     }
     // and decode colors
-    uint32_t indices = 0;
+    uint16_t indices = 0;
     auto pixel = blockStart;
     for (std::size_t y = 0; y < BLOCK_DIM; y++)
     {
         // read pixel color indices
-        if ((y * BLOCK_DIM) % 16 == 0)
+        if ((y * BLOCK_DIM) % 8 == 0)
         {
             indices = *indexStart++;
         }
@@ -410,7 +409,7 @@ auto DXT::decodeBlock<4>(const std::vector<uint8_t> &data, const bool asRGB565, 
 {
     REQUIRE(data.size() == 2 + 2 + 16 * 2 / 8, std::runtime_error, "Data size must be 8");
     std::vector<Color::XRGB8888> block(16);
-    decodeBlockInternal<4>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint32_t *>(data.data() + 4), block.data(), 4, asRGB565, swapToBGR);
+    decodeBlockInternal<4>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint16_t *>(data.data() + 4), block.data(), 4, asRGB565, swapToBGR);
     return block;
 }
 
@@ -419,7 +418,7 @@ auto DXT::decodeBlock<8>(const std::vector<uint8_t> &data, const bool asRGB565, 
 {
     REQUIRE(data.size() == 2 + 2 + 64 * 2 / 8, std::runtime_error, "Data size must be 20");
     std::vector<Color::XRGB8888> block(64);
-    decodeBlockInternal<8>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint32_t *>(data.data() + 4), block.data(), 8, asRGB565, swapToBGR);
+    decodeBlockInternal<8>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint16_t *>(data.data() + 4), block.data(), 8, asRGB565, swapToBGR);
     return block;
 }
 
@@ -428,7 +427,7 @@ auto DXT::decodeBlock<16>(const std::vector<uint8_t> &data, const bool asRGB565,
 {
     REQUIRE(data.size() == 2 + 2 + 256 * 2 / 8, std::runtime_error, "Data size must be 68");
     std::vector<Color::XRGB8888> block(256);
-    decodeBlockInternal<16>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint32_t *>(data.data() + 4), block.data(), 16, asRGB565, swapToBGR);
+    decodeBlockInternal<16>(reinterpret_cast<const uint16_t *>(data.data()), reinterpret_cast<const uint16_t *>(data.data() + 4), block.data(), 16, asRGB565, swapToBGR);
     return block;
 }
 
@@ -445,13 +444,13 @@ auto DXT::decode(const std::vector<uint8_t> &data, const uint32_t width, const u
         // set up pointers to source block data
         auto blockIndex = y / 4 * width / 4;
         auto color16 = reinterpret_cast<const uint16_t *>(data.data() + blockIndex * 4);
-        auto indices32 = reinterpret_cast<const uint32_t *>(data.data() + nrOfBlocks * 4 + blockIndex * 4);
+        auto indices16 = reinterpret_cast<const uint16_t *>(data.data() + nrOfBlocks * 4 + blockIndex * 4);
         auto blockStart = result.data() + y * width;
         for (std::size_t x = 0; x < width; x += 4)
         {
-            decodeBlockInternal<4>(color16, indices32, blockStart, width, asRGB565, swapToBGR);
+            decodeBlockInternal<4>(color16, indices16, blockStart, width, asRGB565, swapToBGR);
             color16 += 2;
-            indices32 += 1;
+            indices16 += 2;
             blockStart += 4;
         }
     }

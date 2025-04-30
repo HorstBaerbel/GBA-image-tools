@@ -98,8 +98,8 @@ TEST_CASE("EncodeDecodeBlock555")
     auto image = IO::File::readImage(DataPathTest + "BigBuckBunny_361_384x256.png");
     auto pixels = image.image.data.pixels().convertData<Color::XRGB8888>();
     testEncodeBlock<4>(pixels, image.image.size.width(), false, 21.69F);
-    testEncodeBlock<8>(pixels, image.image.size.width(), false, 14.06F);
-    testEncodeBlock<16>(pixels, image.image.size.width(), false, 13.72F);
+    testEncodeBlock<8>(pixels, image.image.size.width(), false, 19.49F);
+    testEncodeBlock<16>(pixels, image.image.size.width(), false, 15.31F);
 }
 
 TEST_CASE("EncodeDecodeBlock565")
@@ -107,8 +107,8 @@ TEST_CASE("EncodeDecodeBlock565")
     auto image = IO::File::readImage(DataPathTest + "BigBuckBunny_361_384x256.png");
     auto pixels = image.image.data.pixels().convertData<Color::XRGB8888>();
     testEncodeBlock<4>(pixels, image.image.size.width(), true, 22.23F);
-    testEncodeBlock<8>(pixels, image.image.size.width(), true, 14.14F);
-    testEncodeBlock<16>(pixels, image.image.size.width(), true, 13.66F);
+    testEncodeBlock<8>(pixels, image.image.size.width(), true, 19.61F);
+    testEncodeBlock<16>(pixels, image.image.size.width(), true, 15.07F);
 }
 
 TEST_CASE("EncodeDecode555")
