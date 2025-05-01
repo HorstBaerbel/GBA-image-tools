@@ -13,7 +13,7 @@
 
 #include "data/video.h"
 
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 22000 / 4 + 1]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
+EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 15000 / 4 + 1]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {
@@ -30,16 +30,17 @@ int main()
 	const auto &videoInfo = Video::getInfo();
 	// print video info
 	TUI::printf(0, 0, "Video decompression demo");
-	TUI::printf(0, 1, "Frames: %d, Fps: %f", videoInfo.nrOfFrames, videoInfo.fps);
-	TUI::printf(0, 2, "Size: %dx%d", videoInfo.width, videoInfo.height);
-	TUI::printf(0, 3, "Bits / pixel: %d", videoInfo.bitsPerPixel);
-	TUI::printf(0, 4, "Colors in colormap: %d", videoInfo.colorMapEntries);
-	TUI::printf(0, 5, "Bits / color: %d", videoInfo.bitsPerColor);
-	TUI::printf(0, 6, "Red-Blue swapped: %b", videoInfo.swappedRedBlue);
-	TUI::printf(0, 7, "Video mem needed: %d", videoInfo.videoMemoryNeeded);
-	TUI::printf(0, 8, "Audio format: %d Hz, %d Bit", videoInfo.audioSampleRate, videoInfo.audioSampleBits);
-	TUI::printf(0, 9, "Audio codec: %d", videoInfo.audioCodec);
-	TUI::printf(0, 10, "Audio mem needed: %d", videoInfo.audioMemoryNeeded);
+	TUI::printf(0, 2, "Frames: %d, Fps: %f", videoInfo.nrOfFrames, videoInfo.fps);
+	TUI::printf(0, 3, "Size: %d kB", VIDEO_DATA_SIZE / 1024);
+	TUI::printf(0, 4, "Resolution: %dx%d", videoInfo.width, videoInfo.height);
+	TUI::printf(0, 5, "Bits / pixel: %d", videoInfo.bitsPerPixel);
+	TUI::printf(0, 6, "Colors in colormap: %d", videoInfo.colorMapEntries);
+	TUI::printf(0, 7, "Bits / color: %d", videoInfo.bitsPerColor);
+	TUI::printf(0, 8, "Red-Blue swapped: %b", videoInfo.swappedRedBlue);
+	TUI::printf(0, 9, "Video mem needed: %d Byte", videoInfo.videoMemoryNeeded);
+	TUI::printf(0, 11, "Audio format: %d Hz, %d Bit", videoInfo.audioSampleRate, videoInfo.audioSampleBits);
+	TUI::printf(0, 12, "Audio codec: %d", videoInfo.audioCodec);
+	TUI::printf(0, 13, "Audio mem needed: %d Byte", videoInfo.audioMemoryNeeded);
 	TUI::printf(0, 19, "       Press A to play");
 	// wait for keypress
 	do
