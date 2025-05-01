@@ -138,7 +138,7 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
     // calculate allowed MSE for blocks. Map from [0, 100] to [1, 0]
     const float allowedError = std::pow((100.0F - quality) / 100.0F, 2.0F);
     // Try to find x/y motion block within error from previous frame
-    /*auto prevRef = findBestMatchingBlockMotion(previousCodeBook, block, allowedError, false);
+    auto prevRef = findBestMatchingBlockMotion(previousCodeBook, block, allowedError, false);
     // Try to find x/y motion block within error from current frame
     auto currRef = findBestMatchingBlockMotion(currentCodeBook, block, allowedError, true);
     // Choose the better one of both block references
@@ -189,41 +189,41 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         Statistics::incValue(statistics, "motionBlocksCurr", 1, BLOCK_LEVEL);
     }
     else
-    {*/
-    // No good references found. DXT-encode full block
-    auto rawBlock = block.pixels();
-    auto encodedBlock = DXT::encodeBlock<BLOCK_DIM>(rawBlock, false, swapToBGR);
-    auto decodedBlock = DXT::decodeBlock<BLOCK_DIM>(encodedBlock, false, swapToBGR);
-    if constexpr (BLOCK_DIM <= DXTV::CodeBook8x8::BlockMinDim)
     {
-        // We can't split anymore and can't get better error-wise. Store 4x4 DXT block
-        data = encodedBlock;
-        block.copyPixelsFrom(decodedBlock);
-        Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
-    }
-    else if constexpr (BLOCK_DIM > DXTV::CodeBook8x8::BlockMinDim)
-    {
-        // We can still split. Check if encoded block is below allowed error or we want to split the block
-        auto encodedBlockError = Color::mse(rawBlock, decodedBlock);
-        if (encodedBlockError < allowedError)
+        // No good references found. DXT-encode full block
+        auto rawBlock = block.pixels();
+        auto encodedBlock = DXT::encodeBlock<BLOCK_DIM>(rawBlock, false, swapToBGR);
+        auto decodedBlock = DXT::decodeBlock<BLOCK_DIM>(encodedBlock, false, swapToBGR);
+        if constexpr (BLOCK_DIM <= DXTV::CodeBook8x8::BlockMinDim)
         {
-            // Error ok. Store full DXT block
+            // We can't split anymore and can't get better error-wise. Store 4x4 DXT block
             data = encodedBlock;
             block.copyPixelsFrom(decodedBlock);
             Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
         }
-        else
+        else if constexpr (BLOCK_DIM > DXTV::CodeBook8x8::BlockMinDim)
         {
-            // Split block to improve error and recurse
-            blockWasSplit = true;
-            for (uint32_t i = 0; i < 4; ++i)
+            // We can still split. Check if encoded block is below allowed error or we want to split the block
+            auto encodedBlockError = Color::mse(rawBlock, decodedBlock);
+            if (encodedBlockError < allowedError)
             {
-                auto [dummyFlag, blockData] = encodeBlockInternal<BLOCK_DIM / 2>(currentCodeBook, previousCodeBook, block.block(i), quality, swapToBGR, statistics);
-                std::copy(blockData.cbegin(), blockData.cend(), std::back_inserter(data));
+                // Error ok. Store full DXT block
+                data = encodedBlock;
+                block.copyPixelsFrom(decodedBlock);
+                Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
+            }
+            else
+            {
+                // Split block to improve error and recurse
+                blockWasSplit = true;
+                for (uint32_t i = 0; i < 4; ++i)
+                {
+                    auto [dummyFlag, blockData] = encodeBlockInternal<BLOCK_DIM / 2>(currentCodeBook, previousCodeBook, block.block(i), quality, swapToBGR, statistics);
+                    std::copy(blockData.cbegin(), blockData.cend(), std::back_inserter(data));
+                }
             }
         }
     }
-    //}
     block.data() = true; // mark block as encoded
     return {blockWasSplit, data};
 }
