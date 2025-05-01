@@ -34,6 +34,7 @@ endmacro()
 
 # Video example sources --------------------------------------------
 LIST(APPEND VIDEO_SOURCE_FILES
+	time.cpp
 	tui.cpp
 	video.cpp
 	memory/dma.cpp

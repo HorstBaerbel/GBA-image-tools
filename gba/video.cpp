@@ -1,8 +1,6 @@
 #include <gba_base.h>
 #include <gba_input.h>
 #include <gba_interrupt.h>
-#include <gba_systemcalls.h>
-#include <gba_timers.h>
 #include <gba_video.h>
 
 #include "base.h"
@@ -54,23 +52,10 @@ int main()
 	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
 	// start main loop
-	int32_t maxFrameTimeMs = 0;
 	Video::play();
 	do
 	{
-		// start benchmark timer
-		REG_TM3CNT_L = 0;
-		REG_TM3CNT_H = TIMER_START | 2;
-		// decode and possibly blit new frame from video
 		Video::decodeAndBlitFrame((uint32_t *)VRAM);
-		// end benchmark timer
-		REG_TM3CNT_H = 0;
-		auto durationMs = static_cast<int32_t>(REG_TM3CNT_L) * 1000;
-		if (maxFrameTimeMs < durationMs)
-		{
-			maxFrameTimeMs = durationMs;
-			Debug::printf("Max. frame time: %f ms", durationMs);
-		}
 		if (!Video::hasMoreFrames())
 		{
 			Video::stop();

@@ -8,9 +8,10 @@
 #include <gba_interrupt.h>
 #include <gba_timers.h>
 
-//#define DEBUG_PLAYER
+// #define DEBUG_PLAYER
 #ifdef DEBUG_PLAYER
 #include "print/output.h"
+#include "time.h"
 #endif
 
 namespace Video
@@ -24,6 +25,15 @@ namespace Video
     IWRAM_DATA const uint32_t *m_decodedFrame = nullptr;
     IWRAM_DATA uint32_t m_decodedFrameSize = 0;
     IWRAM_DATA int32_t m_framesDecoded = 0;
+
+#ifdef DEBUG_PLAYER
+    IWRAM_DATA int32_t m_accFrameDecodeMs = 0;
+    IWRAM_DATA int32_t m_maxFrameDecodeMs = 0;
+    IWRAM_DATA int32_t m_nrOfFramesDecoded = 0;
+    IWRAM_DATA int32_t m_accFrameBlitMs = 0;
+    IWRAM_DATA int32_t m_maxFrameBlitMs = 0;
+    IWRAM_DATA int32_t m_nrOfFramesBlit = 0;
+#endif
 
     IWRAM_DATA volatile int32_t m_framesRequested = 0;
     IWRAM_FUNC auto frameRequest() -> void
@@ -59,6 +69,15 @@ namespace Video
             m_playing = true;
             m_framesDecoded = 0;
             m_framesRequested = 1;
+#ifdef DEBUG_PLAYER
+            m_accFrameDecodeMs = 0;
+            m_maxFrameDecodeMs = 0;
+            m_nrOfFramesDecoded = 0;
+            m_accFrameBlitMs = 0;
+            m_maxFrameBlitMs = 0;
+            m_nrOfFramesBlit = 0;
+            Time::start();
+#endif
             // set up timer to increase with frame interval
             irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
             irqEnable(irqMASKS::IRQ_TIMER2);
@@ -77,6 +96,11 @@ namespace Video
             irqDisable(irqMASKS::IRQ_TIMER2);
             m_playing = false;
             m_framesRequested = 0;
+#ifdef DEBUG_PLAYER
+            Debug::printf("Avg. decode: %f ms (max. %f ms)", m_accFrameDecodeMs / m_nrOfFramesDecoded, m_maxFrameDecodeMs);
+            Debug::printf("Avg. blit: %f ms (max. %f ms)", m_accFrameBlitMs / m_nrOfFramesBlit, m_maxFrameBlitMs);
+            Time::stop();
+#endif
         }
     }
 
@@ -101,7 +125,9 @@ namespace Video
                 m_decodedFrame = decode(m_scratchPad, m_scratchPadSize, m_videoInfo, m_videoFrame);
 #ifdef DEBUG_PLAYER
                 auto duration = Time::now() * 1000 - startTime * 1000;
-                Debug::printf("Decode: %.2f ms", duration);
+                m_accFrameDecodeMs += duration;
+                m_maxFrameDecodeMs = m_maxFrameDecodeMs < duration ? duration : m_maxFrameDecodeMs;
+                ++m_nrOfFramesDecoded;
 #endif
             }
             if (m_framesRequested > 0)
@@ -117,7 +143,9 @@ namespace Video
                     Memory::memcpy32(dst, m_decodedFrame, m_decodedFrameSize / 4);
 #ifdef DEBUG_PLAYER
                     auto duration = Time::now() * 1000 - startTime * 1000;
-                    Debug::printf("Blit: %.2f ms", duration);
+                    m_accFrameBlitMs += duration;
+                    m_maxFrameBlitMs = m_maxFrameBlitMs < duration ? duration : m_maxFrameBlitMs;
+                    ++m_nrOfFramesBlit;
 #endif
                 }
                 if (m_framesRequested > 0)
