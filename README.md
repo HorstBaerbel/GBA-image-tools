@@ -8,6 +8,7 @@ This folder contains some tools to convert / compress images and videos to GBA f
 * [hex2gba](src/hex2gba.cpp) - Convert a RGB888 color value to RGB555, RGB565 and BGR555, BGR565 high-color format for GBA / NDS .
 * [img2h](src/img2h.cpp) - Convert / compress a (list of) image(s) that can be read with [ImageMagick](https://imagemagick.org/index.php) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compress them with RLE or LZ77. Suitable to compress small image sequences too. Documentation is [here](img2h.md).
 * [vid2h](src/vid2h.cpp) - Convert / compress a video that can be read with [FFmpeg](https://www.ffmpeg.org/) to a .h / .c file to compile them into your program. Can convert images to a tile- or sprite-compatible format ("1D mapping" order) and compresses them using intra- and inter-frame techniques and RLE, LZ77 or DXT. Documentation is [here](vid2h.md).
+* [vid2play](src/vid2hplay.cpp) - Play vid2h-compressed files.
 
 If you find a bug or make an improvement your pull requests are appreciated.
 

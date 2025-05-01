@@ -21,7 +21,7 @@ Call vid2h like this: ```vid2h FORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COM
   * ```--deltaimage``` - Pixel-wise delta encoding between successive images.
 * ```IMAGE COMPRESSION``` is optional, mutually exclusive:
   * ```--dxtg``` - Use DXT1-ish RGB555 intra-frame compression on video.
-  * ```--dxtv=KEYFRAME_INTERVAL,ALLOWED_ERROR``` - Use DXT1-ish RGB555 intra- and inter-frame compression on video. KEYFRAME_INTERVAL is the interval at which key frames are inserted [0, 60]. 0 means no key frames. ALLOWED_ERROR is a quality factor where higher values mean higher allowed error == worse quality, but better compression [0.01, 1].
+  * ```--dxtv=QUALITY``` - Use DXT1-ish RGB555 intra- and inter-frame compression on video. QUALITY [0, 100] is a quality factor where higher values == better quality, but worse compression.
 * ```DATA COMPRESSION``` is optional:
   * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
@@ -43,29 +43,41 @@ Some general information:
 
 ## Binary file storage format
 
-vid2h will store binary file header fields and frame header fields:
+vid2h will store binary file header fields and frame header fields (see [vid2hio.h](src/io/vid2hio.h) and see [vid2hio.cpp](src/io/vid2hio.cpp)):
 
-| Field                                      | Size     |                                                                               |
-| ------------------------------------------ | -------- | ----------------------------------------------------------------------------- |
-| *File / Video*                             |
-| Magic bytes "v2h_"                         | 4 bytes  | To identify the file type
-| Number of frames in file                   | 4 bytes  |
-| Frame width in pixels                      | 2 bytes  |
-| Frame height in pixels                     | 2 bytes  |
-| Frames / s                                 | 1 byte   | No fractions allowed here                                                     |
-| Image data bits / pixel                    | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                                 |
-| Color map data bits / color                | 1 byte   | Can be 0 (no color map), 15, 16, 24                                           |
-| Color map entries M                        | 1 byte   | Color map stored if M > 0                                                     |
-| Max. intermediate memory needed            | 4 bytes  | Maximum intermediate storage needed for decompression (for ALL frames)        |
-| *Frame #0*                                 |
-| &emsp; Frame data chunk size               | 4 bytes  | Padded size of frame data chunk (NOT including the color map size)            |
-| &emsp; *Frame data chunk #0*               |
-| &emsp; &emsp; Processing type              | 1 byte   | See following table and [processingtypes.h](src/processing/processingtypes.h) |
-| &emsp; &emsp; Uncompressed frame data size | 3 bytes  |
-| &emsp; &emsp; Frame data                   | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)           |
-| &emsp; Color map data                      | M colors | Only if M > 0. Padded to multiple of 4                                        |
-| *Frame #1*                                 |
-| ...                                        |
+| Field                                       | Size     |                                                                                                                             |
+| ------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| *File / Video*                              |
+| Magic bytes "v2h0"                          | 4 bytes  | To identify the file type and version (currently "0")                                                                       |
+| Number of frames in file                    | 4 bytes  |
+| Frame width in pixels                       | 2 bytes  |
+| Frame height in pixels                      | 2 bytes  |
+| Frames / s                                  | 4 bytes  | Frames / s in 16:16 fixed-point format                                                                                      |
+| Image data bits / pixel                     | 1 byte   | Can be 1, 2, 4, 8, 15, 16, 24                                                                                               |
+| Color map data bits / color                 | 1 byte   | Can be 0 (no color map), 15, 16, 24                                                                                         |
+| Red-blue channel swap flag                  | 1 byte   | If != 0 red and blue channel are swapped                                                                                    |
+| Color map entries M                         | 1 byte   | Color map stored if M > 0                                                                                                   |
+| Max. intermediate video memory needed       | 4 bytes  | Max. intermediate memory needed to decompress a video frame. If 0 size should be determined by # of pixels and bits / pixel |
+| Audio sample rate                           | 2 bytes  | Audio data sample rate in Hz                                                                                                |
+| Audio sample bit depth                      | 1 byte   | Audio data bit depth                                                                                                        |
+| Audio codec                                 | 1 byte   | Audio codec identifier                                                                                                      |
+| ---                                         | 2 bytes  | Padding for alignment and future versions                                                                                   |
+| Max intermadiate audio memory needed        | 2 bytes  | Max. intermediate memory needed to decompress an audio frame. If 0 size should be determined by sample rate and bit depth   |
+| *Frame #0*                                  |
+| &emsp; Compressed pixel data chunk size     | 4 bytes  | Padded size of compressed pixel data chunk                                                                                  |
+| &emsp; Compressed color map data chunk size | 2 bytes  | Padded size of compressed color map data chunk                                                                              |
+| &emsp; Compressed audio data chunk size     | 2 bytes  | Padded size of compressed audio data chunk                                                                                  |
+| &emsp; *Audio data chunk #0*                |
+| &emsp; &emsp; Processing type               | 1 byte   | not supported atm                                                                                                           |
+| &emsp; &emsp; Uncompressed audio data size  | 3 bytes  | not supported atm                                                                                                           |
+| &emsp; &emsp; Audio data                    | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)                                                         |
+| &emsp; *Pixel data chunk #0*                |
+| &emsp; &emsp; Processing type               | 1 byte   | See following table and [processingtypes.h](src/processing/processingtypes.h)                                               |
+| &emsp; &emsp; Uncompressed pixel data size  | 3 bytes  |
+| &emsp; &emsp; Pixel data                    | N bytes  | Padded to multiple of 4 (might have multiple layered chunks inside)                                                         |
+| &emsp; Color map data                       | M colors | Only if M > 0. Padded to multiple of 4                                                                                      |
+| *Frame #1*                                  |
+| ...                                         |
 
 Note that (if the file header is aligned to 4 bytes) every *Frame* and every *Data chunk* in the file will be aligned to 4 bytes. If you use aligned memory as a scratchpad when decoding, again, every *Chunk data* will be aligned too.
 
@@ -96,7 +108,5 @@ An example for a small video player (no audio) can be found in the [gba](gba) su
 ## Todo
 
 * Much faster DXTV decompression
-* Improve DXTV compression (Still 2-3 unused bits per block)
 * VQ-based compression using YCgCoR. Should yield better compression ratio and decompress faster
-* Clean up SDLWindow class
 * Better image / video preview (in + out)
