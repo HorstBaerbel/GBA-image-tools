@@ -11,7 +11,6 @@
 class DXTV
 {
 public:
-    static constexpr uint16_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames with only intra-frame compression, 1 for P-frames with inter-frame compression ("predicted frame")
     static constexpr uint16_t FRAME_KEEP = 0x40;      // 1 for frames that are considered a direct copy of the previous frame and can be kept
 
     static constexpr uint32_t BLOCK_MAX_DIM = 8;           // Maximum block size is 8x8 pixels
@@ -50,10 +49,9 @@ public:
     /// @brief Compress image data to format similar to DXT1. See: https://www.khronos.org/opengl/wiki/S3_Texture_Compression#DXT1_Format
     // DXT1 compresses one 4x4 block to 2 bytes color0, 2 bytes color1 and 16*2 bit = 4 bytes index information
     /// Difference is that colors will be stored as RGB555 only
-    /// @param keyframe If true B-frame will be output, else a P-frame
     /// @param quality Quality for block references and splitting of blocks. The higher, the better quality. Range [0,100]
     /// @return Returns (compressed data, decompressed frame)
-    static auto encode(const std::vector<Color::XRGB8888> &image, const std::vector<Color::XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float quality, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<std::vector<uint8_t>, std::vector<Color::XRGB8888>>;
+    static auto encode(const std::vector<Color::XRGB8888> &image, const std::vector<Color::XRGB8888> &previousImage, uint32_t width, uint32_t height, float quality, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<std::vector<uint8_t>, std::vector<Color::XRGB8888>>;
 
     /// @brief Decompress block from DXTV format
     template <std::size_t BLOCK_DIM>

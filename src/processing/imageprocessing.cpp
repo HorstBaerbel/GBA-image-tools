@@ -399,19 +399,15 @@ namespace Image
         REQUIRE(data.image.size.width() % 8 == 0, std::runtime_error, "Image width must be a multiple of 8 for DXTV compression");
         REQUIRE(data.image.size.height() % 8 == 0, std::runtime_error, "Image height must be a multiple of 8 for DXTV compression");
         // get parameter(s)
-        REQUIRE((VariantHelpers::hasTypes<Color::Format, double, double>(parameters)), std::runtime_error, "compressDXTV expects a Color::Format, a double keyframe interval and a double quality parameter");
+        REQUIRE((VariantHelpers::hasTypes<Color::Format, double>(parameters)), std::runtime_error, "compressDXTV expects a Color::Format and a double quality parameter");
         const auto format = VariantHelpers::getValue<Color::Format, 0>(parameters);
         REQUIRE(format == Color::Format::XRGB1555 || format == Color::Format::XBGR1555, std::runtime_error, "Output color format must be in [RGB555, BGR555]");
-        auto keyFrameInterval = static_cast<int32_t>(VariantHelpers::getValue<double, 1>(parameters));
-        REQUIRE(keyFrameInterval >= 0 && keyFrameInterval <= 60, std::runtime_error, "compressDXTV keyframe interval must be in [0, 60] (0 = none)");
-        auto quality = VariantHelpers::getValue<double, 2>(parameters);
+        auto quality = VariantHelpers::getValue<double, 1>(parameters);
         REQUIRE(quality >= 0 && quality <= 100, std::runtime_error, "compressDXTV quality must be in [0, 100]");
-        // check if needs to be a keyframe
-        const bool isKeyFrame = keyFrameInterval > 0 ? ((data.index % keyFrameInterval) == 0 || state.empty()) : false;
         // convert image using DXTV compression
         auto result = data;
         auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
-        auto compressedData = DXTV::encode(data.image.data.pixels().data<Color::XRGB8888>(), previousImage, data.image.size.width(), data.image.size.height(), isKeyFrame, quality, format == Color::Format::XBGR1555);
+        auto compressedData = DXTV::encode(data.image.data.pixels().data<Color::XRGB8888>(), previousImage, data.image.size.width(), data.image.size.height(), quality, format == Color::Format::XBGR1555);
         result.image.data.pixels() = PixelData(compressedData.first, Color::Format::Unknown);
         result.image.pixelFormat = format;
         result.image.colorMapFormat = Color::Format::Unknown;

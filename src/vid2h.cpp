@@ -318,7 +318,7 @@ int main(int argc, const char *argv[])
         }
         if (options.dxtv)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value.at(0), options.dxtv.value.at(1)}, true, true);
+            processing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, true);
         }
         if (options.gvid)
         {

@@ -74,7 +74,7 @@ auto testEncode(const Image::Data &data, const float quality, const float allowe
     const auto size = data.image.size;
     const auto inPixels = data.image.data.pixels().convertData<Color::XRGB8888>();
     // compress image
-    const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, {}, size.width(), size.height(), true, quality, swapToBGR);
+    const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, {}, size.width(), size.height(), quality, swapToBGR);
     auto outPixels = DXTV::decode(compressedData, {}, size.width(), size.height(), swapToBGR);
     auto psnr = Color::psnr(inPixels, outPixels);
     std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << "image, psnr: " << std::setprecision(4) << psnr << std::endl;
@@ -119,7 +119,7 @@ TEST_CASE("EncodeDecodeVideo")
         const auto size = data.image.size;
         const auto inPixels = data.image.data.pixels().convertData<Color::XRGB8888>();
         // compress image
-        const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, prevPixels, size.width(), size.height(), true, ImageQualityDXT8x8, swapToBGR);
+        const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, prevPixels, size.width(), size.height(), ImageQualityDXT8x8, swapToBGR);
         auto outPixels = DXTV::decode(compressedData, prevPixels, size.width(), size.height(), swapToBGR);
         auto psnr = Color::psnr(inPixels, outPixels);
         std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << "frame, psnr: " << std::setprecision(4) << psnr << std::endl;

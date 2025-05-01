@@ -52,7 +52,7 @@ public:
     // static Option rle;
     static Option vram;
     static Option dxt;
-    static OptionT<std::vector<double>> dxtv;
+    static OptionT<double> dxtv;
     static Option gvid;
     static Option interleavePixels;
     static Option dryRun;

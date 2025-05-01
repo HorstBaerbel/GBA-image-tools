@@ -149,9 +149,8 @@ namespace Image
         /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
         /// Has additional intra- and inter-frame compression in comparison to DTXG
         /// @param parameters:
-        /// - Key frame interval n as int in [1,20] meaning a key frame is stored every n frames
-        /// - Maximum error for B-frame references (keyframes)
-        /// - Maximum error for P-frame references (inter-frames)
+        /// - Color format XRGB1555 or XBGR1555
+        /// - Maximum error for I-frame (keyframes) and P-frame references (inter-frames)
         /// @param state Previous image as Data
         static Data compressDXTV(const Data &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Frame::SPtr statistics);
 

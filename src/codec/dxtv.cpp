@@ -242,7 +242,7 @@ auto DXTV::encodeBlock<8>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previ
     return encodeBlockInternal<8>(currentCodeBook, previousCodeBook, block, quality, swapToBGR, statistics);
 }
 
-auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, bool keyFrame, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
+auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
 {
     static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
     REQUIRE(width % CodeBook8x8::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of " << CodeBook8x8::BlockMaxDim << " for DXTV compression");
@@ -250,11 +250,11 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
     REQUIRE(quality >= 0 && quality <= 100, std::runtime_error, "Max. block error must be in [0,100]");
     // convert frames to codebooks
     auto currentCodeBook = CodeBook8x8(image, width, height, false);
-    const auto previousCodeBook = previousImage.empty() || keyFrame ? CodeBook8x8() : CodeBook8x8(previousImage, width, height, true);
+    const auto previousCodeBook = previousImage.empty() ? CodeBook8x8() : CodeBook8x8(previousImage, width, height, true);
     // calculate perceived frame distance
     const float frameError = previousCodeBook.empty() ? INT_MAX : currentCodeBook.mse(previousCodeBook);
     // check if the new frame can be considered a verbatim copy
-    if (!keyFrame && frameError < 0.0001)
+    if (frameError < 0.0001)
     {
         // frame is a duplicate. pass header only
         FrameHeader frameHeader;
@@ -264,21 +264,11 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
         assert((headerData.size() % 4) == 0);
         return std::make_pair(headerData, previousImage);
     }
-    // if we don't have a keyframe, check for scene change
-    /*if (!keyFrame)
-    {
-        if (frameError > 0.03)
-        {
-            std::cout << "Inserting key frame " << keyFrames++ << std::endl;
-            keyFrame = true;
-        }
-    }*/
     // round number of flag bits to full 16-bit units
     const auto blockFlagBitsPerLine = currentCodeBook.blockWidth() + (16 - currentCodeBook.blockWidth() % 16);
     const auto blockFlagBytesPerLine = blockFlagBitsPerLine / 8;
     // add frame header to compressed frame data
     FrameHeader frameHeader;
-    frameHeader.frameFlags = keyFrame ? 0 : FRAME_IS_PFRAME;
     auto headerData = frameHeader.toVector();
     assert((headerData.size() % 4) == 0);
     std::vector<uint8_t> compressedFrameData = headerData;
@@ -421,10 +411,6 @@ auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> 
     {
         REQUIRE(previousImage.size() == width * height, std::runtime_error, "Frame should be repeated, but previous image is empty or has wrong size");
         return previousImage;
-    }
-    if (frameHeader.frameFlags == FRAME_IS_PFRAME)
-    {
-        REQUIRE(previousImage.size() == width * height, std::runtime_error, "Frame is P-frame, but previous image is empty or has wrong size");
     }
     auto frameData = data.data() + sizeof(FrameHeader);
     auto dataPtr = reinterpret_cast<const uint16_t *>(frameData);

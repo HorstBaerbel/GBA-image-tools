@@ -11,7 +11,7 @@ namespace DXTV
     //
     // Header:
     //
-    // uint16_t frameFlags -> General frame flags, e.g. FRAME_IS_PFRAME or FRAME_KEEP
+    // uint16_t frameFlags -> General frame flags, e.g. FRAME_KEEP
     // uint16_t dummy -> empty atm
     //
     // Image data:
@@ -46,8 +46,7 @@ namespace DXTV
     //   Bit 11-6: y pixel motion of referenced block [-31,32] from top-left corner
     //   Bit  5-0: x pixel motion of referenced block [-31,32] from top-left corner
 
-    static constexpr uint16_t FRAME_IS_PFRAME = 0x80; // 0 for B-frames / key frames with only intra-frame compression, 1 for P-frames with inter-frame compression ("predicted frame")
-    static constexpr uint16_t FRAME_KEEP = 0x40;      // 1 for frames that are considered a direct copy of the previous frame and can be kept
+    static constexpr uint16_t FRAME_KEEP = 0x40; // 1 for frames that are considered a direct copy of the previous frame and can be kept
 
     static constexpr uint32_t BLOCK_MAX_DIM = 8;           // Maximum block size is 8x8 pixels
     static constexpr bool BLOCK_NO_SPLIT = false;          // The block is a full block
@@ -277,12 +276,6 @@ namespace DXTV
             // Debug::printf("Duplicate frame");
             return;
         }
-        // check if this frame is a key frame
-        /*const bool isKeyFrame = (headerFlags & FRAME_IS_PFRAME) == 0;
-        if (isKeyFrame)
-        {
-            Debug::printf("Key frame");
-        }*/
         // set up some variables
         for (uint32_t by = 0; by < height / BLOCK_MAX_DIM; ++by)
         {
