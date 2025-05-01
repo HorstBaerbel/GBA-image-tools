@@ -64,37 +64,126 @@ namespace DXTV
     IWRAM_DATA ALIGN(4) uint16_t blockColors[4]; // intermediate DXT block color storage
     IWRAM_DATA ALIGN(4) bool isBlockMC;          // intermediate DXT block color storage
 
+    /// @brief Copy (un-)aligned block from src to curr
+    template <uint32_t BLOCK_DIM>
+    FORCEINLINE auto copyBlock(uint32_t *currPtr32, const uint16_t *srcPtr16, const uint32_t LineStride16);
+
+    /// @brief Copy (un-)aligned block from src to curr
+    template <>
+    FORCEINLINE auto copyBlock<4>(uint32_t *currPtr32, const uint16_t *srcPtr16, const uint32_t LineStride16)
+    {
+        // check if block is word-aligned
+        if (((uint32_t)srcPtr16 & 3) != 0)
+        {
+            // unaligned block
+            auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
+            currPtr16[0] = srcPtr16[0];
+            currPtr16[1] = srcPtr16[1];
+            currPtr16[2] = srcPtr16[2];
+            currPtr16[3] = srcPtr16[3];
+            srcPtr16 += LineStride16;
+            currPtr16 += LineStride16;
+            currPtr16[0] = srcPtr16[0];
+            currPtr16[1] = srcPtr16[1];
+            currPtr16[2] = srcPtr16[2];
+            currPtr16[3] = srcPtr16[3];
+            srcPtr16 += LineStride16;
+            currPtr16 += LineStride16;
+            currPtr16[0] = srcPtr16[0];
+            currPtr16[1] = srcPtr16[1];
+            currPtr16[2] = srcPtr16[2];
+            currPtr16[3] = srcPtr16[3];
+            srcPtr16 += LineStride16;
+            currPtr16 += LineStride16;
+            currPtr16[0] = srcPtr16[0];
+            currPtr16[1] = srcPtr16[1];
+            currPtr16[2] = srcPtr16[2];
+            currPtr16[3] = srcPtr16[3];
+        }
+        else
+        {
+            // aligned block
+            auto srcPtr32 = reinterpret_cast<const uint32_t *>(srcPtr16);
+            currPtr32[0] = srcPtr32[0];
+            currPtr32[1] = srcPtr32[1];
+            srcPtr32 += LineStride16 / 2;
+            currPtr32 += LineStride16 / 2;
+            currPtr32[0] = srcPtr32[0];
+            currPtr32[1] = srcPtr32[1];
+            srcPtr32 += LineStride16 / 2;
+            currPtr32 += LineStride16 / 2;
+            currPtr32[0] = srcPtr32[0];
+            currPtr32[1] = srcPtr32[1];
+            srcPtr32 += LineStride16 / 2;
+            currPtr32 += LineStride16 / 2;
+            currPtr32[0] = srcPtr32[0];
+            currPtr32[1] = srcPtr32[1];
+        }
+    }
+
+    /// @brief Copy (un-)aligned block from src to curr
+    template <>
+    FORCEINLINE auto copyBlock<8>(uint32_t *currPtr32, const uint16_t *srcPtr16, const uint32_t LineStride16)
+    {
+        // check if block is word-aligned
+        if (((uint32_t)srcPtr16 & 3) != 0)
+        {
+            // unaligned block
+            auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
+            for (uint32_t y = 0; y < 8; ++y)
+            {
+                currPtr16[0] = srcPtr16[0];
+                currPtr16[1] = srcPtr16[1];
+                currPtr16[2] = srcPtr16[2];
+                currPtr16[3] = srcPtr16[3];
+                currPtr16[4] = srcPtr16[4];
+                currPtr16[5] = srcPtr16[5];
+                currPtr16[6] = srcPtr16[6];
+                currPtr16[7] = srcPtr16[7];
+                srcPtr16 += LineStride16;
+                currPtr16 += LineStride16;
+            }
+        }
+        else
+        {
+            // aligned block
+            auto srcPtr32 = reinterpret_cast<const uint32_t *>(srcPtr16);
+            for (uint32_t i = 0; i < 8; ++i)
+            {
+                currPtr32[0] = srcPtr32[0];
+                currPtr32[1] = srcPtr32[1];
+                currPtr32[2] = srcPtr32[2];
+                currPtr32[3] = srcPtr32[3];
+                srcPtr32 += LineStride16 / 2;
+                currPtr32 += LineStride16 / 2;
+            }
+        }
+    }
+
     /// @brief Uncompress DXT or motion-compensated block
     /// @return Pointer past whole block data in src
     template <uint32_t BLOCK_DIM>
-    IWRAM_FUNC auto decodeBlock(const uint16_t *dataPtr16, uint16_t *currPtr16, const uint16_t *prevPtr16, const int32_t LineStride16) -> const uint16_t *;
+    FORCEINLINE auto decodeBlock(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *;
 
     /// @brief Uncompress 4x4 or motion-compensated block
     /// @return Pointer past whole block data in src
     template <>
-    IWRAM_FUNC auto decodeBlock<4>(const uint16_t *dataPtr16, uint16_t *currPtr16, const uint16_t *prevPtr16, const int32_t LineStride16) -> const uint16_t *
+    FORCEINLINE auto decodeBlock<4>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
+        auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
         if (*dataPtr16 & BLOCK_IS_REF)
         {
             // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
-            auto srcPtr16 = fromPrev ? prevPtr16 : const_cast<const uint16_t *>(currPtr16);
+            auto srcPtr16 = fromPrev ? reinterpret_cast<const uint16_t *>(prevPtr32) : reinterpret_cast<const uint16_t *>(currPtr32);
             // convert offsets to signed values
             auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
             auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
-            for (uint32_t y = 0; y < 4; ++y)
-            {
-                for (uint32_t x = 0; x < 4; ++x)
-                {
-                    currPtr16[x] = srcPtr16[x];
-                }
-                srcPtr16 += LineStride16;
-                currPtr16 += LineStride16;
-            }
+            copyBlock<4>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
@@ -130,49 +219,32 @@ namespace DXTV
     /// @brief Uncompress 8x8 or motion-compensated block
     /// @return Pointer past whole block data in src
     template <>
-    IWRAM_FUNC auto decodeBlock<8>(const uint16_t *dataPtr16, uint16_t *currPtr16, const uint16_t *prevPtr16, const int32_t LineStride16) -> const uint16_t *
+    FORCEINLINE auto decodeBlock<8>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
+        auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
         if (*dataPtr16 & BLOCK_IS_REF)
         {
             // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
-            auto srcPtr16 = fromPrev ? prevPtr16 : const_cast<const uint16_t *>(currPtr16);
+            auto srcPtr16 = fromPrev ? reinterpret_cast<const uint16_t *>(prevPtr32) : reinterpret_cast<const uint16_t *>(currPtr32);
             // convert offsets to signed values
             auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
             auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
-            for (uint32_t y = 0; y < 8; ++y)
-            {
-                for (uint32_t x = 0; x < 8; ++x)
-                {
-                    currPtr16[x] = srcPtr16[x];
-                }
-                srcPtr16 += LineStride16;
-                currPtr16 += LineStride16;
-            }
+            copyBlock<8>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
             // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
             // get pixel color indices and set pixels accordingly
-            for (uint32_t i = 0; i < 4; ++i)
+            for (uint32_t i = 0; i < 8; ++i)
             {
                 uint16_t indices = *dataPtr16++;
                 // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-                currPtr16[0] = blockColors[(indices >> 0) & 0x3];
-                currPtr16[1] = blockColors[(indices >> 2) & 0x3];
-                currPtr16[2] = blockColors[(indices >> 4) & 0x3];
-                currPtr16[3] = blockColors[(indices >> 6) & 0x3];
-                currPtr16[4] = blockColors[(indices >> 8) & 0x3];
-                currPtr16[5] = blockColors[(indices >> 10) & 0x3];
-                currPtr16[6] = blockColors[(indices >> 12) & 0x3];
-                currPtr16[7] = blockColors[(indices >> 14) & 0x3];
-                currPtr16 += LineStride16;
-                indices = *dataPtr16++;
                 currPtr16[0] = blockColors[(indices >> 0) & 0x3];
                 currPtr16[1] = blockColors[(indices >> 2) & 0x3];
                 currPtr16[2] = blockColors[(indices >> 4) & 0x3];
@@ -187,54 +259,14 @@ namespace DXTV
         return dataPtr16;
     }
 
-    template <uint32_t BLOCK_DIM>
-    FORCEINLINE void copyBlockAlign32(uint32_t *dst32, const uint32_t *src32, uint32_t LineStride32);
-
-    template <>
-    FORCEINLINE void copyBlockAlign32<4>(uint32_t *dst32, const uint32_t *src32, uint32_t LineStride32)
-    {
-        // copy BLOCK_DIM pixels = 2 * BLOCK_DIM bytes from reference to current block, then move to next line in source and destination vertically
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
-        src32 += LineStride32;
-        dst32 += LineStride32;
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
-        src32 += LineStride32;
-        dst32 += LineStride32;
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
-        src32 += LineStride32;
-        dst32 += LineStride32;
-        dst32[0] = src32[0];
-        dst32[1] = src32[1];
-    }
-
-    template <>
-    FORCEINLINE void copyBlockAlign32<8>(uint32_t *dst32, const uint32_t *src32, uint32_t LineStride32)
-    {
-        for (uint32_t i = 0; i < 4; ++i)
-        {
-            // copy BLOCK_DIM pixels = 2 * BLOCK_DIM bytes from reference to current block, then move to next line in source and destination vertically
-            dst32[0] = src32[0];
-            dst32[1] = src32[1];
-            dst32[2] = src32[2];
-            dst32[3] = src32[3];
-            src32 += LineStride32;
-            dst32 += LineStride32;
-            dst32[0] = src32[0];
-            dst32[1] = src32[1];
-            dst32[2] = src32[2];
-            dst32[3] = src32[3];
-            src32 += LineStride32;
-            dst32 += LineStride32;
-        }
-    }
-
     template <>
     IWRAM_FUNC void UnCompWrite16bit<240>(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, uint32_t width, uint32_t height)
     {
-        constexpr int32_t LineStride16 = 240; // stride to next line in dst in half words / pixels
+        constexpr uint32_t LineStride16 = 240;                    // stride to next line in dst in half words / pixels
+        constexpr uint32_t LineStride32 = LineStride16 / 2;       // stride to next line in dst in words / 2 pixels
+        constexpr uint32_t Block4HStride32 = 2;                   // horizontal stride to next 4x4 block in dst in words / 2 pixels
+        constexpr uint32_t Block4VStride32 = 4 * LineStride32;    // vertical stride to next 4x4 block in dst in words / 2 pixels
+        constexpr uint32_t Block8HStride32 = 2 * Block4HStride32; // horizontal stride to next 8x8 block in dst in words / 2 pixels
         auto dataPtr16 = reinterpret_cast<const uint16_t *>(data);
         // copy frame header and skip dummy flags
         const uint16_t headerFlags = *dataPtr16++;
@@ -256,8 +288,8 @@ namespace DXTV
         {
             uint32_t flags = 0;
             uint32_t flagsAvailable = 0;
-            auto currPtr16 = reinterpret_cast<uint16_t *>(dst) + by * LineStride16 * BLOCK_MAX_DIM;
-            auto prevPtr16 = prevSrc == nullptr ? nullptr : reinterpret_cast<const uint16_t *>(prevSrc) + by * LineStride16 * BLOCK_MAX_DIM;
+            auto currPtr32 = dst + by * LineStride32 * BLOCK_MAX_DIM;
+            auto prevPtr32 = prevSrc == nullptr ? nullptr : prevSrc + by * LineStride32 * BLOCK_MAX_DIM;
             for (uint32_t bx = 0; bx < width / BLOCK_MAX_DIM; ++bx)
             {
                 // read flags if we need to
@@ -269,17 +301,17 @@ namespace DXTV
                 // check if block is split
                 if (flags & 1)
                 {
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr16, prevPtr16, LineStride16);                                               // A - upper-left
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr16 + 4, prevPtr16 + 4, LineStride16);                                       // B - upper-right
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr16 + 4 * LineStride16, prevPtr16 + 4 * LineStride16, LineStride16);         // C - lower-left
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr16 + 4 * LineStride16 + 4, prevPtr16 + 4 * LineStride16 + 4, LineStride16); // D - lower-right
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32, prevPtr32, LineStride16);                                                                         // A - upper-left
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4HStride32, prevPtr32 + Block4HStride32, LineStride16);                                     // B - upper-right
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32, prevPtr32 + Block4VStride32, LineStride16);                                     // C - lower-left
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, prevPtr32 + Block4VStride32 + Block4HStride32, LineStride16); // D - lower-right
                 }
                 else
                 {
-                    dataPtr16 = decodeBlock<8>(dataPtr16, currPtr16, prevPtr16, LineStride16);
+                    dataPtr16 = decodeBlock<8>(dataPtr16, currPtr32, prevPtr32, LineStride16);
                 }
-                currPtr16 += 8;
-                prevPtr16 += 8;
+                currPtr32 += Block8HStride32;
+                prevPtr32 += Block8HStride32;
                 flags >>= 1;
                 --flagsAvailable;
             }
