@@ -11,6 +11,32 @@ namespace Video
         Info info;
         Memory::memcpy32(&info, data, sizeof(FileHeader) / 4);
         info.fileData = data;
+        info.imageSize = info.width * info.height;
+        switch (info.bitsPerColor)
+        {
+        case 1:
+            info.imageSize = (info.imageSize + 7) / 8;
+            break;
+        case 2:
+            info.imageSize = (info.imageSize + 3) / 4;
+            break;
+        case 4:
+            info.imageSize = (info.imageSize + 1) / 2;
+            break;
+        case 8:
+            info.imageSize *= 1;
+            break;
+        case 15:
+        case 16:
+            info.imageSize *= 2;
+            break;
+        case 24:
+            info.imageSize *= 3;
+            break;
+        default:
+            // TODO: What?
+            break;
+        }
         info.colorMapSize = info.colorMapEntries;
         switch (info.bitsPerColor)
         {

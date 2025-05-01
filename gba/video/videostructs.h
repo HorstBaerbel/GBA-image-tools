@@ -44,6 +44,7 @@ namespace Video
     struct Info : public FileHeader
     {
         const uint32_t *fileData = nullptr; // Pointer to file header data
+        uint32_t imageSize = 0;             // Size of image data in bytes
         uint32_t colorMapSize = 0;          // Size of color map data in bytes
     } __attribute__((aligned(4), packed));
 
