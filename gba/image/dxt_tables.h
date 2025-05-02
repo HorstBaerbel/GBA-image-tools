@@ -13,7 +13,7 @@ namespace DXT
     extern const uint32_t C2C3_ModeThird_5bit[1024];
 
     /// @brief Lookup table for a 5-bit RGB color component (c0 << 5 | c1) that returns (c2 << 16 | c3)
-    /// Formula: (round((2.0*floor(x/32)+(x%32))/3.0)) | (round((floor(x/32)+2.0*(x%32))/3.0)<<16), x in [0,32*32]
+    /// Formula: round((floor(x/32)+(x%32))/2.0), x in [0,32*32]
     // Generated using: https://horstbaerbel.github.io/jslut/index.html?equation=round((floor(x%2F32)%2B(x%2532))%2F2.0)&xstart=0&xend=(31%3C%3C5)|31&count=32*32&bitdepth=uint16_t&format=base10
     extern const uint8_t C2_ModeHalf_5bit[1024];
 
@@ -41,7 +41,11 @@ namespace DXT
         else
         {
             // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
-            *c2c3Ptr = (DXT::C2_ModeHalf_5bit[b] << 10) | (DXT::C2_ModeHalf_5bit[g] << 5) | DXT::C2_ModeHalf_5bit[r];
+            // uint32_t b = (((c0 & 0x7C00) >> 10) + ((c1 & 0x7C00) >> 10) + 1) >> 1;
+            // uint32_t g = (((c0 & 0x03E0) >> 5) + ((c1 & 0x03E0) >> 5) + 1) >> 1;
+            // uint32_t r = ((c0 & 0x001F) + (c1 & 0x001F) + 1) >> 1;
+            //*c2c3Ptr = (b << 10) | (g << 5) | r;
+            *c2c3Ptr = (static_cast<uint32_t>(DXT::C2_ModeHalf_5bit[b]) << 10) | (static_cast<uint32_t>(DXT::C2_ModeHalf_5bit[g]) << 5) | static_cast<uint32_t>(DXT::C2_ModeHalf_5bit[r]);
         }
         return data;
     }
