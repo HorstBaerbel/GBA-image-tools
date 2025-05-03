@@ -14,11 +14,12 @@ If you find a bug or make an improvement your pull requests are appreciated.
 
 ## License
 
-All of this is under the [MIT License](LICENSE). It uses:
+All of my work is under the [MIT License](LICENSE). It uses:
 
 * [cxxopts](https://github.com/jarro2783/cxxopts) for command line argument parsing.
 * [glob](https://github.com/p-ranav/glob) for input file globbing / wildcards.
 * [Eigen](https://gitlab.com/libeigen) for math and video compression.
+* [libplum](https://github.com/aaaaaa123456789/libplum) for image I/O.
 * [Catch2](https://github.com/catchorg/Catch2) for unit tests.
 * [LZ77 decompression routines](gba/compression/lz77.s) from [Lorenzooone/Pokemon-Gen3-to-Gen-X](https://github.com/Lorenzooone/Pokemon-Gen3-to-Gen-X/blob/main/source/decompress.s) which is in turn derived from [Cult-of-GBA/BIOS](https://github.com/Cult-of-GBA/BIOS/blob/master/bios_calls/decompression/lz77.s). Licensed as [MIT License](https://github.com/Cult-of-GBA/BIOS/blob/master/LICENSE).
 * Test images and video from the Blender "[Big Buck Bunny](https://peach.blender.org/)" movie (c) copyright 2008, Blender Foundation. Licensed as [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
@@ -26,10 +27,6 @@ All of this is under the [MIT License](LICENSE). It uses:
 * Test images from [imagecompression.info](https://imagecompression.info/test_images/) resized to fit my needs.
 
 ## Prequisites
-
-* You **must** have ImageMagick / [Magick++](https://imagemagick.org/script/magick++.php) installed for compiling. Install it with:
-
-  ```apt install libmagick++-dev``` or ```dnf install libmagick++-devel```
 
 * You **must** have [OpenMP](https://www.openmp.org/) installed for compiling. Install it with:
 
@@ -39,7 +36,7 @@ All of this is under the [MIT License](LICENSE). It uses:
 
   ```apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev``` or ```dnf install libavcodec-devel libavformat-devel libavutil-devel libswscale-devel```
 
-* You **must** have [SDL2](https://www.libsdl.org/) installed for compiling vid2h. Install it with:
+* You **must** have [SDL2](https://www.libsdl.org/) installed for compiling vid2h / vid2hplay. Install it with:
 
   ```apt install libsdl2-dev``` or ```dnf install SDL2-devel```
 
@@ -74,5 +71,4 @@ make package
 
 * More TESTS!
 * More modern C++ constructs
-* Get rid of ImageMagick altogether (only used for image I/O atm)
 * Clean up and use internal RLE + Huffman compression

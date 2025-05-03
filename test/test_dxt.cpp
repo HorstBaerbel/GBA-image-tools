@@ -10,14 +10,14 @@
 #include <string>
 #include <vector>
 
-struct TestFile
+struct DxtTestFile
 {
     std::string fileName;
     float minPsnr555;
     float minPsnr565;
 };
 
-static const std::vector<TestFile> TestFiles = {
+static const std::vector<DxtTestFile> DxtTestFiles = {
     {"artificial_384x256.png", 33.27F, 33.50F},
     {"BigBuckBunny_282_384x256.png", 34.89F, 35.27F},
     {"BigBuckBunny_361_384x256.png", 31.65F, 31.84F},
@@ -113,7 +113,7 @@ TEST_CASE("EncodeDecodeBlock565")
 
 TEST_CASE("EncodeDecode555")
 {
-    for (auto &testFile : TestFiles)
+    for (auto &testFile : DxtTestFiles)
     {
         auto image = IO::File::readImage(DataPathTest + testFile.fileName);
         auto inPixels = image.image.data.pixels().convertData<Color::XRGB8888>();
@@ -137,7 +137,7 @@ TEST_CASE("EncodeDecode555")
 
 TEST_CASE("EncodeDecode565")
 {
-    for (auto &testFile : TestFiles)
+    for (auto &testFile : DxtTestFiles)
     {
         auto image = IO::File::readImage(DataPathTest + testFile.fileName);
         auto inPixels = image.image.data.pixels().convertData<Color::XRGB8888>();

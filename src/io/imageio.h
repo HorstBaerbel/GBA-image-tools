@@ -18,15 +18,15 @@ namespace IO
         /// @param filePath Path to image file
         static auto readImage(const std::string &filePath) -> Image::Data;
 
-        /// @brief Write image data to image file
+        /// @brief Write image data to PNG image file
         /// @param image Image data to write. If image.fileName is filled it can be used as the file name
-        /// @param folder Image output folder
+        /// @param folder Image output folder. If empty, only fileName will be used, if filled
         /// @param fileName Optional. If passed used as image file name, if empty image.fileName is used
         /// @note Will create necessary directories if not found
         static auto writeImage(const Image::Data &image, const std::string &folder, const std::string &fileName = "") -> void;
 
-        /// @brief Write image data to image file
-        /// @param images Images data to write. If image.fileName is filled it can be used as the file name
+        /// @brief Write image data to PNG image files
+        /// @param images Images data to write. image.fileName must be filled
         /// @param folder Images output folder
         /// @note Will create necessary directories if not found
         static auto writeImages(const std::vector<Image::Data> &images, const std::string &folder) -> void;

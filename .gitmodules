@@ -13,3 +13,6 @@
 [submodule "test/Catch2"]
 	path = test/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "libplum"]
+	path = libplum
+	url = https://github.com/aaaaaa123456789/libplum.git

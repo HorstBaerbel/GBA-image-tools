@@ -5,9 +5,6 @@ cmake_minimum_required(VERSION 3.21)
  
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(LIBMAGICK REQUIRED IMPORTED_TARGET
-    Magick++
-)
 pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libavcodec
     libavformat
@@ -32,7 +29,7 @@ if(MSVC)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-enum-enum-conversion") # disable warnings for Eigen enums
 
 #-------------------------------------------------------------------------------
@@ -50,6 +47,7 @@ list(APPEND GENCOLORMAPS_SRC
     color/ycgcorf.cpp
     color/conversions.cpp
     io/imageio.cpp
+    ${LIBPLUM_INCLUDE_DIR}/libplum.c
 )
 
 list(APPEND HEX2GBA_SRC
@@ -58,6 +56,9 @@ list(APPEND HEX2GBA_SRC
 )
 
 file(GLOB_RECURSE HELPERS_SRC CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*/*.cpp ${PROJECT_SOURCE_DIR}/src/*/*.h)
+list(APPEND HELPERS_SRC
+    ${LIBPLUM_INCLUDE_DIR}/libplum.c
+)
 
 list(APPEND IMG2H_SRC
     img2h.cpp
@@ -77,20 +78,33 @@ list(APPEND VID2HPLAY_SRC
 #-------------------------------------------------------------------------------
 # Define targets
 
-set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES INCLUDE_DIRECTORIES "${ImageMagick_INCLUDE_DIRS}")
-set_source_files_properties(${PROJECT_SOURCE_DIR}/src/io/imageio.cpp PROPERTIES COMPILE_DEFINTIONS "MAGICKCORE_HDRI_ENABLE=0 MAGICKCORE_QUANTUM_DEPTH=16")
+include_directories(
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/cxxopts
+    ${PROJECT_SOURCE_DIR}/eigen
+    ${PROJECT_SOURCE_DIR}/glob
+    ${PROJECT_SOURCE_DIR}/src
+    ${LIBPLUM_INCLUDE_DIR}
+)
 
-include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/cxxopts ${PROJECT_SOURCE_DIR}/eigen ${PROJECT_SOURCE_DIR}/glob ${PROJECT_SOURCE_DIR}/src)
 add_executable(gencolormaps ${GENCOLORMAPS_SRC})
-target_link_libraries(gencolormaps PkgConfig::LIBMAGICK OpenMP::OpenMP_CXX)
+target_link_libraries(gencolormaps OpenMP::OpenMP_CXX)
+add_dependencies(gencolormaps BuildLibplumBasefiles)
+
 add_executable(hex2gba ${HEX2GBA_SRC})
 target_link_libraries(hex2gba)
+
 add_executable(img2h ${IMG2H_SRC})
-target_link_libraries(img2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+target_link_libraries(img2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+add_dependencies(img2h BuildLibplumBasefiles)
+
 add_executable(vid2h ${VID2H_SRC})
-target_link_libraries(vid2h PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+target_link_libraries(vid2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+add_dependencies(vid2h BuildLibplumBasefiles)
+
 add_executable(vid2hplay ${VID2HPLAY_SRC})
-target_link_libraries(vid2hplay PkgConfig::LIBMAGICK PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+target_link_libraries(vid2hplay PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+add_dependencies(vid2hplay BuildLibplumBasefiles)
 
 #-------------------------------------------------------------------------------
 # Define install files for CPack

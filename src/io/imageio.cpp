@@ -2,205 +2,186 @@
 
 #include "exception.h"
 
-#include <Magick++.h>
+#include "libplum.h"
 
 #include <filesystem>
 #include <fstream>
 
-using namespace MagickCore;
-
 namespace IO
 {
 
-    auto getColorMap(const Magick::Image &img) -> std::vector<Color::XRGB8888>
+    auto getImageData(const plum_image *img) -> Image::ImageData
     {
-        REQUIRE(img.classType() == Magick::ClassType::PseudoClass, std::runtime_error, "Image must be paletted");
-        if (img.type() == Magick::ImageType::GrayscaleType)
+        if (img->max_palette_index > 0 && img->data8 != nullptr && img->palette32 != nullptr)
         {
-            std::vector<Color::XRGB8888> colorMap;
-            for (std::vector<Magick::Color>::size_type i = 0; i < 256; ++i)
+            // paletted image. read indices
+            const auto nrOfPixels = img->width * img->height;
+            std::vector<uint8_t> dstIndices(nrOfPixels);
+            const uint8_t *srcPixels = img->data8;
+            std::memcpy(dstIndices.data(), srcPixels, nrOfPixels);
+            // read color map
+            const uint32_t *srcColors = img->palette32;
+            std::vector<Color::XRGB8888> dstColorMap;
+            for (uint32_t i = 0; i <= img->max_palette_index; ++i)
             {
-                colorMap.emplace_back(Color::XRGB8888(i, i, i));
+                auto pixel = *srcColors++;
+                dstColorMap.emplace_back(Color::XRGB8888(PLUM_RED_32(pixel), PLUM_GREEN_32(pixel), PLUM_BLUE_32(pixel)));
             }
-            return colorMap;
+            return Image::ImageData(dstIndices, Color::Format::Paletted8, dstColorMap);
         }
-        else if (img.type() == Magick::ImageType::PaletteType || img.type() == Magick::ImageType::PaletteAlphaType)
+        else if (img->data32 != nullptr)
         {
-            std::vector<Color::XRGB8888> colorMap;
-            for (std::remove_const<decltype(colorMap.size())>::type i = 0; i < colorMap.size(); ++i)
+            // greyscale or true-color image
+            // TODO: libplum currently has no real greyscale support, see: https://github.com/aaaaaa123456789/libplum/issues/20
+            // so greyscale images are returned as PLUM_COLOR_32 RGBA8888 images
+            // Check the metadata if the color depth of the greyscale channel is 8
+            bool isGreyscale = false;
+            const plum_metadata *metaData = img->metadata;
+            while (metaData != nullptr)
             {
-                auto color = Magick::ColorRGB(img.colorMap(i));
-                auto r = static_cast<uint8_t>(255.0 * color.red());
-                auto g = static_cast<uint8_t>(255.0 * color.green());
-                auto b = static_cast<uint8_t>(255.0 * color.blue());
-                colorMap.emplace_back(Color::XRGB8888(r, g, b));
-            }
-            return colorMap;
-        }
-        THROW(std::runtime_error, "Unsupported image type");
-    }
-
-    auto getImageData(const Magick::Image &img) -> Image::ImageData
-    {
-        if (img.classType() == Magick::ClassType::PseudoClass && img.type() == Magick::ImageType::GrayscaleType)
-        {
-            // get GrayChannel from image
-            auto temp = img.separate(MagickCore::GrayChannel);
-            auto indices = temp.getConstPixels(0, 0, temp.columns(), temp.rows());
-            REQUIRE(indices != nullptr, std::runtime_error, "Failed to get grayscale image pixels");
-            const auto nrOfIndices = temp.columns() * temp.rows();
-            std::vector<uint8_t> dstIndices;
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
-            {
-                dstIndices.push_back(static_cast<uint8_t>(std::round(255.0F * indices[i]) / QuantumRange));
-            }
-            return Image::ImageData(dstIndices, Color::Format::Paletted8, getColorMap(img));
-        }
-        else if (img.type() == Magick::ImageType::PaletteType || img.type() == Magick::ImageType::PaletteAlphaType)
-        {
-            // get pixel indices
-            const auto nrOfColors = img.colorMapSize();
-            REQUIRE(nrOfColors <= 256, std::runtime_error, "Only up to 256 colors supported in color map");
-            // get IndexChannel from image
-            auto temp = img.separate(MagickCore::IndexChannel);
-            auto srcIndices = temp.getConstPixels(0, 0, temp.columns(), temp.rows());
-            REQUIRE(srcIndices != nullptr, std::runtime_error, "Failed to get paletted image pixels");
-            const auto nrOfIndices = temp.columns() * temp.rows();
-            std::vector<uint8_t> dstIndices;
-            for (std::remove_const<decltype(nrOfIndices)>::type i = 0; i < nrOfIndices; i++)
-            {
-                REQUIRE(srcIndices[i] <= 255, std::runtime_error, "Image color index must be <= 255");
-                dstIndices.push_back(static_cast<uint8_t>(srcIndices[i]));
-            }
-            return Image::ImageData(dstIndices, Color::Format::Paletted8, getColorMap(img));
-        }
-        else if (img.type() == Magick::ImageType::TrueColorType || img.type() == Magick::ImageType::TrueColorAlphaType)
-        {
-            std::vector<Color::XRGB8888> dstPixels;
-            //  get pixel colors as RGBf
-            auto srcPixels = img.getConstPixels(0, 0, img.columns(), img.rows());
-            REQUIRE(srcPixels != nullptr, std::runtime_error, "Failed to get truecolor image pixels");
-            const auto nrOfPixels = img.columns() * img.rows();
-            for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
-            {
-                auto r = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
-                auto g = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
-                auto b = static_cast<uint8_t>((255.0 * *srcPixels++) / QuantumRange);
-                // ignore alpha channel pixels
-                if (img.type() == Magick::ImageType::TrueColorAlphaType)
+                // try to find the correct metadata node. also must have 5 entries to contain a greyscale channel
+                if (metaData->type == PLUM_METADATA_COLOR_DEPTH && metaData->data != nullptr && metaData->size == 5)
                 {
-                    srcPixels++;
+                    isGreyscale = reinterpret_cast<const uint8_t *>(metaData->data)[4] == 8;
+                    break;
                 }
-                dstPixels.emplace_back(Color::XRGB8888(r, g, b));
+                metaData = metaData->next;
             }
-            return Image::ImageData(dstPixels);
+            // extract image data
+            if (isGreyscale)
+            {
+                // read indices and keep track of maximum index value
+                const auto nrOfPixels = img->width * img->height;
+                std::vector<uint8_t> dstIndices;
+                const uint32_t *srcPixels = img->data32;
+                uint32_t maxIndex = 0;
+                for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
+                {
+                    const auto index = PLUM_RED_32(*srcPixels++);
+                    REQUIRE(index <= 255, std::runtime_error, "Bad index value: " << index);
+                    maxIndex = maxIndex < index ? index : maxIndex;
+                    dstIndices.emplace_back(static_cast<uint8_t>(index));
+                }
+                // build greyscale color map
+                std::vector<Color::XRGB8888> dstColorMap;
+                for (uint32_t i = 0; i <= maxIndex; ++i)
+                {
+                    dstColorMap.emplace_back(Color::XRGB8888(i, i, i));
+                }
+                return Image::ImageData(dstIndices, Color::Format::Paletted8, dstColorMap);
+            }
+            else
+            {
+                // read image data
+                const auto nrOfPixels = img->width * img->height;
+                std::vector<Color::XRGB8888> dstPixels;
+                const uint32_t *srcPixels = img->data32;
+                for (std::remove_const<decltype(nrOfPixels)>::type i = 0; i < nrOfPixels; i++)
+                {
+                    auto pixel = *srcPixels++;
+                    dstPixels.emplace_back(Color::XRGB8888(PLUM_RED_32(pixel), PLUM_GREEN_32(pixel), PLUM_BLUE_32(pixel)));
+                }
+                return Image::ImageData(dstPixels);
+            }
         }
         THROW(std::runtime_error, "Unsupported image type");
     }
 
     auto File::readImage(const std::string &filePath) -> Image::Data
     {
-        Magick::Image img;
-        try
+        unsigned int error = PLUM_OK;
+        plum_image *img = plum_load_image(filePath.c_str(), PLUM_MODE_FILENAME, PLUM_COLOR_32 | PLUM_ALPHA_INVERT | PLUM_PALETTE_LOAD, &error);
+        if (img != nullptr && error == PLUM_OK)
         {
-            img.read(filePath);
+            REQUIRE(img->width > 0 && img->height > 0, std::runtime_error, "Bad image dimensions for \"" << filePath << "\"");
+            Image::Data data;
+            data.type = Image::DataType::Flags::Bitmap;
+            data.image.size = {img->width, img->height};
+            data.image.data = getImageData(img);
+            data.image.pixelFormat = data.image.data.pixels().format();
+            plum_destroy_image(img);
+            return data;
         }
-        catch (const Magick::Exception &ex)
-        {
-            THROW(std::runtime_error, "Failed to read image: " << ex.what());
-        }
-        Image::Data data;
-        data.type = Image::DataType::Flags::Bitmap;
-        data.image.size = {img.size().width(), img.size().height()};
-        data.image.data = getImageData(img);
-        data.image.pixelFormat = data.image.data.pixels().format();
-        return data;
+        THROW(std::runtime_error, "Failed to read image \"" << filePath << "\":" << plum_get_error_text(error));
     }
 
-    auto writePaletted(Magick::Image &dst, const Image::ImageData &src) -> void
+    auto File::writeImage(const Image::Data &src, const std::string &folder, const std::string &fileName) -> void
     {
-        // write index data
-        auto dstPixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
-        auto dstIndices = static_cast<uint8_t *>(dst.getMetacontent());
-        REQUIRE(dstIndices != nullptr, std::runtime_error, "Bad indices pointer");
-        const auto nrOfPixels = dst.columns() * dst.rows();
-        auto srcIndices = src.pixels().convertDataToRaw();
-        for (std::size_t i = 0; i < nrOfPixels; i++)
+        REQUIRE(src.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(src.image.size.width() > 0 && src.image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(!src.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
+        // create libplum image
+        plum_image dstImage{};
+        dstImage.type = PLUM_IMAGE_PNG,
+        dstImage.width = src.image.size.width();
+        dstImage.height = src.image.size.height();
+        dstImage.frames = 1;
+        // create data storage
+        std::vector<uint8_t> data8;   // index data if any
+        std::vector<uint32_t> data32; // RGBA image data or color map if any
+        // check if image is paletted
+        if (src.image.data.colorMap().empty())
         {
-            *dstIndices++ = srcIndices[i];
-        }
-        // write color map
-        auto srcColors = src.colorMap().convertData<Color::XRGB8888>();
-        const auto nrOfColors = srcColors.size() / 3;
-        for (std::size_t i = 0; i < nrOfColors; i++)
-        {
-            Magick::ColorRGB color;
-            color.red(static_cast<double>(srcColors[i].R()) / 255.0);
-            color.green(static_cast<double>(srcColors[i].G()) / 255.0);
-            color.blue(static_cast<double>(srcColors[i].B()) / 255.0);
-            dst.colorMap(i, color);
-        }
-    }
-
-    auto writeTrueColor(Magick::Image &dst, const Image::ImageData &src) -> void
-    {
-        auto srcPixels = src.pixels().convertData<Color::XRGB8888>();
-        auto dstPixels = dst.getPixels(0, 0, dst.columns(), dst.rows());
-        const auto nrOfPixels = dst.columns() * dst.rows();
-        for (std::size_t i = 0; i < nrOfPixels; i++)
-        {
-            *dstPixels++ = (QuantumRange * static_cast<double>(srcPixels[i].R())) / 255.0;
-            *dstPixels++ = (QuantumRange * static_cast<double>(srcPixels[i].G())) / 255.0;
-            *dstPixels++ = (QuantumRange * static_cast<double>(srcPixels[i].B())) / 255.0;
-        }
-    }
-
-    auto File::writeImage(const Image::Data &image, const std::string &folder, const std::string &fileName) -> void
-    {
-        REQUIRE(image.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
-        REQUIRE(image.image.size.width() > 0 && image.image.size.height() > 0, std::runtime_error, "Bad image size");
-        REQUIRE(!image.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
-        Magick::Image temp({image.image.size.width(), image.image.size.height()}, "black");
-        const bool isIndexed = !image.image.data.colorMap().empty();
-        temp.type(isIndexed ? Magick::ImageType::PaletteType : Magick::ImageType::TrueColorType);
-        temp.modifyImage();
-        if (isIndexed)
-        {
-            writePaletted(temp, image.image.data);
+            // true-color. get image pixels
+            const auto srcPixels = src.image.data.pixels().convertData<Color::XRGB8888>();
+            for (std::size_t i = 0; i < srcPixels.size(); ++i)
+            {
+                const auto pixel = srcPixels.at(i);
+                data32.push_back(PLUM_COLOR_VALUE_32(pixel.R(), pixel.G(), pixel.B(), 0));
+            }
+            dstImage.data32 = data32.data();
         }
         else
         {
-            writeTrueColor(temp, image.image.data);
+            // paletted. get image indices
+            data8 = src.image.data.pixels().convertDataToRaw();
+            dstImage.data8 = data8.data();
+            // get image palette
+            const auto srcColors = src.image.data.colorMap().convertData<Color::XRGB8888>();
+            for (std::size_t i = 0; i < srcColors.size(); ++i)
+            {
+                const auto color = srcColors.at(i);
+                data32.push_back(PLUM_COLOR_VALUE_32(color.R(), color.G(), color.B(), 0));
+            }
+            dstImage.palette32 = data32.data();
         }
-        temp.syncPixels();
-        // convert to sRGB color space
-        temp.colorSpace(Magick::sRGBColorspace);
+        // check if we've created a valid image
+        if (const auto error = plum_validate_image(&dstImage) != PLUM_OK)
+        {
+            THROW(std::runtime_error, "Failed to validate image:" << plum_get_error_text(error));
+        }
         // create paths if neccessary
-        auto outName = !fileName.empty() ? fileName : image.fileName;
-        auto outPath = std::filesystem::path(folder) / std::filesystem::path(outName).filename();
-        if (!std::filesystem::exists(std::filesystem::path(folder)))
+        auto outName = !fileName.empty() ? fileName : src.fileName;
+        auto outPath = folder.empty() ? std::filesystem::path(outName) : std::filesystem::path(folder) / std::filesystem::path(outName).filename();
+        if (!folder.empty() && !std::filesystem::exists(std::filesystem::path(folder)))
         {
             std::filesystem::create_directory(std::filesystem::path(folder));
         }
         // write to disk
-        temp.write(outPath);
+        unsigned int error = PLUM_OK;
+        const auto sizeWritten = plum_store_image(&dstImage, (void *)outPath.string().c_str(), PLUM_MODE_FILENAME, &error);
+        if (sizeWritten == 0 || error != PLUM_OK)
+        {
+            THROW(std::runtime_error, "Failed to write image \"" << outPath << "\":" << plum_get_error_text(error));
+        }
     }
 
     auto File::writeImages(const std::vector<Image::Data> &images, const std::string &folder) -> void
     {
         for (const auto &i : images)
         {
+            REQUIRE(!i.fileName.empty(), std::runtime_error, "Image fileName can not be empty");
             writeImage(i, folder);
         }
     }
 
-    auto File::writeRawImage(const Image::Data &image, const std::string &folder, const std::string &fileName) -> void
+    auto File::writeRawImage(const Image::Data &src, const std::string &folder, const std::string &fileName) -> void
     {
-        REQUIRE(image.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
-        REQUIRE(image.image.size.width() > 0 && image.image.size.height() > 0, std::runtime_error, "Bad image size");
-        REQUIRE(!image.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
+        REQUIRE(src.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(src.image.size.width() > 0 && src.image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(!src.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
         // create paths if neccessary
-        auto outName = !fileName.empty() ? fileName : image.fileName;
+        auto outName = !fileName.empty() ? fileName : src.fileName;
         auto outPath = std::filesystem::path(folder) / std::filesystem::path(outName).filename();
         if (!std::filesystem::exists(std::filesystem::path(folder)))
         {
@@ -208,7 +189,7 @@ namespace IO
         }
         // write to disk
         auto ofs = std::ofstream(outPath, std::ios::binary);
-        auto pixels = image.image.data.pixels().convertDataToRaw();
+        auto pixels = src.image.data.pixels().convertDataToRaw();
         ofs.write(reinterpret_cast<const char *>(pixels.data()), pixels.size());
     }
 }

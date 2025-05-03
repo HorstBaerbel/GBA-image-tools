@@ -10,13 +10,13 @@
 #include <string>
 #include <vector>
 
-struct TestFile
+struct LzssTestFile
 {
     std::string fileName;
     std::size_t maxSize;
 };
 
-const std::vector<TestFile> TestFiles = {
+static const std::vector<LzssTestFile> LzssTestFiles = {
     {"lorem_ipsum_2k.txt", 852},
     {"artificial_240x160.raw", 63860},
     {"BigBuckBunny_40_240x160.raw", 20564},
@@ -62,7 +62,7 @@ TEST_SUITE("LZSS")
     }
 }*/
 
-    // Basic tests
+// Basic tests
 static const uint8_t v0[] = {};
 static const uint8_t v1[] = {0};
 static const uint8_t v2[] = {0, 0, 0, 0};
@@ -174,7 +174,7 @@ TEST_CASE("LZ10 roundtrip")
 
 TEST_CASE("LZ10 ratio")
 {
-    for (auto &testFile : TestFiles)
+    for (auto &testFile : LzssTestFiles)
     {
         // open test file
         std::ifstream fs(DataPathTest + testFile.fileName, std::ios::binary | std::ios::in);
