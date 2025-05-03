@@ -75,11 +75,11 @@ auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> 
     return error;
 }
 
-constexpr std::size_t ClusterFitMaxIterations = 3;
-constexpr float ClusterFitMinDxtError = 0.01F;
+constexpr std::size_t ClusterFitMaxIterations = 3; // 3 seems to be more or less the optimum. only marginal improvements with more iterations
+constexpr float ClusterFitMinDxtError = 0.001F;
 constexpr float DxtMinC0C1Error = 0.001F;
 
-// Heuristically fit colors to two color endpoints and their 1/3 and 2/3 intermediate points
+// Heuristically fit colors to two color endpoints and their 1/3 and 2/3 or 1/2 intermediate points
 // Improves PSNR about 1-2 dB
 auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::pair<std::vector<RGBf>, bool>
 {
