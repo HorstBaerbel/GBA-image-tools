@@ -27,6 +27,11 @@
                     "description": "Automatische Strukturierung und Einrückung für \"gdb\" aktivieren",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "Do not step into library code",
+                    "text": "-interpreter-exec console \"skip -gfi /usr/include/c++/*/*/*\nskip -gfi /usr/include/c++/*/*\nskip -gfi /usr/include/c++/*\"",
+                    "ignoreFailures": true
                 }
             ]
         },
@@ -53,6 +58,11 @@
                     "description": "Automatische Strukturierung und Einrückung für \"gdb\" aktivieren",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "Do not step into library code",
+                    "text": "-interpreter-exec console \"skip -gfi /usr/include/c++/*/*/*\nskip -gfi /usr/include/c++/*/*\nskip -gfi /usr/include/c++/*\"",
+                    "ignoreFailures": true
                 }
             ]
         },
@@ -74,6 +84,11 @@
                     "description": "Automatische Strukturierung und Einrückung für \"gdb\" aktivieren",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "Do not step into library code",
+                    "text": "-interpreter-exec console \"skip -gfi /usr/include/c++/*/*/*\nskip -gfi /usr/include/c++/*/*\nskip -gfi /usr/include/c++/*\"",
+                    "ignoreFailures": true
                 }
             ]
         },
@@ -82,8 +97,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": [
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/test",
             "environment": [],

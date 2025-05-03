@@ -105,6 +105,7 @@
                 "text_encoding": "cpp",
                 "nonlinearoptimization": "cpp",
                 "iterativelinearsolvers": "cpp",
-                "polynomials": "cpp"
+                "polynomials": "cpp",
+                "csignal": "cpp"
         }
 }
