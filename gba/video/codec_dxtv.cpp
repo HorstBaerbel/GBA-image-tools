@@ -42,9 +42,9 @@ namespace DXTV
     // - If 1 it is a motion-compensated block with a size of 2 Bytes:
     //   Bit 15: Always 1 (see above)
     //   Bit 14: Block is reference to current (0) or previous (1) frame
-    //   Bit 13+12: Currently unused
-    //   Bit 11-6: y pixel motion of referenced block [-31,32] from top-left corner
-    //   Bit  5-0: x pixel motion of referenced block [-31,32] from top-left corner
+    //   Bit 13-11: Currently unused
+    //   Bit 10-5: y pixel motion of referenced block [-15,16] from top-left corner
+    //   Bit  4-0: x pixel motion of referenced block [-15,16] from top-left corner
 
     static constexpr uint16_t FRAME_KEEP = 0x40; // 1 for frames that are considered a direct copy of the previous frame and can be kept
 
@@ -56,7 +56,7 @@ namespace DXTV
     static constexpr uint16_t BLOCK_FROM_CURR = (0 << 14); // The reference block is from from the current frame
     static constexpr uint16_t BLOCK_FROM_PREV = (1 << 14); // The reference block is from from the previous frame
 
-    static constexpr uint32_t BLOCK_MOTION_BITS = 6;                                      // Bits available for pixel motion
+    static constexpr uint32_t BLOCK_MOTION_BITS = 5;                                      // Bits available for pixel motion
     static constexpr uint16_t BLOCK_MOTION_MASK = (uint16_t(1) << BLOCK_MOTION_BITS) - 1; // Block x pixel motion mask
     static constexpr uint16_t BLOCK_MOTION_Y_SHIFT = BLOCK_MOTION_BITS;                   // Block y pixel motion shift
 

@@ -99,7 +99,7 @@ TEST_CASE("EncodeDecodeBlock")
 TEST_CASE("EncodeDecodeImage")
 {
     auto image = IO::File::readImage(DataPathGBAImages + "BigBuckBunny_361_240x160.png");
-    testEncode(image, ImageQualityDXT8x8, 23.75F, true);
+    testEncode(image, ImageQualityDXT8x8, 23.63F, true);
     testEncode(image, ImageQualityDXT4x4, 30.46F, true);
 }
 

@@ -60,9 +60,9 @@ using namespace Color;
 // - If 1 it is a motion-compensated block with a size of 2 Bytes:
 //   Bit 15: Always 1 (see above)
 //   Bit 14: Block is reference to current (0) or previous (1) frame
-//   Bit 13+12: Currently unused
-//   Bit 11-6: y pixel motion of referenced block [-31,32] from top-left corner
-//   Bit  5-0: x pixel motion of referenced block [-31,32] from top-left corner
+//   Bit 13-11: Currently unused
+//   Bit 10-5: y pixel motion of referenced block [-15,16] from top-left corner
+//   Bit  4-0: x pixel motion of referenced block [-15,16] from top-left corner
 
 std::vector<uint8_t> DXTV::FrameHeader::toVector() const
 {

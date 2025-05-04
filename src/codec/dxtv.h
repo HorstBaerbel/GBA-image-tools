@@ -21,7 +21,7 @@ public:
     static constexpr uint16_t BLOCK_FROM_CURR = (0 << 14); // The reference block is from from the current frame
     static constexpr uint16_t BLOCK_FROM_PREV = (1 << 14); // The reference block is from from the previous frame
 
-    static constexpr uint32_t BLOCK_MOTION_BITS = 6;                                         // Bits available for pixel motion
+    static constexpr uint32_t BLOCK_MOTION_BITS = 5;                                         // Bits available for pixel motion
     static constexpr uint16_t BLOCK_MOTION_MASK = (uint16_t(1) << BLOCK_MOTION_BITS) - 1;    // Block x pixel motion mask
     static constexpr uint16_t BLOCK_MOTION_Y_SHIFT = BLOCK_MOTION_BITS;                      // Block y pixel motion shift
 
