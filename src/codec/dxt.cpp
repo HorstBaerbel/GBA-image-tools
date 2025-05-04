@@ -76,8 +76,8 @@ auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> 
 }
 
 constexpr std::size_t ClusterFitMaxIterations = 3; // 3 seems to be more or less the optimum. only marginal improvements with more iterations
-constexpr float ClusterFitMinDxtError = 0.001F;
-constexpr float DxtMinC0C1Error = 0.001F;
+constexpr float ClusterFitMinDxtError = 0.01F;
+constexpr float LineFitMinC0C1Error = 0.01F;
 
 // Heuristically fit colors to two color endpoints and their 1/3 and 2/3 or 1/2 intermediate points
 // Improves PSNR about 1-2 dB
@@ -86,9 +86,9 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     // calculate initial line fit through RGB color space
     auto guess = dxtLineFit(colors, asRGB565);
     // return if the colors are already VERY close together
-    if (RGBf::mse(guess.second[0], guess.second[1]) <= DxtMinC0C1Error)
+    if (RGBf::mse(guess.first[0], guess.first[1]) <= LineFitMinC0C1Error)
     {
-        return {guess.second, false};
+        return {guess.first, false};
     }
     auto bestErrorThird = calculateError(guess.first, colors);
     auto bestErrorHalf = calculateError(guess.second, colors);
@@ -184,7 +184,7 @@ auto encodeBlockInternal(const XRGB8888 *blockStart, const uint32_t pixelsPerSca
     auto guess = dxtLineFit(colors, asRGB565);
     bool isModeThird;
     std::vector<RGBf> endpoints;
-    if (RGBf::mse(guess.second[0], guess.second[1]) <= DxtMinC0C1Error)
+    if (RGBf::mse(guess.second[0], guess.second[1]) <= LineFitMinC0C1Error)
     {
         // if colors are almost identical, use 1/2 mode and second set of endpoints
         endpoints = guess.second;
