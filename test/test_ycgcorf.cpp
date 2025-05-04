@@ -77,12 +77,17 @@ TEST_CASE("Distance")
     ColorType c1(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
     ColorType c2(ColorType::Max[0], ColorType::Max[1], ColorType::Max[2]);
     ColorType c3(ColorType::Min[0], ColorType::Min[1], ColorType::Min[2]);
-    CATCH_REQUIRE_THAT(ColorType::mse(c0, c1), Catch::Matchers::WithinAbs(0.3333, 0.0001));
-    CATCH_REQUIRE_THAT(ColorType::mse(c1, c0), Catch::Matchers::WithinAbs(0.3333, 0.0001));
+    CATCH_REQUIRE_THAT(ColorType::mse(c0, c1), Catch::Matchers::WithinAbs(1.0, 0.0001));
+    CATCH_REQUIRE_THAT(ColorType::mse(c1, c0), Catch::Matchers::WithinAbs(1.0, 0.0001));
     CATCH_REQUIRE(ColorType::mse(c1, c2) == 0.0F);
     CATCH_REQUIRE(ColorType::mse(c2, c1) == 0.0F);
     CATCH_REQUIRE(ColorType::mse(c0, c3) == 0.0F);
     CATCH_REQUIRE(ColorType::mse(c3, c0) == 0.0F);
+    ColorType c4(0.5F, 0.0F, 0.0F);
+    CATCH_REQUIRE_THAT(ColorType::mse(c0, c4), Catch::Matchers::WithinAbs(0.25, 0.0001));
+    CATCH_REQUIRE_THAT(ColorType::mse(c4, c0), Catch::Matchers::WithinAbs(0.25, 0.0001));
+    CATCH_REQUIRE_THAT(ColorType::mse(c4, c1), Catch::Matchers::WithinAbs(0.25, 0.0001));
+    CATCH_REQUIRE_THAT(ColorType::mse(c1, c4), Catch::Matchers::WithinAbs(0.25, 0.0001));
 }
 
 TEST_CASE("RoundToGrid")
