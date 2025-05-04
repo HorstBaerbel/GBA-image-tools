@@ -53,7 +53,7 @@ auto dxtLineFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std::pa
     return {e0, e1};
 }
 
-auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> &colors, const bool asRGB565) -> float
+auto calculateError(const std::vector<RGBf> &endpoints, const std::vector<RGBf> &colors) -> float
 {
     // calculate minimum distance for all colors to endpoints and calculate error to that endpoint
     float error = 0.0F;
@@ -90,8 +90,8 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     {
         return {guess.second, false};
     }
-    auto bestErrorThird = calculateError(guess.first, colors, asRGB565);
-    auto bestErrorHalf = calculateError(guess.second, colors, asRGB565);
+    auto bestErrorThird = calculateError(guess.first, colors);
+    auto bestErrorHalf = calculateError(guess.second, colors);
     bool modeThird = bestErrorThird < bestErrorHalf;
     std::vector<RGBf> endpoints = modeThird ? guess.first : guess.second;
     auto bestError = modeThird ? bestErrorThird : bestErrorHalf;
@@ -193,8 +193,8 @@ auto encodeBlockInternal(const XRGB8888 *blockStart, const uint32_t pixelsPerSca
     else
     {
         // check if 1/2, 2/3 or 1/2 mode gives lower error
-        auto bestErrorThird = calculateError(guess.first, colors, asRGB565);
-        auto bestErrorHalf = calculateError(guess.second, colors, asRGB565);
+        auto bestErrorThird = calculateError(guess.first, colors);
+        auto bestErrorHalf = calculateError(guess.second, colors);
         modeThird = bestErrorThird < bestErrorHalf;
         endpoints = modeThird ? guess.first : guess.second;
     }
