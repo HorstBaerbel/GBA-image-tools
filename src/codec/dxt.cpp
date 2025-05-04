@@ -86,9 +86,9 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     // calculate initial line fit through RGB color space
     auto guess = dxtLineFit(colors, asRGB565);
     // return if the colors are already VERY close together
-    if (RGBf::mse(guess.first[0], guess.first[1]) <= LineFitMinC0C1Error)
+    if (RGBf::mse(guess.second[0], guess.second[1]) <= LineFitMinC0C1Error)
     {
-        return {guess.first, false};
+        return {guess.second, false};
     }
     auto bestErrorThird = calculateError(guess.first, colors);
     auto bestErrorHalf = calculateError(guess.second, colors);
