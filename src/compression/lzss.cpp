@@ -19,10 +19,11 @@ namespace Compression
         int32_t length = 0;
     };
 
-    auto findBestMatch(const std::vector<uint8_t> &src, const int32_t startPosition, const int32_t minLength, const int32_t maxLength, const bool vramCompatible) -> MatchInfo
+    template <int32_t MinLength, int32_t MaxLength>
+    auto findBestMatch(const std::vector<uint8_t> &src, const int32_t startPosition, const bool vramCompatible) -> MatchInfo
     {
         MatchInfo bestMatch = {0, 0};
-        for (int32_t matchLength = minLength; matchLength <= maxLength; ++matchLength)
+        for (int32_t matchLength = MinLength; matchLength <= MaxLength; ++matchLength)
         {
             // make sure we have enough bytes for a match of matchLength
             if ((startPosition + matchLength) >= src.size())
@@ -76,7 +77,7 @@ namespace Compression
 #pragma omp parallel for
         for (int srcPosition = 0; srcPosition < static_cast<int>(src.size()); ++srcPosition)
         {
-            auto match = findBestMatch(src, srcPosition, MIN_MATCH_LENGTH, MAX_MATCH_LENGTH, vramCompatible);
+            auto match = findBestMatch<MIN_MATCH_LENGTH, MAX_MATCH_LENGTH>(src, srcPosition, vramCompatible);
             if (match.length >= MIN_MATCH_LENGTH)
 #pragma omp critical
             {
