@@ -80,7 +80,21 @@ namespace Color
         /// @brief Calculate mean squared error between colors using simple metric
         /// @return Returns a value in [0,1]
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
-        static auto mse(const XRGB8888 &color0, const XRGB8888 &color1) -> float;
+        static inline auto mse(const XRGB8888 &color0, const XRGB8888 &color1) -> float
+        {
+            static constexpr float OneOver255 = 1.0F / 255.0F;
+            if (static_cast<uint32_t>(color0) == static_cast<uint32_t>(color1))
+            {
+                return 0.0F;
+            }
+            float ra = static_cast<float>(color0.R()) * OneOver255;
+            float rb = static_cast<float>(color1.R()) * OneOver255;
+            float rMean = 0.5F * (ra + rb);
+            float dR = ra - rb;
+            float dG = (static_cast<float>(color0.G()) - static_cast<float>(color1.G())) * OneOver255;
+            float dB = (static_cast<float>(color0.B()) - static_cast<float>(color1.B())) * OneOver255;
+            return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (3.0F - rMean) * dB * dB) / 9.0F;
+        } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (3    -     1) *  1 *  1 = 3 + 4 + 2 = 9 / 9 = 1
 
         friend bool operator==(const XRGB8888 &c1, const XRGB8888 &c2);
         friend bool operator!=(const XRGB8888 &c1, const XRGB8888 &c2);

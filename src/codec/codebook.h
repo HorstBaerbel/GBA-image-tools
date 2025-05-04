@@ -173,7 +173,7 @@ public:
         REQUIRE(block.size() == BLOCK_DIM * BLOCK_DIM, std::runtime_error, "Block size does not match");
         REQUIRE(x + BLOCK_DIM <= m_width, std::runtime_error, "Block x out of range");
         REQUIRE(y + BLOCK_DIM <= m_height, std::runtime_error, "Block y out of range");
-        double dist = 0.0;
+        float dist = 0.0F;
         auto bIt = block.cbegin();
         auto pIt = std::next(m_pixels.cbegin(), y * m_width + x);
         for (uint32_t v = 0; v < BLOCK_DIM; ++v)
