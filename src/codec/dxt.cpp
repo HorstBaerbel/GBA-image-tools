@@ -92,13 +92,13 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
     }
     auto bestErrorThird = calculateError(guess.first, colors);
     auto bestErrorHalf = calculateError(guess.second, colors);
-    bool modeThird = bestErrorThird < bestErrorHalf;
-    std::vector<RGBf> endpoints = modeThird ? guess.first : guess.second;
-    auto bestError = modeThird ? bestErrorThird : bestErrorHalf;
+    bool isModeThird = bestErrorThird < bestErrorHalf;
+    std::vector<RGBf> endpoints = isModeThird ? guess.first : guess.second;
+    auto bestError = isModeThird ? bestErrorThird : bestErrorHalf;
     // return if the error is already optimal
     if (bestError <= ClusterFitMinDxtError)
     {
-        return {endpoints, modeThird};
+        return {endpoints, isModeThird};
     }
     // do some rounds of k-means clustering for 1/3, 2/3 mode, then 1/2 mode
     for (int mode = 0; mode < 2; ++mode)
@@ -152,11 +152,11 @@ auto dxtClusterFit(const std::vector<RGBf> &colors, const bool asRGB565) -> std:
             {
                 bestError = iterationError;
                 endpoints = centroids;
-                modeThird = mode == 0;
+                isModeThird = mode == 0;
             }
         }
     }
-    return {endpoints, modeThird};
+    return {endpoints, isModeThird};
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -179,24 +179,24 @@ auto encodeBlockInternal(const XRGB8888 *blockStart, const uint32_t pixelsPerSca
         pixels += pixelsPerScanline;
     }
 #if defined(CLUSTER_FIT)
-    auto [endpoints, modeThird] = dxtClusterFit(colors, asRGB565);
+    auto [endpoints, isModeThird] = dxtClusterFit(colors, asRGB565);
 #else
     auto guess = dxtLineFit(colors, asRGB565);
-    bool modeThird;
+    bool isModeThird;
     std::vector<RGBf> endpoints;
     if (RGBf::mse(guess.second[0], guess.second[1]) <= DxtMinC0C1Error)
     {
         // if colors are almost identical, use 1/2 mode and second set of endpoints
         endpoints = guess.second;
-        modeThird = false;
+        isModeThird = false;
     }
     else
     {
         // check if 1/2, 2/3 or 1/2 mode gives lower error
         auto bestErrorThird = calculateError(guess.first, colors);
         auto bestErrorHalf = calculateError(guess.second, colors);
-        modeThird = bestErrorThird < bestErrorHalf;
-        endpoints = modeThird ? guess.first : guess.second;
+        isModeThird = bestErrorThird < bestErrorHalf;
+        endpoints = isModeThird ? guess.first : guess.second;
     }
 #endif
     // calculate minimum distance for all colors to endpoints to assign indices
@@ -225,7 +225,7 @@ auto encodeBlockInternal(const XRGB8888 *blockStart, const uint32_t pixelsPerSca
     // check how we need to encode the endpoint colors
     auto c0 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[0])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[0]));
     auto c1 = asRGB565 ? static_cast<uint16_t>(convertTo<RGB565>(endpoints[1])) : static_cast<uint16_t>(convertTo<XRGB1555>(endpoints[1]));
-    if (modeThird)
+    if (isModeThird)
     {
         // if we're using 1/3, 2/3 intermediates, store so that always c0 > c1. c0 != c1 here due to being checked above
         if (c0 < c1)
@@ -332,7 +332,7 @@ auto decodeBlockInternal(const uint16_t *colorStart, const uint16_t *indexStart,
     std::array<XRGB8888, 4> colors;
     uint16_t c0 = *colorStart++;
     uint16_t c1 = *colorStart++;
-    const bool modeThird = c0 > c1;
+    const bool isModeThird = c0 > c1;
     if (swapToBGR)
     {
         c0 = asRGB565 ? static_cast<uint16_t>(RGB565(c0).swapToBGR()) : static_cast<uint16_t>(XRGB1555(c0).swapToBGR());
@@ -341,7 +341,7 @@ auto decodeBlockInternal(const uint16_t *colorStart, const uint16_t *indexStart,
     colors[0] = asRGB565 ? convertTo<XRGB8888>(RGB565(c0)) : convertTo<XRGB8888>(XRGB1555(c0));
     colors[1] = asRGB565 ? convertTo<XRGB8888>(RGB565(c1)) : convertTo<XRGB8888>(XRGB1555(c1));
     // check if c0 > c1 -> 1/3, 2/3 mode, or if c0 <= c1 -> 1/2 mode
-    if (modeThird)
+    if (isModeThird)
     {
         // calculate intermediate colors c2 at 1/3 and c3 at 2/3 using tables
         uint32_t c2c3;
