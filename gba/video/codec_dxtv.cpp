@@ -170,10 +170,9 @@ namespace DXTV
     FORCEINLINE auto decodeBlock<4>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
         auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
-
         if (*dataPtr16 & BLOCK_IS_REF)
         {
-          	// get motion-compensated block info
+            // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
             const uint16_t *srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
@@ -181,14 +180,14 @@ namespace DXTV
             constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
             const int32_t offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
             const int32_t offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
-			// calculate start of block to copy
+            // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
             copyBlock<4>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
-          	// get DXT block colors
+            // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
             // Unroll and decode 4x4 pixel color indices
             uint16_t indices0 = *dataPtr16++;
@@ -218,25 +217,24 @@ namespace DXTV
     FORCEINLINE auto decodeBlock<8>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
         auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
-
         if (*dataPtr16 & BLOCK_IS_REF)
         {
-          	// get motion-compensated block info
+            // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
             const uint16_t *srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
-			// convert offsets to signed values
+            // convert offsets to signed values
             constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
             const int32_t offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
             const int32_t offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
-			// calculate start of block to copy
+            // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
             copyBlock<8>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
-          	// get DXT block colors
+            // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
             for (int row = 0; row < 8; ++row)
             {
