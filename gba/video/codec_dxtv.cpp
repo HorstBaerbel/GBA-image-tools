@@ -170,48 +170,50 @@ namespace DXTV
     FORCEINLINE auto decodeBlock<4>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
         auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
+
         if (*dataPtr16 & BLOCK_IS_REF)
         {
-            // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
-            auto srcPtr16 = fromPrev ? reinterpret_cast<const uint16_t *>(prevPtr32) : reinterpret_cast<const uint16_t *>(currPtr32);
-            // convert offsets to signed values
-            auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
-            auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
-            // calculate start of block to copy
+            const uint16_t *srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
+
+            constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
+            const int32_t offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
+            const int32_t offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
+
             srcPtr16 += offsetY * LineStride16 + offsetX;
-            // copy pixels to output block
             copyBlock<4>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
-            // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
-            // get pixel color indices and set pixels accordingly
-            uint16_t indices = *dataPtr16++;
-            // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-            currPtr16[0] = blockColors[(indices >> 0) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 2) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 4) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 6) & 0x3];
-            currPtr16 += LineStride16;
-            currPtr16[0] = blockColors[(indices >> 8) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 10) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 12) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 14) & 0x3];
-            currPtr16 += LineStride16;
-            indices = *dataPtr16++;
-            currPtr16[0] = blockColors[(indices >> 0) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 2) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 4) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 6) & 0x3];
-            currPtr16 += LineStride16;
-            currPtr16[0] = blockColors[(indices >> 8) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 10) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 12) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 14) & 0x3];
+
+            // Unroll and decode 4x4 indices in just 2 reads
+            uint16_t indices0 = *dataPtr16++;
+            uint16_t indices1 = *dataPtr16++;
+
+            uint16_t *dst = currPtr16;
+
+            for (int row = 0; row < 2; ++row)
+            {
+                uint16_t indices = (row == 0) ? indices0 : indices1;
+
+                dst[0] = blockColors[(indices >> 0) & 0x3];
+                dst[1] = blockColors[(indices >> 2) & 0x3];
+                dst[2] = blockColors[(indices >> 4) & 0x3];
+                dst[3] = blockColors[(indices >> 6) & 0x3];
+
+                dst += LineStride16;
+
+                dst[0] = blockColors[(indices >> 8) & 0x3];
+                dst[1] = blockColors[(indices >> 10) & 0x3];
+                dst[2] = blockColors[(indices >> 12) & 0x3];
+                dst[3] = blockColors[(indices >> 14) & 0x3];
+
+                dst += LineStride16;
+            }
         }
+
         return dataPtr16;
     }
 
@@ -221,40 +223,43 @@ namespace DXTV
     FORCEINLINE auto decodeBlock<8>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
         auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
+
         if (*dataPtr16 & BLOCK_IS_REF)
         {
-            // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
-            auto srcPtr16 = fromPrev ? reinterpret_cast<const uint16_t *>(prevPtr32) : reinterpret_cast<const uint16_t *>(currPtr32);
-            // convert offsets to signed values
-            auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
-            auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
-            // calculate start of block to copy
+            const uint16_t *srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
+
+            constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
+            const int32_t offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
+            const int32_t offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
+
             srcPtr16 += offsetY * LineStride16 + offsetX;
-            // copy pixels to output block
             copyBlock<8>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
-            // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
-            // get pixel color indices and set pixels accordingly
-            for (uint32_t i = 0; i < 8; ++i)
+
+            for (int row = 0; row < 8; ++row)
             {
                 uint16_t indices = *dataPtr16++;
-                // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-                currPtr16[0] = blockColors[(indices >> 0) & 0x3];
-                currPtr16[1] = blockColors[(indices >> 2) & 0x3];
-                currPtr16[2] = blockColors[(indices >> 4) & 0x3];
-                currPtr16[3] = blockColors[(indices >> 6) & 0x3];
-                currPtr16[4] = blockColors[(indices >> 8) & 0x3];
-                currPtr16[5] = blockColors[(indices >> 10) & 0x3];
-                currPtr16[6] = blockColors[(indices >> 12) & 0x3];
-                currPtr16[7] = blockColors[(indices >> 14) & 0x3];
+                uint16_t *dst = currPtr16;
+
+                // unrolled: each pixel = 2-bit index from indices
+                dst[0] = blockColors[(indices >> 0)  & 0x3];
+                dst[1] = blockColors[(indices >> 2)  & 0x3];
+                dst[2] = blockColors[(indices >> 4)  & 0x3];
+                dst[3] = blockColors[(indices >> 6)  & 0x3];
+                dst[4] = blockColors[(indices >> 8)  & 0x3];
+                dst[5] = blockColors[(indices >> 10) & 0x3];
+                dst[6] = blockColors[(indices >> 12) & 0x3];
+                dst[7] = blockColors[(indices >> 14) & 0x3];
+
                 currPtr16 += LineStride16;
             }
         }
+
         return dataPtr16;
     }
 
