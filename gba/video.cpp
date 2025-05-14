@@ -26,8 +26,8 @@ int main()
 	// set up video system, clear color and read file header
 	Video::init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), ScratchPad, sizeof(ScratchPad));
 	Video::setClearColor(0);
-	const auto &videoInfo = Video::getInfo();
 	// print video info
+	const auto &videoInfo = Video::getInfo();
 	TUI::printf(0, 0, "Video decompression demo");
 	TUI::printf(0, 2, "Frames: %d, Fps: %f", videoInfo.nrOfFrames, videoInfo.fps);
 	TUI::printf(0, 3, "Size: %d kB", VIDEO_DATA_SIZE / 1024);

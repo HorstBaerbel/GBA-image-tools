@@ -8,7 +8,7 @@
 #include <gba_interrupt.h>
 #include <gba_timers.h>
 
-// #define DEBUG_PLAYER
+#define DEBUG_PLAYER
 #ifdef DEBUG_PLAYER
 #include "print/output.h"
 #include "time.h"
@@ -85,8 +85,8 @@ namespace Video
             Time::start();
 #endif
             // fill background and scratch pad to clear color
-            Memory::memset32((void *)VRAM, m_clearColor, m_videoInfo.width * m_videoInfo.height * 2);
-            Memory::memset32(m_scratchPad, m_clearColor, m_scratchPadSize);
+            Memory::memset32((void *)VRAM, m_clearColor, m_videoInfo.width * m_videoInfo.height / 2);
+            Memory::memset32(m_scratchPad, m_clearColor, m_scratchPadSize / 4);
             // set up timer to increase with frame interval
             irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
             irqEnable(irqMASKS::IRQ_TIMER2);
