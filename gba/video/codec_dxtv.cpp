@@ -241,19 +241,29 @@ namespace DXTV
         {
             // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
-            for (int row = 0; row < 8; ++row)
+            for (uint32_t i = 0; i < 4; ++i)
             {
-                uint16_t indices = *dataPtr16++;
-                uint16_t *dst = currPtr16;
-                // unrolled: each pixel = 2-bit index from indices
-                dst[0] = blockColors[(indices >> 0)  & 0x3];
-                dst[1] = blockColors[(indices >> 2)  & 0x3];
-                dst[2] = blockColors[(indices >> 4)  & 0x3];
-                dst[3] = blockColors[(indices >> 6)  & 0x3];
-                dst[4] = blockColors[(indices >> 8)  & 0x3];
-                dst[5] = blockColors[(indices >> 10) & 0x3];
-                dst[6] = blockColors[(indices >> 12) & 0x3];
-                dst[7] = blockColors[(indices >> 14) & 0x3];
+                // read all indices for next 16 pixels
+                uint16_t indices0 = *dataPtr16++;
+                uint16_t indices1 = *dataPtr16++;
+                // decode 2x8 pixels
+                currPtr16[0] = blockColors[(indices0 >> 0)  & 0x3];
+                currPtr16[1] = blockColors[(indices0 >> 2)  & 0x3];
+                currPtr16[2] = blockColors[(indices0 >> 4)  & 0x3];
+                currPtr16[3] = blockColors[(indices0 >> 6)  & 0x3];
+                currPtr16[4] = blockColors[(indices0 >> 8)  & 0x3];
+                currPtr16[5] = blockColors[(indices0 >> 10) & 0x3];
+                currPtr16[6] = blockColors[(indices0 >> 12) & 0x3];
+                currPtr16[7] = blockColors[(indices0 >> 14) & 0x3];
+                currPtr16 += LineStride16;
+                currPtr16[0] = blockColors[(indices1 >> 0)  & 0x3];
+                currPtr16[1] = blockColors[(indices1 >> 2)  & 0x3];
+                currPtr16[2] = blockColors[(indices1 >> 4)  & 0x3];
+                currPtr16[3] = blockColors[(indices1 >> 6)  & 0x3];
+                currPtr16[4] = blockColors[(indices1 >> 8)  & 0x3];
+                currPtr16[5] = blockColors[(indices1 >> 10) & 0x3];
+                currPtr16[6] = blockColors[(indices1 >> 12) & 0x3];
+                currPtr16[7] = blockColors[(indices1 >> 14) & 0x3];
                 currPtr16 += LineStride16;
             }
         }
