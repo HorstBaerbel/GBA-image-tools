@@ -17,6 +17,66 @@
             "cwd": "${command:cmake.buildDirectory}"
         },
         {
+            "name": "Run in mgba (Flatpak)",
+            "type": "cppdbg",
+            "preLaunchTask": "${defaultBuildTask}",
+            "request": "launch",
+            "program": "/usr/bin/flatpak",
+            "args": [
+                "run",
+                "io.mgba.mGBA",
+                "-2",
+                "${command:cmake.launchTargetPath}"
+            ],
+            "cwd": "${command:cmake.buildDirectory}"
+        },
+        {
+            "name": "Launch/Debug in mgba (Flatpak)",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "${defaultBuildTask}",
+            "postDebugTask": "Terminate mGBA",
+            "targetArchitecture": "arm",
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${command:cmake.buildDirectory}",
+            "args": [],
+            "stopAtEntry": false,
+            "environment": [],
+            "MIMode": "gdb",
+            "miDebuggerServerAddress": "localhost:2345",
+            "linux": {
+                "miDebuggerPath": "${env:DEVKITARM}/bin/arm-none-eabi-gdb",
+                "setupCommands": [
+                    {
+                        "text": "set print pretty",
+                        "ignoreFailures": false
+                    },
+                    {
+                        "text": "file ${command:cmake.launchTargetPath}",
+                        "ignoreFailures": false
+                    },
+                    {
+                        "text": "-gdb-set disassembly-flavor arm",
+                        "ignoreFailures": true
+                    },
+                    {
+                        "text": "shell flatpak run io.mgba.mGBA -2 -g \"${command:cmake.launchTargetPath}\" &",
+                        "ignoreFailures": false
+                    }
+                ]
+            },
+            "externalConsole": false,
+            "showDisplayString": true,
+            "logging": {
+                "traceResponse": true,
+                "moduleLoad": true,
+                "trace": true,
+                "engineLogging": true,
+                "programOutput": true,
+                "exceptions": true
+            }
+        },
+        {
             "name": "Launch/Debug in mgba",
             "type": "cppdbg",
             "request": "launch",
@@ -24,17 +84,10 @@
             "program": "${command:cmake.launchTargetPath}",
             "debugServerPath": "/usr/bin/mgba-qt",
             "debugServerArgs": "-2 -g ${command:cmake.launchTargetPath}",
-            //"debugServerPath": "flatpak", // "mgba-qt",
-            //"debugServerArgs": "run io.mgba.mGBA -2 -g ${command:cmake.launchTargetPath}",
             "cwd": "${command:cmake.buildDirectory}",
-            //"filterStderr": true,
-            //"filterStdout": false,
-            //"serverStarted": "",
             "stopAtEntry": false,
             "MIMode": "gdb",
             "miDebuggerPath": "${env:DEVKITARM}/bin/arm-none-eabi-gdb",
-            //"miDebuggerArgs": "-ex \"target remote localhost:2345\" ${command:cmake.launchTargetPath}",
-            //"miDebuggerServerAddress": "localhost:2345",
             "setupCommands": [
                 {
                     "text": "set print pretty",

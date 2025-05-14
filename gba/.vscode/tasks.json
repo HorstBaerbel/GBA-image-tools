@@ -18,6 +18,13 @@
                 "$gcc"
             ],
             "detail": "CMake build task"
+        },
+        {
+            "label": "Terminate mGBA",
+            "command": "pkill",
+            "args": [
+                "mgba-qt"
+            ]
         }
     ]
 }
