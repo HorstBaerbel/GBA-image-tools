@@ -25,6 +25,7 @@ namespace Video
     IWRAM_DATA const uint32_t *m_decodedFrame = nullptr;
     IWRAM_DATA uint32_t m_decodedFrameSize = 0;
     IWRAM_DATA int32_t m_framesDecoded = 0;
+    IWRAM_DATA uint32_t m_clearColor = 0;
 
 #ifdef DEBUG_PLAYER
     IWRAM_DATA int32_t m_accFrameDecodeMs = 0;
@@ -49,6 +50,11 @@ namespace Video
         m_videoInfo = Video::GetInfo(videoSrc);
         auto bytesPerPixel = (m_videoInfo.bitsPerPixel + 7) / 8;
         m_decodedFrameSize = m_videoInfo.width * m_videoInfo.height * bytesPerPixel;
+    }
+
+    auto setClearColor(uint16_t color) -> void
+    {
+        m_clearColor = static_cast<uint32_t>(color) << 16 | color;
     }
 
     auto getInfo() -> const Video::Info &
@@ -78,6 +84,9 @@ namespace Video
             m_nrOfFramesBlit = 0;
             Time::start();
 #endif
+            // fill background and scratch pad to clear color
+            Memory::memset32((void *)VRAM, m_clearColor, m_videoInfo.width * m_videoInfo.height * 2);
+            Memory::memset32(m_scratchPad, m_clearColor, m_scratchPadSize);
             // set up timer to increase with frame interval
             irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
             irqEnable(irqMASKS::IRQ_TIMER2);

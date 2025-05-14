@@ -14,6 +14,10 @@ namespace Video
     /// @note The video player uses timer #2 and the matching timer IRQ. Don't use these otherwise!
     auto init(const uint32_t *videoSrc, uint32_t *scratchPad, uint32_t scratchPadSize) -> void;
 
+    /// @brief Set color that screen an scratchpad will be set to when starting playback
+    /// @param color
+    auto setClearColor(uint16_t color) -> void;
+
     /// @brief Get video information
     auto getInfo() -> const Video::Info &;
 

@@ -23,8 +23,9 @@ int main()
 	// set up text UI
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
-	// read file header
+	// set up video system, clear color and read file header
 	Video::init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), ScratchPad, sizeof(ScratchPad));
+	Video::setClearColor(0);
 	const auto &videoInfo = Video::getInfo();
 	// print video info
 	TUI::printf(0, 0, "Video decompression demo");
