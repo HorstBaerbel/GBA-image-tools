@@ -61,7 +61,6 @@ namespace DXTV
     static constexpr uint16_t BLOCK_MOTION_Y_SHIFT = BLOCK_MOTION_BITS;                   // Block y pixel motion shift
 
     IWRAM_DATA ALIGN(4) uint16_t blockColors[4]; // intermediate DXT block color storage
-    IWRAM_DATA ALIGN(4) bool isBlockMC;          // intermediate DXT block color storage
 
     /// @brief Copy (un-)aligned block from src to curr
     template <uint32_t BLOCK_DIM>
