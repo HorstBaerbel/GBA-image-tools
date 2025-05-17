@@ -118,15 +118,13 @@
             }
         },
         {
-            "name": "Run in vba",
+            "name": "Run in Mesen",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "build Release",
-            "program": "/usr/bin/vba",
+            "preLaunchTask": "${defaultBuildTask}",
+            "program": "/home/horstbaerbel/Software/Mesen",
             "args": [
-                "${command:cmake.launchTargetPath}",
-                "-2",
-                "--agb-print"
+                "${command:cmake.launchTargetPath}.gba",
             ],
             "cwd": "${command:cmake.buildDirectory}"
         }
