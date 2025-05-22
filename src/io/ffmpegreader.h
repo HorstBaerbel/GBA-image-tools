@@ -1,16 +1,16 @@
 #pragma once
 
-#include "videoreader.h"
+#include "mediareader.h"
 
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
-namespace Video
+namespace Media
 {
 
-    /// @brief Video reader class that uses FFmpeg and returns data in XRGB8888 format
+    /// @brief Media reader class that uses FFmpeg and returns raw video and audio data
     class FFmpegReader : public Reader
     {
     public:
@@ -24,11 +24,12 @@ namespace Video
         /// @throw Throws a std::runtime_error if anything goes wrong
         virtual auto open(const std::string &filePath) -> void override;
 
-        /// @brief Get information about opened video file
-        virtual auto getInfo() const -> VideoInfo override;
+        /// @brief Get information about opened media file
+        virtual auto getInfo() const -> MediaInfo override;
 
-        /// @brief Read next XRGB8888 frame from video. Will return empty data if EOF
-        virtual auto readFrame() -> std::vector<Color::XRGB8888> override;
+        /// @brief Read next video or audio frame. Will return FrameType::Unknown and empty data if EOF
+        /// @note Pixel data will be returned as XRGB8888. Audio data will be returned as signed 16-bit samples. Multi-channel audio will be converted to stereo.
+        virtual auto readFrame() -> FrameData override;
 
         /// @brief Close FFmpeg reader opened with open()
         virtual auto close() -> void override;
@@ -36,6 +37,6 @@ namespace Video
     private:
         struct ReaderState;
         std::shared_ptr<ReaderState> m_state;
-        VideoInfo m_info;
+        MediaInfo m_info;
     };
 }

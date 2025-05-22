@@ -10,6 +10,7 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libavformat
     libavutil
     libswscale
+    libswresample
 )
 pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET
     sdl2

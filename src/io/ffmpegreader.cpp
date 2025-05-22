@@ -5,13 +5,22 @@ extern "C"
 #include <inttypes.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/samplefmt.h>
 #include <libswscale/swscale.h>
+#include <libswresample/swresample.h>
 }
+
+#include <iostream>
+#include <cstring>
 
 #include "exception.h"
 
-namespace Video
+namespace Media
 {
+
+    static const AVChannelLayout monoLayout = AV_CHANNEL_LAYOUT_MONO;
+    static const AVChannelLayout stereoLayout = AV_CHANNEL_LAYOUT_STEREO;
 
     static AVPixelFormat CorrectDeprecatedPixelFormat(AVPixelFormat format)
     {
@@ -35,20 +44,37 @@ namespace Video
     struct FFmpegReader::ReaderState
     {
         AVFormatContext *formatContext = nullptr;
-        AVCodecParameters *codecParameters = nullptr;
-        const AVCodec *codec = nullptr;
-        std::string codecName;
+        // ---- video ----
+        AVCodecParameters *videoCodecParameters = nullptr;
+        const AVCodec *videoCodec = nullptr;
+        std::string videoCodecName;
         int videoStreamIndex = -1;
-        int width = 0;
-        int height = 0;
-        float fps = 0;
-        AVRational timeBase{};
-        int64_t nrOfFrames = 0;
-        int64_t duration = 0;
-        AVCodecContext *codecContext = nullptr;
+        int videoWidth = 0;
+        int videoHeight = 0;
+        AVRational videoTimeBase{};
+        int64_t videoNrOfFrames = 0;
+        int64_t videoDuration = 0;
+        double videoFps = 0;
+        AVCodecContext *videoCodecContext = nullptr;
+        SwsContext *videoSwsContext = nullptr; // Pixel format conversion context
+        // ---- audio ----
+        AVCodecParameters *audioCodecParameters = nullptr;
+        const AVCodec *audioCodec = nullptr;
+        std::string audioCodecName;
+        int audioStreamIndex = -1;
+        AVRational audioTimeBase{};
+        int64_t audioNrOfFrames = 0;
+        int64_t audioDuration = 0;
+        AVCodecContext *audioCodecContext = nullptr;
+        SwrContext *audioSwrContext = nullptr;                    // Audio format conversion context
+        AVChannelLayout audioOutChannelLayout;                    // Audio output channel layout
+        int audioOutSampleRate = 0;                               // Audio output sample rate
+        AVSampleFormat audioOutSampleFormat = AV_SAMPLE_FMT_NONE; // Audio output sample format
+        uint8_t *audioOutData[2] = {nullptr, nullptr};            // Stereo audio conversion output sample buffer
+        uint32_t audioOutDataNrOfSamples = 0;                     // Audio conversion output sample buffer size
+        // ---- decoding ----
         AVFrame *frame = nullptr;
         AVPacket *packet = nullptr;
-        SwsContext *swsContext = nullptr;
     };
 
     FFmpegReader::FFmpegReader()
@@ -71,7 +97,7 @@ namespace Video
         if (avformat_open_input(&m_state->formatContext, filePath.c_str(), nullptr, nullptr) != 0)
         {
             close();
-            THROW(std::runtime_error, "Failed to open video file");
+            THROW(std::runtime_error, "Failed to open media file");
         }
         // Retrieve stream information
         if (avformat_find_stream_info(m_state->formatContext, nullptr) < 0)
@@ -90,41 +116,91 @@ namespace Video
                 auto codec = avcodec_find_decoder(codecParams->codec_id);
                 if (codec != nullptr)
                 {
-                    m_state->codecParameters = codecParams;
-                    m_state->codec = codec;
-                    m_state->codecName = avcodec_get_name(codecParams->codec_id);
+                    m_state->videoCodecParameters = codecParams;
+                    m_state->videoCodec = codec;
+                    m_state->videoCodecName = avcodec_get_name(codecParams->codec_id);
                     m_state->videoStreamIndex = static_cast<int>(i);
-                    m_state->width = codecParams->width;
-                    m_state->height = codecParams->height;
-                    m_state->fps = av_q2d(stream->r_frame_rate);
-                    m_state->timeBase = stream->time_base;
-                    m_state->nrOfFrames = stream->nb_frames;
-                    m_state->duration = stream->duration;
+                    m_state->videoWidth = codecParams->width;
+                    m_state->videoHeight = codecParams->height;
+                    m_state->videoFps = av_q2d(stream->r_frame_rate);
+                    m_state->videoTimeBase = stream->time_base;
+                    m_state->videoNrOfFrames = stream->nb_frames;
+                    m_state->videoDuration = stream->duration;
                     break;
                 }
             }
         }
-        if (m_state->videoStreamIndex == -1)
+        // Find the first audio stream inside the file
+        m_state->audioStreamIndex = -1;
+        for (decltype(m_state->formatContext->nb_streams) i = 0; i < m_state->formatContext->nb_streams; i++)
         {
-            close();
-            THROW(std::runtime_error, "Failed to find video stream");
+            auto stream = m_state->formatContext->streams[i];
+            auto codecParams = stream->codecpar;
+            if (codecParams != nullptr && codecParams->codec_type == AVMEDIA_TYPE_AUDIO)
+            {
+                auto codec = avcodec_find_decoder(codecParams->codec_id);
+                if (codec != nullptr)
+                {
+                    m_state->audioCodecParameters = codecParams;
+                    m_state->audioCodec = codec;
+                    m_state->audioCodecName = avcodec_get_name(codecParams->codec_id);
+                    m_state->audioStreamIndex = static_cast<int>(i);
+                    m_state->audioTimeBase = stream->time_base;
+                    m_state->audioNrOfFrames = stream->nb_frames;
+                    m_state->audioDuration = stream->duration;
+                    REQUIRE(codecParams->ch_layout.nb_channels > 0, std::runtime_error, "Number of audio channels must be > 0");
+                    av_channel_layout_copy(&m_state->audioOutChannelLayout, codecParams->ch_layout.nb_channels == 1 ? &monoLayout : &stereoLayout);
+                    m_state->audioOutSampleRate = codecParams->sample_rate;
+                    m_state->audioOutSampleFormat = AV_SAMPLE_FMT_S16;
+                    break;
+                }
+            }
         }
-        // Set up a codec context for the decoder
-        m_state->codecContext = avcodec_alloc_context3(m_state->codec);
-        if (m_state->codecContext == nullptr)
+        // error out if we did not find any streams
+        if (m_state->videoStreamIndex == -1 && m_state->audioStreamIndex == -1)
         {
             close();
-            THROW(std::runtime_error, "Failed to create AVCodecContext");
+            THROW(std::runtime_error, "Failed to find video or audio stream");
         }
-        if (avcodec_parameters_to_context(m_state->codecContext, m_state->codecParameters) < 0)
+        // Set up a codec context for the video decoder
+        if (m_state->videoCodec != nullptr)
         {
-            close();
-            THROW(std::runtime_error, "Failed to initialize AVCodecContext");
+            m_state->videoCodecContext = avcodec_alloc_context3(m_state->videoCodec);
+            if (m_state->videoCodecContext == nullptr)
+            {
+                close();
+                THROW(std::runtime_error, "Failed to create AVCodecContext for video");
+            }
+            if (avcodec_parameters_to_context(m_state->videoCodecContext, m_state->videoCodecParameters) < 0)
+            {
+                close();
+                THROW(std::runtime_error, "Failed to initialize AVCodecContext for video");
+            }
+            if (avcodec_open2(m_state->videoCodecContext, m_state->videoCodec, nullptr) < 0)
+            {
+                close();
+                THROW(std::runtime_error, "Failed to open video codec");
+            }
         }
-        if (avcodec_open2(m_state->codecContext, m_state->codec, nullptr) < 0)
+        // Set up a codec context for the audio decoder
+        if (m_state->audioCodec != nullptr)
         {
-            close();
-            THROW(std::runtime_error, "Failed to open codec");
+            m_state->audioCodecContext = avcodec_alloc_context3(m_state->audioCodec);
+            if (m_state->audioCodecContext == nullptr)
+            {
+                close();
+                THROW(std::runtime_error, "Failed to create AVCodecContext for audio");
+            }
+            if (avcodec_parameters_to_context(m_state->audioCodecContext, m_state->audioCodecParameters) < 0)
+            {
+                close();
+                THROW(std::runtime_error, "Failed to initialize AVCodecContext for audio");
+            }
+            if (avcodec_open2(m_state->audioCodecContext, m_state->audioCodec, nullptr) < 0)
+            {
+                close();
+                THROW(std::runtime_error, "Failed to open audio codec");
+            }
         }
         // Allocate frame and packet memory
         m_state->frame = av_frame_alloc();
@@ -139,28 +215,43 @@ namespace Video
             close();
             THROW(std::runtime_error, "Failed to allocate packet");
         }
-        // generate video info
-        m_info.codecName = m_state->codecName;
-        m_info.videoStreamIndex = static_cast<uint32_t>(m_state->videoStreamIndex);
-        m_info.width = static_cast<uint32_t>(m_state->width);
-        m_info.height = static_cast<uint32_t>(m_state->height);
-        m_info.fps = m_state->fps;
-        m_info.nrOfFrames = static_cast<uint64_t>(m_state->nrOfFrames);
-        m_info.durationS = static_cast<float>(static_cast<double>(m_state->duration) * static_cast<double>(m_state->timeBase.num) / static_cast<double>(m_state->timeBase.den));
-        m_info.pixelFormat = Color::Format::XRGB8888;
-        m_info.colorMapFormat = Color::Format::Unknown;
+        // generate media info
+        if (m_state->videoStreamIndex > 0 && m_state->videoCodec != nullptr)
+        {
+            m_info.fileType = static_cast<IO::FileType>(static_cast<uint8_t>(m_info.fileType) | IO::FileType::Video);
+            m_info.videoCodecName = m_state->videoCodecName;
+            m_info.videoStreamIndex = static_cast<uint32_t>(m_state->videoStreamIndex);
+            m_info.videoWidth = static_cast<uint32_t>(m_state->videoWidth);
+            m_info.videoHeight = static_cast<uint32_t>(m_state->videoHeight);
+            m_info.videoNrOfFrames = static_cast<uint64_t>(m_state->videoNrOfFrames);
+            m_info.durationS = static_cast<float>(static_cast<double>(m_state->videoDuration) * static_cast<double>(m_state->videoTimeBase.num) / static_cast<double>(m_state->videoTimeBase.den));
+            m_info.videoFps = m_state->videoFps;
+            m_info.videoPixelFormat = Color::Format::XRGB8888;
+            m_info.videoColorMapFormat = Color::Format::Unknown;
+        }
+        if (m_state->audioStreamIndex > 0 && m_state->audioCodec != nullptr)
+        {
+            m_info.fileType = static_cast<IO::FileType>(static_cast<uint8_t>(m_info.fileType) | IO::FileType::Audio);
+            m_info.audioCodecName = m_state->audioCodecName;
+            m_info.audioStreamIndex = static_cast<uint32_t>(m_state->audioStreamIndex);
+            m_info.audioSampleRate = static_cast<uint32_t>(m_state->audioOutSampleRate);
+            m_info.audioSampleBits = 16;
+            m_info.audioChannels = static_cast<uint32_t>(m_state->audioOutChannelLayout.nb_channels);
+        }
     }
 
-    auto FFmpegReader::getInfo() const -> VideoInfo
+    auto FFmpegReader::getInfo() const -> MediaInfo
     {
         return m_info;
     }
 
-    auto FFmpegReader::readFrame() -> std::vector<Color::XRGB8888>
+    auto FFmpegReader::readFrame() -> FrameData
     {
+        bool isVideoFrame = false;
+        bool isAudioFrame = false;
         while (true)
         {
-            auto readResult = av_read_frame(m_state->formatContext, m_state->packet);
+            const auto readResult = av_read_frame(m_state->formatContext, m_state->packet);
             if (readResult == AVERROR_EOF)
             {
                 // last packet. we need to keep receiving frames still queued in the decoder
@@ -172,14 +263,15 @@ namespace Video
                 av_packet_unref(m_state->packet);
                 THROW(std::runtime_error, "Failed to read frame: " << readResult);
             }
-            // check if it is the correct stream index
-            if (m_state->packet->stream_index != m_state->videoStreamIndex)
+            // check the stream index is audio or video
+            if (m_state->packet->stream_index != m_state->videoStreamIndex && m_state->packet->stream_index != m_state->audioStreamIndex)
             {
                 av_packet_unref(m_state->packet);
                 continue;
             }
-            // try to send packet to codec
-            auto sendResult = avcodec_send_packet(m_state->codecContext, m_state->packet);
+            // try to send packet to vaudio or video codec
+            const bool isVideoPacket = m_state->packet->stream_index == m_state->videoStreamIndex;
+            const auto sendResult = avcodec_send_packet(isVideoPacket ? m_state->videoCodecContext : m_state->audioCodecContext, m_state->packet);
             if (sendResult == AVERROR_EOF)
             {
                 // file has ended. don't bail, but call avcodec_receive_frame to possibly get remaining frames
@@ -191,14 +283,21 @@ namespace Video
             else if (sendResult < 0)
             {
                 av_packet_unref(m_state->packet);
-                THROW(std::runtime_error, "Failed to send packet to codec: " << sendResult);
+                THROW(std::runtime_error, "Failed to send packet to " << (isVideoPacket ? "video" : "audio") << " codec: " << sendResult);
             }
             // try to decode frame
-            auto receiveResult = avcodec_receive_frame(m_state->codecContext, m_state->frame);
+            const auto receiveResult = avcodec_receive_frame(isVideoPacket ? m_state->videoCodecContext : m_state->audioCodecContext, m_state->frame);
             if (receiveResult == AVERROR_EOF)
             {
                 // end of frames encountered
-                avcodec_flush_buffers(m_state->codecContext);
+                if (m_state->videoCodecContext)
+                {
+                    avcodec_flush_buffers(m_state->videoCodecContext);
+                }
+                if (m_state->audioCodecContext)
+                {
+                    avcodec_flush_buffers(m_state->audioCodecContext);
+                }
                 av_packet_unref(m_state->packet);
                 return {};
             }
@@ -211,33 +310,74 @@ namespace Video
             else if (receiveResult < 0)
             {
                 av_packet_unref(m_state->packet);
-                THROW(std::runtime_error, "Failed to decode packet: " << receiveResult);
+                THROW(std::runtime_error, "Failed to decode " << (isVideoPacket ? "video" : "audio") << " packet: " << receiveResult);
             }
             // here the frame has been successfully decoded
+            isVideoFrame = m_state->packet->stream_index == m_state->videoStreamIndex;
+            isAudioFrame = m_state->packet->stream_index == m_state->audioStreamIndex;
             av_packet_unref(m_state->packet);
             break;
         }
         // auto timeStamp = m_state->frame->pts; // timestamp when the frame should be shown
-        // set up sw scaler for pixel format conversion
-        if (m_state->swsContext == nullptr)
+        std::vector<uint8_t> frameData;
+        IO::FrameType frameType = IO::FrameType::Unknown;
+        if (isVideoFrame)
         {
-            auto sourcePixelFormat = CorrectDeprecatedPixelFormat(m_state->codecContext->pix_fmt);
-            m_state->swsContext = sws_getContext(m_state->width, m_state->height, sourcePixelFormat,
-                                                 m_state->width, m_state->height, AV_PIX_FMT_0RGB32,
-                                                 SWS_POINT, nullptr, nullptr, nullptr);
-            if (m_state->swsContext == nullptr)
+            // set up sw scaler for pixel format conversion
+            if (m_state->videoSwsContext == nullptr)
             {
-                THROW(std::runtime_error, "Failed to create sw scaler");
+                auto sourcePixelFormat = CorrectDeprecatedPixelFormat(m_state->videoCodecContext->pix_fmt);
+                m_state->videoSwsContext = sws_getContext(m_state->videoWidth, m_state->videoHeight, sourcePixelFormat,
+                                                          m_state->videoWidth, m_state->videoHeight, AV_PIX_FMT_0RGB32,
+                                                          SWS_POINT, nullptr, nullptr, nullptr);
+
+                REQUIRE(m_state->videoSwsContext != nullptr, std::runtime_error, "Failed to create video swscaler context");
             }
+            // convert pixel format using sw scaler
+            frameType = IO::FrameType::Pixels;
+            frameData = std::vector<uint8_t>(m_state->videoWidth * m_state->videoHeight * sizeof(Color::XRGB8888));
+            uint8_t *const dst[4] = {reinterpret_cast<uint8_t *>(frameData.data()), nullptr, nullptr, nullptr};
+            int const dstStride[4] = {m_state->videoWidth * static_cast<int>(sizeof(Color::XRGB8888)), 0, 0, 0};
+            sws_scale(m_state->videoSwsContext, m_state->frame->data, m_state->frame->linesize, 0, m_state->frame->height, dst, dstStride);
         }
-        // convert pixel format using sw scaler
-        std::vector<Color::XRGB8888> frame(m_state->width * m_state->height);
-        uint8_t *const dst[4] = {reinterpret_cast<uint8_t *>(frame.data()), nullptr, nullptr, nullptr};
-        int const dstStride[4] = {m_state->width * static_cast<int>(sizeof(Color::XRGB8888)), 0, 0, 0};
-        sws_scale(m_state->swsContext, m_state->frame->data, m_state->frame->linesize, 0, m_state->frame->height, dst, dstStride);
+        else if (isAudioFrame)
+        {
+            // set up converter for audio format conversion
+            const auto inSampleRate = m_state->audioCodecParameters->sample_rate;
+            const auto inSampleFormat = static_cast<AVSampleFormat>(m_state->audioCodecParameters->format);
+            if (m_state->audioSwrContext == nullptr)
+            {
+                swr_alloc_set_opts2(&m_state->audioSwrContext, &m_state->audioOutChannelLayout, m_state->audioOutSampleFormat, inSampleRate, &m_state->audioCodecParameters->ch_layout, inSampleFormat, inSampleRate, 0, nullptr);
+                REQUIRE(m_state->audioSwrContext != nullptr, std::runtime_error, "Failed to create audio swresampler context");
+            }
+            // check if we need to reallocate audio conversion output buffers
+            const auto nrOfSamplesNeeded = av_rescale_rnd(swr_get_delay(m_state->audioSwrContext, m_state->audioCodecParameters->sample_rate) + m_state->frame->nb_samples, inSampleRate, inSampleRate, AV_ROUND_UP);
+            if (nrOfSamplesNeeded > m_state->audioOutDataNrOfSamples)
+            {
+                if (m_state->audioOutData[0])
+                {
+                    av_freep(&m_state->audioOutData[0]);
+                    m_state->audioOutData[0] = nullptr;
+                    m_state->audioOutData[1] = nullptr;
+                    m_state->audioOutDataNrOfSamples = 0;
+                }
+                const auto allocateResult = av_samples_alloc(&m_state->audioOutData[0], nullptr, m_state->audioOutChannelLayout.nb_channels, nrOfSamplesNeeded, m_state->audioOutSampleFormat, 0);
+                REQUIRE(allocateResult >= 0, std::runtime_error, "Failed to allocate audio conversion buffer: " << allocateResult);
+                m_state->audioOutDataNrOfSamples = nrOfSamplesNeeded;
+            }
+            // convert audio format using sw resampler
+            const auto nrOfSamplesConverted = swr_convert(m_state->audioSwrContext, &m_state->audioOutData[0], m_state->audioOutDataNrOfSamples, m_state->frame->extended_data, m_state->frame->nb_samples);
+            REQUIRE(nrOfSamplesConverted >= 0, std::runtime_error, "Failed to convert audio data: " << nrOfSamplesConverted);
+            const auto convertedBufferSize = av_samples_get_buffer_size(nullptr, m_state->audioOutChannelLayout.nb_channels, nrOfSamplesConverted, m_state->audioOutSampleFormat, 0);
+            REQUIRE(convertedBufferSize >= 0, std::runtime_error, "Failed to get number of audio sample output to buffer: " << convertedBufferSize);
+            // copy converted audio to frame data
+            frameType = IO::FrameType::Audio;
+            frameData = std::vector<uint8_t>(convertedBufferSize);
+            std::memcpy(frameData.data(), m_state->audioOutData[0], convertedBufferSize);
+        }
         // release FFmpeg frame
         av_frame_unref(m_state->frame);
-        return frame;
+        return {frameType, frameData};
     }
 
     auto FFmpegReader::close() -> void
@@ -252,15 +392,32 @@ namespace Video
             av_frame_free(&m_state->frame);
             m_state->frame = nullptr;
         }
-        if (m_state->swsContext)
+        if (m_state->videoSwsContext)
         {
-            sws_freeContext(m_state->swsContext);
-            m_state->swsContext = nullptr;
+            sws_freeContext(m_state->videoSwsContext);
+            m_state->videoSwsContext = nullptr;
         }
-        if (m_state->codecContext)
+        if (m_state->audioOutData[0])
         {
-            avcodec_free_context(&m_state->codecContext);
-            m_state->codecContext = nullptr;
+            av_freep(&m_state->audioOutData[0]);
+            m_state->audioOutData[0] = nullptr;
+            m_state->audioOutData[1] = nullptr;
+            m_state->audioOutDataNrOfSamples = 0;
+        }
+        if (m_state->audioSwrContext)
+        {
+            swr_free(&m_state->audioSwrContext);
+            m_state->audioSwrContext = nullptr;
+        }
+        if (m_state->videoCodecContext)
+        {
+            avcodec_free_context(&m_state->videoCodecContext);
+            m_state->videoCodecContext = nullptr;
+        }
+        if (m_state->audioCodecContext)
+        {
+            avcodec_free_context(&m_state->audioCodecContext);
+            m_state->audioCodecContext = nullptr;
         }
         if (m_state->formatContext)
         {
