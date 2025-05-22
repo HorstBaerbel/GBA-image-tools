@@ -1,6 +1,6 @@
-#include "videoreader.h"
+#include "mediareader.h"
 
-namespace Video
+namespace Media
 {
 
     Reader::~Reader()
