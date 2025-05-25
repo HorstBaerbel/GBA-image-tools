@@ -16,12 +16,12 @@ template <typename PIXEL_TYPE>
 class ColorFit
 {
     static constexpr std::size_t MinNeighbourCount = 5;       // For more than 2D use minPts ~= 2*D, See: https://stackoverflow.com/questions/12893492/choosing-eps-and-minpts-for-dbscan-r
-    static constexpr float MinNeigbourDistance = 0.0001F;     // Min. epsilon / color distance, See: https://stats.stackexchange.com/questions/88872/a-routine-to-choose-eps-and-minpts-for-dbscan
-    static constexpr float MaxNeigbourDistance = 0.0003F;     // Max. epsilon / color distance
+    static constexpr double MinNeigbourDistance = 0.0001;     // Min. epsilon / color distance, See: https://stats.stackexchange.com/questions/88872/a-routine-to-choose-eps-and-minpts-for-dbscan
+    static constexpr double MaxNeigbourDistance = 0.0003;     // Max. epsilon / color distance
     static constexpr double HistogramCountPercent = 99.9;     // Histogram percentage for median calculation
-    static constexpr float MinImportantOutlierWeight = 0.5F;  // Min. normalized weight at which outliers are considered "important"
-    static constexpr float ClusterDimensionMin = 0.1F * 0.1F; // Min. dimension of single cluster. Prevents clusters from getting too big
-    static constexpr float ClusterDimensionMax = 0.4F * 0.4F; // Max. dimension of single cluster. Prevents clusters from getting too big
+    static constexpr double MinImportantOutlierWeight = 0.5;  // Min. normalized weight at which outliers are considered "important"
+    static constexpr double ClusterDimensionMin = 0.1 * 0.1;  // Min. dimension of single cluster. Prevents clusters from getting too big
+    static constexpr double ClusterDimensionMax = 0.4 * 0.4;  // Max. dimension of single cluster. Prevents clusters from getting too big
 
     static constexpr std::size_t InvalidClusterIndex = std::numeric_limits<std::size_t>::max();
 
@@ -35,7 +35,7 @@ class ColorFit
             Core = 2     // Object has at least MinNeighbourCount neighbours
         };
         Type type = Type::Outlier;
-        float weight = 0.0F;                // Normalized number of occurrences in histogram
+        double weight = 0.0;                // Normalized number of occurrences in histogram
         std::vector<PIXEL_TYPE> neighbours; // Neighbour in less than MaxNeigbourDistance
         bool visited = false;
         std::size_t clusterIndex = InvalidClusterIndex;
@@ -45,7 +45,7 @@ class ColorFit
     struct Cluster
     {
         PIXEL_TYPE center;
-        float weight = 0.0F;
+        double weight = 0.0;
         std::vector<PIXEL_TYPE> objects;      // Objects in cluster
         BoundingBox<PIXEL_TYPE> objectBounds; // Range of object coordinates
     };
@@ -64,15 +64,18 @@ public:
     // - Snap important outlier objects to colorspace color
     // - Repeat while adjusting allowedNeighbourDistance until important outliers + clusters ~= nrOfColors
     // @note This can be quite slow and take quite a bit of RAM. You have been warned...
+    /// @param colorHistogram Histogram of all input colors
+    /// @param nrOfColors Number of colors to reduce input colors to
+    /// @returns Mapping of reduced color -> input colors
     auto reduceColors(const std::map<PIXEL_TYPE, uint64_t> &colorHistogram, std::size_t nrOfColors) const -> std::map<PIXEL_TYPE, std::vector<PIXEL_TYPE>>
     {
         REQUIRE(nrOfColors > 1 && nrOfColors <= 256, std::runtime_error, "Bad number of colors. Must be in range [2,256]");
         std::size_t iterationsLeft = 5;
         // Calculate maximum allowed cluster size depending on number of colors
-        const float maxClusterDimension = static_cast<float>(nrOfColors) / 256.0F * ClusterDimensionMin + (1.0F - static_cast<float>(nrOfColors) / 256.0F) * ClusterDimensionMax;
+        const double maxClusterDimension = static_cast<double>(nrOfColors) / 256.0 * ClusterDimensionMin + (1.0 - static_cast<double>(nrOfColors) / 256.0) * ClusterDimensionMax;
         // Start with medium allowed object distance
-        float minNeighbourDistance = MinNeigbourDistance;
-        float maxNeighbourDistance = MaxNeigbourDistance;
+        double minNeighbourDistance = MinNeigbourDistance;
+        double maxNeighbourDistance = MaxNeigbourDistance;
         // calculate median range of histogram values for weight normalization
         std::vector<uint64_t> counts;
         std::transform(colorHistogram.cbegin(), colorHistogram.cend(), std::back_inserter(counts), [](const auto &h)
@@ -87,11 +90,11 @@ public:
         // create as many objects as colors in histogram. normalize weight and clamp to [0,1]
         std::map<PIXEL_TYPE, ColorObject> objects;
         std::transform(colorHistogram.cbegin(), colorHistogram.cend(), std::inserter(objects, objects.end()), [maxCount](const auto &entry)
-                       { return std::make_pair(entry.first, ColorObject{ColorObject::Type::Outlier, entry.second >= maxCount ? 1.0F : static_cast<float>(static_cast<double>(entry.second) / static_cast<double>(maxCount)), {}, false, InvalidClusterIndex}); });
+                       { return std::make_pair(entry.first, ColorObject{ColorObject::Type::Outlier, entry.second >= maxCount ? 1.0 : static_cast<double>(static_cast<double>(entry.second) / static_cast<double>(maxCount)), {}, false, InvalidClusterIndex}); });
         std::vector<Cluster> clusters;
         do
         {
-            const float allowedNeighbourDistance = 0.5F * (maxNeighbourDistance + minNeighbourDistance);
+            const double allowedNeighbourDistance = 0.5 * (maxNeighbourDistance + minNeighbourDistance);
             // find nearby objects
 #pragma omp parallel for
             for (int i = 0; i < static_cast<int>(objects.size()); i++)
@@ -204,7 +207,7 @@ public:
             for (int i = 0; i < static_cast<int>(clusters.size()); i++)
             {
                 Eigen::Vector3f clusterCenter(0, 0, 0);
-                float clusterWeight = 0.0F;
+                double clusterWeight = 0.0;
                 // calculate weighted center of cluster
                 for (const auto objectCenter : clusters[i].objects)
                 {
@@ -275,16 +278,16 @@ public:
             if (nrOfClusters < nrOfColors)
             {
                 // if we have too few results, reduce the allowed distance
-                float t = static_cast<float>(nrOfColors - nrOfClusters) / nrOfColors;
-                t = 0.5F * (t > 1.0F ? 1.0F : t);
-                maxNeighbourDistance = (0.5F + t) * allowedNeighbourDistance + (0.5F - t) * maxNeighbourDistance;
+                auto t = static_cast<double>(nrOfColors - nrOfClusters) / nrOfColors;
+                t = 0.5 * (t > 1.0 ? 1.0 : t);
+                maxNeighbourDistance = (0.5 + t) * allowedNeighbourDistance + (0.5 - t) * maxNeighbourDistance;
             }
             else if (nrOfClusters > nrOfColors)
             {
                 // if we have too many results, increase the allowed distance
-                float t = static_cast<float>(nrOfClusters - nrOfColors) / nrOfColors;
-                t = 0.5F * (t > 1.0F ? 1.0F : t);
-                minNeighbourDistance = (0.5F + t) * allowedNeighbourDistance + (0.5F - t) * minNeighbourDistance;
+                auto t = static_cast<double>(nrOfClusters - nrOfColors) / nrOfColors;
+                t = 0.5 * (t > 1.0 ? 1.0 : t);
+                minNeighbourDistance = (0.5 + t) * allowedNeighbourDistance + (0.5 - t) * minNeighbourDistance;
             }
             else
             {
@@ -306,7 +309,7 @@ private:
         // Improvement: Use distance query acceleration structure
         auto colorIt = colors.cbegin();
         auto closestColor = *colorIt;
-        float closestDistance = std::numeric_limits<float>::max();
+        double closestDistance = std::numeric_limits<double>::max();
         while (colorIt != colors.cend())
         {
             auto colorDistance = PIXEL_TYPE::mse(*colorIt, color);

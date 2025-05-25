@@ -127,9 +127,13 @@ namespace Image
         // create as many preliminary clusters as colors in colorSpaceMap
         ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
         std::cout << "Color space has " << colorSpaceMap.size() << " colors" << std::endl;
-        // sort histogram colors into closest clusters in parallel
+        // map histogram colors to closest color space colors
         std::cout << "Sorting colors into max. " << nrOfColors << " clusters... (this might take some time)" << std::endl;
-        std::vector<Color::XRGB8888> commonColorMap = {}; // colorFit.reduceColors(histogram, nrOfColors);
+        auto colorMapping = colorFit.reduceColors(histogram, nrOfColors);
+        // convert mapping to color map
+        std::vector<Color::XRGB8888> commonColorMap;
+        std::transform(colorMapping.cbegin(), colorMapping.cend(), std::back_inserter(commonColorMap), [](auto m)
+                       { return m.first; });
         // apply color map to all images
         std::cout << "Converting images..." << std::endl;
         std::vector<Data> result;
