@@ -111,16 +111,16 @@ int main(int argc, const char *argv[])
         const auto nrOfProcessors = omp_get_num_procs();
         omp_set_num_threads(nrOfProcessors);
         // fire up video reader and open video file
-        Video::Vid2hReader videoReader;
-        Video::Reader::VideoInfo videoInfo;
+        Media::Vid2hReader mediaReader;
+        Media::Reader::MediaInfo mediaInfo;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
-            videoReader.open(m_inFile);
-            videoInfo = videoReader.getInfo();
-            std::cout << "Video stream #" << videoInfo.videoStreamIndex << ": " << videoInfo.codecName << ", " << videoInfo.width << "x" << videoInfo.height << "@" << videoInfo.fps;
-            std::cout << ", duration " << videoInfo.durationS << "s, " << videoInfo.nrOfFrames << " frames" << std::endl;
-            std::cout << "Pixel format " << Color::formatInfo(videoInfo.pixelFormat).name << ", color map format " << Color::formatInfo(videoInfo.colorMapFormat).name << std::endl;
+            mediaReader.open(m_inFile);
+            mediaInfo = mediaReader.getInfo();
+            std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFps;
+            std::cout << ", duration " << mediaInfo.durationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
+            std::cout << "Pixel format " << Color::formatInfo(mediaInfo.videoPixelFormat).name << ", color map format " << Color::formatInfo(mediaInfo.videoColorMapFormat).name << std::endl;
         }
         catch (const std::runtime_error &e)
         {
@@ -128,21 +128,23 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // create statistics window
-        Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height, "vid2hplay");
+        Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
         // read video file
         const auto startTime = std::chrono::steady_clock::now();
-        const double frameInterval = 1.0 / videoInfo.fps;
-        for (uint32_t frameIndex = 0; frameIndex < videoInfo.nrOfFrames; ++frameIndex)
+        const double frameInterval = 1.0 / mediaInfo.videoFps;
+        for (uint32_t frameIndex = 0; frameIndex < mediaInfo.videoNrOfFrames;)
         {
-            auto frame = videoReader.readFrame();
+            auto frame = mediaReader.readFrame();
+            REQUIRE(frame.frameType != IO::FrameType::Unknown, std::runtime_error, "Bad frame type");
             REQUIRE(!frame.empty(), std::runtime_error, "Failed to read frame #" << frameIndex);
-            REQUIRE(frame.size() == videoInfo.width * videoInfo.height, std::runtime_error, "Unexpected frame size");
+            REQUIRE(frame.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected frame size");
             // update statistics
             while ((std::chrono::steady_clock::now() - startTime) < std::chrono::duration<double>(frameIndex * frameInterval))
             {
                 std::this_thread::yield();
             }
-            window.displayImage(reinterpret_cast<const uint8_t *>(frame.data()), frame.size() * sizeof(std::remove_reference<decltype(frame.front())>::type), Ui::ColorFormat::XRGB8888, videoInfo.width, videoInfo.height);
+            window.displayImage(reinterpret_cast<const uint8_t *>(frame.data()), frame.size() * sizeof(std::remove_reference<decltype(frame.front())>::type), Ui::ColorFormat::XRGB8888, mediaInfo.videoWidth, mediaInfo.videoHeight);
+            ++frameIndex;
         }
     }
     catch (const std::runtime_error &e)
