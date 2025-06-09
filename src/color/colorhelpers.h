@@ -75,5 +75,5 @@ namespace ColorHelpers
     /// @param colorMap Color map
     /// @param colorMapFormat Color map format
     /// @return XRGB8888 pixel data
-    auto toXRGB8888(const std::vector<uint8_t> &pixels, Color::Format pixelFormat, const std::vector<uint8_t> &colorMap, Color::Format colorMapFormat) -> std::vector<Color::XRGB8888>;
+    auto toXRGB8888(const std::vector<uint8_t> &pixels, Color::Format pixelFormat, const std::vector<Color::XRGB8888> &colorMap) -> std::vector<Color::XRGB8888>;
 }

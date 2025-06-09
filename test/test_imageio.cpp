@@ -53,14 +53,14 @@ TEST_CASE("Read + Write")
         CATCH_REQUIRE(inImage.map.data.empty());
         CATCH_REQUIRE(inImage.map.size.width() == 0);
         CATCH_REQUIRE(inImage.map.size.height() == 0);
-        CATCH_REQUIRE(inImage.image.size.width() == testFile.width);
-        CATCH_REQUIRE(inImage.image.size.height() == testFile.height);
-        CATCH_REQUIRE(inImage.image.colorMapFormat == Color::Format::Unknown);
-        CATCH_REQUIRE(inImage.image.nrOfColorMapEntries == 0);
-        CATCH_REQUIRE(inImage.image.pixelFormat == Color::Format::XRGB8888);
-        CATCH_REQUIRE(inImage.image.maxMemoryNeeded == 0);
-        CATCH_REQUIRE(inImage.image.data.colorMap().empty());
-        const auto inPixels = inImage.image.data.pixels().convertData<Color::XRGB8888>();
+        CATCH_REQUIRE(inImage.info.size.width() == testFile.width);
+        CATCH_REQUIRE(inImage.info.size.height() == testFile.height);
+        CATCH_REQUIRE(inImage.info.colorMapFormat == Color::Format::Unknown);
+        CATCH_REQUIRE(inImage.info.nrOfColorMapEntries == 0);
+        CATCH_REQUIRE(inImage.info.pixelFormat == Color::Format::XRGB8888);
+        CATCH_REQUIRE(inImage.info.maxMemoryNeeded == 0);
+        CATCH_REQUIRE(inImage.data.colorMap().empty());
+        const auto inPixels = inImage.data.pixels().convertData<Color::XRGB8888>();
         CATCH_REQUIRE(inPixels.size() == testFile.width * testFile.height);
         // check hash of pixel data
         const uint32_t inHash = Hash_MurmurOAAT_32(reinterpret_cast<const uint8_t *>(inPixels.data()), inPixels.size() * sizeof(Color::XRGB8888));
@@ -79,14 +79,14 @@ TEST_CASE("Read + Write")
         CATCH_REQUIRE(inImage.map.data.empty() == outImage.map.data.empty());
         CATCH_REQUIRE(inImage.map.size.width() == outImage.map.size.width());
         CATCH_REQUIRE(inImage.map.size.height() == outImage.map.size.height());
-        CATCH_REQUIRE(inImage.image.size.width() == outImage.image.size.width());
-        CATCH_REQUIRE(inImage.image.size.height() == outImage.image.size.height());
-        CATCH_REQUIRE(inImage.image.colorMapFormat == outImage.image.colorMapFormat);
-        CATCH_REQUIRE(inImage.image.nrOfColorMapEntries == outImage.image.nrOfColorMapEntries);
-        CATCH_REQUIRE(inImage.image.pixelFormat == outImage.image.pixelFormat);
-        CATCH_REQUIRE(inImage.image.maxMemoryNeeded == outImage.image.maxMemoryNeeded);
-        CATCH_REQUIRE(inImage.image.data.colorMap().empty() == outImage.image.data.colorMap().empty());
-        const auto outPixels = outImage.image.data.pixels().convertData<Color::XRGB8888>();
+        CATCH_REQUIRE(inImage.info.size.width() == outImage.info.size.width());
+        CATCH_REQUIRE(inImage.info.size.height() == outImage.info.size.height());
+        CATCH_REQUIRE(inImage.info.colorMapFormat == outImage.info.colorMapFormat);
+        CATCH_REQUIRE(inImage.info.nrOfColorMapEntries == outImage.info.nrOfColorMapEntries);
+        CATCH_REQUIRE(inImage.info.pixelFormat == outImage.info.pixelFormat);
+        CATCH_REQUIRE(inImage.info.maxMemoryNeeded == outImage.info.maxMemoryNeeded);
+        CATCH_REQUIRE(inImage.data.colorMap().empty() == outImage.data.colorMap().empty());
+        const auto outPixels = outImage.data.pixels().convertData<Color::XRGB8888>();
         CATCH_REQUIRE(outPixels.size() == testFile.width * testFile.height);
         // check hash of pixel data
         const uint32_t outHash = Hash_MurmurOAAT_32(reinterpret_cast<const uint8_t *>(outPixels.data()), outPixels.size() * sizeof(Color::XRGB8888));

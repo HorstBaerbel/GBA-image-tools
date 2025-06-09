@@ -8,9 +8,10 @@ namespace IO
     /// @brief Bitfield defining what type of media the file contains
     enum FileType : uint8_t
     {
-        Unknown = 0,  // Bad content type
-        Video = 0x01, // File contains video data
-        Audio = 0x02  // File contains audio data
+        Unknown = 0,      // Bad content type
+        Audio = 0x01,     // File contains audio data
+        Video = 0x02,     // File contains video data
+        AudioVideo = 0x03 // File contains both video and audio data
     };
 
     /// @brief Frame content type

@@ -1,14 +1,14 @@
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "compression/lzss.h"
+#include "image/imagehelpers.h"
+#include "image/imageprocessing.h"
+#include "image/spritehelpers.h"
 #include "io/ffmpegreader.h"
 #include "io/textio.h"
 #include "io/vid2hio.h"
 #include "processing/datahelpers.h"
-#include "processing/imagehelpers.h"
-#include "processing/imageprocessing.h"
 #include "processing/processingoptions.h"
-#include "processing/spritehelpers.h"
 #include "statistics/statistics_window.h"
 
 #include <cstdlib>
@@ -145,7 +145,7 @@ bool readArguments(int argc, const char *argv[])
 void printUsage()
 {
     // 80 chars:  --------------------------------------------------------------------------------
-    std::cout << "Converts and compresses a video file to a .c and .h file to compile it into a" << std::endl;
+    std::cout << "Converts and compresses a video file to a binary file to compile it into a " << std::endl;
     std::cout << "GBA executable." << std::endl;
     std::cout << "Usage: vid2h FORMAT [CONVERT] [IMAGE COMPRESS] [COMPRESS] INFILE OUTNAME" << std::endl;
     std::cout << "FORMAT options (mutually exclusive):" << std::endl;
@@ -182,8 +182,10 @@ void printUsage()
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
-    std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites, tiles," << std::endl;
-    std::cout << "deltaimage, dxtg / dtxv / gvid, delta8 / delta16, rle, lz10, output" << std::endl;
+    std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites, tiles, " << std::endl;
+    std::cout << "deltaimage, dxtg / dtxv, delta8 / delta16, rle, lz10, output" << std::endl;
+    std::cout << "Note: Multi-channel audio will be converted to stereo and sample bit depth will " << std::endl;
+    std::cout << "be converted to 16 bit" << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -218,9 +220,11 @@ int main(int argc, const char *argv[])
             std::cout << "Opening " << m_inFile << "..." << std::endl;
             mediaReader.open(m_inFile);
             mediaInfo = mediaReader.getInfo();
-            std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFps;
-            std::cout << ", duration " << mediaInfo.durationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
-            std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << mediaInfo.audioChannels << " channels, " << mediaInfo.audioSampleRate << " Hz" << std::endl;
+            std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
+            std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
+            std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << mediaInfo.audioChannels << " channels, " << mediaInfo.audioSampleRateHz << " Hz, ";
+            std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).name;
+            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
         }
         catch (const std::runtime_error &e)
         {
@@ -321,10 +325,10 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, true);
         }
-        if (options.gvid)
+        /*if (options.gvid)
         {
             processing.addStep(Image::ProcessingType::CompressGVID, {}, true, true);
-        }
+        }*/
         // convert to raw data (only if not raw data already)
         processing.addStep(Image::ProcessingType::ConvertPixelsToRaw, {options.outformat.value});
         // entropy compression
@@ -345,9 +349,7 @@ int main(int argc, const char *argv[])
             processing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true);
         }
         processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
-        // create statistics window
-        Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2h");
-        // apply image processing pipeline
+        // print image processing pipeline configuration
         const auto processingDescription = processing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;
         // check if we want to write output files
@@ -376,41 +378,58 @@ int main(int argc, const char *argv[])
                 return 1;
             }
         }
-        // start reading frames from video
+        // create statistics window
+        Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2h");
+        auto statistics = window.getStatisticsContainer();
+        // process media frames
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
-        uint32_t frameIndex = 0;
-        uint64_t compressedSize = 0;
-        uint32_t maxMemoryNeeded = 0;
-        Image::ImageInfo streamInfo;
-        auto statistics = window.getStatisticsContainer();
-        // store some frames for parallel processing
-        for (uint32_t frameIndex = 0; frameIndex < mediaInfo.videoNrOfFrames; ++frameIndex)
+        uint32_t videoFrameIndex = 0;
+        uint64_t videoCompressedSize = 0;
+        uint32_t videoMaxMemoryNeeded = 0;
+        Image::FrameInfo videoInfo;
+        uint32_t audioSampleIndex = 0;
+        uint64_t audioCompressedSize = 0;
+        uint32_t audioMaxMemoryNeeded = 0;
+        Audio::FrameInfo audioInfo;
+        while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioSampleIndex < mediaInfo.audioNrOfSamples)
         {
-            auto frame = mediaReader.readFrame();
-            REQUIRE(!frame.empty(), std::runtime_error, "Failed to read frame #" << frameIndex);
-            REQUIRE(frame.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected frame size");
-            // build image from frame and apply processing
-            Image::ImageInfo imageInfo = {{mediaInfo.videoWidth, mediaInfo.videoHeight}, Color::Format::Unknown, Color::Format::Unknown, 0, Color::convertTo<Color::XRGB8888>(frame), 0};
-            Image::MapInfo mapInfo = {{0, 0}, {}};
-            auto data = processing.processStream(Image::Data{frameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, mapInfo}, statistics);
-            compressedSize += data.image.data.pixels().rawSize() + (options.paletted ? data.image.data.colorMap().rawSize() : 0);
-            maxMemoryNeeded = maxMemoryNeeded < data.image.maxMemoryNeeded ? data.image.maxMemoryNeeded : maxMemoryNeeded;
-            // write image to file
-            if (!options.dryRun && binFile.is_open())
+            const auto frame = mediaReader.readFrame();
+            // check if EOF
+            if (frame.frameType == IO::FrameType::Unknown)
             {
-                streamInfo = data.image;
-                IO::Vid2h::writeVideoFrame(binFile, data);
+                REQUIRE(videoFrameIndex == mediaInfo.videoNrOfFrames, std::runtime_error, "Expected " << mediaInfo.videoNrOfFrames << " video frames, but got " << videoFrameIndex);
+                REQUIRE(audioSampleIndex == mediaInfo.audioNrOfSamples, std::runtime_error, "Expected " << mediaInfo.audioNrOfSamples << " audio samples, but got " << audioSampleIndex);
+                break;
+            }
+            // check if image frame
+            if (frame.frameType == IO::FrameType::Pixels)
+            {
+                const auto &image = std::get<std::vector<Color::XRGB8888>>(frame.data);
+                REQUIRE(image.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected image size");
+                // build internal image from pixels and apply processing
+                Image::FrameInfo imageInfo = {{mediaInfo.videoWidth, mediaInfo.videoHeight}, Color::Format::Unknown, Color::Format::Unknown, 0, 0};
+                Image::MapInfo mapInfo = {{0, 0}, {}};
+                auto data = processing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, image, mapInfo}, statistics);
+                videoCompressedSize += data.data.pixels().rawSize() + (options.paletted ? data.data.colorMap().rawSize() : 0);
+                videoMaxMemoryNeeded = videoMaxMemoryNeeded < data.info.maxMemoryNeeded ? data.info.maxMemoryNeeded : videoMaxMemoryNeeded;
+                // write image to file
+                if (!options.dryRun && binFile.is_open())
+                {
+                    videoInfo = data.info;
+                    IO::Vid2h::writeFrame(binFile, data);
+                }
+                ++videoFrameIndex;
             }
             // calculate progress
-            uint32_t newProgress = ((100 * frameIndex) / mediaInfo.videoNrOfFrames);
+            uint32_t newProgress = ((100 * videoFrameIndex) / mediaInfo.videoNrOfFrames);
             if (lastProgress != newProgress)
             {
                 lastProgress = newProgress;
                 auto newTime = std::chrono::steady_clock::now();
                 auto timePassedMs = std::chrono::duration<double>(newTime - startTime);
-                auto fps = static_cast<double>(frameIndex) / timePassedMs.count();
-                auto restS = (mediaInfo.videoNrOfFrames - frameIndex) / fps;
+                auto fps = static_cast<double>(videoFrameIndex) / timePassedMs.count();
+                auto restS = (mediaInfo.videoNrOfFrames - videoFrameIndex) / fps;
                 std::cout << std::fixed << std::setprecision(1) << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
             }
             // update statistics
@@ -420,7 +439,7 @@ int main(int argc, const char *argv[])
         if (!options.dryRun && binFile.is_open())
         {
             binFile.seekp(0);
-            IO::Vid2h::writeFileHeader(binFile, streamInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFps, maxMemoryNeeded);
+            IO::Vid2h::writeVideoFileHeader(binFile, videoInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoMaxMemoryNeeded);
             binFile.close();
         }
         // output some info about data
@@ -428,10 +447,10 @@ int main(int argc, const char *argv[])
         const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
         const auto inputSize = mediaInfo.videoWidth * mediaInfo.videoHeight * 3 * mediaInfo.videoNrOfFrames;
         std::cout << "Input size: " << static_cast<double>(inputSize) / (1024 * 1024) << " MB" << std::endl;
-        std::cout << "Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(compressedSize) / (1024 * 1024) << " MB" << std::endl;
-        std::cout << "Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(compressedSize) / 1024) / mediaInfo.durationS << " kB/s" << std::endl;
-        std::cout << "Avg. frame size: " << std::fixed << std::setprecision(1) << static_cast<double>(compressedSize) / mediaInfo.videoNrOfFrames << " Byte" << std::endl;
-        std::cout << "Max. intermediate memory for decompression: " << maxMemoryNeeded << " Byte" << std::endl;
+        std::cout << "Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(videoCompressedSize) / (1024 * 1024) << " MB" << std::endl;
+        std::cout << "Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(videoCompressedSize) / 1024) / mediaInfo.videoDurationS << " kB/s" << std::endl;
+        std::cout << "Avg. frame size: " << std::fixed << std::setprecision(1) << static_cast<double>(videoCompressedSize) / mediaInfo.videoNrOfFrames << " Byte" << std::endl;
+        std::cout << "Max. intermediate memory for decompression: " << videoMaxMemoryNeeded << " Byte" << std::endl;
     }
     catch (const std::runtime_error &e)
     {

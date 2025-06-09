@@ -2,7 +2,7 @@
 
 #include "testmacros.h"
 
-#include "processing/spritehelpers.h"
+#include "image/spritehelpers.h"
 
 #include <algorithm>
 #include <random>

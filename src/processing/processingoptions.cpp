@@ -309,9 +309,9 @@ ProcessingOptions::OptionT<double> ProcessingOptions::dxtv{
         }
     }};
 
-ProcessingOptions::Option ProcessingOptions::gvid{
+/*ProcessingOptions::Option ProcessingOptions::gvid{
     false,
-    {"gvid", "Use GVID video compression.", cxxopts::value(gvid.isSet)}};
+    {"gvid", "Use GVID video compression.", cxxopts::value(gvid.isSet)}};*/
 
 ProcessingOptions::Option ProcessingOptions::interleavePixels{
     false,

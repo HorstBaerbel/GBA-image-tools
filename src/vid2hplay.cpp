@@ -1,14 +1,14 @@
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "compression/lzss.h"
+#include "image/imagehelpers.h"
+#include "image/imageprocessing.h"
+#include "image/spritehelpers.h"
 #include "io/textio.h"
 #include "io/vid2hio.h"
 #include "io/vid2hreader.h"
 #include "processing/datahelpers.h"
-#include "processing/imagehelpers.h"
-#include "processing/imageprocessing.h"
 #include "processing/processingoptions.h"
-#include "processing/spritehelpers.h"
 #include "statistics/statistics_window.h"
 
 #include <cstdlib>
@@ -118,9 +118,11 @@ int main(int argc, const char *argv[])
             std::cout << "Opening " << m_inFile << "..." << std::endl;
             mediaReader.open(m_inFile);
             mediaInfo = mediaReader.getInfo();
-            std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFps;
-            std::cout << ", duration " << mediaInfo.durationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
-            std::cout << "Pixel format " << Color::formatInfo(mediaInfo.videoPixelFormat).name << ", color map format " << Color::formatInfo(mediaInfo.videoColorMapFormat).name << std::endl;
+            std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
+            std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
+            std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << mediaInfo.audioChannels << " channels, " << mediaInfo.audioSampleRateHz << " Hz, ";
+            std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).name;
+            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
         }
         catch (const std::runtime_error &e)
         {
@@ -131,20 +133,24 @@ int main(int argc, const char *argv[])
         Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
         // read video file
         const auto startTime = std::chrono::steady_clock::now();
-        const double frameInterval = 1.0 / mediaInfo.videoFps;
+        const double frameInterval = 1.0 / mediaInfo.videoFrameRateHz;
         for (uint32_t frameIndex = 0; frameIndex < mediaInfo.videoNrOfFrames;)
         {
             auto frame = mediaReader.readFrame();
             REQUIRE(frame.frameType != IO::FrameType::Unknown, std::runtime_error, "Bad frame type");
-            REQUIRE(!frame.empty(), std::runtime_error, "Failed to read frame #" << frameIndex);
-            REQUIRE(frame.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected frame size");
-            // update statistics
-            while ((std::chrono::steady_clock::now() - startTime) < std::chrono::duration<double>(frameIndex * frameInterval))
+            // check if image frame
+            if (frame.frameType == IO::FrameType::Pixels)
             {
-                std::this_thread::yield();
+                const auto &image = std::get<std::vector<Color::XRGB8888>>(frame.data);
+                REQUIRE(image.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected frame size");
+                // update statistics
+                while ((std::chrono::steady_clock::now() - startTime) < std::chrono::duration<double>(frameIndex * frameInterval))
+                {
+                    std::this_thread::yield();
+                }
+                window.displayImage(reinterpret_cast<const uint8_t *>(image.data()), image.size() * sizeof(std::remove_reference<decltype(image.front())>::type), Ui::ColorFormat::XRGB8888, mediaInfo.videoWidth, mediaInfo.videoHeight);
+                ++frameIndex;
             }
-            window.displayImage(reinterpret_cast<const uint8_t *>(frame.data()), frame.size() * sizeof(std::remove_reference<decltype(frame.front())>::type), Ui::ColorFormat::XRGB8888, mediaInfo.videoWidth, mediaInfo.videoHeight);
-            ++frameIndex;
         }
     }
     catch (const std::runtime_error &e)

@@ -2,7 +2,7 @@
 
 #include "color/colorformat.h"
 #include "color/xrgb8888.h"
-#include "quantizationmethod.h"
+#include "image/quantizationmethod.h"
 
 #include <cstdint>
 #include <string>
@@ -53,7 +53,7 @@ public:
     static Option vram;
     static Option dxt;
     static OptionT<double> dxtv;
-    static Option gvid;
+    // static Option gvid;
     static Option interleavePixels;
     static Option dryRun;
     static Option dumpResults;

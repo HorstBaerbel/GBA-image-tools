@@ -133,24 +133,21 @@ namespace ColorHelpers
         return result;
     }
 
-    auto toXRGB8888(const std::vector<uint8_t> &pixels, Color::Format pixelFormat, const std::vector<uint8_t> &colorMap, Color::Format colorMapFormat) -> std::vector<Color::XRGB8888>
+    auto toXRGB8888(const std::vector<uint8_t> &pixels, Color::Format pixelFormat, const std::vector<Color::XRGB8888> &colorMap) -> std::vector<Color::XRGB8888>
     {
         REQUIRE(!pixels.empty(), std::runtime_error, "Pixels can not be empty");
         REQUIRE(pixelFormat != Color::Format::Unknown, std::runtime_error, "Bad pixel format");
         auto pixelFormatInfo = Color::formatInfo(pixelFormat);
-        REQUIRE((pixelFormatInfo.isTruecolor && colorMap.empty()) || (pixelFormatInfo.isIndexed && !colorMap.empty() && colorMapFormat != Color::Format::Unknown), std::runtime_error, "Pixels format color map mismatch");
+        REQUIRE((pixelFormatInfo.isTruecolor && colorMap.empty()) || (pixelFormatInfo.isIndexed && !colorMap.empty()), std::runtime_error, "Pixels format color map mismatch");
         if (pixelFormatInfo.isIndexed)
         {
-            // convert color map first
-            std::vector<Color::XRGB8888> resultColorMap;
-            resultColorMap = toXRGB8888(colorMap, colorMapFormat);
             // convert pixels
             std::vector<Color::XRGB8888> resultPixels;
             switch (pixelFormat)
             {
             case Color::Format::Paletted8:
-                std::transform(pixels.cbegin(), pixels.cend(), std::back_inserter(resultPixels), [&resultColorMap](auto i)
-                               { return resultColorMap.at(i); });
+                std::transform(pixels.cbegin(), pixels.cend(), std::back_inserter(resultPixels), [&colorMap](auto i)
+                               { return colorMap.at(i); });
                 break;
             default:
                 THROW(std::runtime_error, "Unsupported pixel format");

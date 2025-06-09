@@ -40,7 +40,7 @@ namespace Media
         MediaInfo m_info;
         std::vector<uint8_t> m_previousAudio;
         std::vector<Color::XRGB8888> m_previousPixels;
-        std::vector<uint8_t> m_previousColorMap;
+        std::vector<Color::XRGB8888> m_previousColorMap;
         std::ifstream m_is;
     };
 

@@ -87,43 +87,43 @@ namespace IO
         THROW(std::runtime_error, "Unsupported image type");
     }
 
-    auto File::readImage(const std::string &filePath) -> Image::Data
+    auto File::readImage(const std::string &filePath) -> Image::Frame
     {
         unsigned int error = PLUM_OK;
         plum_image *img = plum_load_image(filePath.c_str(), PLUM_MODE_FILENAME, PLUM_COLOR_32 | PLUM_ALPHA_INVERT | PLUM_PALETTE_LOAD, &error);
         if (img != nullptr && error == PLUM_OK)
         {
             REQUIRE(img->width > 0 && img->height > 0, std::runtime_error, "Bad image dimensions for \"" << filePath << "\"");
-            Image::Data data;
+            Image::Frame data;
             data.type = Image::DataType::Flags::Bitmap;
-            data.image.size = {img->width, img->height};
-            data.image.data = getImageData(img);
-            data.image.pixelFormat = data.image.data.pixels().format();
+            data.info.size = {img->width, img->height};
+            data.data = getImageData(img);
+            data.info.pixelFormat = data.data.pixels().format();
             plum_destroy_image(img);
             return data;
         }
         THROW(std::runtime_error, "Failed to read image \"" << filePath << "\":" << plum_get_error_text(error));
     }
 
-    auto File::writeImage(const Image::Data &src, const std::string &folder, const std::string &fileName) -> void
+    auto File::writeImage(const Image::Frame &src, const std::string &folder, const std::string &fileName) -> void
     {
-        REQUIRE(src.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
-        REQUIRE(src.image.size.width() > 0 && src.image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(src.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(src.info.size.width() > 0 && src.info.size.height() > 0, std::runtime_error, "Bad image size");
         REQUIRE(!src.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
         // create libplum image
         plum_image dstImage{};
         dstImage.type = PLUM_IMAGE_PNG,
-        dstImage.width = src.image.size.width();
-        dstImage.height = src.image.size.height();
+        dstImage.width = src.info.size.width();
+        dstImage.height = src.info.size.height();
         dstImage.frames = 1;
         // create data storage
         std::vector<uint8_t> data8;   // index data if any
         std::vector<uint32_t> data32; // RGBA image data or color map if any
         // check if image is paletted
-        if (src.image.data.colorMap().empty())
+        if (src.data.colorMap().empty())
         {
             // true-color. get image pixels
-            const auto srcPixels = src.image.data.pixels().convertData<Color::XRGB8888>();
+            const auto srcPixels = src.data.pixels().convertData<Color::XRGB8888>();
             for (std::size_t i = 0; i < srcPixels.size(); ++i)
             {
                 const auto pixel = srcPixels.at(i);
@@ -134,10 +134,10 @@ namespace IO
         else
         {
             // paletted. get image indices
-            data8 = src.image.data.pixels().convertDataToRaw();
+            data8 = src.data.pixels().convertDataToRaw();
             dstImage.data8 = data8.data();
             // get image palette
-            const auto srcColors = src.image.data.colorMap().convertData<Color::XRGB8888>();
+            const auto srcColors = src.data.colorMap().convertData<Color::XRGB8888>();
             for (std::size_t i = 0; i < srcColors.size(); ++i)
             {
                 const auto color = srcColors.at(i);
@@ -166,7 +166,7 @@ namespace IO
         }
     }
 
-    auto File::writeImages(const std::vector<Image::Data> &images, const std::string &folder) -> void
+    auto File::writeImages(const std::vector<Image::Frame> &images, const std::string &folder) -> void
     {
         for (const auto &i : images)
         {
@@ -175,10 +175,10 @@ namespace IO
         }
     }
 
-    auto File::writeRawImage(const Image::Data &src, const std::string &folder, const std::string &fileName) -> void
+    auto File::writeRawImage(const Image::Frame &src, const std::string &folder, const std::string &fileName) -> void
     {
-        REQUIRE(src.image.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
-        REQUIRE(src.image.size.width() > 0 && src.image.size.height() > 0, std::runtime_error, "Bad image size");
+        REQUIRE(src.data.pixels().format() != Color::Format::Unknown, std::runtime_error, "Bad color format");
+        REQUIRE(src.info.size.width() > 0 && src.info.size.height() > 0, std::runtime_error, "Bad image size");
         REQUIRE(!src.fileName.empty() || !fileName.empty(), std::runtime_error, "Either image.fileName or fileName must contain a file name");
         // create paths if neccessary
         auto outName = !fileName.empty() ? fileName : src.fileName;
@@ -189,7 +189,7 @@ namespace IO
         }
         // write to disk
         auto ofs = std::ofstream(outPath, std::ios::binary);
-        auto pixels = src.image.data.pixels().convertDataToRaw();
+        auto pixels = src.data.pixels().convertDataToRaw();
         ofs.write(reinterpret_cast<const char *>(pixels.data()), pixels.size());
     }
 }

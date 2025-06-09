@@ -1,12 +1,12 @@
 #include "vid2hio.h"
 
-namespace IO
+namespace IO::Vid2h
 {
 
-    auto Vid2h::writeVideoFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &
+    auto writeFrame(std::ostream &os, const Image::Frame &frame) -> std::ostream &
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
-        auto &imageData = frame.image.data;
+        auto &imageData = frame.data;
         REQUIRE((imageData.pixels().rawSize() % 4) == 0, std::runtime_error, "Pixel data size is not a multiple of 4");
         REQUIRE((imageData.colorMap().rawSize() % 4) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
         // convert pixel and color map data to raw format
@@ -16,47 +16,45 @@ namespace IO
         {
             colorMapData = imageData.colorMap().convertDataToRaw();
         }
-        // write pixel data frame header
+        // write color map data first
         FrameHeader frameHeader;
-        frameHeader.dataType = FrameType::Pixels;
-        frameHeader.dataSize = pixelData.size();
-        os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data frame header for frame #" << frame.index << " to stream");
-        // write pixel data
-        os.write(reinterpret_cast<const char *>(pixelData.data()), pixelData.size());
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");
-        // write color map data
         if (!colorMapData.empty())
         {
-            // write pixel data frame header
             frameHeader.dataType = FrameType::Colormap;
             frameHeader.dataSize = colorMapData.size();
             os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
             REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map frame header for frame #" << frame.index << " to stream");
-            // write color map data
             os.write(reinterpret_cast<const char *>(colorMapData.data()), colorMapData.size());
             REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map data for frame #" << frame.index << " to stream");
         }
+        // write pixel data after that
+        frameHeader.dataType = FrameType::Pixels;
+        frameHeader.dataSize = pixelData.size();
+        os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data frame header for frame #" << frame.index << " to stream");
+        os.write(reinterpret_cast<const char *>(pixelData.data()), pixelData.size());
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");
         return os;
     }
 
-    auto Vid2h::writeAudioFrame(std::ostream &os, const std::vector<uint8_t> &frame, uint32_t index) -> std::ostream &
+    auto writeFrame(std::ostream &os, const Audio::Frame &frame) -> std::ostream &
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
-        REQUIRE((frame.size() % 4) == 0, std::runtime_error, "Audio data size is not a multiple of 4");
-        // write audio data frame header
+        /*auto &audioData = frame.data;
+        // REQUIRE((frame.size() % 4) == 0, std::runtime_error, "Audio data size is not a multiple of 4");
+        //  write audio data frame header
         FrameHeader frameHeader;
         frameHeader.dataType = FrameType::Audio;
         frameHeader.dataSize = frame.size();
         os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data frame header for frame #" << index << " to stream");
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data frame header for frame #" << frame.index << " to stream");
         // write pixel data
         os.write(reinterpret_cast<const char *>(frame.data()), frame.size());
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << index << " to stream");
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");*/
         return os;
     }
 
-    auto Vid2h::writeDummyFileHeader(std::ostream &os) -> std::ostream &
+    auto writeDummyFileHeader(std::ostream &os) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
         // generate dummy file header and store it
@@ -66,30 +64,88 @@ namespace IO
         return os;
     }
 
-    auto Vid2h::writeFileHeader(std::ostream &os, const Image::ImageInfo &frameInfo, uint32_t nrOfFrames, double fps, uint32_t videoMemoryNeeded) -> std::ostream &
+    auto addInfoToFileHeader(const FileHeader &inHeader, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded) -> FileHeader
+    {
+        FileHeader outHeader = inHeader;
+        // add video information
+        const auto &pixelInfo = Color::formatInfo(imageInfo.pixelFormat);
+        const auto &colorMapInfo = Color::formatInfo(imageInfo.colorMapFormat);
+        outHeader.videoNrOfFrames = videoNrOfFrames;
+        outHeader.videoFrameRateHz = static_cast<uint32_t>(std::round(videoFrameRateHz * 65536.0));
+        outHeader.videoWidth = static_cast<uint16_t>(imageInfo.size.width());
+        outHeader.videoHeight = static_cast<uint16_t>(imageInfo.size.height());
+        outHeader.videoBitsPerPixel = static_cast<uint8_t>(pixelInfo.bitsPerPixel);
+        outHeader.videoBitsPerColor = pixelInfo.isIndexed ? static_cast<uint8_t>(colorMapInfo.bitsPerPixel) : 0;
+        outHeader.videoSwappedRedBlue = (pixelInfo.isIndexed ? colorMapInfo.hasSwappedRedBlue : pixelInfo.hasSwappedRedBlue) ? 1 : 0;
+        outHeader.videoColorMapEntries = pixelInfo.isIndexed ? imageInfo.nrOfColorMapEntries : 0;
+        outHeader.videoMemoryNeeded = videoMemoryNeeded;
+        return outHeader;
+    }
+
+    auto addInfoToFileHeader(const FileHeader &inHeader, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> FileHeader
+    {
+        FileHeader outHeader = inHeader;
+        // add audio information
+        const auto &sampleInfo = Audio::formatInfo(audioInfo.sampleFormat);
+        outHeader.audioNrOfSamples = audioNrOfSamples;
+        outHeader.audioSampleRateHz = audioInfo.sampleRateHz;
+        outHeader.audioChannels = audioInfo.channels;
+        outHeader.audioSampleBits = sampleInfo.bitsPerSample;
+        REQUIRE(audioOffsetSamples >= std::numeric_limits<int16_t>::min() && audioOffsetSamples <= std::numeric_limits<int16_t>::max(), std::runtime_error, "Audio offset needed must be in [" << std::numeric_limits<int16_t>::min() << "," << std::numeric_limits<int16_t>::max() << "]");
+        outHeader.audioOffsetSamples = audioOffsetSamples;
+        REQUIRE(audioMemoryNeeded <= std::numeric_limits<uint16_t>::max(), std::runtime_error, "Audio memory needed must be <= " << std::numeric_limits<uint16_t>::max());
+        outHeader.audioMemoryNeeded = audioMemoryNeeded;
+        return outHeader;
+    }
+
+    auto writeMediaFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
-        // check what color formats we're using
-        const auto &pixelInfo = Color::formatInfo(frameInfo.pixelFormat);
-        const auto &colorMapInfo = Color::formatInfo(frameInfo.colorMapFormat);
-        // generate file header and store it
+        // generate file header
         FileHeader fileHeader;
         fileHeader.magic = IO::Vid2h::Magic;
-        fileHeader.nrOfFrames = nrOfFrames;
-        fileHeader.videoWidth = static_cast<uint16_t>(frameInfo.size.width());
-        fileHeader.videoHeight = static_cast<uint16_t>(frameInfo.size.height());
-        fileHeader.videoFps = static_cast<uint32_t>(std::round(fps * 65536.0));
-        fileHeader.videoBitsPerPixel = static_cast<uint8_t>(pixelInfo.bitsPerPixel);
-        fileHeader.videoBitsPerColor = pixelInfo.isIndexed ? static_cast<uint8_t>(colorMapInfo.bitsPerPixel) : 0;
-        fileHeader.videoSwappedRedBlue = (pixelInfo.isIndexed ? colorMapInfo.hasSwappedRedBlue : pixelInfo.hasSwappedRedBlue) ? 1 : 0;
-        fileHeader.videoColorMapEntries = pixelInfo.isIndexed ? frameInfo.nrOfColorMapEntries : 0;
-        fileHeader.videoMemoryNeeded = videoMemoryNeeded;
+        fileHeader.contentType = IO::FileType::AudioVideo;
+        // add video information
+        fileHeader = addInfoToFileHeader(fileHeader, imageInfo, videoNrOfFrames, videoFrameRateHz, videoMemoryNeeded);
+        // add audio information
+        fileHeader = addInfoToFileHeader(fileHeader, audioInfo, audioNrOfSamples, audioOffsetSamples, audioMemoryNeeded);
+        // store to file
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write file header to stream");
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write media file header to stream");
         return os;
     }
 
-    auto Vid2h::readFileHeader(std::istream &is) -> FileHeader
+    auto writeVideoFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded) -> std::ostream &
+    {
+        static_assert(sizeof(FileHeader) % 4 == 0);
+        // generate file header
+        FileHeader fileHeader;
+        fileHeader.magic = IO::Vid2h::Magic;
+        fileHeader.contentType = IO::FileType::Video;
+        // add video information
+        fileHeader = addInfoToFileHeader(fileHeader, imageInfo, videoNrOfFrames, videoFrameRateHz, videoMemoryNeeded);
+        // store to file
+        os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write video file header to stream");
+        return os;
+    }
+
+    auto writeAudioFileHeader(std::ostream &os, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
+    {
+        static_assert(sizeof(FileHeader) % 4 == 0);
+        // generate file header
+        FileHeader fileHeader;
+        fileHeader.magic = IO::Vid2h::Magic;
+        fileHeader.contentType = IO::FileType::Audio;
+        // add audio information
+        fileHeader = addInfoToFileHeader(fileHeader, audioInfo, audioNrOfSamples, audioOffsetSamples, audioMemoryNeeded);
+        // store to file
+        os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write media file header to stream");
+        return os;
+    }
+
+    auto readFileHeader(std::istream &is) -> FileHeader
     {
         FileHeader fileHeader;
         is.read(reinterpret_cast<char *>(&fileHeader), sizeof(FileHeader));
@@ -98,7 +154,7 @@ namespace IO
         return fileHeader;
     }
 
-    auto Vid2h::readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<IO::FrameType, std::vector<uint8_t>>
+    auto readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<IO::FrameType, std::vector<uint8_t>>
     {
         // read frame header
         FrameHeader frameHeader;
@@ -126,7 +182,7 @@ namespace IO
         return {IO::FrameType(frameHeader.dataType), frameData};
     }
 
-    auto Vid2h::splitChunk(std::vector<uint8_t> &data) -> std::pair<ChunkHeader, std::vector<uint8_t>>
+    auto splitChunk(std::vector<uint8_t> &data) -> std::pair<ChunkHeader, std::vector<uint8_t>>
     {
         static_assert(sizeof(ChunkHeader) % 4 == 0);
         REQUIRE(data.size() > sizeof(ChunkHeader), std::runtime_error, "Bad data size");

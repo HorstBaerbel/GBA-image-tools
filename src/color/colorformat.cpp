@@ -10,6 +10,7 @@
 #include "xrgb8888.h"
 #include "ycgcorf.h"
 
+#include <algorithm>
 #include <map>
 
 namespace Color

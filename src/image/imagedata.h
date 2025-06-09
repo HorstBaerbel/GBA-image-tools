@@ -9,10 +9,10 @@
 #include "color/xrgb1555.h"
 #include "color/xrgb8888.h"
 #include "color/ycgcorf.h"
-#include "datahelpers.h"
 #include "datasize.h"
 #include "exception.h"
 #include "pixeldata.h"
+#include "processing/datahelpers.h"
 
 #include <cstdint>
 #include <vector>

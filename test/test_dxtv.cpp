@@ -33,15 +33,15 @@ static constexpr float ImageQualityDXT4x4 = 99;
 TEST_SUITE("DXTV")
 
 /// @brief Encode/decode single 8x8 block as DXTV
-auto testEncodeBlock(const Image::Data &data, const float quality, const float allowedPsnr, bool swapToBGR) -> void
+auto testEncodeBlock(const Image::Frame &data, const float quality, const float allowedPsnr, bool swapToBGR) -> void
 {
     // input image
-    const auto size = data.image.size;
-    auto currentCodeBook = DXTV::CodeBook8x8(data.image.data.pixels().convertData<Color::XRGB8888>(), size.width(), size.height(), false);
+    const auto size = data.info.size;
+    auto currentCodeBook = DXTV::CodeBook8x8(data.data.pixels().convertData<Color::XRGB8888>(), size.width(), size.height(), false);
     auto &inBlock = currentCodeBook.block(0);
     const auto inPixels = inBlock.pixels();
     // output image
-    std::vector<Color::XRGB8888> outImage(data.image.data.pixels().size());
+    std::vector<Color::XRGB8888> outImage(data.data.pixels().size());
     // compress block
     auto [blockSplitFlag, compressedData] = DXTV::encodeBlock<DXTV::BLOCK_MAX_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, DXTV::BLOCK_MAX_DIM>(), inBlock, quality, swapToBGR);
     // uncompress block
@@ -68,11 +68,11 @@ auto testEncodeBlock(const Image::Data &data, const float quality, const float a
 }
 
 /// @brief Encode/decode single image as DXTV
-auto testEncode(const Image::Data &data, const float quality, const float allowedPsnr, bool swapToBGR) -> void
+auto testEncode(const Image::Frame &data, const float quality, const float allowedPsnr, bool swapToBGR) -> void
 {
     // input image
-    const auto size = data.image.size;
-    const auto inPixels = data.image.data.pixels().convertData<Color::XRGB8888>();
+    const auto size = data.info.size;
+    const auto inPixels = data.data.pixels().convertData<Color::XRGB8888>();
     // compress image
     const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, {}, size.width(), size.height(), quality, swapToBGR);
     auto outPixels = DXTV::decode(compressedData, {}, size.width(), size.height(), swapToBGR);
@@ -105,7 +105,7 @@ TEST_CASE("EncodeDecodeImage")
 
 TEST_CASE("EncodeDecodeVideo")
 {
-    std::vector<Image::Data> images;
+    std::vector<Image::Frame> images;
     for (const auto &file : SequenceFiles)
     {
         images.push_back(IO::File::readImage(DataPathGBAVideos + file));
@@ -116,8 +116,8 @@ TEST_CASE("EncodeDecodeVideo")
     for (const auto &data : images)
     {
         // input image
-        const auto size = data.image.size;
-        const auto inPixels = data.image.data.pixels().convertData<Color::XRGB8888>();
+        const auto size = data.info.size;
+        const auto inPixels = data.data.pixels().convertData<Color::XRGB8888>();
         // compress image
         const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, prevPixels, size.width(), size.height(), ImageQualityDXT8x8, swapToBGR);
         auto outPixels = DXTV::decode(compressedData, prevPixels, size.width(), size.height(), swapToBGR);
