@@ -2,8 +2,7 @@
 
 #include "memory/memory.h"
 #include "sys/base.h"
-#include "videodecoder.h"
-#include "videoreader.h"
+#include "vid2hdecoder.h"
 
 #include <gba_interrupt.h>
 #include <gba_timers.h>
@@ -14,13 +13,13 @@
 #include "time.h"
 #endif
 
-namespace Video
+namespace Media
 {
 
     IWRAM_DATA uint32_t *m_scratchPad = nullptr;
     IWRAM_DATA uint32_t m_scratchPadSize = 0;
-    IWRAM_DATA Info m_videoInfo;
-    IWRAM_DATA Frame m_videoFrame;
+    IWRAM_DATA IO::Vid2h::Info m_videoInfo;
+    IWRAM_DATA IO::Vid2h::Frame m_videoFrame;
     IWRAM_DATA bool m_playing = false;
     IWRAM_DATA const uint32_t *m_decodedFrame = nullptr;
     IWRAM_DATA uint32_t m_decodedFrameSize = 0;
@@ -37,41 +36,38 @@ namespace Video
 #endif
 
     IWRAM_DATA volatile int32_t m_framesRequested = 0;
-    IWRAM_FUNC auto frameRequest() -> void
+    IWRAM_FUNC auto FrameRequest() -> void
     {
         ++m_framesRequested;
     }
 
-    auto init(const uint32_t *videoSrc, uint32_t *scratchPad, uint32_t scratchPadSize) -> void
+    auto Init(const uint32_t *videoSrc, uint32_t *scratchPad, uint32_t scratchPadSize) -> void
     {
         m_scratchPad = scratchPad;
         m_scratchPadSize = scratchPadSize;
         // read file header
-        m_videoInfo = Video::GetInfo(videoSrc);
-        auto bytesPerPixel = (m_videoInfo.bitsPerPixel + 7) / 8;
-        m_decodedFrameSize = m_videoInfo.width * m_videoInfo.height * bytesPerPixel;
+        m_videoInfo = IO::Vid2h::GetInfo(videoSrc);
+        auto bytesPerPixel = (m_videoInfo.videoBitsPerPixel + 7) / 8;
+        m_decodedFrameSize = m_videoInfo.videoWidth * m_videoInfo.videoHeight * bytesPerPixel;
     }
 
-    auto setClearColor(uint16_t color) -> void
+    auto SetClearColor(uint16_t color) -> void
     {
         m_clearColor = static_cast<uint32_t>(color) << 16 | color;
     }
 
-    auto getInfo() -> const Video::Info &
+    auto GetInfo() -> const IO::Vid2h::Info &
     {
         return m_videoInfo;
     }
 
-    auto play() -> void
+    auto Play() -> void
     {
         if (!m_playing)
         {
             m_videoFrame.index = -1;
-            m_videoFrame.frame = nullptr;
+            m_videoFrame.header = nullptr;
             m_videoFrame.data = nullptr;
-            m_videoFrame.pixelDataSize = 0;
-            m_videoFrame.colorMapDataSize = 0;
-            m_videoFrame.audioDataSize = 0;
             m_playing = true;
             m_framesDecoded = 0;
             m_framesRequested = 1;
@@ -85,19 +81,19 @@ namespace Video
             Time::start();
 #endif
             // fill background and scratch pad to clear color
-            Memory::memset32((void *)VRAM, m_clearColor, m_videoInfo.width * m_videoInfo.height / 2);
+            Memory::memset32((void *)VRAM, m_clearColor, m_videoInfo.videoWidth * m_videoInfo.videoHeight / 2);
             Memory::memset32(m_scratchPad, m_clearColor, m_scratchPadSize / 4);
             // set up timer to increase with frame interval
-            irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
+            irqSet(irqMASKS::IRQ_TIMER2, FrameRequest);
             irqEnable(irqMASKS::IRQ_TIMER2);
             // Timer interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
-            REG_TM2CNT_L = 65536U - ((uint64_t(65536U) << 16) / m_videoInfo.fps);
+            REG_TM2CNT_L = 65536U - ((uint64_t(65536U) << 16) / m_videoInfo.videoFrameRateHz);
             // Timer divider 2 == 256 -> 16*1024*1024 cycles/s / 256 = 65536/s
             REG_TM2CNT_H = TIMER_START | TIMER_IRQ | 2;
         }
     }
 
-    auto stop() -> void
+    auto Stop() -> void
     {
         if (m_playing)
         {
@@ -113,12 +109,12 @@ namespace Video
         }
     }
 
-    IWRAM_FUNC auto hasMoreFrames() -> bool
+    IWRAM_FUNC auto HasMoreFrames() -> bool
     {
-        return m_playing && m_videoFrame.index < static_cast<int32_t>(m_videoInfo.nrOfFrames - 1);
+        return m_playing && m_videoFrame.index < static_cast<int32_t>(m_videoInfo.videoNrOfFrames - 1);
     }
 
-    IWRAM_FUNC auto decodeAndBlitFrame(uint32_t *dst) -> void
+    IWRAM_FUNC auto DecodeAndBlitFrame(uint32_t *dst) -> void
     {
         if (m_playing)
         {
@@ -131,7 +127,7 @@ namespace Video
                 // read next frame from data
                 m_videoFrame = GetNextFrame(m_videoInfo, m_videoFrame);
                 // uncompress frame
-                m_decodedFrame = decode(m_scratchPad, m_scratchPadSize, m_videoInfo, m_videoFrame);
+                m_decodedFrame = Decode(m_scratchPad, m_scratchPadSize, m_videoInfo, m_videoFrame);
 #ifdef DEBUG_PLAYER
                 auto duration = Time::now() * 1000 - startTime * 1000;
                 m_accFrameDecodeMs += duration;

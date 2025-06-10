@@ -24,22 +24,24 @@ int main()
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
 	// set up video system, clear color and read file header
-	Video::init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), ScratchPad, sizeof(ScratchPad));
-	Video::setClearColor(0);
+	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), ScratchPad, sizeof(ScratchPad));
+	Media::SetClearColor(0);
 	// print video info
-	const auto &videoInfo = Video::getInfo();
+	const auto &videoInfo = Media::GetInfo();
 	TUI::printf(0, 0, "Video decompression demo");
-	TUI::printf(0, 2, "Frames: %d, Fps: %f", videoInfo.nrOfFrames, videoInfo.fps);
+	TUI::printf(0, 2, "Frames: %d, Fps: %f", videoInfo.videoNrOfFrames, videoInfo.videoFrameRateHz);
 	TUI::printf(0, 3, "Size: %d kB", VIDEO_DATA_SIZE / 1024);
-	TUI::printf(0, 4, "Resolution: %dx%d", videoInfo.width, videoInfo.height);
-	TUI::printf(0, 5, "Bits / pixel: %d", videoInfo.bitsPerPixel);
-	TUI::printf(0, 6, "Colors in colormap: %d", videoInfo.colorMapEntries);
-	TUI::printf(0, 7, "Bits / color: %d", videoInfo.bitsPerColor);
-	TUI::printf(0, 8, "Red-Blue swapped: %b", videoInfo.swappedRedBlue);
+	TUI::printf(0, 4, "Resolution: %dx%d", videoInfo.videoWidth, videoInfo.videoHeight);
+	TUI::printf(0, 5, "Bits / pixel: %d", videoInfo.videoBitsPerPixel);
+	TUI::printf(0, 6, "Colors in colormap: %d", videoInfo.videoColorMapEntries);
+	TUI::printf(0, 7, "Bits / color: %d", videoInfo.videoBitsPerColor);
+	TUI::printf(0, 8, "Red-Blue swapped: %b", videoInfo.videoSwappedRedBlue);
 	TUI::printf(0, 9, "Video mem needed: %d Byte", videoInfo.videoMemoryNeeded);
-	TUI::printf(0, 11, "Audio format: %d Hz, %d Bit", videoInfo.audioSampleRate, videoInfo.audioSampleBits);
-	TUI::printf(0, 12, "Audio codec: %d", videoInfo.audioCodec);
-	TUI::printf(0, 13, "Audio mem needed: %d Byte", videoInfo.audioMemoryNeeded);
+	TUI::printf(0, 11, "Audio samples: %d", videoInfo.audioNrOfSamples);
+	TUI::printf(0, 12, "Audio sample rate: %d Hz", videoInfo.audioSampleRateHz);
+	TUI::printf(0, 13, "Audio sample depth: %d-bit", videoInfo.audioSampleBits);
+	TUI::printf(0, 14, "Audio channels: %d", videoInfo.audioChannels);
+	TUI::printf(0, 15, "Audio mem needed: %d Byte", videoInfo.audioMemoryNeeded);
 	TUI::printf(0, 19, "       Press A to play");
 	// wait for keypress
 	do
@@ -53,13 +55,13 @@ int main()
 	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
 	// start main loop
-	Video::play();
+	Media::Play();
 	do
 	{
-		Video::decodeAndBlitFrame((uint32_t *)VRAM);
-		if (!Video::hasMoreFrames())
+		Media::DecodeAndBlitFrame((uint32_t *)VRAM);
+		if (!Media::HasMoreFrames())
 		{
-			Video::stop();
+			Media::Stop();
 			do
 			{
 				scanKeys();
@@ -68,7 +70,7 @@ int main()
 					break;
 				}
 			} while (true);
-			Video::play();
+			Media::Play();
 		}
 	} while (true);
 	return 0;

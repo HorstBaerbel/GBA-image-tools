@@ -421,6 +421,10 @@ int main(int argc, const char *argv[])
                 }
                 ++videoFrameIndex;
             }
+            else if (frame.frameType == IO::FrameType::Audio)
+            {
+                std::cout << "Audio frame" << std::endl;
+            }
             // calculate progress
             uint32_t newProgress = ((100 * videoFrameIndex) / mediaInfo.videoNrOfFrames);
             if (lastProgress != newProgress)
@@ -443,13 +447,11 @@ int main(int argc, const char *argv[])
             binFile.close();
         }
         // output some info about data
-        const bool allColorMapsSame = false;
-        const uint32_t maxColorMapColors = options.paletted ? (options.pruneIndices ? 16 : (options.paletted.value + (options.addColor0 ? 1 : 0))) : 0;
         const auto inputSize = mediaInfo.videoWidth * mediaInfo.videoHeight * 3 * mediaInfo.videoNrOfFrames;
         std::cout << "Input size: " << static_cast<double>(inputSize) / (1024 * 1024) << " MB" << std::endl;
         std::cout << "Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(videoCompressedSize) / (1024 * 1024) << " MB" << std::endl;
         std::cout << "Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(videoCompressedSize) / 1024) / mediaInfo.videoDurationS << " kB/s" << std::endl;
-        std::cout << "Avg. frame size: " << std::fixed << std::setprecision(1) << static_cast<double>(videoCompressedSize) / mediaInfo.videoNrOfFrames << " Byte" << std::endl;
+        std::cout << "Avg. frame size: " << videoCompressedSize / mediaInfo.videoNrOfFrames << " Byte" << std::endl;
         std::cout << "Max. intermediate memory for decompression: " << videoMaxMemoryNeeded << " Byte" << std::endl;
     }
     catch (const std::runtime_error &e)

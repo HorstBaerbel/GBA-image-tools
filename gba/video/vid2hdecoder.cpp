@@ -1,4 +1,4 @@
-#include "videodecoder.h"
+#include "vid2hdecoder.h"
 
 #include "codec_dxtv.h"
 #include "compression/lz77.h"
@@ -6,25 +6,25 @@
 #include "sys/base.h"
 #include "sys/decompress.h"
 
-#include "processing/processingtypes.h"
+#include "image/processingtype.h"
 
-namespace Video
+namespace Media
 {
 
-    IWRAM_FUNC auto decode(uint32_t *scratchPad, uint32_t scratchPadSize, const Info &info, const Frame &frame) -> const uint32_t *
+    IWRAM_FUNC auto Decode(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *
     {
-        static_assert(sizeof(ChunkHeader) % 4 == 0);
+        static_assert(sizeof(IO::Vid2h::ChunkHeader) % 4 == 0);
         // get pointer to start of data chunk. audio data is stored first
-        auto currentChunk = frame.data + frame.audioDataSize / 4;
+        auto currentChunk = frame.data;
         uint32_t *currentDst = nullptr;
         do
         {
-            const auto chunk = reinterpret_cast<const ChunkHeader *>(currentChunk);
+            const auto chunk = reinterpret_cast<const IO::Vid2h::ChunkHeader *>(currentChunk);
             const auto isFinal = (chunk->processingType & Image::ProcessingTypeFinal) != 0;
             // get size of output data in words
             const auto uncompressedSize32 = isFinal ? (info.imageSize + 3) / 4 : (chunk->uncompressedSize + 3) / 4;
             // get pointer to start of frame data
-            auto currentSrc = currentChunk + sizeof(ChunkHeader) / 4;
+            auto currentSrc = currentChunk + sizeof(IO::Vid2h::ChunkHeader) / 4;
             // if we're reading from start of scratchpad, write to the end and vice versa
             currentDst = currentChunk == scratchPad ? scratchPad + ((scratchPadSize / 4) - uncompressedSize32) : scratchPad;
             // check wether destination is in VRAM (no 8-bit writes possible)
@@ -42,7 +42,7 @@ namespace Video
                 dstInVRAM ? BIOS::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
                 break;
             case Image::ProcessingType::CompressDXTV:
-                DXTV::UnCompWrite16bit<240>(currentSrc, currentDst, (const uint32_t *)VRAM, info.width, info.height);
+                DXTV::UnCompWrite16bit<240>(currentSrc, currentDst, (const uint32_t *)VRAM, info.videoWidth, info.videoHeight);
                 break;
             default:
                 return currentDst;

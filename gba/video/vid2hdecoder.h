@@ -1,8 +1,8 @@
 #pragma once
 
-#include "videostructs.h"
+#include "vid2hio.h"
 
-namespace Video
+namespace Media
 {
 
     /// @brief Decode frame to scratchPad, possibly using a scratchPad as intermediate memory
@@ -11,5 +11,5 @@ namespace Video
     /// @param info Static video info
     /// @param frame Video frame to decode
     /// @return Returns pointer to decoded frame
-    auto decode(uint32_t *scratchPad, uint32_t scratchPadSize, const Info &info, const Frame &frame) -> const uint32_t *;
+    auto Decode(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *;
 }
