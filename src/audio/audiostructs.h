@@ -17,7 +17,7 @@ namespace Audio
     struct FrameInfo
     {
         uint32_t sampleRateHz = 0;
-        uint32_t channels = 0;
+        ChannelFormat channelFormat = ChannelFormat::Unknown;
         SampleFormat sampleFormat = SampleFormat::Unknown;
         bool compressed = false;      // Flag if raw or compressed data is stored
         uint32_t maxMemoryNeeded = 0; // Max. intermediate memory needed to process the audio. 0 if it can be directly written to destination (single processing stage)

@@ -82,14 +82,16 @@ namespace IO::Vid2h
         return outHeader;
     }
 
-    auto addInfoToFileHeader(const FileHeader &inHeader, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> FileHeader
+    auto addInfoToFileHeader(const FileHeader &inHeader, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> FileHeader
     {
         FileHeader outHeader = inHeader;
         // add audio information
+        const auto &channelInfo = Audio::formatInfo(audioInfo.channelFormat);
         const auto &sampleInfo = Audio::formatInfo(audioInfo.sampleFormat);
+        outHeader.audioNrOfFrames = audioNrOfFrames;
         outHeader.audioNrOfSamples = audioNrOfSamples;
         outHeader.audioSampleRateHz = audioInfo.sampleRateHz;
-        outHeader.audioChannels = audioInfo.channels;
+        outHeader.audioChannels = channelInfo.nrOfChannels;
         outHeader.audioSampleBits = sampleInfo.bitsPerSample;
         REQUIRE(audioOffsetSamples >= std::numeric_limits<int16_t>::min() && audioOffsetSamples <= std::numeric_limits<int16_t>::max(), std::runtime_error, "Audio offset needed must be in [" << std::numeric_limits<int16_t>::min() << "," << std::numeric_limits<int16_t>::max() << "]");
         outHeader.audioOffsetSamples = audioOffsetSamples;
@@ -98,7 +100,7 @@ namespace IO::Vid2h
         return outHeader;
     }
 
-    auto writeMediaFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
+    auto writeMediaFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
         // generate file header
@@ -108,7 +110,7 @@ namespace IO::Vid2h
         // add video information
         fileHeader = addInfoToFileHeader(fileHeader, imageInfo, videoNrOfFrames, videoFrameRateHz, videoMemoryNeeded);
         // add audio information
-        fileHeader = addInfoToFileHeader(fileHeader, audioInfo, audioNrOfSamples, audioOffsetSamples, audioMemoryNeeded);
+        fileHeader = addInfoToFileHeader(fileHeader, audioInfo, audioNrOfFrames, audioNrOfSamples, audioOffsetSamples, audioMemoryNeeded);
         // store to file
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write media file header to stream");
@@ -130,7 +132,7 @@ namespace IO::Vid2h
         return os;
     }
 
-    auto writeAudioFileHeader(std::ostream &os, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
+    auto writeAudioFileHeader(std::ostream &os, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
         // generate file header
@@ -138,7 +140,7 @@ namespace IO::Vid2h
         fileHeader.magic = IO::Vid2h::Magic;
         fileHeader.contentType = IO::FileType::Audio;
         // add audio information
-        fileHeader = addInfoToFileHeader(fileHeader, audioInfo, audioNrOfSamples, audioOffsetSamples, audioMemoryNeeded);
+        fileHeader = addInfoToFileHeader(fileHeader, audioInfo, audioNrOfFrames, audioNrOfSamples, audioOffsetSamples, audioMemoryNeeded);
         // store to file
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write media file header to stream");

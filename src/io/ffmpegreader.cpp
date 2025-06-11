@@ -234,6 +234,7 @@ namespace Media
         if (m_state->audioStreamIndex >= 0 && m_state->audioCodec != nullptr)
         {
             m_info.fileType = static_cast<IO::FileType>(static_cast<uint8_t>(m_info.fileType) | IO::FileType::Audio);
+            m_info.audioNrOfFrames = static_cast<uint32_t>(m_state->audioNrOfFrames);
             m_info.audioNrOfSamples = static_cast<uint32_t>(m_state->audioDuration);
             m_info.audioDurationS = static_cast<double>(m_state->audioDuration) * static_cast<double>(m_state->audioTimeBase.num) / static_cast<double>(m_state->audioTimeBase.den);
             m_info.audioCodecName = m_state->audioCodecName;
