@@ -317,6 +317,45 @@ ProcessingOptions::Option ProcessingOptions::interleavePixels{
     false,
     {"interleavepixels", "Interleave pixels from different images into one array.", cxxopts::value(interleavePixels.isSet)}};
 
+ProcessingOptions::OptionT<uint32_t> ProcessingOptions::sampleRateHz{
+    false,
+    {"samplerate", "Set audio sample rate in Hz. Must be in [4000, 48000].", cxxopts::value(sampleRateHz.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(sampleRateHz.cxxOption.opts_))
+        {
+            REQUIRE(sampleRateHz.value >= 4000 && sampleRateHz.value <= 48000, std::runtime_error, "Audio sample rate must be in [4000, 48000] Hz");
+            sampleRateHz.isSet = true;
+        }
+    }};
+
+ProcessingOptions::OptionT<Audio::ChannelFormat> ProcessingOptions::channelFormat{
+    false,
+    {"channelformat", "Set audio channel format. Options are mono or stereo", cxxopts::value(channelFormat.valueString)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(channelFormat.cxxOption.opts_))
+        {
+            if (channelFormat.valueString == "mono")
+            {
+                channelFormat.value = Audio::ChannelFormat::Mono;
+            }
+            else if (channelFormat.valueString == "stereo")
+            {
+                channelFormat.value = Audio::ChannelFormat::Stereo;
+            }
+            else
+            {
+                THROW(std::runtime_error, "Audio channel format must be mono or stereo if specified");
+            }
+            channelFormat.isSet = true;
+        }
+    }};
+
 ProcessingOptions::Option ProcessingOptions::dryRun{
     false,
     {"dryrun", "Process data, but do not write output files.", cxxopts::value(dryRun.isSet)}};
