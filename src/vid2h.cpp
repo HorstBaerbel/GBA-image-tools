@@ -222,7 +222,7 @@ int main(int argc, const char *argv[])
             mediaInfo = mediaReader.getInfo();
             std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
             std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
-            std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << mediaInfo.audioChannels << " channels, " << mediaInfo.audioSampleRateHz << " Hz, ";
+            std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).name << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
             std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).name;
             std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
         }
@@ -232,10 +232,10 @@ int main(int argc, const char *argv[])
             return 1;
         }
         // build processing pipeline - input
-        Image::Processing processing;
+        Image::Processing imageProcessing;
         if (options.blackWhite)
         {
-            processing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.quantizationmethod.value, options.blackWhite.value});
+            imageProcessing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.quantizationmethod.value, options.blackWhite.value});
         }
         else if (options.paletted)
         {
@@ -252,7 +252,7 @@ int main(int argc, const char *argv[])
             default:
                 colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
             }
-            processing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, colorSpaceMap});
+            imageProcessing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, colorSpaceMap});
         }
         else if (options.commonPalette)
         {
@@ -269,76 +269,76 @@ int main(int argc, const char *argv[])
             default:
                 colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
             }
-            processing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, colorSpaceMap});
+            imageProcessing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, colorSpaceMap});
         }
         else if (options.truecolor)
         {
-            processing.addStep(Image::ProcessingType::ConvertTruecolor, {options.truecolor.value});
+            imageProcessing.addStep(Image::ProcessingType::ConvertTruecolor, {options.truecolor.value});
         }
         // build processing pipeline - conversion
         if (options.paletted)
         {
-            processing.addStep(Image::ProcessingType::ReorderColors, {});
+            imageProcessing.addStep(Image::ProcessingType::ReorderColors, {});
             if (options.addColor0)
             {
-                processing.addStep(Image::ProcessingType::AddColor0, {options.addColor0.value});
+                imageProcessing.addStep(Image::ProcessingType::AddColor0, {options.addColor0.value});
             }
             if (options.moveColor0)
             {
-                processing.addStep(Image::ProcessingType::MoveColor0, {options.moveColor0.value});
+                imageProcessing.addStep(Image::ProcessingType::MoveColor0, {options.moveColor0.value});
             }
             if (options.shiftIndices)
             {
-                processing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
+                imageProcessing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
             }
             if (options.pruneIndices)
             {
-                processing.addStep(Image::ProcessingType::PruneIndices, {});
+                imageProcessing.addStep(Image::ProcessingType::PruneIndices, {});
                 // TODO store 1, 2, 4 bits
-                processing.addStep(Image::ProcessingType::PadColorMap, {uint32_t(16)});
+                imageProcessing.addStep(Image::ProcessingType::PadColorMap, {uint32_t(16)});
             }
             else
             {
-                processing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
+                imageProcessing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMapToRaw, {options.outformat.value});
-            processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
+            imageProcessing.addStep(Image::ProcessingType::ConvertColorMapToRaw, {options.outformat.value});
+            imageProcessing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)
         {
-            processing.addStep(Image::ProcessingType::ConvertSprites, {options.sprites.value.front()});
+            imageProcessing.addStep(Image::ProcessingType::ConvertSprites, {options.sprites.value.front()});
         }
         if (options.tiles)
         {
-            processing.addStep(Image::ProcessingType::ConvertTiles, {});
+            imageProcessing.addStep(Image::ProcessingType::ConvertTiles, {});
         }
         // image compression
         if (options.deltaImage)
         {
-            processing.addStep(Image::ProcessingType::DeltaImage, {});
+            imageProcessing.addStep(Image::ProcessingType::DeltaImage, {});
         }
         if (options.dxt)
         {
-            processing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value}, true, true);
+            imageProcessing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value}, true, true);
         }
         if (options.dxtv)
         {
-            processing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, true);
+            imageProcessing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, true);
         }
         /*if (options.gvid)
         {
             processing.addStep(Image::ProcessingType::CompressGVID, {}, true, true);
         }*/
         // convert to raw data (only if not raw data already)
-        processing.addStep(Image::ProcessingType::ConvertPixelsToRaw, {options.outformat.value});
+        imageProcessing.addStep(Image::ProcessingType::ConvertPixelsToRaw, {options.outformat.value});
         // entropy compression
         if (options.delta8)
         {
-            processing.addStep(Image::ProcessingType::ConvertDelta8, {});
+            imageProcessing.addStep(Image::ProcessingType::ConvertDelta8, {});
         }
         if (options.delta16)
         {
-            processing.addStep(Image::ProcessingType::ConvertDelta16, {});
+            imageProcessing.addStep(Image::ProcessingType::ConvertDelta16, {});
         }
         /*if (options.rle)
         {
@@ -346,11 +346,11 @@ int main(int argc, const char *argv[])
         }*/
         if (options.lz10)
         {
-            processing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true);
+            imageProcessing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true);
         }
-        processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
+        imageProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
         // print image processing pipeline configuration
-        const auto processingDescription = processing.getProcessingDescription();
+        const auto processingDescription = imageProcessing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;
         // check if we want to write output files
         std::ofstream binFile;
@@ -410,7 +410,7 @@ int main(int argc, const char *argv[])
                 // build internal image from pixels and apply processing
                 Image::FrameInfo imageInfo = {{mediaInfo.videoWidth, mediaInfo.videoHeight}, Color::Format::Unknown, Color::Format::Unknown, 0, 0};
                 Image::MapInfo mapInfo = {{0, 0}, {}};
-                auto data = processing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, image, mapInfo}, statistics);
+                auto data = imageProcessing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, image, mapInfo}, statistics);
                 videoCompressedSize += data.data.pixels().rawSize() + (options.paletted ? data.data.colorMap().rawSize() : 0);
                 videoMaxMemoryNeeded = videoMaxMemoryNeeded < data.info.maxMemoryNeeded ? data.info.maxMemoryNeeded : videoMaxMemoryNeeded;
                 // write image to file
@@ -423,7 +423,7 @@ int main(int argc, const char *argv[])
             }
             else if (frame.frameType == IO::FrameType::Audio)
             {
-                std::cout << "Audio frame" << std::endl;
+                // std::cout << "Audio frame" << std::endl;
             }
             // calculate progress
             uint32_t newProgress = ((100 * videoFrameIndex) / mediaInfo.videoNrOfFrames);

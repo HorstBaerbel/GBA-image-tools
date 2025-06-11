@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sampleformat.h"
+#include "audioformat.h"
 
 #include <cstdint>
 #include <vector>

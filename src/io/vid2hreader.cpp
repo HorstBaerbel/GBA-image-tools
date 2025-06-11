@@ -47,7 +47,8 @@ namespace Media
             m_info.audioCodecName = "vid2h";
             m_info.audioStreamIndex = 0;
             m_info.audioSampleRateHz = m_fileHeader.audioSampleRateHz;
-            m_info.audioChannels = m_fileHeader.audioChannels;
+            REQUIRE(m_fileHeader.audioChannels == 1 || m_fileHeader.audioChannels == 2, std::runtime_error, "Number of audio channels must 1 or 2");
+            m_info.audioChannelFormat = m_fileHeader.audioChannels == 1 ? Audio::ChannelFormat::Mono : Audio::ChannelFormat::Stereo;
             m_info.audioSampleFormat = Audio::findFormat(m_fileHeader.audioSampleBits, true);
             m_info.audioOffsetS = static_cast<double>(m_fileHeader.audioOffsetSamples) / static_cast<double>(m_fileHeader.audioSampleRateHz);
         }

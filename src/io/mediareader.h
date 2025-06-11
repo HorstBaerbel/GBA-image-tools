@@ -1,6 +1,6 @@
 #pragma once
 
-#include "audio/sampleformat.h"
+#include "audio/audioformat.h"
 #include "color/xrgb8888.h"
 #include "mediatypes.h"
 
@@ -37,7 +37,7 @@ namespace Media
             std::string audioCodecName;
             uint32_t audioStreamIndex = 0;
             uint32_t audioSampleRateHz = 0; // Sample rate in Hz
-            uint32_t audioChannels = 0;   // Only mono = 1 or stereo = 2 supported
+            Audio::ChannelFormat audioChannelFormat = Audio::ChannelFormat::Unknown; // Only mono = 1 or stereo = 2 supported
             Audio::SampleFormat audioSampleFormat = Audio::SampleFormat::Unknown; // Description of bits and signed / unsigned in sample format
             double audioOffsetS = 0;                                              // Offset of audio relative to video in s
         };
