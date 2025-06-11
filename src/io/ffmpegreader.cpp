@@ -119,7 +119,7 @@ namespace Media
                 {
                     m_state->videoCodecParameters = codecParams;
                     m_state->videoCodec = codec;
-                    m_state->videoCodecName = avcodec_get_name(codecParams->codec_id);
+                    m_state->videoCodecName = codec->long_name;
                     m_state->videoStreamIndex = static_cast<int>(i);
                     m_state->videoWidth = codecParams->width;
                     m_state->videoHeight = codecParams->height;
@@ -144,7 +144,7 @@ namespace Media
                 {
                     m_state->audioCodecParameters = codecParams;
                     m_state->audioCodec = codec;
-                    m_state->audioCodecName = avcodec_get_name(codecParams->codec_id);
+                    m_state->audioCodecName = codec->long_name;
                     m_state->audioStreamIndex = static_cast<int>(i);
                     m_state->audioTimeBase = stream->time_base;
                     m_state->audioNrOfFrames = stream->nb_frames;
@@ -153,7 +153,7 @@ namespace Media
                     REQUIRE(codecParams->ch_layout.nb_channels > 0, std::runtime_error, "Number of audio channels must be > 0");
                     av_channel_layout_copy(&m_state->audioOutChannelLayout, codecParams->ch_layout.nb_channels == 1 ? &monoLayout : &stereoLayout);
                     m_state->audioOutSampleRate = codecParams->sample_rate;
-                    m_state->audioOutSampleFormat = AV_SAMPLE_FMT_S16;
+                    m_state->audioOutSampleFormat = AV_SAMPLE_FMT_S16P; // this is a planar format: L1 L2 ... R1 R2 ...
                     break;
                 }
             }
@@ -362,25 +362,35 @@ namespace Media
             const auto nrOfSamplesNeeded = av_rescale_rnd(swr_get_delay(m_state->audioSwrContext, m_state->audioCodecParameters->sample_rate) + m_state->frame->nb_samples, inSampleRate, inSampleRate, AV_ROUND_UP);
             if (nrOfSamplesNeeded > m_state->audioOutDataNrOfSamples)
             {
-                if (m_state->audioOutData[0])
+                if (m_state->audioOutData[0] != nullptr)
                 {
                     av_freep(&m_state->audioOutData[0]);
                     m_state->audioOutData[0] = nullptr;
                     m_state->audioOutData[1] = nullptr;
                     m_state->audioOutDataNrOfSamples = 0;
                 }
-                const auto allocateResult = av_samples_alloc(&m_state->audioOutData[0], nullptr, m_state->audioOutChannelLayout.nb_channels, nrOfSamplesNeeded, m_state->audioOutSampleFormat, 0);
+                const auto allocateResult = av_samples_alloc(&m_state->audioOutData[0], nullptr, m_state->audioOutChannelLayout.nb_channels, nrOfSamplesNeeded, m_state->audioOutSampleFormat, 1);
                 REQUIRE(allocateResult >= 0, std::runtime_error, "Failed to allocate audio conversion buffer: " << allocateResult);
                 m_state->audioOutDataNrOfSamples = nrOfSamplesNeeded;
             }
             // convert audio format using sw resampler
             const auto nrOfSamplesConverted = swr_convert(m_state->audioSwrContext, &m_state->audioOutData[0], m_state->audioOutDataNrOfSamples, m_state->frame->extended_data, m_state->frame->nb_samples);
             REQUIRE(nrOfSamplesConverted >= 0, std::runtime_error, "Failed to convert audio data: " << nrOfSamplesConverted);
-            const auto convertedBufferSize = av_samples_get_buffer_size(nullptr, m_state->audioOutChannelLayout.nb_channels, nrOfSamplesConverted, m_state->audioOutSampleFormat, 0);
-            REQUIRE(convertedBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples output to buffer: " << convertedBufferSize);
+            // get size of a raw, combined, byte buffer needed to hold all sample data of all channels
+            const auto convertedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->audioOutChannelLayout.nb_channels, nrOfSamplesConverted, m_state->audioOutSampleFormat, 1);
+            REQUIRE(convertedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples output to buffer: " << convertedRawBufferSize);
             // copy converted audio to frame data
-            std::vector<int16_t> frameData(convertedBufferSize);
-            std::memcpy(frameData.data(), m_state->audioOutData[0], convertedBufferSize);
+            std::vector<int16_t> frameData(convertedRawBufferSize / 2);
+            auto dataPtr = reinterpret_cast<uint8_t *>(frameData.data());
+            if (m_state->audioOutChannelLayout.nb_channels == 1)
+            {
+                std::memcpy(dataPtr, m_state->audioOutData[0], convertedRawBufferSize);
+            }
+            if (m_state->audioOutChannelLayout.nb_channels == 2)
+            {
+                std::memcpy(dataPtr, m_state->audioOutData[0], convertedRawBufferSize / 2);
+                std::memcpy(dataPtr + convertedRawBufferSize / 2, m_state->audioOutData[1], convertedRawBufferSize / 2);
+            }
             // release FFmpeg frame
             av_frame_unref(m_state->frame);
             return {IO::FrameType::Audio, frameData};

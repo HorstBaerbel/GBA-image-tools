@@ -6,8 +6,8 @@
 
 #include <cstdint>
 #include <string>
-#include <vector>
 #include <variant>
+#include <vector>
 
 namespace Media
 {
@@ -32,22 +32,22 @@ namespace Media
             Color::Format videoPixelFormat = Color::Format::Unknown;
             Color::Format videoColorMapFormat = Color::Format::Unknown;
             // ----- audio -----
-            uint32_t audioNrOfFrames = 0;  // Numbver of all audio frames in file (must not be the same as video frames)
-            uint32_t audioNrOfSamples = 0; // Number of all samples in file
+            uint32_t audioNrOfFrames = 0;  // Number of all audio frames in file (must not be the same as video frames)
+            uint32_t audioNrOfSamples = 0; // Number of all samples of all channels combined
             double audioDurationS = 0;     // Audio runtime in s
             std::string audioCodecName;
             uint32_t audioStreamIndex = 0;
-            uint32_t audioSampleRateHz = 0; // Sample rate in Hz
+            uint32_t audioSampleRateHz = 0;                                          // Sample rate in Hz
             Audio::ChannelFormat audioChannelFormat = Audio::ChannelFormat::Unknown; // Only mono = 1 or stereo = 2 supported
-            Audio::SampleFormat audioSampleFormat = Audio::SampleFormat::Unknown; // Description of bits and signed / unsigned in sample format
-            double audioOffsetS = 0;                                              // Offset of audio relative to video in s
+            Audio::SampleFormat audioSampleFormat = Audio::SampleFormat::Unknown;    // Description of bits and signed / unsigned in sample format
+            double audioOffsetS = 0;                                                 // Offset of audio relative to video in s
         };
 
         /// @brief Raw frame data returned when reading a media stream
         struct FrameData
         {
             IO::FrameType frameType = IO::FrameType::Unknown;                      // Data type
-            std::variant<std::vector<Color::XRGB8888>, std::vector<int16_t>> data; // Raw, uncompressed pixel or audio data
+            std::variant<std::vector<Color::XRGB8888>, std::vector<int16_t>> data; // Raw, uncompressed pixel or (planar) audio data
         };
 
         /// @brief Destruktor. Calls close()

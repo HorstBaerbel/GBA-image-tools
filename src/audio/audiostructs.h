@@ -29,8 +29,7 @@ namespace Audio
         uint32_t index = 0;   // Input frame index counter
         std::string fileName; // Input file name
         FrameInfo info;       // Frame information
-        AudioData dataLeft;   // Raw / compressed data of left or mono channel
-        AudioData dataRight;  // Raw / compressed data of right channel (or empty if mono audio)
+        AudioData data;       // Raw / compressed data of mono or (planar) stereo channels
     };
 
 }

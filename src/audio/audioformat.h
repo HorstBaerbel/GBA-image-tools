@@ -11,7 +11,7 @@ namespace Audio
     {
         Unknown = 0, // Bad format
         Mono = 1,    // Single channel
-        Stereo = 2   // Two channels
+        Stereo = 2   // Two (planar) channels
     };
 
     /// @brief Channel format information
