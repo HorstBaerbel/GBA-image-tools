@@ -22,7 +22,7 @@ namespace Media
             // ----- stream -----
             IO::FileType fileType = IO::FileType::Unknown;
             // ----- video -----
-            uint32_t videoNrOfFrames = 0; // Numbver of all video frames in file (must not be the same as audio frames)
+            uint32_t videoNrOfFrames = 0; // Numbver of all video frames (must not be the same as audio frames)
             double videoFrameRateHz = 0;  // Vide frame rate in Hz
             double videoDurationS = 0;    // Video runtime in s
             std::string videoCodecName;
@@ -32,8 +32,8 @@ namespace Media
             Color::Format videoPixelFormat = Color::Format::Unknown;
             Color::Format videoColorMapFormat = Color::Format::Unknown;
             // ----- audio -----
-            uint32_t audioNrOfFrames = 0;  // Number of all audio frames in file (must not be the same as video frames)
-            uint32_t audioNrOfSamples = 0; // Number of all samples of all channels combined
+            uint32_t audioNrOfFrames = 0;  // Number of all audio frames (must not be the same as video frames)
+            uint32_t audioNrOfSamples = 0; // Number of samples per channel
             double audioDurationS = 0;     // Audio runtime in s
             std::string audioCodecName;
             uint32_t audioStreamIndex = 0;

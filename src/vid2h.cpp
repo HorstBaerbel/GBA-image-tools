@@ -384,46 +384,81 @@ int main(int argc, const char *argv[])
         // process media frames
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
-        uint32_t videoFrameIndex = 0;
-        uint64_t videoCompressedSize = 0;
-        uint32_t videoMaxMemoryNeeded = 0;
-        Image::FrameInfo videoInfo;
-        uint32_t audioSampleIndex = 0;
-        uint64_t audioCompressedSize = 0;
-        uint32_t audioMaxMemoryNeeded = 0;
-        Audio::FrameInfo audioInfo;
-        while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioSampleIndex < mediaInfo.audioNrOfSamples)
+        // Video info
+        uint32_t videoFrameIndex = 0;      // Index of last frame processed
+        uint64_t videoCompressedSize = 0;  // Combined size of compressed video data
+        uint32_t videoMaxMemoryNeeded = 0; // Maximum memory needed for decoding video frames
+        Image::FrameInfo videoInfo;        // Information about video from media decoder
+        // Audio info
+        uint32_t audioFrameIndex = 0;                                                                 // Index of last audio frame processed
+        uint64_t audioCompressedSize = 0;                                                             // Combined size of compressed audio data
+        uint32_t audioMaxMemoryNeeded = 0;                                                            // Maximum memory needed for decoding audio frames
+        int32_t audioFirstFrameOffset = 0;                                                            // Offset of first audio frame in samples
+        const double audioSamplesPerFrame = mediaInfo.audioSampleRateHz / mediaInfo.videoFrameRateHz; // Number of audio samples per channel needed per frame of video
+        uint32_t audioSamplesLastFrame = 0;                                                           // Number of audio samples per channel in last frame
+        std::vector<int16_t> audioSampleBuffer0;                                                      // Buffer for mono / left channel audio samples from media decoder
+        std::vector<int16_t> audioSampleBuffer1;                                                      // Buffer for right channel audio samples from media decoder
+        Audio::FrameInfo audioInfo;                                                                   // Information about audio from media decoder
+        while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioFrameIndex < mediaInfo.audioNrOfFrames)
         {
-            const auto frame = mediaReader.readFrame();
+            const auto inFrame = mediaReader.readFrame();
             // check if EOF
-            if (frame.frameType == IO::FrameType::Unknown)
+            if (inFrame.frameType == IO::FrameType::Unknown)
             {
                 REQUIRE(videoFrameIndex == mediaInfo.videoNrOfFrames, std::runtime_error, "Expected " << mediaInfo.videoNrOfFrames << " video frames, but got " << videoFrameIndex);
-                REQUIRE(audioSampleIndex == mediaInfo.audioNrOfSamples, std::runtime_error, "Expected " << mediaInfo.audioNrOfSamples << " audio samples, but got " << audioSampleIndex);
+                REQUIRE(audioFrameIndex == mediaInfo.audioNrOfFrames, std::runtime_error, "Expected " << mediaInfo.audioNrOfFrames << " audio frames, but got " << audioFrameIndex);
                 break;
             }
             // check if image frame
-            if (frame.frameType == IO::FrameType::Pixels)
+            if (inFrame.frameType == IO::FrameType::Pixels)
             {
-                const auto &image = std::get<std::vector<Color::XRGB8888>>(frame.data);
-                REQUIRE(image.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected image size");
+                const auto &inImage = std::get<std::vector<Color::XRGB8888>>(inFrame.data);
+                REQUIRE(inImage.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected image size");
                 // build internal image from pixels and apply processing
                 Image::FrameInfo imageInfo = {{mediaInfo.videoWidth, mediaInfo.videoHeight}, Color::Format::Unknown, Color::Format::Unknown, 0, 0};
                 Image::MapInfo mapInfo = {{0, 0}, {}};
-                auto data = imageProcessing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, image, mapInfo}, statistics);
-                videoCompressedSize += data.data.pixels().rawSize() + (options.paletted ? data.data.colorMap().rawSize() : 0);
-                videoMaxMemoryNeeded = videoMaxMemoryNeeded < data.info.maxMemoryNeeded ? data.info.maxMemoryNeeded : videoMaxMemoryNeeded;
+                auto outFrame = imageProcessing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, inImage, mapInfo}, statistics);
+                videoCompressedSize += outFrame.data.pixels().rawSize() + (options.paletted ? outFrame.data.colorMap().rawSize() : 0);
+                videoMaxMemoryNeeded = videoMaxMemoryNeeded < outFrame.info.maxMemoryNeeded ? outFrame.info.maxMemoryNeeded : videoMaxMemoryNeeded;
                 // write image to file
                 if (!options.dryRun && binFile.is_open())
                 {
-                    videoInfo = data.info;
-                    IO::Vid2h::writeFrame(binFile, data);
+                    videoInfo = outFrame.info;
+                    IO::Vid2h::writeFrame(binFile, outFrame);
                 }
                 ++videoFrameIndex;
             }
-            else if (frame.frameType == IO::FrameType::Audio)
+            else if (inFrame.frameType == IO::FrameType::Audio)
             {
-                // std::cout << "Audio frame" << std::endl;
+                // copy frame samples to sample buffer
+                auto &inSamples = std::get<std::vector<int16_t>>(inFrame.data);
+                if (mediaInfo.audioChannelFormat == Audio::ChannelFormat::Mono)
+                {
+                    std::copy(inSamples.cbegin(), inSamples.cend(), std::back_inserter(audioSampleBuffer0));
+                }
+                else if (mediaInfo.audioChannelFormat == Audio::ChannelFormat::Stereo)
+                {
+                    std::copy(inSamples.cbegin(), std::next(inSamples.cbegin(), inSamples.size() / 2), std::back_inserter(audioSampleBuffer0));
+                    std::copy(std::next(inSamples.cbegin(), inSamples.size() / 2), inSamples.cend(), std::back_inserter(audioSampleBuffer1));
+                }
+                // check if we have enough samples or this is the last audio frame
+                if (audioFrameIndex == (mediaInfo.audioNrOfFrames - 1))
+                {
+                    // last frame. store the rest of our buffer
+                    Audio::Frame outFrame;
+                    // outFrame.data =
+                    IO::Vid2h::writeFrame(binFile, outFrame);
+                }
+                else
+                {
+                    // We need to provide enough samples for one frame of video at the video frame rate,
+                    // but also make sure audio frames size requirements are met:
+                    // * Multiple of 16 bytes for GBA audio playback
+                    // * Multiple of 4 bytes for NDS audio playback
+                    // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
+                    const double lastFrameExcessSamples = audioSamplesLastFrame;
+                }
+                ++audioFrameIndex;
             }
             // calculate progress
             uint32_t newProgress = ((100 * videoFrameIndex) / mediaInfo.videoNrOfFrames);
