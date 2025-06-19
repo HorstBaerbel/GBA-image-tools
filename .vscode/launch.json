@@ -41,11 +41,13 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
+                "--dryrun",
                 "--truecolor=rgb888",
                 "--outformat=bgr555",
-                "--dxtv=95",
-                "--lz10",
-                "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
+                "--dxtv=97",
+                //"--lz10",
+                "\"/home/raer/SynologyDrive/Programmieren/GameBoy/TAGABOW Singles/data/AMERICAN FOOD render 1 240x160.mp4\"",
+                //"\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
                 "video"
             ],
             "stopAtEntry": false,
@@ -65,6 +67,28 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "vid2h perf",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/perf",
+            "args": [
+                "record",
+                "${command:cmake.launchTargetPath}",
+                "--truecolor=rgb888",
+                "--outformat=bgr555",
+                "--dxtv=95",
+                "--lz10",
+                "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
+                "video"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": []
         },
         {
             "name": "vid2hplay debug",
