@@ -1,5 +1,7 @@
 #include "ffmpegreader.h"
 
+#include "exception.h"
+
 extern "C"
 {
 #include <inttypes.h>
@@ -14,13 +16,11 @@ extern "C"
 #include <iostream>
 #include <cstring>
 
-#include "exception.h"
-
 namespace Media
 {
 
-    static const AVChannelLayout monoLayout = AV_CHANNEL_LAYOUT_MONO;
-    static const AVChannelLayout stereoLayout = AV_CHANNEL_LAYOUT_STEREO;
+    static const AVChannelLayout MonoLayout = AV_CHANNEL_LAYOUT_MONO;
+    static const AVChannelLayout StereoLayout = AV_CHANNEL_LAYOUT_STEREO;
 
     static AVPixelFormat CorrectDeprecatedPixelFormat(AVPixelFormat format)
     {
@@ -40,8 +40,8 @@ namespace Media
         }
     }
 
-    /// @brief FFmpeg state for a video reader
-    struct FFmpegReader::ReaderState
+    /// @brief FFmpeg state for a media reader
+    struct FFmpegReader::State
     {
         AVFormatContext *formatContext = nullptr;
         // ---- video ----
@@ -79,7 +79,7 @@ namespace Media
     };
 
     FFmpegReader::FFmpegReader()
-        : m_state(std::make_shared<ReaderState>())
+        : m_state(std::make_shared<State>())
     {
     }
 
@@ -151,7 +151,7 @@ namespace Media
                     m_state->audioDuration = stream->duration;
                     m_state->audioStartTime = stream->start_time;
                     REQUIRE(codecParams->ch_layout.nb_channels > 0, std::runtime_error, "Number of audio channels must be > 0");
-                    av_channel_layout_copy(&m_state->audioOutChannelLayout, codecParams->ch_layout.nb_channels == 1 ? &monoLayout : &stereoLayout);
+                    av_channel_layout_copy(&m_state->audioOutChannelLayout, codecParams->ch_layout.nb_channels == 1 ? &MonoLayout : &StereoLayout);
                     m_state->audioOutSampleRate = codecParams->sample_rate;
                     m_state->audioOutSampleFormat = AV_SAMPLE_FMT_S16P; // this is a planar format: L1 L2 ... R1 R2 ...
                     break;

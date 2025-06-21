@@ -35,8 +35,8 @@ namespace Media
         virtual auto close() -> void override;
 
     private:
-        struct ReaderState;
-        std::shared_ptr<ReaderState> m_state;
+        struct State;
+        std::shared_ptr<State> m_state;
         MediaInfo m_info;
     };
 }
