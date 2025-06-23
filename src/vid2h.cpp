@@ -1,3 +1,4 @@
+#include "audio/resampler.h"
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "compression/lzss.h"
@@ -349,6 +350,11 @@ int main(int argc, const char *argv[])
             imageProcessing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true);
         }
         imageProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
+        // audio processing
+        auto resampler = std::make_shared<Audio::Resampler>();
+        if (options.channelFormat || options.sampleRateHz)
+        {
+        }
         // print image processing pipeline configuration
         const auto processingDescription = imageProcessing.getProcessingDescription();
         std::cout << "Applying processing: " << processingDescription << std::endl;
@@ -442,21 +448,45 @@ int main(int argc, const char *argv[])
                     std::copy(std::next(inSamples.cbegin(), inSamples.size() / 2), inSamples.cend(), std::back_inserter(audioSampleBuffer1));
                 }
                 // check if we have enough samples or this is the last audio frame
+                // We need to make sure audio frames size requirements are met:
+                // * Multiple of 16 int8_t samples per channel for GBA audio playback
+                // * Multiple of 4 bytes per channel for NDS audio playback
+                // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
                 if (audioFrameIndex == (mediaInfo.audioNrOfFrames - 1))
                 {
                     // last frame. store the rest of our buffer
+                    // padd data if it does not match the size requirements
                     Audio::Frame outFrame;
+                    outFrame.info = audioInfo;
                     // outFrame.data =
                     IO::Vid2h::writeFrame(binFile, outFrame);
                 }
                 else
                 {
-                    // We need to provide enough samples for one frame of video at the video frame rate,
-                    // but also make sure audio frames size requirements are met:
-                    // * Multiple of 16 bytes for GBA audio playback
-                    // * Multiple of 4 bytes for NDS audio playback
-                    // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
-                    const double lastFrameExcessSamples = audioSamplesLastFrame;
+                    // We need to provide enough samples for one frame of video at the video frame rate
+                    const double lastFrameExcessSamples = audioSamplesLastFrame - audioSamplesPerFrame;
+                    auto samplesNeededFromBuffer = static_cast<int32_t>(std::ceil(audioSamplesPerFrame - lastFrameExcessSamples));
+                    // round up to 16 samples
+                    if (samplesNeededFromBuffer % 16 != 0)
+                    {
+                        samplesNeededFromBuffer += 16 - (samplesNeededFromBuffer % 16);
+                    }
+                    Audio::Frame outFrame;
+                    outFrame.info = audioInfo;
+                    if (mediaInfo.audioChannelFormat == Audio::ChannelFormat::Mono)
+                    {
+                        if (samplesNeededFromBuffer <= audioSampleBuffer0.size())
+                        {
+                            // outFrame.data
+                        }
+                    }
+                    else if (mediaInfo.audioChannelFormat == Audio::ChannelFormat::Stereo)
+                    {
+                        if (samplesNeededFromBuffer <= audioSampleBuffer0.size() && samplesNeededFromBuffer <= audioSampleBuffer1.size())
+                        {
+                            // outFrame.data
+                        }
+                    }
                 }
                 ++audioFrameIndex;
             }
