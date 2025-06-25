@@ -102,12 +102,18 @@ namespace Audio
         }
     }
 
-    auto Resampler::resample(const Frame &inFrame) -> Frame
+    auto Resampler::getOutputFormat() const -> FrameInfo
     {
-        REQUIRE(std::holds_alternative<std::vector<int16_t>>(inFrame.data), std::runtime_error, "Input sample type must be int16_t");
-        REQUIRE(inFrame.info.sampleRateHz == m_inSampleRateHz, std::runtime_error, "Frame sample rate doe not match initial sample rate");
-        REQUIRE(inFrame.info.channelFormat == m_inChannelFormat, std::runtime_error, "Frame channel format does not match initial channel format");
-        const auto &inSamples = std::get<std::vector<int16_t>>(inFrame.data);
+        FrameInfo info;
+        info.channelFormat = m_outChannelFormat;
+        info.sampleFormat = m_outSampleFormat;
+        info.sampleRateHz = m_outSampleRateHz;
+        return info;
+    }
+
+    auto Resampler::resample(const std::vector<int16_t> &inSamples) -> SampleData
+    {
+        REQUIRE(m_inChannelFormat == ChannelFormat::Mono || inSamples.size() % 2 == 0, std::runtime_error, "Stereo data must have an even number of samples");
         const auto inDataNrOfSamples = m_inChannelFormat == ChannelFormat::Mono ? inSamples.size() : inSamples.size() / 2;
         // check if we need to reallocate audio conversion output buffers
         const auto nrOfSamplesNeeded = av_rescale_rnd(swr_get_delay(m_state->swrContext, m_inSampleRateHz) + inDataNrOfSamples, m_inSampleRateHz, m_inSampleRateHz, AV_ROUND_UP);
@@ -132,14 +138,7 @@ namespace Audio
         const auto convertedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->outLayout.nb_channels, nrOfSamplesConverted, m_state->outFormat, 1);
         REQUIRE(convertedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples output to buffer: " << convertedRawBufferSize);
         // convert output sample format from AV formats
-        Frame outFrame;
-        outFrame.index = inFrame.index;
-        outFrame.fileName = inFrame.fileName;
-        outFrame.info.compressed = inFrame.info.compressed;
-        outFrame.info.maxMemoryNeeded = inFrame.info.maxMemoryNeeded;
-        outFrame.info.channelFormat = m_outChannelFormat;
-        outFrame.info.sampleFormat = m_outSampleFormat;
-        outFrame.info.sampleRateHz = m_outSampleRateHz;
+        SampleData outSamples;
         switch (m_outSampleFormat)
         {
         case SampleFormat::Signed8:
@@ -151,14 +150,14 @@ namespace Audio
             dataI8.reserve(dataU8.size());
             std::transform(dataU8.cbegin(), dataU8.cend(), std::back_inserter(dataI8), [](auto v)
                            { return static_cast<int8_t>(static_cast<int32_t>(v) - 128); });
-            outFrame.data = dataI8;
+            outSamples = dataI8;
             break;
         }
         case SampleFormat::Unsigned8:
-            outFrame.data = rawBufferToVector<uint8_t>(m_outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+            outSamples = rawBufferToVector<uint8_t>(m_outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
             break;
         case SampleFormat::Signed16:
-            outFrame.data = rawBufferToVector<int16_t>(m_outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+            outSamples = rawBufferToVector<int16_t>(m_outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
             break;
         case SampleFormat::Unsigned16:
         {
@@ -169,15 +168,32 @@ namespace Audio
             dataU16.reserve(dataS16.size());
             std::transform(dataS16.cbegin(), dataS16.cend(), std::back_inserter(dataU16), [](auto v)
                            { return static_cast<uint16_t>(static_cast<int32_t>(v) + 32768); });
-            outFrame.data = dataU16;
+            outSamples = dataU16;
             break;
         }
         case SampleFormat::Float32:
-            outFrame.data = rawBufferToVector<float>(m_outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+            outSamples = rawBufferToVector<float>(m_outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
             break;
         default:
             THROW(std::runtime_error, "Bad output sample format");
         }
+        return outSamples;
+    }
+
+    auto Resampler::resample(const Frame &inFrame) -> Frame
+    {
+        REQUIRE(std::holds_alternative<std::vector<int16_t>>(inFrame.data), std::runtime_error, "Input sample type must be int16_t");
+        REQUIRE(inFrame.info.sampleRateHz == m_inSampleRateHz, std::runtime_error, "Frame sample rate doe not match initial sample rate");
+        REQUIRE(inFrame.info.channelFormat == m_inChannelFormat, std::runtime_error, "Frame channel format does not match initial channel format");
+        Frame outFrame;
+        outFrame.index = inFrame.index;
+        outFrame.fileName = inFrame.fileName;
+        outFrame.info.compressed = inFrame.info.compressed;
+        outFrame.info.maxMemoryNeeded = inFrame.info.maxMemoryNeeded;
+        outFrame.info.channelFormat = m_outChannelFormat;
+        outFrame.info.sampleFormat = m_outSampleFormat;
+        outFrame.info.sampleRateHz = m_outSampleRateHz;
+        outFrame.data = resample(std::get<std::vector<int16_t>>(inFrame.data));
         return outFrame;
     }
 }

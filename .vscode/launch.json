@@ -46,6 +46,8 @@
                 "--outformat=bgr555",
                 "--dxtv=97",
                 //"--lz10",
+                "samplerate=16384",
+                "sampleformat=s8",
                 "\"/home/raer/SynologyDrive/Programmieren/GameBoy/TAGABOW Singles/data/AMERICAN FOOD render 1 240x160.mp4\"",
                 //"\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
                 "video"

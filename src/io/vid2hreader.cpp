@@ -50,7 +50,7 @@ namespace Media
             REQUIRE(m_fileHeader.audioChannels == 1 || m_fileHeader.audioChannels == 2, std::runtime_error, "Number of audio channels must 1 or 2");
             m_info.audioChannelFormat = m_fileHeader.audioChannels == 1 ? Audio::ChannelFormat::Mono : Audio::ChannelFormat::Stereo;
             REQUIRE(m_fileHeader.audioSampleBits == 8 || m_fileHeader.audioSampleBits == 16 || m_fileHeader.audioSampleBits == 32, std::runtime_error, "Number of audio samples must 8, 16 or or 32");
-            m_info.audioSampleFormat = Audio::findFormat(m_fileHeader.audioSampleBits, true);
+            m_info.audioSampleFormat = Audio::findSampleFormat(m_fileHeader.audioSampleBits, true);
             m_info.audioOffsetS = static_cast<double>(m_fileHeader.audioOffsetSamples) / static_cast<double>(m_fileHeader.audioSampleRateHz);
         }
     }

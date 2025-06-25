@@ -61,6 +61,7 @@ public:
     // Audio options
     static OptionT<uint32_t> sampleRateHz;
     static OptionT<Audio::ChannelFormat> channelFormat;
+    static OptionT<Audio::SampleFormat> sampleFormat;
 
     // General options
     static Option dryRun;

@@ -10,8 +10,8 @@
 namespace Audio
 {
 
-    /// @brief Raw / compressed audio data
-    using AudioData = std::variant<std::vector<int8_t>, std::vector<uint8_t>, std::vector<int16_t>, std::vector<uint16_t>, std::vector<float>>;
+    /// @brief Raw / compressed audio sample data
+    using SampleData = std::variant<std::vector<int8_t>, std::vector<uint8_t>, std::vector<int16_t>, std::vector<uint16_t>, std::vector<float>>;
 
     /// @brief Information about current / final audio data before compression / conversion to raw
     struct FrameInfo
@@ -29,7 +29,7 @@ namespace Audio
         uint32_t index = 0;   // Input frame index counter
         std::string fileName; // Input file name
         FrameInfo info;       // Frame information
-        AudioData data;       // Raw / compressed data of mono or (planar) stereo channels
+        SampleData data;      // Raw / compressed data of mono or (planar) stereo channels
     };
 
 }

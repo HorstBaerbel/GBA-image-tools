@@ -340,19 +340,24 @@ ProcessingOptions::OptionT<Audio::ChannelFormat> ProcessingOptions::channelForma
     {
         if (r.count(channelFormat.cxxOption.opts_))
         {
-            if (channelFormat.valueString == "mono")
-            {
-                channelFormat.value = Audio::ChannelFormat::Mono;
-            }
-            else if (channelFormat.valueString == "stereo")
-            {
-                channelFormat.value = Audio::ChannelFormat::Stereo;
-            }
-            else
-            {
-                THROW(std::runtime_error, "Audio channel format must be mono or stereo if specified");
-            }
+            channelFormat.value = Audio::findChannelFormat(channelFormat.valueString);
+            REQUIRE(channelFormat.value != Audio::ChannelFormat::Unknown, std::runtime_error, "Audio channel format must be mono or stereo if specified");
             channelFormat.isSet = true;
+        }
+    }};
+
+ProcessingOptions::OptionT<Audio::SampleFormat> ProcessingOptions::sampleFormat{
+    false,
+    {"sampleformat", "Set audio sample format. Options are u8, s8, u16, s16 or f32", cxxopts::value(sampleFormat.valueString)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(sampleFormat.cxxOption.opts_))
+        {
+            sampleFormat.value = Audio::findSampleFormat(sampleFormat.valueString);
+            REQUIRE(sampleFormat.value != Audio::SampleFormat::Unknown, std::runtime_error, "Audio sample format must be u8, s8, u16, s16 or f32 if specified");
+            sampleFormat.isSet = true;
         }
     }};
 

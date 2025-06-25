@@ -18,12 +18,16 @@ namespace Audio
     struct ChannelFormatInfo
     {
         ChannelFormat format = ChannelFormat::Unknown;
-        std::string name;          // Channel format as string
+        std::string description;   // Channel format decription as string
+        std::string id;            // Short name identifier, e.g. "mono"
         uint32_t nrOfChannels = 0; // Number of channels for format
     };
 
     /// @brief Return channel format information
     auto formatInfo(ChannelFormat format) -> const ChannelFormatInfo &;
+
+    /// @brief Find channel format from identifier
+    auto findChannelFormat(const std::string &id) -> ChannelFormat;
 
     /// @brief Audio sample format identifier
     enum class SampleFormat : uint8_t
@@ -40,7 +44,8 @@ namespace Audio
     struct SampleFormatInfo
     {
         SampleFormat format = SampleFormat::Unknown;
-        std::string name;           // Sample format as string
+        std::string description;    // Sample format description as string
+        std::string id;             // Short name identifier, e.g. "s8"
         uint32_t bitsPerSample = 0; // Bits per sample for format
         bool isSigned = false;      // True if the values are signed data types
     };
@@ -48,9 +53,12 @@ namespace Audio
     /// @brief Return sample format information
     auto formatInfo(SampleFormat format) -> const SampleFormatInfo &;
 
+    /// @brief Find sample format from identifier
+    auto findSampleFormat(const std::string &id) -> SampleFormat;
+
     /// @brief Find a sample format based on the input info
     /// @param bitsPerSample Bits per sample for audio data
     /// @param isSigned If true the sample format has signed data, else unsigned data
     /// @return Most probable sample format or SampleFormat::Unknown
-    auto findFormat(uint32_t bitsPerSample, bool isSigned) -> SampleFormat;
+    auto findSampleFormat(uint32_t bitsPerSample, bool isSigned) -> SampleFormat;
 }

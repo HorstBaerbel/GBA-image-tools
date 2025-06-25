@@ -23,10 +23,19 @@ namespace Audio
 
         ~Resampler();
 
+        /// @brief Get auto format information
+        /// @return Resampler outpput audio format
+        auto getOutputFormat() const -> FrameInfo;
+
         /// @brief Resample one frame of audio
         /// @param inFrame Input audio frame. Must be int16_t data
         /// @return Resampled audio frame
         auto resample(const Frame &inFrame) -> Frame;
+
+        /// @brief Resample audio samples
+        /// @param inSamples Input audio samples
+        /// @return Resampled audio samples
+        auto resample(const std::vector<int16_t> &inSamples) -> SampleData;
 
     private:
         struct State;

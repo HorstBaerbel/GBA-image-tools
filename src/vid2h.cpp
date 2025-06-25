@@ -67,6 +67,9 @@ bool readArguments(int argc, const char *argv[])
         // opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.vram.cxxOption);
+        opts.add_option("", options.channelFormat.cxxOption);
+        opts.add_option("", options.sampleFormat.cxxOption);
+        opts.add_option("", options.sampleRateHz.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
@@ -148,14 +151,14 @@ void printUsage()
     // 80 chars:  --------------------------------------------------------------------------------
     std::cout << "Converts and compresses a video file to a binary file to compile it into a " << std::endl;
     std::cout << "GBA executable." << std::endl;
-    std::cout << "Usage: vid2h FORMAT [CONVERT] [IMAGE COMPRESS] [COMPRESS] INFILE OUTNAME" << std::endl;
-    std::cout << "FORMAT options (mutually exclusive):" << std::endl;
+    std::cout << "Usage: vid2h IMG [IMG_CONV] [IMG_COMP] [COMP] AUD INFILE OUTNAME" << std::endl;
+    std::cout << "IMaGe format options (mutually exclusive):" << std::endl;
     std::cout << options.blackWhite.helpString() << std::endl;
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
     std::cout << "Output color format (must be set):" << std::endl;
     std::cout << options.outformat.helpString() << std::endl;
-    std::cout << "CONVERT options (all optional):" << std::endl;
+    std::cout << "IMaGe CONVert options (all optional):" << std::endl;
     std::cout << options.quantizationmethod.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
     std::cout << options.moveColor0.helpString() << std::endl;
@@ -166,15 +169,19 @@ void printUsage()
     std::cout << options.deltaImage.helpString() << std::endl;
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
-    std::cout << "IMAGE COMPRESS options (mutually exclusive):" << std::endl;
+    std::cout << "IMaGe COMPress options (mutually exclusive):" << std::endl;
     std::cout << options.dxt.helpString() << std::endl;
     std::cout << options.dxtv.helpString() << std::endl;
     // std::cout << options.gvid.helpString() << std::endl;
-    std::cout << "COMPRESS options (mutually exclusive):" << std::endl;
+    std::cout << "COMPress options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
-    std::cout << "COMPRESS modifiers (optional):" << std::endl;
+    std::cout << "COMPress modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
+    std::cout << "AUDio options:" << std::endl;
+    std::cout << options.channelFormat.helpString() << std::endl;
+    std::cout << options.sampleFormat.helpString() << std::endl;
+    std::cout << options.sampleRateHz.helpString() << std::endl;
     std::cout << "INFILE: Input video file to convert, e.g. \"foo.avi\"" << std::endl;
     std::cout << "OUTNAME: is determined from the first non-existant file path. It can be an " << std::endl;
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
@@ -183,8 +190,8 @@ void printUsage()
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
-    std::cout << "ORDER: input, color conversion, addcolor0, movecolor0, shift, sprites, tiles, " << std::endl;
-    std::cout << "deltaimage, dxtg / dtxv, delta8 / delta16, rle, lz10, output" << std::endl;
+    std::cout << "Image order: input, color conversion, addcolor0, movecolor0, shift, sprites, " << std::endl;
+    std::cout << "tiles, deltaimage, dxtg / dtxv, delta8 / delta16, rle, lz10, output" << std::endl;
     std::cout << "Note: Multi-channel audio will be converted to stereo and sample bit depth will " << std::endl;
     std::cout << "be converted to 16 bit" << std::endl;
 }
@@ -223,8 +230,8 @@ int main(int argc, const char *argv[])
             mediaInfo = mediaReader.getInfo();
             std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
             std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
-            std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).name << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
-            std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).name;
+            std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
+            std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
             std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
         }
         catch (const std::runtime_error &e)
@@ -351,13 +358,18 @@ int main(int argc, const char *argv[])
         }
         imageProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
         // audio processing
-        auto resampler = std::make_shared<Audio::Resampler>();
-        if (options.channelFormat || options.sampleRateHz)
+        std::shared_ptr<Audio::Resampler> resampler;
+        if (options.channelFormat || options.sampleRateHz || options.sampleFormat)
         {
+            auto outChannelFormat = options.channelFormat ? options.channelFormat.value : mediaInfo.audioChannelFormat;
+            auto outSampleRateHz = options.sampleRateHz ? options.sampleRateHz.value : mediaInfo.audioSampleRateHz;
+            auto outSampleFormat = options.sampleFormat ? options.sampleFormat.value : mediaInfo.audioSampleFormat;
+            resampler = std::make_shared<Audio::Resampler>(mediaInfo.audioChannelFormat, mediaInfo.audioSampleRateHz, outChannelFormat, outSampleRateHz, outSampleFormat);
+            std::cout << "Converting audio to: " << Audio::formatInfo(outSampleFormat).description << ", " << Audio::formatInfo(outChannelFormat).description << ", " << Audio::formatInfo(outChannelFormat).description << std::endl;
         }
         // print image processing pipeline configuration
         const auto processingDescription = imageProcessing.getProcessingDescription();
-        std::cout << "Applying processing: " << processingDescription << std::endl;
+        std::cout << "Applying image processing: " << processingDescription << std::endl;
         // check if we want to write output files
         std::ofstream binFile;
         if (!options.dryRun)
@@ -436,7 +448,9 @@ int main(int argc, const char *argv[])
             }
             else if (inFrame.frameType == IO::FrameType::Audio)
             {
-                // copy frame samples to sample buffer
+                // get samples from frame data and pipe samples through resampler
+                Audio::SampleData inSamples = resampler ? resampler->resample(std::get<std::vector<int16_t>>(inFrame.data)) : std::get<std::vector<int16_t>>(inFrame.data);
+                // copy samples to sample buffer
                 auto &inSamples = std::get<std::vector<int16_t>>(inFrame.data);
                 if (mediaInfo.audioChannelFormat == Audio::ChannelFormat::Mono)
                 {
