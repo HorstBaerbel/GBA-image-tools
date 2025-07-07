@@ -32,11 +32,6 @@ namespace Audio
         /// @return Resampled audio frame
         auto resample(const Frame &inFrame) -> Frame;
 
-        /// @brief Resample audio samples
-        /// @param inSamples Input audio samples
-        /// @return Resampled audio samples
-        auto resample(const std::vector<int16_t> &inSamples) -> SampleData;
-
     private:
         struct State;
         std::shared_ptr<State> m_state;

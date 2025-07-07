@@ -8,6 +8,14 @@
 namespace Audio
 {
 
+    auto rawSampleDataSize(const SampleData &samples) -> uint32_t
+    {
+        return std::visit([](auto data)
+                          { 
+            using T = std::decay_t<decltype(data)>;
+            return sizeof(T) * data.size(); }, samples);
+    }
+
     static const std::map<ChannelFormat, ChannelFormatInfo> ChannelFormatInfoMap = {
         {ChannelFormat::Unknown, {ChannelFormat::Unknown, "Unknown", "", 0}},
         {ChannelFormat::Mono, {ChannelFormat::Mono, "Mono", "mono", 1}},

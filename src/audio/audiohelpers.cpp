@@ -54,11 +54,35 @@ namespace AudioHelpers
             }
             break;
         }
-
         default:
             THROW(std::runtime_error, "Bad sample format");
         }
         return result;
     }
 
+    auto createSampleBuffer(Audio::SampleFormat sampleFormat) -> Audio::SampleData
+    {
+        Audio::SampleData result;
+        switch (sampleFormat)
+        {
+        case Audio::SampleFormat::Signed8:
+            result = std::vector<int8_t>();
+            break;
+        case Audio::SampleFormat::Unsigned8:
+            result = std::vector<uint8_t>();
+            break;
+        case Audio::SampleFormat::Signed16:
+            result = std::vector<int16_t>();
+            break;
+        case Audio::SampleFormat::Unsigned16:
+            result = std::vector<uint16_t>();
+            break;
+        case Audio::SampleFormat::Float32:
+            result = std::vector<float>();
+            break;
+        default:
+            THROW(std::runtime_error, "Bad sample format");
+        }
+        return result;
+    }
 }

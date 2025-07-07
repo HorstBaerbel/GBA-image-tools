@@ -43,6 +43,7 @@ namespace Audio
         switch (format)
         {
         case SampleFormat::Signed8:
+            // FFmepg supports no S8P, so we converted to U8P
             return AV_SAMPLE_FMT_U8P;
             break;
         case SampleFormat::Unsigned8:
@@ -52,6 +53,7 @@ namespace Audio
             return AV_SAMPLE_FMT_S16P;
             break;
         case SampleFormat::Unsigned16:
+            // FFmepg supports no U16P, so we converted to S16P
             return AV_SAMPLE_FMT_S16P;
             break;
         case SampleFormat::Float32:
@@ -111,11 +113,16 @@ namespace Audio
         return info;
     }
 
-    auto Resampler::resample(const std::vector<int16_t> &inSamples) -> SampleData
+    auto Resampler::resample(const Frame &inFrame) -> Frame
     {
+        REQUIRE(std::holds_alternative<std::vector<int16_t>>(inFrame.data), std::runtime_error, "Input sample type must be int16_t");
+        REQUIRE(inFrame.info.sampleRateHz == m_inSampleRateHz, std::runtime_error, "Frame sample rate doe not match initial sample rate");
+        REQUIRE(inFrame.info.channelFormat == m_inChannelFormat, std::runtime_error, "Frame channel format does not match initial channel format");
+        // get sample data from frame
+        auto &inSamples = std::get<std::vector<int16_t>>(inFrame.data);
         REQUIRE(m_inChannelFormat == ChannelFormat::Mono || inSamples.size() % 2 == 0, std::runtime_error, "Stereo data must have an even number of samples");
-        const auto inDataNrOfSamples = m_inChannelFormat == ChannelFormat::Mono ? inSamples.size() : inSamples.size() / 2;
         // check if we need to reallocate audio conversion output buffers
+        const auto inDataNrOfSamples = m_inChannelFormat == ChannelFormat::Mono ? inSamples.size() : inSamples.size() / 2;
         const auto nrOfSamplesNeeded = av_rescale_rnd(swr_get_delay(m_state->swrContext, m_inSampleRateHz) + inDataNrOfSamples, m_inSampleRateHz, m_inSampleRateHz, AV_ROUND_UP);
         if (nrOfSamplesNeeded > m_outDataNrOfSamples)
         {
@@ -130,7 +137,7 @@ namespace Audio
             REQUIRE(allocateResult >= 0, std::runtime_error, "Failed to allocate audio conversion buffer: " << allocateResult);
             m_state->audioOutDataNrOfSamples = nrOfSamplesNeeded;
         }
-        // convert audio format using sw resampler
+        // convert audio format using FFmpeg sw resampler
         auto inSamplePtr = reinterpret_cast<const uint8_t *>(inSamples.data());
         const auto nrOfSamplesConverted = swr_convert(m_state->swrContext, &m_outData[0], m_outDataNrOfSamples, &inSamplePtr, inDataNrOfSamples);
         REQUIRE(nrOfSamplesConverted >= 0, std::runtime_error, "Failed to convert audio data: " << nrOfSamplesConverted);
@@ -177,14 +184,7 @@ namespace Audio
         default:
             THROW(std::runtime_error, "Bad output sample format");
         }
-        return outSamples;
-    }
-
-    auto Resampler::resample(const Frame &inFrame) -> Frame
-    {
-        REQUIRE(std::holds_alternative<std::vector<int16_t>>(inFrame.data), std::runtime_error, "Input sample type must be int16_t");
-        REQUIRE(inFrame.info.sampleRateHz == m_inSampleRateHz, std::runtime_error, "Frame sample rate doe not match initial sample rate");
-        REQUIRE(inFrame.info.channelFormat == m_inChannelFormat, std::runtime_error, "Frame channel format does not match initial channel format");
+        // build output frame
         Frame outFrame;
         outFrame.index = inFrame.index;
         outFrame.fileName = inFrame.fileName;
@@ -193,7 +193,7 @@ namespace Audio
         outFrame.info.channelFormat = m_outChannelFormat;
         outFrame.info.sampleFormat = m_outSampleFormat;
         outFrame.info.sampleRateHz = m_outSampleRateHz;
-        outFrame.data = resample(std::get<std::vector<int16_t>>(inFrame.data));
+        outFrame.data = outSamples;
         return outFrame;
     }
 }

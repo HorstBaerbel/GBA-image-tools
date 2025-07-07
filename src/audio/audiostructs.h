@@ -4,14 +4,9 @@
 
 #include <cstdint>
 #include <string>
-#include <variant>
-#include <vector>
 
 namespace Audio
 {
-
-    /// @brief Raw / compressed audio sample data
-    using SampleData = std::variant<std::vector<int8_t>, std::vector<uint8_t>, std::vector<int16_t>, std::vector<uint16_t>, std::vector<float>>;
 
     /// @brief Information about current / final audio data before compression / conversion to raw
     struct FrameInfo
