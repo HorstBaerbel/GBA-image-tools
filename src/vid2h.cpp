@@ -369,7 +369,7 @@ int main(int argc, const char *argv[])
         if (options.channelFormat || options.sampleRateHz || options.sampleFormat)
         {
             resampler = std::make_shared<Audio::Resampler>(mediaInfo.audioChannelFormat, mediaInfo.audioSampleRateHz, outChannelFormat, outSampleRateHz, outSampleFormat);
-            std::cout << "Converting audio to: " << Audio::formatInfo(outSampleFormat).description << ", " << Audio::formatInfo(outChannelFormat).description << ", " << Audio::formatInfo(outChannelFormat).description << std::endl;
+            std::cout << "Converting audio to: " << Audio::formatInfo(outChannelFormat).description << ", " << outSampleRateHz << " Hz, " << Audio::formatInfo(outSampleFormat).description << std::endl;
         }
         // print image processing pipeline configuration
         const auto processingDescription = imageProcessing.getProcessingDescription();
