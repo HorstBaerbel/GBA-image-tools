@@ -75,7 +75,8 @@ namespace Audio
 
     Resampler::Resampler(ChannelFormat inChannelFormat, uint32_t inSampleRateHz,
                          ChannelFormat outChannelFormat, uint32_t outSampleRateHz, SampleFormat outSampleFormat)
-        : m_inChannelFormat(inChannelFormat), m_inSampleRateHz(inSampleRateHz),
+        : m_state(std::make_shared<State>()),
+          m_inChannelFormat(inChannelFormat), m_inSampleRateHz(inSampleRateHz),
           m_outChannelFormat(outChannelFormat), m_outSampleRateHz(outSampleRateHz), m_outSampleFormat(outSampleFormat)
     {
         const auto inLayout = ToAvChannelLayout(m_inChannelFormat);
