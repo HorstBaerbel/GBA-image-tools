@@ -417,7 +417,7 @@ int main(int argc, const char *argv[])
         uint32_t audioMaxMemoryNeeded = 0;                                                         // Maximum memory needed for decoding audio frames
         int32_t audioFirstFrameOffset = 0;                                                         // Offset of first audio frame in samples
         const double audioSamplesPerFrame = outSampleRateHz / mediaInfo.videoFrameRateHz;          // Number of audio samples per channel needed per frame of video
-        uint32_t audioSamplesPrevFrame = 0;                                                        // Number of audio samples per channel in last frame
+        double audioSampleDeltaPrevFrame = 0;                                                      // Number of audio samples per channel last frame in comparison to audioSamplesPerFrame
         Audio::SampleBuffer audioSampleBuffer(outChannelFormat, outSampleRateHz, outSampleFormat); // Buffer for audio samples from media decoder
         Audio::FrameInfo audioInfo;
         uint32_t outNrOfFrames = 0;
@@ -464,8 +464,7 @@ int main(int argc, const char *argv[])
                 // * Multiple of 16 int8_t samples per channel for GBA audio playback
                 // * Multiple of 4 bytes per channel for NDS audio playback
                 // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
-                const double prevFrameExcessSamples = audioSamplesPrevFrame - audioSamplesPerFrame;
-                auto audioSamplesThisFrame = static_cast<int32_t>(std::ceil(audioSamplesPerFrame - prevFrameExcessSamples));
+                auto audioSamplesThisFrame = static_cast<int32_t>(std::ceil(audioSamplesPerFrame - audioSampleDeltaPrevFrame));
                 // round up to multiple of 16 samples
                 if (audioSamplesThisFrame % 16 != 0)
                 {
@@ -484,7 +483,7 @@ int main(int argc, const char *argv[])
                     const auto sampleMemorySize = Audio::rawSampleDataSize(outFrame.data);
                     audioCompressedSize += sampleMemorySize;
                     audioMaxMemoryNeeded = audioMaxMemoryNeeded < sampleMemorySize ? sampleMemorySize : audioMaxMemoryNeeded;
-                    audioSamplesPrevFrame = audioSamplesThisFrame;
+                    audioSampleDeltaPrevFrame = audioSamplesThisFrame - audioSamplesPerFrame;
                     outNrOfSamples += audioSamplesThisFrame;
                     ++outNrOfFrames;
                 }
