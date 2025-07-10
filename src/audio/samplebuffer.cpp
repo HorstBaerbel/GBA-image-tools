@@ -38,41 +38,41 @@ namespace Audio
     auto extractSamples(SampleData &a, std::size_t nrOfSamplesPerChannel, ChannelFormat channelFormat) -> std::vector<T>
     {
         auto &currSamples = std::get<std::vector<T>>(a);
-        const auto currSampleSize = currSamples.size();
+        const auto currNrOfSamples = currSamples.size();
         REQUIRE(nrOfSamplesPerChannel > 0, std::runtime_error, "Number of requested samples can not be zero");
         std::vector<T> result;
         auto channel0Start = currSamples.cbegin();
         if (channelFormat == ChannelFormat::Stereo)
         {
             REQUIRE(nrOfSamplesPerChannel % 2 == 0, std::runtime_error, "Number of requested samples must be divisible by 2");
-            REQUIRE(nrOfSamplesPerChannel * 2 <= currSampleSize, std::runtime_error, "Not enough samples in buffer");
+            REQUIRE(nrOfSamplesPerChannel * 2 <= currNrOfSamples, std::runtime_error, "Not enough samples in buffer");
             result.reserve(nrOfSamplesPerChannel * 2);
-            auto channel1Start = std::next(currSamples.cbegin(), currSampleSize / 2);
+            auto channel1Start = std::next(currSamples.cbegin(), currNrOfSamples / 2);
             // copy samples to result
             std::copy(channel0Start, std::next(channel0Start, nrOfSamplesPerChannel), std::back_inserter(result));
             std::copy(channel1Start, std::next(channel1Start, nrOfSamplesPerChannel), std::back_inserter(result));
             // move rest of buffer to front
-            const auto restSamples = currSampleSize - nrOfSamplesPerChannel * 2;
-            if (restSamples > 0)
+            const auto restNrOfSamples = currNrOfSamples - nrOfSamplesPerChannel * 2;
+            if (restNrOfSamples > 0)
             {
                 std::copy_backward(std::next(channel0Start, nrOfSamplesPerChannel), channel1Start, currSamples.begin());
-                std::copy_backward(std::next(channel1Start, nrOfSamplesPerChannel), currSamples.cend(), std::next(currSamples.begin(), nrOfSamplesPerChannel));
+                std::copy_backward(std::next(channel1Start, nrOfSamplesPerChannel), currSamples.cend(), std::next(currSamples.begin(), restNrOfSamples / 2));
             }
-            currSamples.resize(restSamples);
+            currSamples.resize(restNrOfSamples);
         }
         else
         {
-            REQUIRE(nrOfSamplesPerChannel >= currSampleSize, std::runtime_error, "Not enough samples in buffer");
+            REQUIRE(nrOfSamplesPerChannel >= currNrOfSamples, std::runtime_error, "Not enough samples in buffer");
             result.reserve(nrOfSamplesPerChannel);
             // copy samples to result
             std::copy(channel0Start, std::next(channel0Start, nrOfSamplesPerChannel), std::back_inserter(result));
             // move rest of buffer to front
-            const auto restSamples = currSampleSize - nrOfSamplesPerChannel * 2;
-            if (restSamples > 0)
+            const auto restNrOfSamples = currNrOfSamples - nrOfSamplesPerChannel;
+            if (restNrOfSamples > 0)
             {
                 std::copy_backward(std::next(channel0Start, nrOfSamplesPerChannel), currSamples.cend(), currSamples.begin());
             }
-            currSamples.resize(restSamples);
+            currSamples.resize(restNrOfSamples);
         }
         return result;
     }
