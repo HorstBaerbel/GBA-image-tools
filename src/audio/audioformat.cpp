@@ -12,7 +12,7 @@ namespace Audio
     {
         return std::visit([](auto data)
                           { 
-            using T = std::decay_t<decltype(data)>;
+            using T = std::decay_t<decltype(data)>::value_type;
             return sizeof(T) * data.size(); }, samples);
     }
 
