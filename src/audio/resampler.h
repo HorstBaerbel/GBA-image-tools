@@ -40,8 +40,6 @@ namespace Audio
         ChannelFormat m_outChannelFormat = ChannelFormat::Unknown;
         uint32_t m_outSampleRateHz = 0;
         SampleFormat m_outSampleFormat = SampleFormat::Unknown;
-        uint8_t *m_outData[2] = {nullptr, nullptr}; // Stereo audio conversion output sample buffer
-        uint32_t m_outDataNrOfSamples = 0;          // Audio conversion output sample buffer size
     };
 
 }
