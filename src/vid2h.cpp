@@ -480,9 +480,9 @@ int main(int argc, const char *argv[])
                     {
                         IO::Vid2h::writeFrame(binFile, outFrame);
                     }
-                    const auto sampleMemorySize = Audio::rawSampleDataSize(outFrame.data);
-                    audioCompressedSize += sampleMemorySize;
-                    audioMaxMemoryNeeded = audioMaxMemoryNeeded < sampleMemorySize ? sampleMemorySize : audioMaxMemoryNeeded;
+                    const auto sampleDataSize = Audio::rawSampleDataSize(outFrame.data);
+                    audioCompressedSize += sampleDataSize;
+                    audioMaxMemoryNeeded = audioMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioMaxMemoryNeeded;
                     audioSampleDeltaPrevFrame = audioSamplesThisFrame - audioSamplesPerFrame;
                     outNrOfSamples += audioSamplesThisFrame;
                     ++outNrOfFrames;
@@ -514,9 +514,9 @@ int main(int argc, const char *argv[])
             {
                 IO::Vid2h::writeFrame(binFile, outFrame);
             }
-            const auto sampleMemorySize = Audio::rawSampleDataSize(outFrame.data);
-            audioCompressedSize += sampleMemorySize;
-            audioMaxMemoryNeeded = audioMaxMemoryNeeded < sampleMemorySize ? sampleMemorySize : audioMaxMemoryNeeded;
+            const auto sampleDataSize = Audio::rawSampleDataSize(outFrame.data);
+            audioCompressedSize += sampleDataSize;
+            audioMaxMemoryNeeded = audioMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioMaxMemoryNeeded;
             outNrOfSamples += audioSamplesRemaining;
             ++outNrOfFrames;
         }

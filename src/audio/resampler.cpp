@@ -27,7 +27,8 @@ namespace Audio
         AVChannelLayout outLayout = MonoLayout;
         AVSampleFormat outFormat = AV_SAMPLE_FMT_NONE;
         uint8_t *outData[2] = {nullptr, nullptr}; // Stereo audio conversion output sample buffer
-        uint32_t outDataNrOfSamples = 0;          // Audio conversion output sample buffer size
+        uint32_t outDataMaxSamples = 0;           // Audio conversion output sample buffer size
+        int outLinesize = 0;
     };
 
     auto ToAvChannelLayout(ChannelFormat format) -> AVChannelLayout
@@ -42,22 +43,22 @@ namespace Audio
         REQUIRE(format != SampleFormat::Unknown, std::runtime_error, "Bad sample format");
         switch (format)
         {
-        case SampleFormat::Signed8:
+        case SampleFormat::Signed8P:
             // FFmepg supports no S8P, so we converted to U8P
             return AV_SAMPLE_FMT_U8P;
             break;
-        case SampleFormat::Unsigned8:
+        case SampleFormat::Unsigned8P:
             return AV_SAMPLE_FMT_U8P;
             break;
-        case SampleFormat::Signed16:
+        case SampleFormat::Signed16P:
             return AV_SAMPLE_FMT_S16P;
             break;
-        case SampleFormat::Unsigned16:
+        case SampleFormat::Unsigned16P:
             // FFmepg supports no U16P, so we converted to S16P
             return AV_SAMPLE_FMT_S16P;
             break;
-        case SampleFormat::Float32:
-            return AV_SAMPLE_FMT_FLT;
+        case SampleFormat::Float32P:
+            return AV_SAMPLE_FMT_FLTP;
             break;
         default:
             THROW(std::runtime_error, "Unsupported sample format: " << static_cast<uint32_t>(format));
@@ -65,9 +66,8 @@ namespace Audio
     }
 
     template <typename T>
-    auto rawBufferToVector(const uint8_t *data, uint32_t nrOfChannels, uint32_t rawBufferSize) -> std::vector<T>
+    auto rawBufferToVector(const uint8_t *data, uint32_t rawBufferSize) -> std::vector<T>
     {
-        REQUIRE(nrOfChannels == 1 || nrOfChannels == 2, std::runtime_error, "Number of channels must be 1 or 2");
         std::vector<T> v(rawBufferSize / sizeof(T));
         std::memcpy(v.data(), data, rawBufferSize);
         return v;
@@ -79,30 +79,17 @@ namespace Audio
           m_inChannelFormat(inChannelFormat), m_inSampleRateHz(inSampleRateHz),
           m_outChannelFormat(outChannelFormat), m_outSampleRateHz(outSampleRateHz), m_outSampleFormat(outSampleFormat)
     {
+        // get FFmpeg formats from input data
         const auto inLayout = ToAvChannelLayout(m_inChannelFormat);
         const auto inFormat = AV_SAMPLE_FMT_S16P;
         m_state->outLayout = ToAvChannelLayout(m_outChannelFormat);
         m_state->outFormat = ToAvSampleFormat(m_outSampleFormat);
-        auto allocResult = swr_alloc_set_opts2(&m_state->swrContext, &m_state->outLayout, m_state->outFormat, inSampleRateHz, &inLayout, inFormat, inSampleRateHz, 0, nullptr);
-        REQUIRE(allocResult == 0 && m_state->swrContext != nullptr, std::runtime_error, "Failed to allocate audio swresampler context: " << allocResult);
-        auto initResult = swr_init(m_state->swrContext);
-        REQUIRE(initResult == 0, std::runtime_error, "Failed to init audio swresampler context: " << initResult);
-    }
-
-    Resampler::~Resampler()
-    {
-        if (m_state->outData[0])
-        {
-            av_freep(&m_state->outData[0]);
-            m_state->outData[0] = nullptr;
-            m_state->outData[1] = nullptr;
-            m_state->outDataNrOfSamples = 0;
-        }
-        if (m_state->swrContext)
-        {
-            swr_free(&m_state->swrContext);
-            m_state->swrContext = nullptr;
-        }
+        // allocate resampler context
+        auto swrAllocResult = swr_alloc_set_opts2(&m_state->swrContext, &m_state->outLayout, m_state->outFormat, outSampleRateHz, &inLayout, inFormat, inSampleRateHz, 0, nullptr);
+        REQUIRE(swrAllocResult == 0 && m_state->swrContext != nullptr, std::runtime_error, "Failed to allocate audio swresampler context: " << swrAllocResult);
+        // initialize resampler context
+        auto swrInitResult = swr_init(m_state->swrContext);
+        REQUIRE(swrInitResult == 0, std::runtime_error, "Failed to init audio swresampler context: " << swrInitResult);
     }
 
     auto Resampler::getOutputFormat() const -> FrameInfo
@@ -124,35 +111,34 @@ namespace Audio
         REQUIRE(m_inChannelFormat == ChannelFormat::Mono || inSamples.size() % 2 == 0, std::runtime_error, "Stereo data must have an even number of samples");
         // check if we need to reallocate audio conversion output buffers
         const auto inDataNrOfSamples = m_inChannelFormat == ChannelFormat::Mono ? inSamples.size() : inSamples.size() / 2;
-        const auto outDataNrOfSamplesNeeded = av_rescale_rnd(swr_get_delay(m_state->swrContext, m_inSampleRateHz) + inDataNrOfSamples, m_outSampleRateHz, m_inSampleRateHz, AV_ROUND_UP);
-        if (outDataNrOfSamplesNeeded > m_state->outDataNrOfSamples)
+        const auto maxNrOfOutputSamples = swr_get_out_samples(m_state->swrContext, inDataNrOfSamples);
+        REQUIRE(maxNrOfOutputSamples >= 0, std::runtime_error, "Failed to get maximum number of output samples: " << maxNrOfOutputSamples);
+        if (maxNrOfOutputSamples > m_state->outDataMaxSamples)
         {
-            if (m_state->outData[0] != nullptr)
-            {
-                av_freep(&m_state->outData[0]);
-                m_state->outData[0] = nullptr;
-                m_state->outData[1] = nullptr;
-                m_state->outDataNrOfSamples = 0;
-            }
-            const auto allocateResult = av_samples_alloc(&m_state->outData[0], nullptr, m_state->outLayout.nb_channels, outDataNrOfSamplesNeeded, m_state->outFormat, 1);
+            av_freep(&m_state->outData[0]);
+            m_state->outDataMaxSamples = 0;
+            const auto allocateResult = av_samples_alloc(m_state->outData, &m_state->outLinesize, m_state->outLayout.nb_channels, maxNrOfOutputSamples, m_state->outFormat, 1);
             REQUIRE(allocateResult >= 0, std::runtime_error, "Failed to allocate audio conversion buffer: " << allocateResult);
-            m_state->outDataNrOfSamples = outDataNrOfSamplesNeeded;
+            m_state->outDataMaxSamples = maxNrOfOutputSamples;
         }
+        // create pointers to planar input channels
+        auto inChannel0Ptr = reinterpret_cast<const uint8_t *>(inSamples.data());
+        auto inChannel1Ptr = reinterpret_cast<const uint8_t *>(inSamples.data() + inSamples.size() / 2);
+        const uint8_t *inData[2] = {inChannel0Ptr, inChannel1Ptr};
         // convert audio format using FFmpeg sw resampler
-        auto inSamplePtr = reinterpret_cast<const uint8_t *>(inSamples.data());
-        const auto nrOfSamplesConverted = swr_convert(m_state->swrContext, &m_state->outData[0], m_state->outDataNrOfSamples, &inSamplePtr, inDataNrOfSamples);
+        const auto nrOfSamplesConverted = swr_convert(m_state->swrContext, m_state->outData, m_state->outDataMaxSamples, inData, inDataNrOfSamples);
         REQUIRE(nrOfSamplesConverted >= 0, std::runtime_error, "Failed to convert audio data: " << nrOfSamplesConverted);
         // get size of a raw, combined, byte buffer needed to hold all sample data of all channels
-        const auto convertedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->outLayout.nb_channels, nrOfSamplesConverted, m_state->outFormat, 1);
+        const auto convertedRawBufferSize = av_samples_get_buffer_size(&m_state->outLinesize, m_state->outLayout.nb_channels, nrOfSamplesConverted, m_state->outFormat, 1);
         REQUIRE(convertedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples output to buffer: " << convertedRawBufferSize);
         // convert output sample format from AV formats
         SampleData outSamples;
         switch (m_outSampleFormat)
         {
-        case SampleFormat::Signed8:
+        case SampleFormat::Signed8P:
         {
             // FFmepg supports no S8P, so we converted to U8P
-            auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+            auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData[0], convertedRawBufferSize);
             // correctly convert to int8_t
             std::vector<int8_t> dataI8;
             dataI8.reserve(dataU8.size());
@@ -161,16 +147,16 @@ namespace Audio
             outSamples = dataI8;
             break;
         }
-        case SampleFormat::Unsigned8:
-            outSamples = rawBufferToVector<uint8_t>(m_state->outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+        case SampleFormat::Unsigned8P:
+            outSamples = rawBufferToVector<uint8_t>(m_state->outData[0], convertedRawBufferSize);
             break;
-        case SampleFormat::Signed16:
-            outSamples = rawBufferToVector<int16_t>(m_state->outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+        case SampleFormat::Signed16P:
+            outSamples = rawBufferToVector<int16_t>(m_state->outData[0], convertedRawBufferSize);
             break;
-        case SampleFormat::Unsigned16:
+        case SampleFormat::Unsigned16P:
         {
             // FFmepg supports no U16P, so we converted to S16P
-            auto dataS16 = rawBufferToVector<int16_t>(m_state->outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+            auto dataS16 = rawBufferToVector<int16_t>(m_state->outData[0], convertedRawBufferSize);
             // correctly convert to uint16_t
             std::vector<uint16_t> dataU16;
             dataU16.reserve(dataS16.size());
@@ -179,8 +165,8 @@ namespace Audio
             outSamples = dataU16;
             break;
         }
-        case SampleFormat::Float32:
-            outSamples = rawBufferToVector<float>(m_state->outData[0], m_state->outLayout.nb_channels, convertedRawBufferSize);
+        case SampleFormat::Float32P:
+            outSamples = rawBufferToVector<float>(m_state->outData[0], convertedRawBufferSize);
             break;
         default:
             THROW(std::runtime_error, "Bad output sample format");
@@ -196,5 +182,19 @@ namespace Audio
         outFrame.info.sampleRateHz = m_outSampleRateHz;
         outFrame.data = outSamples;
         return outFrame;
+    }
+
+    Resampler::~Resampler()
+    {
+        if (m_state->outData[0])
+        {
+            av_freep(&m_state->outData[0]);
+            m_state->outDataMaxSamples = 0;
+        }
+        if (m_state->swrContext)
+        {
+            swr_free(&m_state->swrContext);
+            m_state->swrContext = nullptr;
+        }
     }
 }
