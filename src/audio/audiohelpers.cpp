@@ -14,20 +14,20 @@ namespace AudioHelpers
         REQUIRE(samples.empty(), std::runtime_error, "Sample can not be empty");
         switch (sampleFormat)
         {
-        case Audio::SampleFormat::Signed8:
+        case Audio::SampleFormat::Signed8P:
             std::transform(samples.cbegin(), samples.cend(), std::back_inserter(result), [](auto s)
                            { return static_cast<int16_t>((static_cast<int32_t>(s) + 128) * 257 - 32768); });
             break;
-        case Audio::SampleFormat::Unsigned8:
+        case Audio::SampleFormat::Unsigned8P:
             std::transform(samples.cbegin(), samples.cend(), std::back_inserter(result), [](auto s)
                            { return static_cast<int16_t>(static_cast<int32_t>(s) * 257 - 32768); });
             break;
-        case Audio::SampleFormat::Signed16:
+        case Audio::SampleFormat::Signed16P:
             REQUIRE(samples.size() % 2 == 0, std::runtime_error, "Size of raw int16_t sample data must a multiple of 2");
             result.resize(samples.size() / 2);
             std::memcpy(result.data(), samples.data(), samples.size());
             break;
-        case Audio::SampleFormat::Unsigned16:
+        case Audio::SampleFormat::Unsigned16P:
         {
             REQUIRE(samples.size() % 2 == 0, std::runtime_error, "Size of raw uint16_t sample data must a multiple of 2");
             auto samplesPtr16 = reinterpret_cast<const uint16_t *>(samples.data());
@@ -37,7 +37,7 @@ namespace AudioHelpers
             }
             break;
         }
-        case Audio::SampleFormat::Float32:
+        case Audio::SampleFormat::Float32P:
         {
             REQUIRE(samples.size() % 4 == 0, std::runtime_error, "Size of raw float sample data must be a multiple of 4");
             auto samplesPtr32 = reinterpret_cast<const float *>(samples.data());
@@ -65,19 +65,19 @@ namespace AudioHelpers
         Audio::SampleData result;
         switch (sampleFormat)
         {
-        case Audio::SampleFormat::Signed8:
+        case Audio::SampleFormat::Signed8P:
             result = std::vector<int8_t>();
             break;
-        case Audio::SampleFormat::Unsigned8:
+        case Audio::SampleFormat::Unsigned8P:
             result = std::vector<uint8_t>();
             break;
-        case Audio::SampleFormat::Signed16:
+        case Audio::SampleFormat::Signed16P:
             result = std::vector<int16_t>();
             break;
-        case Audio::SampleFormat::Unsigned16:
+        case Audio::SampleFormat::Unsigned16P:
             result = std::vector<uint16_t>();
             break;
-        case Audio::SampleFormat::Float32:
+        case Audio::SampleFormat::Float32P:
             result = std::vector<float>();
             break;
         default:

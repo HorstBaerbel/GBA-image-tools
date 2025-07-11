@@ -241,7 +241,7 @@ namespace Media
             m_info.audioStreamIndex = static_cast<uint32_t>(m_state->audioStreamIndex);
             m_info.audioSampleRateHz = static_cast<uint32_t>(m_state->audioOutSampleRate);
             m_info.audioChannelFormat = m_state->audioOutChannelLayout.nb_channels == 1 ? Audio::ChannelFormat::Mono : Audio::ChannelFormat::Stereo;
-            m_info.audioSampleFormat = Audio::SampleFormat::Signed16;
+            m_info.audioSampleFormat = Audio::SampleFormat::Signed16P;
             m_info.audioOffsetS = static_cast<double>(m_state->audioStartTime) * static_cast<double>(m_state->audioTimeBase.num) / static_cast<double>(m_state->audioTimeBase.den);
         }
     }

@@ -41,12 +41,12 @@ namespace Audio
     /// @brief Audio sample format identifier
     enum class SampleFormat : uint8_t
     {
-        Unknown = 0,    // Bad, raw or compressed data
-        Signed8 = 1,    // Signed 8-bit data
-        Unsigned8 = 2,  // Unsigned 8-bit data
-        Signed16 = 3,   // Signed 16-bit data
-        Unsigned16 = 4, // Unsigned 16-bit data
-        Float32 = 5     // 32-bit float data
+        Unknown = 0,     // Bad, raw or compressed data
+        Signed8P = 1,    // Signed 8-bit planar data
+        Unsigned8P = 2,  // Unsigned 8-bit planar data
+        Signed16P = 3,   // Signed 16-bit planar data
+        Unsigned16P = 4, // Unsigned 16-bit planar data
+        Float32P = 5     // 32-bit float planar data
     };
 
     /// @brief Sample format information

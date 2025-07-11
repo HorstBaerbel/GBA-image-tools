@@ -348,7 +348,7 @@ ProcessingOptions::OptionT<Audio::ChannelFormat> ProcessingOptions::channelForma
 
 ProcessingOptions::OptionT<Audio::SampleFormat> ProcessingOptions::sampleFormat{
     false,
-    {"sampleformat", "Set audio sample format. Options are u8, s8, u16, s16 or f32", cxxopts::value(sampleFormat.valueString)},
+    {"sampleformat", "Set audio sample format. Options are u8p, s8p, u16p, s16p or f32p", cxxopts::value(sampleFormat.valueString)},
     {},
     {},
     [](const cxxopts::ParseResult &r)
@@ -356,7 +356,7 @@ ProcessingOptions::OptionT<Audio::SampleFormat> ProcessingOptions::sampleFormat{
         if (r.count(sampleFormat.cxxOption.opts_))
         {
             sampleFormat.value = Audio::findSampleFormat(sampleFormat.valueString);
-            REQUIRE(sampleFormat.value != Audio::SampleFormat::Unknown, std::runtime_error, "Audio sample format must be u8, s8, u16, s16 or f32 if specified");
+            REQUIRE(sampleFormat.value != Audio::SampleFormat::Unknown, std::runtime_error, "Audio sample format must be u8p, s8p, u16p, s16p or f32p if specified");
             sampleFormat.isSet = true;
         }
     }};

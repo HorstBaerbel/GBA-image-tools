@@ -23,11 +23,11 @@ namespace Audio
 
     static const std::map<SampleFormat, SampleFormatInfo> SampleFormatInfoMap = {
         {SampleFormat::Unknown, {SampleFormat::Unknown, "Unknown", "", 0, false}},
-        {SampleFormat::Signed8, {SampleFormat::Signed8, "Signed 8-bit", "s8", 8, true}},
-        {SampleFormat::Unsigned8, {SampleFormat::Unsigned8, "Unsigned 8-bit", "u8", 8, false}},
-        {SampleFormat::Signed16, {SampleFormat::Signed16, "Signed 16-bit", "s16", 16, true}},
-        {SampleFormat::Unsigned16, {SampleFormat::Unsigned16, "Unsigned 16-bit", "u16", 16, false}},
-        {SampleFormat::Float32, {SampleFormat::Float32, "Float 32-bit", "f32", 32, true}}};
+        {SampleFormat::Signed8P, {SampleFormat::Signed8P, "Signed 8-bit planar", "s8p", 8, true}},
+        {SampleFormat::Unsigned8P, {SampleFormat::Unsigned8P, "Unsigned 8-bit planar", "u8p", 8, false}},
+        {SampleFormat::Signed16P, {SampleFormat::Signed16P, "Signed 16-bit planar", "s16p", 16, true}},
+        {SampleFormat::Unsigned16P, {SampleFormat::Unsigned16P, "Unsigned 16-bit planar", "u16p", 16, false}},
+        {SampleFormat::Float32P, {SampleFormat::Float32P, "Float 32-bit planar", "f32p", 32, true}}};
 
     auto formatInfo(ChannelFormat channelformat) -> const ChannelFormatInfo &
     {

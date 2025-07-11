@@ -23,8 +23,8 @@ namespace Audio
         result.reserve(aNrOfSamples + bNrOfSamples);
         if (channelFormat == ChannelFormat::Stereo)
         {
-            REQUIRE(aNrOfSamples % 2 == 0, std::runtime_error, "Number of samples in a must be divisible by 2");
-            REQUIRE(bNrOfSamples % 2 == 0, std::runtime_error, "Number of samples in b must be divisible by 2");
+            REQUIRE(aNrOfSamples % 2 == 0, std::runtime_error, "Stereo data a must have an even number of samples");
+            REQUIRE(bNrOfSamples % 2 == 0, std::runtime_error, "Stereo data b must have an even number of samples");
             std::copy(aSamples.cbegin(), std::next(aSamples.cbegin(), aNrOfSamples / 2), std::back_inserter(result));
             std::copy(bSamples.cbegin(), std::next(bSamples.cbegin(), bNrOfSamples / 2), std::back_inserter(result));
             std::copy(std::next(aSamples.cbegin(), aNrOfSamples / 2), aSamples.cend(), std::back_inserter(result));
@@ -107,19 +107,19 @@ namespace Audio
         REQUIRE(m_samples.index() == frame.data.index(), std::runtime_error, "Unexpected frame data type");
         switch (m_sampleFormat)
         {
-        case Audio::SampleFormat::Signed8:
+        case Audio::SampleFormat::Signed8P:
             m_samples = combineSamples<int8_t>(m_samples, frame.data, m_channelFormat);
             break;
-        case Audio::SampleFormat::Unsigned8:
+        case Audio::SampleFormat::Unsigned8P:
             m_samples = combineSamples<uint8_t>(m_samples, frame.data, m_channelFormat);
             break;
-        case Audio::SampleFormat::Signed16:
+        case Audio::SampleFormat::Signed16P:
             m_samples = combineSamples<int16_t>(m_samples, frame.data, m_channelFormat);
             break;
-        case Audio::SampleFormat::Unsigned16:
+        case Audio::SampleFormat::Unsigned16P:
             m_samples = combineSamples<uint16_t>(m_samples, frame.data, m_channelFormat);
             break;
-        case Audio::SampleFormat::Float32:
+        case Audio::SampleFormat::Float32P:
             m_samples = combineSamples<float>(m_samples, frame.data, m_channelFormat);
             break;
         default:
@@ -135,19 +135,19 @@ namespace Audio
         frame.info.sampleFormat = m_sampleFormat;
         switch (m_sampleFormat)
         {
-        case Audio::SampleFormat::Signed8:
+        case Audio::SampleFormat::Signed8P:
             frame.data = extractSamples<int8_t>(m_samples, nrOfSamplesPerChannel, m_channelFormat);
             break;
-        case Audio::SampleFormat::Unsigned8:
+        case Audio::SampleFormat::Unsigned8P:
             frame.data = extractSamples<uint8_t>(m_samples, nrOfSamplesPerChannel, m_channelFormat);
             break;
-        case Audio::SampleFormat::Signed16:
+        case Audio::SampleFormat::Signed16P:
             frame.data = extractSamples<int16_t>(m_samples, nrOfSamplesPerChannel, m_channelFormat);
             break;
-        case Audio::SampleFormat::Unsigned16:
+        case Audio::SampleFormat::Unsigned16P:
             frame.data = extractSamples<uint16_t>(m_samples, nrOfSamplesPerChannel, m_channelFormat);
             break;
-        case Audio::SampleFormat::Float32:
+        case Audio::SampleFormat::Float32P:
             frame.data = extractSamples<float>(m_samples, nrOfSamplesPerChannel, m_channelFormat);
             break;
         default:
