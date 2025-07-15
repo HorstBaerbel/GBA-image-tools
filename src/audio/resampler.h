@@ -29,8 +29,9 @@ namespace Audio
 
         /// @brief Resample one frame of audio
         /// @param inFrame Input audio frame. Must be int16_t data
+        /// @param flush Flush the remainder of the samples in the resampling buffer
         /// @return Resampled audio frame
-        auto resample(const Frame &inFrame) -> Frame;
+        auto resample(const Frame &inFrame, bool flush = false) -> Frame;
 
     private:
         struct State;
