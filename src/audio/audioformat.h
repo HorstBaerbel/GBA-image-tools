@@ -11,10 +11,6 @@ namespace Audio
     /// @brief Raw / compressed audio sample data
     using SampleData = std::variant<std::vector<int8_t>, std::vector<uint8_t>, std::vector<int16_t>, std::vector<uint16_t>, std::vector<float>>;
 
-    /// @brief Get raw size of sample data
-    /// @return Raw size of sample data
-    auto rawSampleDataSize(const SampleData &samples) -> uint32_t;
-
     /// @brief Audio channel format identifier
     enum class ChannelFormat : uint8_t
     {

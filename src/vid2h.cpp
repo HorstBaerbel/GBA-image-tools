@@ -1,3 +1,4 @@
+#include "audio/audiohelpers.h"
 #include "audio/resampler.h"
 #include "audio/samplebuffer.h"
 #include "color/colorhelpers.h"
@@ -482,7 +483,7 @@ int main(int argc, const char *argv[])
                     {
                         IO::Vid2h::writeFrame(binFile, outFrame);
                     }
-                    const auto sampleDataSize = Audio::rawSampleDataSize(outFrame.data);
+                    const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
                     audioOutCompressedSize += sampleDataSize;
                     audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
                     audioSampleDeltaPrevFrame = audioSamplesThisFrame - audioSamplesPerFrame;
@@ -516,7 +517,7 @@ int main(int argc, const char *argv[])
             {
                 IO::Vid2h::writeFrame(binFile, outFrame);
             }
-            const auto sampleDataSize = Audio::rawSampleDataSize(outFrame.data);
+            const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
             audioOutCompressedSize += sampleDataSize;
             audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
             audioOutNrOfAudioSamples += audioSamplesRemaining;

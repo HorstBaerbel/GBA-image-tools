@@ -45,7 +45,7 @@ namespace AudioHelpers
             {
                 // float audio samples are in the range [-1,1]
                 // this can only be converted by either:
-                // * giving up them mapping of 0.0 -> 0 or
+                // * giving up the mapping of 0.0 -> 0 or
                 // * having to clamp the upper bound to 32767
                 // we choose the later here
                 float s = static_cast<float>(samplesPtr32[i]) * 32768;
@@ -84,5 +84,48 @@ namespace AudioHelpers
             THROW(std::runtime_error, "Bad sample format");
         }
         return result;
+    }
+
+    auto rawDataSize(const Audio::SampleData &samples) -> uint32_t
+    {
+        return std::visit([](auto data)
+                          { 
+            using T = std::decay_t<decltype(data)>::value_type;
+            return sizeof(T) * data.size(); }, samples);
+    }
+
+    auto toRawInterleavedData(const Audio::SampleData &samples, uint32_t nrOfChannels) -> std::vector<uint8_t>
+    {
+        REQUIRE(nrOfChannels > 0, std::runtime_error, "Number of channels can not be zero");
+        return std::visit([nrOfChannels](auto data)
+                          { 
+            using T = std::decay_t<decltype(data)>::value_type;
+            REQUIRE(data.size() > 0, std::runtime_error, "Empty sample data");
+            REQUIRE(data.size() % nrOfChannels == 0, std::runtime_error, "Sample count must be a multiple of the number of channels (" << nrOfChannels << ")");
+            // build output data
+            std::vector<uint8_t> result(sizeof(T) * data.size());
+            if (nrOfChannels == 1)
+            {
+                // direct memory copy
+                std::memcpy(result.data(), data.data(), result.size());
+            }
+            else
+            {
+                // copy samples per channel
+                const auto sizePerChannel = data.size() / nrOfChannels;
+                for (std::size_t ci = 0; ci < nrOfChannels; ++ci)
+                {
+                    // source is at start of planar data of nth channel
+                    auto srcPtr = data.data() + sizePerChannel * ci;
+                    // destination is at nth sample
+                    auto dstPtr = reinterpret_cast<T*>(result.data()) + ci;
+                    for (std::size_t si = 0; si < sizePerChannel; ++si)
+                    {
+                        *dstPtr = *srcPtr++;
+                        dstPtr += nrOfChannels;
+                    }
+                }
+            }
+            return result; }, samples);
     }
 }
