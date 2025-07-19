@@ -24,7 +24,7 @@ namespace AudioHelpers
 
     /// @brief Convert planar sample data to interleaved, raw byte buffer
     /// @param samples Planar sample data (e.g. L0 L1 ... R0 R1 ...)
-    /// @param nrOfChannels Number of channels in sample data
+    /// @param channelFormat Sample data channel format
     /// @return Interleaved sample data (e.g. L0 R0 L1 R1 ...) as raw byte buffer
-    auto toRawInterleavedData(const Audio::SampleData &samples, uint32_t nrOfChannels) -> std::vector<uint8_t>;
+    auto toRawInterleavedData(const Audio::SampleData &samples, Audio::ChannelFormat channelFormat) -> std::vector<uint8_t>;
 }

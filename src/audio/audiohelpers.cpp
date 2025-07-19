@@ -94,9 +94,10 @@ namespace AudioHelpers
             return sizeof(T) * data.size(); }, samples);
     }
 
-    auto toRawInterleavedData(const Audio::SampleData &samples, uint32_t nrOfChannels) -> std::vector<uint8_t>
+    auto toRawInterleavedData(const Audio::SampleData &samples, Audio::ChannelFormat channelFormat) -> std::vector<uint8_t>
     {
-        REQUIRE(nrOfChannels > 0, std::runtime_error, "Number of channels can not be zero");
+        REQUIRE(channelFormat != Audio::ChannelFormat::Unknown, std::runtime_error, "Bad channel format");
+        const auto nrOfChannels = Audio::formatInfo(channelFormat).nrOfChannels;
         return std::visit([nrOfChannels](auto data)
                           { 
             using T = std::decay_t<decltype(data)>::value_type;
