@@ -365,9 +365,13 @@ ProcessingOptions::Option ProcessingOptions::dryRun{
     false,
     {"dryrun", "Process data, but do not write output files.", cxxopts::value(dryRun.isSet)}};
 
-ProcessingOptions::Option ProcessingOptions::dumpResults{
+ProcessingOptions::Option ProcessingOptions::dumpImage{
     false,
-    {"dump", "Dump image conversion result before output (to \"result/*.png\").", cxxopts::value(dumpResults.isSet)}};
+    {"dumpimage", "Dump image conversion result(s) before output (to \"result/*.png\").", cxxopts::value(dumpImage.isSet)}};
+
+ProcessingOptions::Option ProcessingOptions::dumpAudio{
+    false,
+    {"dumpaudio", "Dump audio conversion result before output (to \"result.wav\").", cxxopts::value(dumpAudio.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::binary{
     false,

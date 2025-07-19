@@ -65,6 +65,7 @@ public:
 
     // General options
     static Option dryRun;
-    static Option dumpResults;
+    static Option dumpImage;
+    static Option dumpAudio;
     static Option binary;
 };

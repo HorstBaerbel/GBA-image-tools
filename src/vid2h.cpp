@@ -10,6 +10,7 @@
 #include "io/ffmpegreader.h"
 #include "io/textio.h"
 #include "io/vid2hio.h"
+#include "io/wavwriter.h"
 #include "processing/datahelpers.h"
 #include "processing/processingoptions.h"
 #include "statistics/statistics_window.h"
@@ -73,6 +74,8 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.sampleFormat.cxxOption);
         opts.add_option("", options.sampleRateHz.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
+        opts.add_option("", options.dumpImage.cxxOption);
+        opts.add_option("", options.dumpAudio.cxxOption);
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
@@ -154,8 +157,7 @@ bool readArguments(int argc, const char *argv[])
 void printUsage()
 {
     // 80 chars:  --------------------------------------------------------------------------------
-    std::cout << "Converts and compresses a video file to a binary file to compile it into a " << std::endl;
-    std::cout << "GBA executable." << std::endl;
+    std::cout << "Convert and compress a video file to .h / .c files or a binary file" << std::endl;
     std::cout << "Usage: vid2h IMG [IMG_CONV] [IMG_COMP] [COMP] AUD INFILE OUTNAME" << std::endl;
     std::cout << "IMaGe format options (mutually exclusive):" << std::endl;
     std::cout << options.blackWhite.helpString() << std::endl;
@@ -194,6 +196,8 @@ void printUsage()
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
+    std::cout << options.dumpImage.helpString() << std::endl;
+    std::cout << options.dumpAudio.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
     std::cout << "Image order: input, color conversion, addcolor0, movecolor0, shift, sprites, " << std::endl;
     std::cout << "tiles, deltaimage, dxtg / dtxv, delta8 / delta16, rle, lz10, output" << std::endl;
@@ -372,6 +376,23 @@ int main(int argc, const char *argv[])
             resampler = std::make_shared<Audio::Resampler>(mediaInfo.audioChannelFormat, mediaInfo.audioSampleRateHz, audioOutChannelFormat, audioOutSampleRateHz, audioOutSampleFormat);
             std::cout << "Converting audio to: " << Audio::formatInfo(audioOutChannelFormat).description << ", " << audioOutSampleRateHz << " Hz, " << Audio::formatInfo(audioOutSampleFormat).description << std::endl;
         }
+        // audio dumping
+        std::shared_ptr<IO::WavWriter> wavWriter;
+        if (options.dumpAudio)
+        {
+            wavWriter = std::make_shared<IO::WavWriter>();
+            try
+            {
+                wavWriter->open("result.wav");
+                std::cout << "Dumping result audio to result.wav" << std::endl;
+            }
+            catch (const std::runtime_error &e)
+            {
+                std::cerr << e.what() << std::endl;
+                return 1;
+            }
+        }
+
         // print image processing pipeline configuration
         const auto processingDescription = imageProcessing.getProcessingDescription();
         std::cout << "Applying image processing: " << processingDescription << std::endl;
@@ -462,6 +483,11 @@ int main(int argc, const char *argv[])
                 audioFrame = resampler ? resampler->resample(audioFrame, isLastAudioFrame) : audioFrame;
                 // append output samples to sample buffer
                 audioSampleBuffer.push_back(audioFrame);
+                // dump the audio frame if user wants to
+                if (wavWriter)
+                {
+                    wavWriter->writeFrame(audioFrame);
+                }
                 // We need to provide enough samples for one frame of video at the video frame rate
                 // We also need to make sure audio frames size requirements are met:
                 // * Multiple of 16 int8_t samples per channel for GBA audio playback
@@ -529,6 +555,11 @@ int main(int argc, const char *argv[])
             binFile.seekp(0);
             IO::Vid2h::writeMediaFileHeader(binFile, videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, audioOutInfo, audioOutNrOfAudioFrames, audioOutNrOfAudioSamples, 0, audioOutMaxMemoryNeeded);
             binFile.close();
+        }
+        // close wave writer if open
+        if (wavWriter)
+        {
+            wavWriter->close();
         }
         // output some info about data
         const auto videoInputSize = mediaInfo.videoWidth * mediaInfo.videoHeight * 3 * mediaInfo.videoNrOfFrames;
