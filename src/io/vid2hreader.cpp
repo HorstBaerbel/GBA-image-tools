@@ -14,7 +14,7 @@ namespace Media
     {
         // open input file
         auto fileVid2h = std::ifstream(filePath, std::ios::in | std::ios::binary);
-        REQUIRE(fileVid2h.is_open() && !m_is.fail(), std::runtime_error, "Failed to open " << filePath << " for reading");
+        REQUIRE(fileVid2h.is_open() && !fileVid2h.fail(), std::runtime_error, "Failed to open " << filePath << " for reading");
         m_is = std::move(fileVid2h);
         // try reading video file header
         m_fileHeader = IO::Vid2h::readFileHeader(m_is);
