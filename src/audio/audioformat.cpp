@@ -64,4 +64,23 @@ namespace Audio
         return SampleFormat::Unknown;
     }
 
+    auto checkSampleFormat(const SampleData &sampleData, SampleFormat sampleFormat) -> bool
+    {
+        switch (sampleFormat)
+        {
+        case Audio::SampleFormat::Signed8P:
+            return std::holds_alternative<std::vector<int8_t>>(sampleData);
+        case Audio::SampleFormat::Unsigned8P:
+            return std::holds_alternative<std::vector<uint8_t>>(sampleData);
+        case Audio::SampleFormat::Signed16P:
+            return std::holds_alternative<std::vector<int16_t>>(sampleData);
+        case Audio::SampleFormat::Unsigned16P:
+            return std::holds_alternative<std::vector<uint16_t>>(sampleData);
+        case Audio::SampleFormat::Float32P:
+            return std::holds_alternative<std::vector<float>>(sampleData);
+        default:
+            THROW(std::runtime_error, "Bad sample format");
+        }
+        return false;
+    }
 }

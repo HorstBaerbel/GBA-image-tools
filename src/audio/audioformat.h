@@ -66,4 +66,10 @@ namespace Audio
     /// @param isSigned If true the sample format has signed data, else unsigned data
     /// @return Most probable sample format or SampleFormat::Unknown
     auto findSampleFormat(uint32_t bitsPerSample, bool isSigned) -> SampleFormat;
+
+    /// @brief Check if the data type of sampleData matches the format of sampleFormat
+    /// @param sampleData Input sample data
+    /// @param sampleFormat Input sample format
+    /// @return true
+    auto checkSampleFormat(const SampleData &sampleData, SampleFormat sampleFormat) -> bool;
 }
