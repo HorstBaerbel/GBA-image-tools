@@ -65,11 +65,20 @@ namespace Audio
     }
 
     template <typename T>
-    auto rawBufferToVector(const uint8_t *data, uint32_t rawBufferSize) -> std::vector<T>
+    auto rawBufferToVector(const uint8_t *const *data, uint32_t rawBufferSize, uint32_t nrOfChannels) -> std::vector<T>
     {
-        std::vector<T> v(rawBufferSize / sizeof(T));
-        std::memcpy(v.data(), data, rawBufferSize);
-        return v;
+        REQUIRE(rawBufferSize % sizeof(T) == 0, std::runtime_error, "Data size must be a multiple of type size");
+        REQUIRE((rawBufferSize / sizeof(T)) % nrOfChannels == 0, std::runtime_error, "Data size must be a multiple of number of channels");
+        std::vector<T> result(rawBufferSize / sizeof(T));
+        auto resultPtr = reinterpret_cast<uint8_t *>(result.data());
+        const auto rawChannelSize = rawBufferSize / nrOfChannels;
+        for (uint32_t ci = 0; ci < nrOfChannels; ++ci)
+        {
+            REQUIRE(data[ci] != nullptr, std::runtime_error, "Data pointer for channel " << ci << " is NULL");
+            std::memcpy(resultPtr, data[ci], rawChannelSize);
+            resultPtr += rawChannelSize;
+        }
+        return result;
     }
 
     Resampler::Resampler(ChannelFormat inChannelFormat, uint32_t inSampleRateHz,
@@ -164,7 +173,7 @@ namespace Audio
         case SampleFormat::Signed8P:
         {
             // ffmpeg supports no S8P, so we converted to U8P
-            auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData[0], convertedRawBufferSize);
+            auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
             // correctly convert to int8_t
             std::vector<int8_t> dataI8;
             dataI8.reserve(dataU8.size());
@@ -174,15 +183,15 @@ namespace Audio
             break;
         }
         case SampleFormat::Unsigned8P:
-            outFrame.data = rawBufferToVector<uint8_t>(m_state->outData[0], convertedRawBufferSize);
+            outFrame.data = rawBufferToVector<uint8_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
             break;
         case SampleFormat::Signed16P:
-            outFrame.data = rawBufferToVector<int16_t>(m_state->outData[0], convertedRawBufferSize);
+            outFrame.data = rawBufferToVector<int16_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
             break;
         case SampleFormat::Unsigned16P:
         {
             // ffmpeg supports no U16P, so we converted to S16P
-            auto dataS16 = rawBufferToVector<int16_t>(m_state->outData[0], convertedRawBufferSize);
+            auto dataS16 = rawBufferToVector<int16_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
             // correctly convert to uint16_t
             std::vector<uint16_t> dataU16;
             dataU16.reserve(dataS16.size());
@@ -192,7 +201,7 @@ namespace Audio
             break;
         }
         case SampleFormat::Float32P:
-            outFrame.data = rawBufferToVector<float>(m_state->outData[0], convertedRawBufferSize);
+            outFrame.data = rawBufferToVector<float>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
             break;
         default:
             THROW(std::runtime_error, "Bad output sample format");
