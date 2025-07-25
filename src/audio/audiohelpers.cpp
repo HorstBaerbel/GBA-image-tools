@@ -113,16 +113,16 @@ namespace AudioHelpers
             else
             {
                 // copy samples per channel
-                const auto sizePerChannel = data.size() / nrOfChannels;
+                const auto samplesPerChannel = data.size() / nrOfChannels;
                 for (std::size_t ci = 0; ci < nrOfChannels; ++ci)
                 {
                     // source is at start of planar data of nth channel
-                    auto srcPtr = data.data() + sizePerChannel * ci;
+                    auto srcPtr = data.data() + samplesPerChannel * ci;
                     // destination is at nth sample
                     auto dstPtr = reinterpret_cast<T*>(result.data()) + ci;
-                    for (std::size_t si = 0; si < sizePerChannel; ++si)
+                    for (std::size_t si = 0; si < samplesPerChannel; ++si)
                     {
-                        *dstPtr = *srcPtr++;
+                        *dstPtr = srcPtr[si];
                         dstPtr += nrOfChannels;
                     }
                 }

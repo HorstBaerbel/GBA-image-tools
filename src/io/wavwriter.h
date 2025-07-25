@@ -9,6 +9,8 @@
 namespace IO
 {
 
+    /// @brief Writes RIFF / WAVE files to disk
+    /// @note RIFF / WAVE only supports 8-bit unsigned, 16-bit signed and 32-bit float PCM data. Other formats will be converted.
     class WavWriter
     {
     public:

@@ -172,13 +172,15 @@ namespace Audio
         {
         case SampleFormat::Signed8P:
         {
-            // ffmpeg supports no S8P, so we converted to U8P
+            // ffmpeg supports no S8P, so we converted to U8P to resample. correctly convert to int8_t now
             auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
-            // correctly convert to int8_t
             std::vector<int8_t> dataI8;
             dataI8.reserve(dataU8.size());
             std::transform(dataU8.cbegin(), dataU8.cend(), std::back_inserter(dataI8), [](auto v)
-                           { return static_cast<int8_t>(static_cast<int32_t>(v) - 128); });
+                           {
+                // clamp audio data to [1,255] instead of [0,255] to center around 128
+                v = v < 1 ? 1 : v;
+                return static_cast<int32_t>(v) - 128; });
             outFrame.data = dataI8;
             break;
         }
@@ -190,13 +192,15 @@ namespace Audio
             break;
         case SampleFormat::Unsigned16P:
         {
-            // ffmpeg supports no U16P, so we converted to S16P
+            // ffmpeg supports no U16P, so we converted to S16P to resample. correctly convert to uint16_t now
             auto dataS16 = rawBufferToVector<int16_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
-            // correctly convert to uint16_t
             std::vector<uint16_t> dataU16;
             dataU16.reserve(dataS16.size());
             std::transform(dataS16.cbegin(), dataS16.cend(), std::back_inserter(dataU16), [](auto v)
-                           { return static_cast<uint16_t>(static_cast<int32_t>(v) + 32768); });
+                           { 
+                // clamp audio data to [-32767,32767] instead of [-32768,32767] to center around 0
+                v = v < -32767 ? -32767 : v;
+                return static_cast<uint16_t>(static_cast<int32_t>(v) + 32768); });
             outFrame.data = dataU16;
             break;
         }

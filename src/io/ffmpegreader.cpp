@@ -13,8 +13,9 @@ extern "C"
 #include <libswresample/swresample.h>
 }
 
-#include <iostream>
+#include <algorithm>
 #include <cstring>
+#include <iostream>
 
 namespace Media
 {
@@ -391,6 +392,9 @@ namespace Media
                 std::memcpy(dataPtr, m_state->audioOutData[0], convertedRawBufferSize / 2);
                 std::memcpy(dataPtr + convertedRawBufferSize / 2, m_state->audioOutData[1], convertedRawBufferSize / 2);
             }
+            // clamp audio data to [-32767,32767] instead of [-32768,32767] to center around 0
+            std::for_each(frameData.begin(), frameData.end(), [](auto &v)
+                          { v = v < -32767 ? -32767 : v; });
             // release FFmpeg frame
             av_frame_unref(m_state->frame);
             return {IO::FrameType::Audio, frameData};
