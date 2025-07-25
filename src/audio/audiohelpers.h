@@ -22,6 +22,12 @@ namespace AudioHelpers
     /// @return Raw size of sample data in bytes
     auto rawDataSize(const Audio::SampleData &samples) -> uint32_t;
 
+    /// @brief Convert planar sample data to raw byte buffer
+    /// @param samples Planar sample data (e.g. L0 L1 ... R0 R1 ...)
+    /// @param channelFormat Sample data channel format
+    /// @return Planar sample data as raw byte buffer
+    auto toRawData(const Audio::SampleData &samples, Audio::ChannelFormat channelFormat) -> std::vector<uint8_t>;
+
     /// @brief Convert planar sample data to interleaved, raw byte buffer
     /// @param samples Planar sample data (e.g. L0 L1 ... R0 R1 ...)
     /// @param channelFormat Sample data channel format

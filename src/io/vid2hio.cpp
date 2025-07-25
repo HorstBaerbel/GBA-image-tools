@@ -1,5 +1,7 @@
 #include "vid2hio.h"
 
+#include "audio/audiohelpers.h"
+
 namespace IO::Vid2h
 {
 
@@ -40,17 +42,17 @@ namespace IO::Vid2h
     auto writeFrame(std::ostream &os, const Audio::Frame &frame) -> std::ostream &
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
-        /*auto &audioData = frame.data;
-        // REQUIRE((frame.size() % 4) == 0, std::runtime_error, "Audio data size is not a multiple of 4");
-        //  write audio data frame header
+        auto sampleData = AudioHelpers::toRawData(frame.data, frame.info.channelFormat);
+        REQUIRE((sampleData.size() % 4) == 0, std::runtime_error, "Audio data size is not a multiple of 4");
+        // write audio data frame header
         FrameHeader frameHeader;
         frameHeader.dataType = FrameType::Audio;
-        frameHeader.dataSize = frame.size();
+        frameHeader.dataSize = sampleData.size();
         os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data frame header for frame #" << frame.index << " to stream");
-        // write pixel data
-        os.write(reinterpret_cast<const char *>(frame.data()), frame.size());
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");*/
+        // write audio sample data
+        os.write(reinterpret_cast<const char *>(sampleData.data()), sampleData.size());
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data for frame #" << frame.index << " to stream");
         return os;
     }
 
