@@ -67,7 +67,7 @@ namespace Audio
         }
         else
         {
-            REQUIRE(nrOfSamplesPerChannel >= aNrOfSamples, std::runtime_error, "Not enough samples in buffer");
+            REQUIRE(nrOfSamplesPerChannel <= aNrOfSamples, std::runtime_error, "Not enough samples in buffer");
             result.reserve(nrOfSamplesPerChannel);
             // copy samples to result
             std::copy(channel0Start, std::next(channel0Start, nrOfSamplesPerChannel), std::back_inserter(result));
