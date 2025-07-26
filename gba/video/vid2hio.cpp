@@ -11,6 +11,7 @@ namespace IO::Vid2h
         Info info;
         Memory::memcpy32(&info, data, sizeof(FileHeader) / 4);
         info.fileData = data;
+        info.nrOfFrames = info.videoNrOfFrames + info.videoNrOfColorMapFrames + info.audioNrOfFrames;
         info.imageSize = info.videoWidth * info.videoHeight;
         switch (info.videoBitsPerColor)
         {
@@ -54,12 +55,17 @@ namespace IO::Vid2h
         return info;
     }
 
+    auto HasMoreFrames(const Info &info, const Frame &previous) -> bool
+    {
+        return previous.index < static_cast<int32_t>(info.nrOfFrames - 1);
+    }
+
     Frame GetNextFrame(const Info &info, const Frame &previous)
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
         Frame frame;
         const uint32_t *frameStart = nullptr;
-        if (previous.index < 0 || previous.index >= static_cast<int32_t>(info.videoNrOfFrames - 1))
+        if (previous.index < 0 || previous.index >= static_cast<int32_t>(info.nrOfFrames - 1))
         {
             // read first frame
             frame.index = 0;
@@ -67,6 +73,7 @@ namespace IO::Vid2h
         }
         else
         {
+            // read next frame
             frame.index = previous.index + 1;
             frameStart = previous.header + sizeof(FrameHeader) / 4 + previous.dataSize / 4;
         }

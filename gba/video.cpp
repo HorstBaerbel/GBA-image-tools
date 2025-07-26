@@ -35,13 +35,14 @@ int main()
 	TUI::printf(0, 5, "Bits / pixel: %d", videoInfo.videoBitsPerPixel);
 	TUI::printf(0, 6, "Colors in colormap: %d", videoInfo.videoColorMapEntries);
 	TUI::printf(0, 7, "Bits / color: %d", videoInfo.videoBitsPerColor);
-	TUI::printf(0, 8, "Red-Blue swapped: %b", videoInfo.videoSwappedRedBlue);
-	TUI::printf(0, 9, "Video mem needed: %d Byte", videoInfo.videoMemoryNeeded);
-	TUI::printf(0, 11, "Audio samples: %d", videoInfo.audioNrOfSamples);
-	TUI::printf(0, 12, "Audio sample rate: %d Hz", videoInfo.audioSampleRateHz);
-	TUI::printf(0, 13, "Audio sample depth: %d-bit", videoInfo.audioSampleBits);
-	TUI::printf(0, 14, "Audio channels: %d", videoInfo.audioChannels);
-	TUI::printf(0, 15, "Audio mem needed: %d Byte", videoInfo.audioMemoryNeeded);
+	TUI::printf(0, 8, "Color map frames: %d", videoInfo.videoNrOfColorMapFrames);
+	TUI::printf(0, 9, "Red-Blue swapped: %b", videoInfo.videoSwappedRedBlue);
+	TUI::printf(0, 10, "Video mem needed: %d Byte", videoInfo.videoMemoryNeeded);
+	TUI::printf(0, 12, "Audio samples: %d", videoInfo.audioNrOfSamples);
+	TUI::printf(0, 13, "Audio sample rate: %d Hz", videoInfo.audioSampleRateHz);
+	TUI::printf(0, 14, "Audio sample depth: %d-bit", videoInfo.audioSampleBits);
+	TUI::printf(0, 15, "Audio channels: %d", videoInfo.audioChannels);
+	TUI::printf(0, 16, "Audio mem needed: %d Byte", videoInfo.audioMemoryNeeded);
 	TUI::printf(0, 19, "       Press A to play");
 	// wait for keypress
 	do
