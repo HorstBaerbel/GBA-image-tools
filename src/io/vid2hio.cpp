@@ -66,8 +66,11 @@ namespace IO::Vid2h
         return os;
     }
 
-    auto addInfoToFileHeader(const FileHeader &inHeader, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded) -> FileHeader
+    auto addInfoToFileHeader(const FileHeader &inHeader, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, uint32_t videoNrOfColorMapFrames) -> FileHeader
     {
+        REQUIRE(videoNrOfFrames < 2 ^ 24, std::runtime_error, "Number of video frames must be < 2^24");
+        REQUIRE(videoMemoryNeeded < 2 ^ 24, std::runtime_error, "Max. video memory needed must be < 2^24");
+        REQUIRE(videoNrOfColorMapFrames < 2 ^ 24, std::runtime_error, "Number of color map frames must be < 2^24");
         FileHeader outHeader = inHeader;
         // add video information
         const auto &pixelInfo = Color::formatInfo(imageInfo.pixelFormat);
@@ -78,14 +81,17 @@ namespace IO::Vid2h
         outHeader.videoHeight = static_cast<uint16_t>(imageInfo.size.height());
         outHeader.videoBitsPerPixel = static_cast<uint8_t>(pixelInfo.bitsPerPixel);
         outHeader.videoBitsPerColor = pixelInfo.isIndexed ? static_cast<uint8_t>(colorMapInfo.bitsPerPixel) : 0;
-        outHeader.videoSwappedRedBlue = (pixelInfo.isIndexed ? colorMapInfo.hasSwappedRedBlue : pixelInfo.hasSwappedRedBlue) ? 1 : 0;
         outHeader.videoColorMapEntries = pixelInfo.isIndexed ? imageInfo.nrOfColorMapEntries : 0;
+        outHeader.videoNrOfColorMapFrames = videoNrOfColorMapFrames;
+        outHeader.videoSwappedRedBlue = (pixelInfo.isIndexed ? colorMapInfo.hasSwappedRedBlue : pixelInfo.hasSwappedRedBlue) ? 1 : 0;
         outHeader.videoMemoryNeeded = videoMemoryNeeded;
         return outHeader;
     }
 
     auto addInfoToFileHeader(const FileHeader &inHeader, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> FileHeader
     {
+        REQUIRE(audioNrOfFrames < 2 ^ 24, std::runtime_error, "Number of audio frames must be < 2^24");
+        REQUIRE(audioMemoryNeeded < 2 ^ 16, std::runtime_error, "Max. audio memory needed must be < 2^24");
         FileHeader outHeader = inHeader;
         // add audio information
         const auto &channelInfo = Audio::formatInfo(audioInfo.channelFormat);
@@ -102,7 +108,7 @@ namespace IO::Vid2h
         return outHeader;
     }
 
-    auto writeMediaFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
+    auto writeMediaFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, uint32_t videoNrOfColorMapFrames, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
         // generate file header
@@ -110,7 +116,7 @@ namespace IO::Vid2h
         fileHeader.magic = IO::Vid2h::Magic;
         fileHeader.contentType = IO::FileType::AudioVideo;
         // add video information
-        fileHeader = addInfoToFileHeader(fileHeader, imageInfo, videoNrOfFrames, videoFrameRateHz, videoMemoryNeeded);
+        fileHeader = addInfoToFileHeader(fileHeader, imageInfo, videoNrOfFrames, videoFrameRateHz, videoMemoryNeeded, videoNrOfColorMapFrames);
         // add audio information
         fileHeader = addInfoToFileHeader(fileHeader, audioInfo, audioNrOfFrames, audioNrOfSamples, audioOffsetSamples, audioMemoryNeeded);
         // store to file
@@ -119,7 +125,7 @@ namespace IO::Vid2h
         return os;
     }
 
-    auto writeVideoFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded) -> std::ostream &
+    auto writeVideoFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, uint32_t videoNrOfColorMapFrames) -> std::ostream &
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
         // generate file header
@@ -127,7 +133,7 @@ namespace IO::Vid2h
         fileHeader.magic = IO::Vid2h::Magic;
         fileHeader.contentType = IO::FileType::Video;
         // add video information
-        fileHeader = addInfoToFileHeader(fileHeader, imageInfo, videoNrOfFrames, videoFrameRateHz, videoMemoryNeeded);
+        fileHeader = addInfoToFileHeader(fileHeader, imageInfo, videoNrOfFrames, videoFrameRateHz, videoMemoryNeeded, videoNrOfColorMapFrames);
         // store to file
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write video file header to stream");

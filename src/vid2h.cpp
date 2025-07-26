@@ -503,6 +503,7 @@ int main(int argc, const char *argv[])
                 if (audioSampleBuffer.nrOfSamplesPerChannel() >= audioSamplesThisFrame)
                 {
                     Audio::Frame outFrame = audioSampleBuffer.pop_front(audioSamplesThisFrame);
+                    outFrame.index = audioOutNrOfAudioFrames;
                     audioOutInfo = outFrame.info;
                     // write samples to file
                     if (!options.dryRun && binFile.is_open())
@@ -537,6 +538,7 @@ int main(int argc, const char *argv[])
         if (audioSamplesRemaining > 0)
         {
             Audio::Frame outFrame = audioSampleBuffer.pop_front(audioSamplesRemaining);
+            outFrame.index = audioOutNrOfAudioFrames;
             audioOutInfo = outFrame.info;
             // write samples to file
             if (!options.dryRun && binFile.is_open())
@@ -553,7 +555,7 @@ int main(int argc, const char *argv[])
         if (!options.dryRun && binFile.is_open())
         {
             binFile.seekp(0);
-            IO::Vid2h::writeMediaFileHeader(binFile, videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, audioOutInfo, audioOutNrOfAudioFrames, audioOutNrOfAudioSamples, 0, audioOutMaxMemoryNeeded);
+            IO::Vid2h::writeMediaFileHeader(binFile, videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, audioOutInfo, audioOutNrOfAudioFrames, audioOutNrOfAudioSamples, 0, audioOutMaxMemoryNeeded);
             binFile.close();
         }
         // close wave writer if open

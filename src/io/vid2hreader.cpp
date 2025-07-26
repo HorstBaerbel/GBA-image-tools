@@ -28,6 +28,7 @@ namespace Media
             REQUIRE(m_fileHeader.videoWidth != 0 && m_fileHeader.videoHeight != 0, std::runtime_error, "Width or height can not be 0");
             REQUIRE(m_fileHeader.videoBitsPerPixel == 1 || m_fileHeader.videoBitsPerPixel == 2 || m_fileHeader.videoBitsPerPixel == 4 || m_fileHeader.videoBitsPerPixel == 8 || m_fileHeader.videoBitsPerPixel == 15 || m_fileHeader.videoBitsPerPixel == 16 || m_fileHeader.videoBitsPerPixel == 24, std::runtime_error, "Unsupported pixel bit depth: " << m_fileHeader.videoBitsPerPixel);
             REQUIRE(m_fileHeader.videoBitsPerColor == 0 || m_fileHeader.videoBitsPerColor == 15 || m_fileHeader.videoBitsPerColor == 16 || m_fileHeader.videoBitsPerPixel == 24, std::runtime_error, "Unsupported color map bit depth: " << m_fileHeader.videoBitsPerColor);
+            REQUIRE(m_fileHeader.videoBitsPerColor == 0 || m_fileHeader.videoNrOfColorMapFrames != 0, std::runtime_error, "Color map format specified, but number of color map frames is 0");
             m_info.videoNrOfFrames = m_fileHeader.videoNrOfFrames;
             const double fps = static_cast<double>(m_fileHeader.videoFrameRateHz) / 65536.0;
             m_info.videoFrameRateHz = fps;
