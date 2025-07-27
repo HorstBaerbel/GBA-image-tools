@@ -43,6 +43,7 @@ namespace Media
         // generate audio info
         if ((m_fileHeader.contentType & IO::FileType::Audio) != 0)
         {
+            m_info.audioNrOfFrames = m_fileHeader.audioNrOfFrames;
             m_info.audioNrOfSamples = m_fileHeader.audioNrOfSamples;
             m_info.audioDurationS = static_cast<double>(m_fileHeader.audioNrOfSamples) / static_cast<double>(m_fileHeader.audioSampleRateHz);
             m_info.audioCodecName = "vid2h";
