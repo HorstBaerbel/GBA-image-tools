@@ -57,4 +57,49 @@ namespace Media
         } while (true);
         return currentDst;
     }
+
+    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
+    {
+        static_assert(sizeof(IO::Vid2h::ChunkHeader) % 4 == 0);
+        // get pointer to start of data chunk. audio data is stored first
+        auto currentChunk = frame.data;
+        uint32_t chunkUncompressedSize = 0;
+        uint32_t *currentDst = nullptr;
+        do
+        {
+            const auto chunk = reinterpret_cast<const IO::Vid2h::ChunkHeader *>(currentChunk);
+            const auto isFinal = (chunk->processingType & Image::ProcessingTypeFinal) != 0;
+            // get size of output data in words
+            chunkUncompressedSize = chunk->uncompressedSize;
+            const auto uncompressedSize32 = (chunkUncompressedSize + 3) / 4;
+            // get pointer to start of frame data
+            auto currentSrc = currentChunk + sizeof(IO::Vid2h::ChunkHeader) / 4;
+            // if we're reading from start of scratchpad, write to the end and vice versa
+            currentDst = currentChunk == scratchPad ? scratchPad + ((scratchPadSize / 4) - uncompressedSize32) : scratchPad;
+            // reverse processing operation used in this stage
+            switch (static_cast<Image::ProcessingType>(chunk->processingType & (~Image::ProcessingTypeFinal)))
+            {
+            case Image::ProcessingType::Uncompressed:
+                // copy audio data to sample buffer
+                Memory::memcpy32(currentDst, currentSrc, uncompressedSize32);
+                break;
+            case Image::ProcessingType::CompressLZ10:
+                Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
+                break;
+            case Image::ProcessingType::CompressRLE:
+                BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
+                break;
+            default:
+                return {currentDst, chunkUncompressedSize};
+            }
+            // break if this was the last processing operation
+            if (isFinal)
+            {
+                break;
+            }
+            // decide where to decode the next chunk from. our old destination is the new source
+            currentChunk = currentDst;
+        } while (true);
+        return {currentDst, chunkUncompressedSize};
+    }
 }
