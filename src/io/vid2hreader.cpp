@@ -130,7 +130,7 @@ namespace Media
                 switch (processingType)
                 {
                 case Audio::ProcessingType::Uncompressed:
-                    outData = AudioHelpers::toSigned16(inData, m_info.audioSampleFormat);
+                    outData = AudioHelpers::toSigned16(srcData, m_info.audioSampleFormat);
                     break;
                 case Audio::ProcessingType::CompressLZ10:
                     inData = Compression::decodeLZ10(srcData);

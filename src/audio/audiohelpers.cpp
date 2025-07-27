@@ -11,7 +11,7 @@ namespace AudioHelpers
     auto toSigned16(const std::vector<uint8_t> &samples, Audio::SampleFormat sampleFormat) -> std::vector<int16_t>
     {
         std::vector<int16_t> result;
-        REQUIRE(samples.empty(), std::runtime_error, "Sample can not be empty");
+        REQUIRE(!samples.empty(), std::runtime_error, "Sample can not be empty");
         switch (sampleFormat)
         {
         case Audio::SampleFormat::Signed8P:
@@ -23,13 +23,13 @@ namespace AudioHelpers
                            { return static_cast<int16_t>(static_cast<int32_t>(s) * 257 - 32768); });
             break;
         case Audio::SampleFormat::Signed16P:
-            REQUIRE(samples.size() % 2 == 0, std::runtime_error, "Size of raw int16_t sample data must a multiple of 2");
+            REQUIRE(samples.size() % 2 == 0, std::runtime_error, "Size of raw int16_t sample data must be a multiple of 2");
             result.resize(samples.size() / 2);
             std::memcpy(result.data(), samples.data(), samples.size());
             break;
         case Audio::SampleFormat::Unsigned16P:
         {
-            REQUIRE(samples.size() % 2 == 0, std::runtime_error, "Size of raw uint16_t sample data must a multiple of 2");
+            REQUIRE(samples.size() % 2 == 0, std::runtime_error, "Size of raw uint16_t sample data must be a multiple of 2");
             auto samplesPtr16 = reinterpret_cast<const uint16_t *>(samples.data());
             for (std::size_t i = 0; i < samples.size() / 2; ++i)
             {

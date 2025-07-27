@@ -1,4 +1,5 @@
 #include "audio/audiohelpers.h"
+#include "audio/audioprocessing.h"
 #include "audio/resampler.h"
 #include "audio/samplebuffer.h"
 #include "color/colorhelpers.h"
@@ -502,19 +503,22 @@ int main(int argc, const char *argv[])
                 // check if our buffer has this many samples
                 if (audioSampleBuffer.nrOfSamplesPerChannel() >= audioSamplesThisFrame)
                 {
-                    Audio::Frame outFrame = audioSampleBuffer.pop_front(audioSamplesThisFrame);
+                    auto outFrame = audioSampleBuffer.pop_front(audioSamplesThisFrame);
                     outFrame.index = audioOutNrOfAudioFrames;
                     audioOutInfo = outFrame.info;
-                    // write samples to file
-                    if (!options.dryRun && binFile.is_open())
-                    {
-                        IO::Vid2h::writeFrame(binFile, outFrame);
-                    }
+                    // get sample information
                     const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
                     audioOutCompressedSize += sampleDataSize;
                     audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
                     audioSampleDeltaPrevFrame = audioSamplesThisFrame - audioSamplesPerFrame;
                     audioOutNrOfAudioSamples += audioSamplesThisFrame;
+                    // add processing info to sample data
+                    outFrame = Audio::Processing::prependProcessingInfo(outFrame, sampleDataSize, Audio::ProcessingType::Uncompressed, true);
+                    // write samples to file
+                    if (!options.dryRun && binFile.is_open())
+                    {
+                        IO::Vid2h::writeFrame(binFile, outFrame);
+                    }
                     ++audioOutNrOfAudioFrames;
                 }
                 ++audioFrameIndex;
@@ -540,15 +544,18 @@ int main(int argc, const char *argv[])
             Audio::Frame outFrame = audioSampleBuffer.pop_front(audioSamplesRemaining);
             outFrame.index = audioOutNrOfAudioFrames;
             audioOutInfo = outFrame.info;
+            // get sample information
+            const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
+            audioOutCompressedSize += sampleDataSize;
+            audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
+            audioOutNrOfAudioSamples += audioSamplesRemaining;
+            // add processing info to sample data
+            outFrame = Audio::Processing::prependProcessingInfo(outFrame, sampleDataSize, Audio::ProcessingType::Uncompressed, true);
             // write samples to file
             if (!options.dryRun && binFile.is_open())
             {
                 IO::Vid2h::writeFrame(binFile, outFrame);
             }
-            const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
-            audioOutCompressedSize += sampleDataSize;
-            audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
-            audioOutNrOfAudioSamples += audioSamplesRemaining;
             ++audioOutNrOfAudioFrames;
         }
         // write final file header to start of stream
