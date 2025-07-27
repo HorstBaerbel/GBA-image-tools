@@ -11,8 +11,10 @@ namespace Media
     /// @param videoSrc Video source data
     /// @param scratchPad Intermediate memory for decoding. Can be nullptr if you only have one compression stage. Must be aligned to 4 bytes!
     /// @param scratchPadSize Size of intermediate memory for decoding. Must be a multiple of 4 bytes!
+    /// @param audioData Memory for storing audio sample data. Must be in IWRAM. Must be aligned to 4 bytes!
+    /// @param audioDataSize Size of memory for storing audio sample data. Must be a multiple of 4 bytes!
     /// @note The video player uses timer #2 and the matching timer IRQ. Don't use these otherwise!
-    auto Init(const uint32_t *videoSrc, uint32_t *scratchPad, uint32_t scratchPadSize) -> void;
+    auto Init(const uint32_t *videoSrc, uint32_t *scratchPad, uint32_t scratchPadSize, uint32_t *audioData, uint32_t audioDataSize) -> void;
 
     /// @brief Set color that screen an scratchpad will be set to when starting playback
     /// @param color

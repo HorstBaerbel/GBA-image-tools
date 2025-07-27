@@ -11,7 +11,7 @@
 namespace Media
 {
 
-    IWRAM_FUNC auto Decode(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *
+    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *
     {
         static_assert(sizeof(IO::Vid2h::ChunkHeader) % 4 == 0);
         // get pointer to start of data chunk. audio data is stored first

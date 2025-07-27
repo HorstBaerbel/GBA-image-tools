@@ -11,7 +11,8 @@
 
 #include "data/video.h"
 
-EWRAM_DATA ALIGN(4) uint32_t ScratchPad[240 * 160 / 2 + 15000 / 4 + 1]; // scratch pad memory for decompression. ideally we would dynamically allocate this at the start of decoding
+EWRAM_DATA ALIGN(4) uint32_t VideoScratchPad[240 * 160 / 2 + 12000 / 4]; // Scratch pad memory for video decompression. Ideally we would dynamically allocate this at the start of decoding
+IWRAM_DATA ALIGN(4) uint32_t AudioSampleBuffer[2 * 3000 / 4];			 // Memory for dual audio sample buffer. Ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {
@@ -24,7 +25,7 @@ int main()
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
 	// set up video system, clear color and read file header
-	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), ScratchPad, sizeof(ScratchPad));
+	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VideoScratchPad, sizeof(VideoScratchPad), AudioSampleBuffer, sizeof(AudioSampleBuffer));
 	Media::SetClearColor(0);
 	// print video info
 	const auto &videoInfo = Media::GetInfo();

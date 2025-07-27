@@ -11,5 +11,5 @@ namespace Media
     /// @param info Static video info
     /// @param frame Video frame to decode
     /// @return Returns pointer to decoded frame
-    auto Decode(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *;
+    auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *;
 }
