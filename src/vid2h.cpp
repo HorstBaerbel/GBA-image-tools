@@ -510,7 +510,7 @@ int main(int argc, const char *argv[])
                     const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
                     audioOutCompressedSize += sampleDataSize;
                     audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
-                    audioSampleDeltaPrevFrame = audioSamplesThisFrame - audioSamplesPerFrame;
+                    audioSampleDeltaPrevFrame += audioSamplesThisFrame - audioSamplesPerFrame;
                     audioOutNrOfAudioSamples += audioSamplesThisFrame;
                     // add processing info to sample data
                     outFrame = Audio::Processing::prependProcessingInfo(outFrame, sampleDataSize, Audio::ProcessingType::Uncompressed, true);
