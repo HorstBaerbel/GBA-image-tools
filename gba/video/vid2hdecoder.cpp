@@ -11,11 +11,11 @@
 namespace Media
 {
 
-    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *
+    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const uint32_t *frameData) -> const uint32_t *
     {
         static_assert(sizeof(IO::Vid2h::ChunkHeader) % 4 == 0);
         // get pointer to start of data chunk. audio data is stored first
-        auto currentChunk = frame.data;
+        auto currentChunk = frameData;
         uint32_t *currentDst = nullptr;
         do
         {
@@ -58,11 +58,11 @@ namespace Media
         return currentDst;
     }
 
-    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
+    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const uint32_t *frameData) -> std::pair<const uint32_t *, uint32_t>
     {
         static_assert(sizeof(IO::Vid2h::ChunkHeader) % 4 == 0);
         // get pointer to start of data chunk. audio data is stored first
-        auto currentChunk = frame.data;
+        auto currentChunk = frameData;
         uint32_t chunkUncompressedSize = 0;
         uint32_t *currentDst = nullptr;
         do

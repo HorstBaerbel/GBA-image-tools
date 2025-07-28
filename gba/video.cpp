@@ -60,7 +60,7 @@ int main()
 	Media::Play();
 	do
 	{
-		Media::DecodeAndBlitFrame((uint32_t *)VRAM);
+		Media::DecodeAndPlay();
 		if (!Media::HasMoreFrames())
 		{
 			Media::Stop();
