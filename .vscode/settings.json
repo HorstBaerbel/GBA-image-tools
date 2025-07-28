@@ -106,6 +106,9 @@
                 "nonlinearoptimization": "cpp",
                 "iterativelinearsolvers": "cpp",
                 "polynomials": "cpp",
-                "csignal": "cpp"
+                "csignal": "cpp",
+                "queue": "cpp",
+                "ranges": "cpp",
+                "stack": "cpp"
         }
 }

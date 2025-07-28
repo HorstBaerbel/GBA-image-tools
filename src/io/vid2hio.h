@@ -1,81 +1,41 @@
 #pragma once
 
+#include "audio/audiostructs.h"
 #include "exception.h"
-#include "processing/imagestructs.h"
+#include "image/imagestructs.h"
+#include "vid2hstructs.h"
 
 #include <array>
 #include <cstdint>
 #include <variant>
 #include <vector>
 
-namespace IO
+namespace IO::Vid2h
 {
+    /// @brief Write dummy frame header to output stream. Use to inialize file. Then rewind and use writeFileHeader() to write a proper header when you have all the information
+    auto writeDummyFileHeader(std::ostream &os) -> std::ostream &;
 
-    class Vid2h
-    {
-    public:
-        static const std::array<char, 4> VID2H_MAGIC; // Expected magic bytes at the start of the file: "v2h" plus a version number, atm "v2h0"
+    /// @brief Write audio+videl file header to output stream
+    auto writeMediaFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, uint32_t videoNrOfColorMapFrames, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &;
 
-        /// @brief Header for a vid2h binary video stream
-        struct FileHeader
-        {
-            std::array<char, 4> magic;      // Magic bytes at the start of the file: "v2h" plus a version number, atm "v2h0"
-            uint32_t nrOfFrames = 0;        // Number of frames in file
-            uint16_t width = 0;             // Width in pixels
-            uint16_t height = 0;            // Height in pixels
-            uint32_t fps = 0;               // Frames / s in 16:16 fixed-point format
-            uint8_t bitsPerPixel = 0;       // Image data bits per pixel (1, 2, 4, 8, 15, 16, 24)
-            uint8_t bitsPerColor = 0;       // Color table bits per color (0 - no color table, 15, 16, 24)
-            uint8_t swappedRedBlue = 0;     // If != 0 red and blue color channels are swapped
-            uint8_t colorMapEntries = 0;    // Number of color table entries
-            uint32_t videoMemoryNeeded = 0; // Max. intermediate memory needed to decompress an image frame. 0 if data can be directly written to destination (single compression stage)
-            uint16_t audioSampleRate = 0;   // Audio sample rate in Hz
-            uint8_t audioSampleBits = 0;    // Audio sample bit depth
-            uint8_t audioCodec = 0;         // Audio codec used
-            uint16_t dummy = 0;
-            uint16_t audioMemoryNeeded = 0; // Max. intermediate memory needed to decompress an audio frame. 0 if data can be directly written to destination (single compression stage)
-        } __attribute__((aligned(4), packed));
+    /// @brief Write video-only file header to output stream
+    auto writeVideoFileHeader(std::ostream &os, const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, uint32_t videoNrOfColorMapFrames) -> std::ostream &;
 
-        /// @brief Header for a single frame in a vid2h binary video stream
-        struct FrameHeader
-        {
-            uint32_t pixelDataSize = 0;    // Size of frame pixel data chunk in bytes
-            uint16_t colorMapDataSize = 0; // Size of frame colormap data chunk in bytes
-            uint16_t audioDataSize = 0;    // Size of frame audio data chunk in bytes
-        } __attribute__((aligned(4), packed));
+    /// @brief Write audio-only file header to output stream
+    auto writeAudioFileHeader(std::ostream &os, const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded) -> std::ostream &;
 
-        /// @brief Chunk of compressed data
-        struct ChunkHeader
-        {
-            uint8_t processingType : 8;     // Processing / compression type used on data in this chunk
-            uint32_t uncompressedSize : 24; // Uncompressed size of data in this chunk
-        } __attribute__((aligned(4), packed));
+    /// @brief Write video frame data to output stream, adding compressed size as 4 byte value at the front
+    auto writeFrame(std::ostream &os, const Image::Frame &frame) -> std::ostream &;
 
-        /// @brief Raw frame data returned when reading a vid2h binary video stream
-        struct FrameData
-        {
-            std::vector<uint8_t> audioData;    // Raw audio data. Might be compressed
-            std::vector<uint8_t> pixelData;    // Raw pixel data. Might be compressed
-            std::vector<uint8_t> colorMapData; // Raw color map data. Usually uncompressed
-        };
+    /// @brief Write audio frame data to output stream, adding compressed size as 4 byte value at the front
+    auto writeFrame(std::ostream &os, const Audio::Frame &frame) -> std::ostream &;
 
-        /// @brief Write dummy frame header to output stream. Use to inialize file. Then rewind and use writeFileHeader() to write a proper header when you have all the information
-        static auto writeDummyFileHeader(std::ostream &os) -> std::ostream &;
+    /// @brief Read file header from input stream
+    auto readFileHeader(std::istream &is) -> FileHeader;
 
-        /// @brief Write frame header to output stream. Will get width / height / color format from first frame in vector
-        static auto writeFileHeader(std::ostream &os, const Image::ImageInfo &frameInfo, uint32_t nrOfFrames, double fps, uint32_t videoMemoryNeeded) -> std::ostream &;
+    /// @brief Read frame data from input stream
+    auto readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<IO::FrameType, std::vector<uint8_t>>;
 
-        /// @brief Write frame data to output stream, adding compressed size as 4 byte value at the front
-        static auto writeFrame(std::ostream &os, const Image::Data &frame) -> std::ostream &;
-
-        /// @brief Read file header from input stream
-        static auto readFileHeader(std::istream &is) -> FileHeader;
-
-        /// @brief Read frame data from input stream
-        static auto readFrame(std::istream &is, const FileHeader &fileHeader) -> FrameData;
-
-        /// @brief Split data into chunk header and chunk data
-        static auto splitChunk(std::vector<uint8_t> &data) -> std::pair<ChunkHeader, std::vector<uint8_t>>;
-    };
-
+    /// @brief Split data into chunk header and chunk data
+    auto splitChunk(std::vector<uint8_t> &data) -> std::pair<ChunkHeader, std::vector<uint8_t>>;
 }

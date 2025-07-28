@@ -48,10 +48,10 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/color/ycgcorf.cpp
     ${PROJECT_SOURCE_DIR}/src/compression/lzss.cpp
     ${PROJECT_SOURCE_DIR}/src/io/imageio.cpp
+    ${PROJECT_SOURCE_DIR}/src/image/datatype.cpp
+    ${PROJECT_SOURCE_DIR}/src/image/imagehelpers.cpp
+    ${PROJECT_SOURCE_DIR}/src/image/spritehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/datahelpers.cpp
-    ${PROJECT_SOURCE_DIR}/src/processing/datatype.cpp
-    ${PROJECT_SOURCE_DIR}/src/processing/imagehelpers.cpp
-    ${PROJECT_SOURCE_DIR}/src/processing/spritehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/statistics/statistics.cpp
     ${LIBPLUM_INCLUDE_DIR}/libplum.c
 )

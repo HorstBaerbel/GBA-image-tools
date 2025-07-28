@@ -2,6 +2,7 @@
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "files.associations": {
         "array": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "cstdint": "cpp"
     }
 }

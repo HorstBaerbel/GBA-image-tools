@@ -1,8 +1,8 @@
-#include "videoreader.h"
+#include "vid2hio.h"
 
 #include "memory/memory.h"
 
-namespace Video
+namespace IO::Vid2h
 {
 
     Info GetInfo(const uint32_t *data)
@@ -11,8 +11,9 @@ namespace Video
         Info info;
         Memory::memcpy32(&info, data, sizeof(FileHeader) / 4);
         info.fileData = data;
-        info.imageSize = info.width * info.height;
-        switch (info.bitsPerColor)
+        info.nrOfFrames = info.videoNrOfFrames + info.videoNrOfColorMapFrames + info.audioNrOfFrames;
+        info.imageSize = info.videoWidth * info.videoHeight;
+        switch (info.videoBitsPerColor)
         {
         case 1:
             info.imageSize = (info.imageSize + 7) / 8;
@@ -37,8 +38,8 @@ namespace Video
             // TODO: What?
             break;
         }
-        info.colorMapSize = info.colorMapEntries;
-        switch (info.bitsPerColor)
+        info.colorMapSize = info.videoColorMapEntries;
+        switch (info.videoBitsPerColor)
         {
         case 15:
         case 16:
@@ -54,6 +55,11 @@ namespace Video
         return info;
     }
 
+    auto HasMoreFrames(const Info &info, const Frame &previous) -> bool
+    {
+        return previous.index < static_cast<int32_t>(info.nrOfFrames - 1);
+    }
+
     Frame GetNextFrame(const Info &info, const Frame &previous)
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
@@ -67,17 +73,15 @@ namespace Video
         }
         else
         {
+            // read next frame
             frame.index = previous.index + 1;
-            const uint32_t previousFrameSize = previous.pixelDataSize + previous.colorMapDataSize + previous.audioDataSize;
-            frameStart = previous.frame + sizeof(FrameHeader) / 4 + previousFrameSize / 4;
+            frameStart = previous.header + sizeof(FrameHeader) / 4 + previous.dataSize / 4;
         }
-        frame.frame = frameStart;
+        auto frameHeader = reinterpret_cast<const FrameHeader *>(frameStart);
+        frame.dataType = frameHeader->dataType;
+        frame.dataSize = frameHeader->dataSize;
+        frame.header = frameStart;
         frame.data = frameStart + sizeof(FrameHeader) / 4;
-        auto header = reinterpret_cast<const FrameHeader *>(frameStart);
-        frame.pixelDataSize = header->pixelDataSize;
-        frame.colorMapDataSize = header->colorMapDataSize;
-        frame.audioDataSize = header->audioDataSize;
         return frame;
     }
-
 }

@@ -1,14 +1,14 @@
 #pragma once
 
 #include "color/colorformat.h"
-#include "datahelpers.h"
 #include "exception.h"
 #include "imagedata.h"
 #include "imagestructs.h"
+#include "processing/datahelpers.h"
 
 #include <cstdint>
-#include <vector>
 #include <utility>
+#include <vector>
 
 namespace Image
 {
@@ -16,17 +16,17 @@ namespace Image
     /// @brief Combine raw image pixel data of all images and return the data and the start indices into that data.
     /// Indices are returned in OUT_TYPE units
     template <typename OUT_TYPE>
-    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawPixelData(const std::vector<Data> &images, bool interleavePixels = false)
+    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawPixelData(const std::vector<Frame> &images, bool interleavePixels = false)
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
-                       { return img.image.data.pixels().convertDataToRaw(); });
+                       { return img.data.pixels().convertDataToRaw(); });
         if (interleavePixels)
         {
             const auto allDataSameSize = std::find_if_not(temp8.cbegin(), temp8.cend(), [refSize = temp8.front().size()](const auto &d)
                                                           { return d.size() == refSize; }) == temp8.cend();
             REQUIRE(allDataSameSize, std::runtime_error, "The image pixel data size of all images must be the same for interleaving");
-            return {DataHelpers::convertTo<OUT_TYPE>(DataHelpers::interleave(temp8, Color::formatInfo(images.front().image.data.pixels().format()).bitsPerPixel)), std::vector<uint32_t>()};
+            return {DataHelpers::convertTo<OUT_TYPE>(DataHelpers::interleave(temp8, Color::formatInfo(images.front().data.pixels().format()).bitsPerPixel)), std::vector<uint32_t>()};
         }
         else
         {
@@ -42,7 +42,7 @@ namespace Image
     /// @brief Combine raw map data of all images in uint16_t units and return the data and the start indices into that data.
     /// Indices are return in OUT_TYPE units
     template <typename OUT_TYPE>
-    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawMapData(const std::vector<Data> &images)
+    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawMapData(const std::vector<Frame> &images)
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
@@ -58,11 +58,11 @@ namespace Image
     /// @brief Combine the raw image color map data of all images and return the data and the start indices into that data.
     /// Indices are returned in OUT_TYPE units
     template <typename OUT_TYPE>
-    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawColorMapData(const std::vector<Data> &images)
+    std::pair<std::vector<OUT_TYPE>, std::vector<uint32_t>> combineRawColorMapData(const std::vector<Frame> &images)
     {
         std::vector<std::vector<uint8_t>> temp8;
         std::transform(images.cbegin(), images.cend(), std::back_inserter(temp8), [](const auto &img)
-                       { return img.image.data.colorMap().convertDataToRaw(); });
+                       { return img.data.colorMap().convertDataToRaw(); });
         auto startIndices = DataHelpers::getStartIndices(temp8);
         for (auto index : startIndices)
         {

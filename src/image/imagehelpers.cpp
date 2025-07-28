@@ -1,8 +1,8 @@
 #include "imagehelpers.h"
 
 #include "color/colorhelpers.h"
-#include "datahelpers.h"
 #include "exception.h"
+#include "processing/datahelpers.h"
 
 namespace ImageHelpers
 {

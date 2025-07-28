@@ -16,3 +16,6 @@
 [submodule "libplum"]
 	path = libplum
 	url = https://github.com/aaaaaa123456789/libplum.git
+[submodule "libgsm"]
+	path = libgsm
+	url = https://github.com/HorstBaerbel/libgsm.git

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "audio/audioformat.h"
 #include "color/colorformat.h"
 #include "color/xrgb8888.h"
-#include "quantizationmethod.h"
+#include "image/quantizationmethod.h"
 
 #include <cstdint>
 #include <string>
@@ -31,6 +32,7 @@ public:
         std::function<void(const cxxopts::ParseResult &)> parse;
     };
 
+    // Image options
     static OptionT<double> blackWhite;
     static OptionT<uint32_t> paletted;
     static OptionT<uint32_t> commonPalette;
@@ -53,9 +55,17 @@ public:
     static Option vram;
     static Option dxt;
     static OptionT<double> dxtv;
-    static Option gvid;
+    // static Option gvid;
     static Option interleavePixels;
+
+    // Audio options
+    static OptionT<uint32_t> sampleRateHz;
+    static OptionT<Audio::ChannelFormat> channelFormat;
+    static OptionT<Audio::SampleFormat> sampleFormat;
+
+    // General options
     static Option dryRun;
-    static Option dumpResults;
+    static Option dumpImage;
+    static Option dumpAudio;
     static Option binary;
 };

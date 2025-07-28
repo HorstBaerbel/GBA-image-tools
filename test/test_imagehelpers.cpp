@@ -1,6 +1,6 @@
 #include "testmacros.h"
 
-#include "processing/imagehelpers.h"
+#include "image/imagehelpers.h"
 
 #include <algorithm>
 #include <vector>

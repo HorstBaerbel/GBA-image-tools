@@ -1,13 +1,13 @@
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
 #include "exception.h"
+#include "image/imagehelpers.h"
+#include "image/imageprocessing.h"
+#include "image/spritehelpers.h"
 #include "io/imageio.h"
 #include "io/textio.h"
 #include "processing/datahelpers.h"
-#include "processing/imagehelpers.h"
-#include "processing/imageprocessing.h"
 #include "processing/processingoptions.h"
-#include "processing/spritehelpers.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -67,7 +67,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
-        opts.add_option("", options.dumpResults.cxxOption);
+        opts.add_option("", options.dumpImage.cxxOption);
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
@@ -196,23 +196,23 @@ void printUsage()
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
-    std::cout << options.dumpResults.helpString() << std::endl;
+    std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
     std::cout << "ORDER: input, reordercolors, addcolor0, movecolor0, shift, sprites, tiles" << std::endl;
     std::cout << "tilemap, prune, delta8 / delta16, rle, lz10, interleavepixels, output" << std::endl;
 }
 
-std::vector<Image::Data> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
+std::vector<Image::Frame> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
 {
     Color::Format commonImgFormat = Color::Format::Unknown;
     Image::DataSize commonImgSize = {0, 0};
-    std::vector<Image::Data> images;
+    std::vector<Image::Frame> images;
     // open first image and store type
     auto ifIt = fileNames.cbegin();
     while (ifIt != fileNames.cend())
     {
         std::cout << "Reading " << *ifIt;
-        Image::Data img;
+        Image::Frame img;
         try
         {
             img = IO::File::readImage(*ifIt);
@@ -221,11 +221,11 @@ std::vector<Image::Data> readImages(const std::vector<std::string> &fileNames, c
         {
             THROW(std::runtime_error, "Failed to read image: " << e.what());
         }
-        const auto imgSize = img.image.size;
+        const auto imgSize = img.info.size;
         std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        const auto imgFormat = img.image.data.pixels().format();
+        const auto imgFormat = img.data.pixels().format();
         std::cout << Color::formatInfo(imgFormat).name;
-        const auto imgIsIndexed = img.image.data.pixels().isIndexed();
+        const auto imgIsIndexed = img.data.pixels().isIndexed();
         if (ifIt == fileNames.cbegin())
         {
             // set type and size of first image
@@ -402,20 +402,20 @@ int main(int argc, const char *argv[])
         // check if all color maps are the same
         bool allColorMapsSame = true;
         uint32_t maxColorMapColors = 0;
-        if (Color::formatInfo(data0.image.pixelFormat).isIndexed)
+        if (Color::formatInfo(data0.info.pixelFormat).isIndexed)
         {
             maxColorMapColors = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
-                                                 { return imgA.image.nrOfColorMapEntries < imgB.image.nrOfColorMapEntries; })
-                                    ->image.nrOfColorMapEntries;
+                                                 { return imgA.info.nrOfColorMapEntries < imgB.info.nrOfColorMapEntries; })
+                                    ->info.nrOfColorMapEntries;
             if (data.size() > 1)
             {
-                allColorMapsSame = std::find_if_not(data.cbegin(), data.cend(), [&refColorMap = data0.image.data.colorMap()](const auto &img)
-                                                    { return img.image.data.colorMap() == refColorMap; }) == data.cend();
+                allColorMapsSame = std::find_if_not(data.cbegin(), data.cend(), [&refColorMap = data0.data.colorMap()](const auto &img)
+                                                    { return img.data.colorMap() == refColorMap; }) == data.cend();
             }
             std::cout << "Saving " << (allColorMapsSame ? 1 : data.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
         }
         // now dump conversion results
-        if (options.dumpResults)
+        if (options.dumpImage)
         {
             auto dumpPath = std::filesystem::current_path() / "result";
             IO::File::writeImages(data, dumpPath.c_str());
@@ -461,16 +461,16 @@ int main(int argc, const char *argv[])
                     {
                         hFile << " compressed";
                     }
-                    hFile << ", pixel format: " << Color::formatInfo(data0.image.pixelFormat).name;
-                    if (data0.image.pixelFormat != Color::Format::Unknown)
+                    hFile << ", pixel format: " << Color::formatInfo(data0.info.pixelFormat).name;
+                    if (data0.info.pixelFormat != Color::Format::Unknown)
                     {
-                        hFile << ", color map format: " << Color::formatInfo(data0.image.colorMapFormat).name;
+                        hFile << ", color map format: " << Color::formatInfo(data0.info.colorMapFormat).name;
                     }
                     hFile << std::endl
                           << std::endl;
                     // output image and palette info
                     const bool storeTileOrSpriteWise = (data.size() == 1) && (data0.type.isTiles() || data0.type.isSprites());
-                    uint32_t nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.image.pixelFormat, data0.image.size.width() * data0.image.size.height());
+                    uint32_t nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, data0.info.size.width() * data0.info.size.height());
                     uint32_t nrOfImagesOrSprites = data.size();
                     if (nrOfImagesOrSprites == 1)
                     {
@@ -480,16 +480,16 @@ int main(int argc, const char *argv[])
                             // calculate number of w*h sprites
                             auto spriteWidth = options.sprites.value.front();
                             auto spriteHeight = options.sprites.value.back();
-                            nrOfImagesOrSprites = (data0.image.size.width() * data0.image.size.height()) / (spriteWidth * spriteHeight);
-                            nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.image.pixelFormat, spriteWidth * spriteHeight);
-                            data0.image.size = {spriteWidth, spriteHeight};
+                            nrOfImagesOrSprites = (data0.info.size.width() * data0.info.size.height()) / (spriteWidth * spriteHeight);
+                            nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, spriteWidth * spriteHeight);
+                            data0.info.size = {spriteWidth, spriteHeight};
                         }
                         else if (data0.type.isTiles())
                         {
                             // calculate number of 8*8 pixel tiles
-                            nrOfImagesOrSprites = (data0.image.size.width() * data0.image.size.height()) / 64;
-                            nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.image.pixelFormat, 64);
-                            data0.image.size = {8, 8};
+                            nrOfImagesOrSprites = (data0.info.size.width() * data0.info.size.height()) / 64;
+                            nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, 64);
+                            data0.info.size = {8, 8};
                         }
                     }
                     // convert image data to uint32_ts
@@ -501,19 +501,19 @@ int main(int argc, const char *argv[])
                     {
                         // convert map data to uint32_ts
                         auto [mapData32, mapStartIndices] = Image::combineRawMapData<uint32_t>(data);
-                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.image.size.width(), data0.image.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
                         IO::Text::writeMapInfoToH(hFile, varName, mapData32);
                         IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
                         IO::Text::writeMapDataToC(cFile, varName, mapData32);
                     }
                     else
                     {
-                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.image.size.width(), data0.image.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
                         IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
                     }
                     if (maxColorMapColors > 0)
                     {
-                        auto [paletteData, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(data0.image.data.colorMap().convertDataToRaw(), std::vector<uint32_t>()) : Image::combineRawColorMapData<uint8_t>(data));
+                        auto [paletteData, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(data0.data.colorMap().convertDataToRaw(), std::vector<uint32_t>()) : Image::combineRawColorMapData<uint8_t>(data));
                         IO::Text::writePaletteInfoToH(hFile, varName, paletteData, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
                         IO::Text::writePaletteDataToC(cFile, varName, paletteData, colorMapsStartIndices, storeTileOrSpriteWise);
                     }
@@ -521,8 +521,8 @@ int main(int argc, const char *argv[])
                     {
                         // find max memory needed for decompression
                         const auto maxMemoryNeeded = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
-                                                                      { return imgA.image.maxMemoryNeeded < imgB.image.maxMemoryNeeded; })
-                                                         ->image.maxMemoryNeeded;
+                                                                      { return imgA.info.maxMemoryNeeded < imgB.info.maxMemoryNeeded; })
+                                                         ->info.maxMemoryNeeded;
                         IO::Text::writeCompressionInfoToH(hFile, varName, maxMemoryNeeded);
                     }
                     hFile << std::endl;

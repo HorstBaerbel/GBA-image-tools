@@ -41,10 +41,15 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
+                //"--dryrun",
+                //"--dumpaudio",
                 "--truecolor=rgb888",
                 "--outformat=bgr555",
                 "--dxtv=95",
-                "--lz10",
+                //"--lz10",
+                "--samplerate=21024",
+                "--sampleformat=s8p",
+                //"--channelformat=mono",
                 "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
                 "video"
             ],
@@ -67,11 +72,34 @@
             ]
         },
         {
+            "name": "vid2h perf",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/perf",
+            "args": [
+                "record",
+                "${command:cmake.launchTargetPath}",
+                "--truecolor=rgb888",
+                "--outformat=bgr555",
+                "--dxtv=95",
+                "--lz10",
+                "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
+                "video"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": []
+        },
+        {
             "name": "vid2hplay debug",
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
+                "--dumpaudio",
                 "video.bin"
             ],
             "stopAtEntry": false,

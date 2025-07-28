@@ -1,14 +1,15 @@
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "compression/lzss.h"
+#include "image/imagehelpers.h"
+#include "image/imageprocessing.h"
+#include "image/spritehelpers.h"
 #include "io/textio.h"
 #include "io/vid2hio.h"
 #include "io/vid2hreader.h"
+#include "io/wavwriter.h"
 #include "processing/datahelpers.h"
-#include "processing/imagehelpers.h"
-#include "processing/imageprocessing.h"
 #include "processing/processingoptions.h"
-#include "processing/spritehelpers.h"
 #include "statistics/statistics_window.h"
 
 #include <cstdlib>
@@ -23,6 +24,7 @@
 #include "cxxopts/include/cxxopts.hpp"
 
 std::string m_inFile;
+ProcessingOptions options;
 
 std::string getCommandLine(int argc, const char *argv[])
 {
@@ -45,6 +47,8 @@ bool readArguments(int argc, const char *argv[])
         cxxopts::Options opts("vid2hplay", "Play vid2h video file");
         opts.add_option("", {"h,help", "Print help"});
         opts.add_option("", {"infile", "Input video file, e.g. \"foo.bin\"", cxxopts::value<std::string>()});
+        // opts.add_option("", options.dumpImage.cxxOption);
+        opts.add_option("", options.dumpAudio.cxxOption);
         opts.parse_positional({"infile"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
@@ -89,6 +93,8 @@ void printUsage()
     // 80 chars:  --------------------------------------------------------------------------------
     std::cout << "Play vid2h video file" << std::endl;
     std::cout << "Usage: vid2hplay INFILE" << std::endl;
+    // std::cout << options.dumpImage.helpString() << std::endl;
+    std::cout << options.dumpAudio.helpString() << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -111,38 +117,78 @@ int main(int argc, const char *argv[])
         const auto nrOfProcessors = omp_get_num_procs();
         omp_set_num_threads(nrOfProcessors);
         // fire up video reader and open video file
-        Video::Vid2hReader videoReader;
-        Video::Reader::VideoInfo videoInfo;
+        Media::Vid2hReader mediaReader;
+        Media::Reader::MediaInfo mediaInfo;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
-            videoReader.open(m_inFile);
-            videoInfo = videoReader.getInfo();
-            std::cout << "Video stream #" << videoInfo.videoStreamIndex << ": " << videoInfo.codecName << ", " << videoInfo.width << "x" << videoInfo.height << "@" << videoInfo.fps;
-            std::cout << ", duration " << videoInfo.durationS << "s, " << videoInfo.nrOfFrames << " frames" << std::endl;
-            std::cout << "Pixel format " << Color::formatInfo(videoInfo.pixelFormat).name << ", color map format " << Color::formatInfo(videoInfo.colorMapFormat).name << std::endl;
+            mediaReader.open(m_inFile);
+            mediaInfo = mediaReader.getInfo();
+            std::cout << "Video stream: " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
+            std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
+            std::cout << "Audio stream: " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
+            std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
+            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
         }
         catch (const std::runtime_error &e)
         {
             std::cerr << "Failed to open video file: " << e.what() << std::endl;
             return 1;
         }
+        // set up WAV writer
+        std::shared_ptr<IO::WavWriter> wavWriter;
+        if (options.dumpAudio)
+        {
+            wavWriter = std::make_shared<IO::WavWriter>();
+            try
+            {
+                wavWriter->open("result.wav");
+                std::cout << "Dumping result audio to result.wav" << std::endl;
+            }
+            catch (const std::runtime_error &e)
+            {
+                std::cerr << e.what() << std::endl;
+                return 1;
+            }
+        }
         // create statistics window
-        Statistics::Window window(2 * videoInfo.width, 2 * videoInfo.height, "vid2hplay");
+        Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
         // read video file
         const auto startTime = std::chrono::steady_clock::now();
-        const double frameInterval = 1.0 / videoInfo.fps;
-        for (uint32_t frameIndex = 0; frameIndex < videoInfo.nrOfFrames; ++frameIndex)
+        const double videoFrameInterval = 1.0 / mediaInfo.videoFrameRateHz;
+        uint32_t videoFrameIndex = 0;
+        for (uint32_t frameIndex = 0; frameIndex < (mediaInfo.videoNrOfFrames + mediaInfo.audioNrOfFrames); ++frameIndex)
         {
-            auto frame = videoReader.readFrame();
-            REQUIRE(!frame.empty(), std::runtime_error, "Failed to read frame #" << frameIndex);
-            REQUIRE(frame.size() == videoInfo.width * videoInfo.height, std::runtime_error, "Unexpected frame size");
-            // update statistics
-            while ((std::chrono::steady_clock::now() - startTime) < std::chrono::duration<double>(frameIndex * frameInterval))
+            auto mediaFrame = mediaReader.readFrame();
+            REQUIRE(mediaFrame.frameType != IO::FrameType::Unknown, std::runtime_error, "Bad frame type");
+            // check if image frame
+            if (mediaFrame.frameType == IO::FrameType::Pixels)
             {
-                std::this_thread::yield();
+                const auto &image = std::get<std::vector<Color::XRGB8888>>(mediaFrame.data);
+                REQUIRE(image.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected frame size");
+                // update statistics
+                while ((std::chrono::steady_clock::now() - startTime) < std::chrono::duration<double>(videoFrameIndex * videoFrameInterval))
+                {
+                    std::this_thread::yield();
+                }
+                window.displayImage(reinterpret_cast<const uint8_t *>(image.data()), image.size() * sizeof(std::remove_reference<decltype(image.front())>::type), Ui::ColorFormat::XRGB8888, mediaInfo.videoWidth, mediaInfo.videoHeight);
+                ++videoFrameIndex;
             }
-            window.displayImage(reinterpret_cast<const uint8_t *>(frame.data()), frame.size() * sizeof(std::remove_reference<decltype(frame.front())>::type), Ui::ColorFormat::XRGB8888, videoInfo.width, videoInfo.height);
+            else if (mediaFrame.frameType == IO::FrameType::Audio)
+            {
+                // build audio frame from sample data. Audio is always returned as int16_t samples
+                Audio::Frame audioFrame = {0, "", {mediaInfo.audioSampleRateHz, mediaInfo.audioChannelFormat, Audio::SampleFormat::Signed16P, false, 0}, std::get<std::vector<int16_t>>(mediaFrame.data)};
+                // dump the audio frame if user wants to
+                if (wavWriter)
+                {
+                    wavWriter->writeFrame(audioFrame);
+                }
+            }
+        }
+        // close wave writer if open
+        if (wavWriter)
+        {
+            wavWriter->close();
         }
     }
     catch (const std::runtime_error &e)

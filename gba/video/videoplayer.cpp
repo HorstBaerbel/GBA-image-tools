@@ -2,30 +2,55 @@
 
 #include "memory/memory.h"
 #include "sys/base.h"
-#include "videodecoder.h"
-#include "videoreader.h"
+#include "vid2hdecoder.h"
 
+#include <gba_dma.h>
 #include <gba_interrupt.h>
+#include <gba_sound.h>
 #include <gba_timers.h>
 
-#define DEBUG_PLAYER
+// #define DEBUG_PLAYER
 #ifdef DEBUG_PLAYER
 #include "print/output.h"
 #include "time.h"
 #endif
 
-namespace Video
-{
+// General playback:
+// * On Play() start, require frame, reset decoded frames
+// * On DecodeAndBlitFrame():
+//   * Get frame
+//   * Decode frame
 
-    IWRAM_DATA uint32_t *m_scratchPad = nullptr;
-    IWRAM_DATA uint32_t m_scratchPadSize = 0;
-    IWRAM_DATA Info m_videoInfo;
-    IWRAM_DATA Frame m_videoFrame;
+namespace Media
+{
+    // general
     IWRAM_DATA bool m_playing = false;
-    IWRAM_DATA const uint32_t *m_decodedFrame = nullptr;
-    IWRAM_DATA uint32_t m_decodedFrameSize = 0;
-    IWRAM_DATA int32_t m_framesDecoded = 0;
-    IWRAM_DATA uint32_t m_clearColor = 0;
+    IWRAM_DATA IO::Vid2h::Info m_mediaInfo;
+    IWRAM_DATA IO::Vid2h::Frame m_mediaFrame;
+
+    // audio
+    uint32_t *m_audioScratchPad = nullptr;
+    uint32_t m_audioScratchPadSize = 0;
+    IWRAM_DATA const uint32_t *m_queuedAudioFrame = nullptr;
+    IWRAM_DATA int32_t m_audioFrameIndex = -1;
+    IWRAM_DATA volatile int32_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
+    IWRAM_DATA volatile int32_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
+    IWRAM_DATA uint32_t *m_audioPlaySampleBuffer = nullptr; // Pointer to planar data for left / mono channel and right channel currently playing
+    IWRAM_DATA uint32_t *m_audioBackSampleBuffer = nullptr; // Pointer to planar data for left / mono channel and right channel currently decoding
+    IWRAM_DATA uint32_t m_audioSampleBufferChannelSize = 0; // Size of data stored per channel == number of samples per channel
+
+    // video
+    uint32_t *m_videoScratchPad = nullptr;
+    uint32_t m_videoScratchPadSize = 0;
+    uint32_t m_clearColor = 0;
+    IWRAM_DATA const uint32_t *m_queuedColorMapFrame = nullptr;
+    IWRAM_DATA int32_t m_colorMapFrameIndex = 0;
+    IWRAM_DATA const uint32_t *m_queuedVideoFrame = nullptr;
+    IWRAM_DATA int32_t m_videoFrameIndex = -1;
+    IWRAM_DATA volatile int32_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
+    IWRAM_DATA volatile int32_t m_videoFramesRequested = 0;   // Number of video frames requested by VideoFrameRequest()
+    IWRAM_DATA const uint32_t *m_videoDecodedFrame = nullptr; // Pointer to decoded video frame
+    IWRAM_DATA uint32_t m_videoDecodedFrameSize = 0;          // Size of decoded video frame
 
 #ifdef DEBUG_PLAYER
     IWRAM_DATA int32_t m_accFrameDecodeMs = 0;
@@ -36,45 +61,180 @@ namespace Video
     IWRAM_DATA int32_t m_nrOfFramesBlit = 0;
 #endif
 
-    IWRAM_DATA volatile int32_t m_framesRequested = 0;
-    IWRAM_FUNC auto frameRequest() -> void
+    IWRAM_FUNC auto AudioBufferRequest() -> void
     {
-        ++m_framesRequested;
+        if (m_playing)
+        {
+            // still playing back. stop both timers
+            REG_TM0CNT_H &= ~TIMER_START;
+            REG_TM1CNT_H &= ~TIMER_START;
+            // stop DMA channels
+            REG_DMA1CNT &= ~DMA_ENABLE;
+            if (m_mediaInfo.audioChannels == 2)
+            {
+                REG_DMA2CNT &= ~DMA_ENABLE;
+            }
+            if (m_audioFramesDecoded > 0)
+            {
+                // swap sample buffers
+                std::swap(m_audioPlaySampleBuffer, m_audioBackSampleBuffer);
+                // calculate buffer start
+                const auto sampleBufferStart = reinterpret_cast<uint32_t>(m_audioPlaySampleBuffer);
+                // set DMA channels to read from new buffer and restart DMA
+                REG_DMA1SAD = sampleBufferStart;
+                REG_DMA1CNT |= DMA_ENABLE;
+                if (m_mediaInfo.audioChannels == 2)
+                {
+                    REG_DMA2SAD = sampleBufferStart + m_audioSampleBufferChannelSize;
+                    REG_DMA2CNT |= DMA_ENABLE;
+                }
+                // set timer 1 count to number of words in new buffer
+                REG_TM1CNT_L = 65536U - m_audioSampleBufferChannelSize;
+                // start both timers
+                REG_TM0CNT_H |= TIMER_START;
+                REG_TM1CNT_H |= TIMER_START;
+                // we've used up the decoded frame
+                m_audioFramesDecoded = 0;
+            }
+            // request more audio frames for playback
+            ++m_audioFramesRequested;
+        }
+        else
+        {
+            // this was the last frame. turn off sounds
+            REG_SOUNDCNT_X = 0;
+            // stop both timers
+            REG_TM0CNT_H = 0;
+            REG_TM1CNT_H = 0;
+            // stop DMA channels
+            REG_DMA1CNT = 0;
+            if (m_mediaInfo.audioChannels == 2)
+            {
+                REG_DMA2CNT = 0;
+            }
+            m_audioFramesRequested = 0;
+        }
     }
 
-    auto init(const uint32_t *videoSrc, uint32_t *scratchPad, uint32_t scratchPadSize) -> void
+    IWRAM_FUNC auto VideoFrameRequest() -> void
     {
-        m_scratchPad = scratchPad;
-        m_scratchPadSize = scratchPadSize;
+        if (m_playing)
+        {
+            if (m_videoFramesDecoded > 0)
+            {
+                // we're waiting for a frame and have one. blit it!
+                REG_DMA3SAD = reinterpret_cast<uint32_t>(m_videoDecodedFrame);
+                REG_DMA3DAD = (uint32_t)VRAM;
+                REG_DMA3CNT = DMA_DST_INC | DMA_SRC_INC | DMA32 | DMA_IMMEDIATE | DMA_ENABLE | (m_videoDecodedFrameSize / 4);
+                // we've used up the decoded frame
+                m_videoFramesDecoded = 0;
+            }
+            // request more video frames for playback
+            ++m_videoFramesRequested;
+        }
+        else
+        {
+            // this was the last frame. stop requesting frames
+            m_videoFramesRequested = 0;
+        }
+    }
+
+    auto Init(const uint32_t *mediaSrc, uint32_t *videoScratchPad, uint32_t videoScratchPadSize, uint32_t *audioScratchPad, uint32_t audioScratchPadSize) -> void
+    {
         // read file header
-        m_videoInfo = Video::GetInfo(videoSrc);
-        auto bytesPerPixel = (m_videoInfo.bitsPerPixel + 7) / 8;
-        m_decodedFrameSize = m_videoInfo.width * m_videoInfo.height * bytesPerPixel;
+        m_mediaInfo = IO::Vid2h::GetInfo(mediaSrc);
+        if (m_mediaInfo.contentType & IO::FileType::Video)
+        {
+            // set up video buffers
+            m_videoScratchPad = videoScratchPad;
+            m_videoScratchPadSize = videoScratchPadSize;
+            auto bytesPerPixel = (m_mediaInfo.videoBitsPerPixel + 7) / 8;
+            m_videoDecodedFrameSize = m_mediaInfo.videoWidth * m_mediaInfo.videoHeight * bytesPerPixel;
+        }
+        if (m_mediaInfo.contentType & IO::FileType::Audio)
+        {
+            // set up audio buffers
+            m_audioScratchPad = audioScratchPad;
+            m_audioScratchPadSize = audioScratchPadSize;
+            m_audioPlaySampleBuffer = audioScratchPad;
+            m_audioBackSampleBuffer = audioScratchPad + audioScratchPadSize / (2 * 4);
+        }
     }
 
-    auto setClearColor(uint16_t color) -> void
+    auto SetClearColor(uint16_t color) -> void
     {
         m_clearColor = static_cast<uint32_t>(color) << 16 | color;
     }
 
-    auto getInfo() -> const Video::Info &
+    auto GetInfo() -> const IO::Vid2h::Info &
     {
-        return m_videoInfo;
+        return m_mediaInfo;
     }
 
-    auto play() -> void
+    auto ReadAndQueueNextFrame() -> void
+    {
+        m_mediaFrame = IO::Vid2h::GetNextFrame(m_mediaInfo, m_mediaFrame);
+        if (m_mediaFrame.dataType == IO::FrameType::Pixels)
+        {
+            // queue video frame
+            m_queuedVideoFrame = m_mediaFrame.data;
+            ++m_videoFrameIndex;
+        }
+        else if (m_mediaFrame.dataType == IO::FrameType::Colormap)
+        {
+            // queue color map frame
+            m_queuedColorMapFrame = m_mediaFrame.data;
+            ++m_colorMapFrameIndex;
+        }
+        else if (m_mediaFrame.dataType == IO::FrameType::Audio)
+        {
+            // queue audio frame
+            m_queuedAudioFrame = m_mediaFrame.data;
+            ++m_audioFrameIndex;
+        }
+    }
+
+    auto DecodeAudioFrame() -> void
+    {
+        // uncompress audio frame
+        auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackSampleBuffer, m_audioScratchPadSize / 2, m_mediaInfo, m_queuedAudioFrame);
+        m_audioSampleBufferChannelSize = audioDecodedFrameSize / m_mediaInfo.audioChannels;
+        m_queuedAudioFrame = nullptr;
+        ++m_audioFramesDecoded;
+    }
+
+    auto DecodeVideoFrame() -> void
+    {
+#ifdef DEBUG_PLAYER
+        auto startTime = Time::now();
+#endif
+        // uncompress video frame
+        m_videoDecodedFrame = DecodeVideo(m_videoScratchPad, m_videoScratchPadSize, m_mediaInfo, m_queuedVideoFrame);
+        m_queuedVideoFrame = nullptr;
+        ++m_videoFramesDecoded;
+#ifdef DEBUG_PLAYER
+        auto duration = Time::now() * 1000 - startTime * 1000;
+        m_accFrameDecodeMs += duration;
+        m_maxFrameDecodeMs = m_maxFrameDecodeMs < duration ? duration : m_maxFrameDecodeMs;
+        ++m_nrOfFramesDecoded;
+#endif
+    }
+
+    auto Play() -> void
     {
         if (!m_playing)
         {
-            m_videoFrame.index = -1;
-            m_videoFrame.frame = nullptr;
-            m_videoFrame.data = nullptr;
-            m_videoFrame.pixelDataSize = 0;
-            m_videoFrame.colorMapDataSize = 0;
-            m_videoFrame.audioDataSize = 0;
+            m_mediaFrame.index = -1;
+            m_mediaFrame.header = nullptr;
+            m_mediaFrame.data = nullptr;
+            m_audioFrameIndex = -1;
+            m_audioFramesRequested = 0;
+            m_audioFramesDecoded = 0;
+            m_videoFrameIndex = -1;
+            m_videoFramesRequested = 0;
+            m_videoFramesDecoded = 0;
+            m_colorMapFrameIndex = -1;
             m_playing = true;
-            m_framesDecoded = 0;
-            m_framesRequested = 1;
 #ifdef DEBUG_PLAYER
             m_accFrameDecodeMs = 0;
             m_maxFrameDecodeMs = 0;
@@ -84,27 +244,136 @@ namespace Video
             m_nrOfFramesBlit = 0;
             Time::start();
 #endif
-            // fill background and scratch pad to clear color
-            Memory::memset32((void *)VRAM, m_clearColor, m_videoInfo.width * m_videoInfo.height / 2);
-            Memory::memset32(m_scratchPad, m_clearColor, m_scratchPadSize / 4);
-            // set up timer to increase with frame interval
-            irqSet(irqMASKS::IRQ_TIMER2, frameRequest);
-            irqEnable(irqMASKS::IRQ_TIMER2);
-            // Timer interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
-            REG_TM2CNT_L = 65536U - ((uint64_t(65536U) << 16) / m_videoInfo.fps);
-            // Timer divider 2 == 256 -> 16*1024*1024 cycles/s / 256 = 65536/s
-            REG_TM2CNT_H = TIMER_START | TIMER_IRQ | 2;
+            // load and decode initial frame(s)
+            if (m_mediaInfo.contentType & IO::FileType::Audio)
+            {
+                // disable all sounds for now
+                REG_SOUNDCNT_X = 0;
+                // fill audio buffers with silence
+                Memory::memset32(m_audioScratchPad, 0, m_audioScratchPadSize / 4);
+                // enable DMA 1 to copy words to sound FIFO A
+                REG_DMA1DAD = reinterpret_cast<uint32_t>(&REG_FIFO_A);                        // write to sound FIFO A
+                REG_DMA1CNT = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
+                if (m_mediaInfo.audioChannels == 1)
+                {
+                    // set DMA channel A to output to left and right at 100% and reset FIFO. by default timer 0 is used for both channels
+                    REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_R_ENABLE | SNDA_RESET_FIFO;
+                }
+                else if (m_mediaInfo.audioChannels == 2)
+                {
+                    // enable DMA 2 to copy words to sound FIFO B
+                    REG_DMA2DAD = reinterpret_cast<uint32_t>(&REG_FIFO_B);                        // write to sound FIFO B
+                    REG_DMA2CNT = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
+                    // set DMA channel A to output to left at 100% and reset FIFO
+                    // set DMA channel B to output to right at 100% and reset FIFO
+                    REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_RESET_FIFO | SNDB_VOL_100 | SNDB_R_ENABLE | SNDB_RESET_FIFO;
+                }
+                // set up timer 0 to increase with sample rate = 1 / sample rate (where 16777216 == 1s) and set divider to 0 == 1/1
+                REG_TM0CNT_L = 65536U - (uint64_t(16777216) / m_mediaInfo.audioSampleRateHz);
+                REG_TM0CNT_H = 0; // start timer later
+                // set timer 1 to cascade from timer 0, issue IRQ to swap sample buffers and set divider to 0 == 1/1
+                irqSet(irqMASKS::IRQ_TIMER1, AudioBufferRequest);
+                irqEnable(irqMASKS::IRQ_TIMER1);
+                REG_TM1CNT_L = 0;                           // set up number of samples in buffer later
+                REG_TM1CNT_H = TIMER_COUNT | TIMER_IRQ | 0; // start timer later
+                // read the first video frame from media data
+                while (m_queuedAudioFrame == nullptr)
+                {
+                    ReadAndQueueNextFrame();
+                }
+                // decode the first audio frame
+                DecodeAudioFrame();
+            }
+            if (m_mediaInfo.contentType & IO::FileType::Video)
+            {
+                // fill background and scratch pad to clear color
+                Memory::memset32((void *)VRAM, m_clearColor, m_mediaInfo.videoWidth * m_mediaInfo.videoHeight / 2);
+                Memory::memset32(m_videoScratchPad, m_clearColor, m_videoScratchPadSize / 4);
+                // set up timer 2 to increase with video frame interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
+                // set timer 2 divider to 2 == 1/256 -> 16*1024*1024 cycles/s / 256 = 65536/s
+                irqSet(irqMASKS::IRQ_TIMER2, VideoFrameRequest);
+                irqEnable(irqMASKS::IRQ_TIMER2);
+                REG_TM2CNT_L = 65536U - ((uint64_t(65536U) << 16) / m_mediaInfo.videoFrameRateHz);
+                REG_TM2CNT_H = TIMER_IRQ | 2; // start timer later
+                // read the first video frame from media data
+                while (m_queuedVideoFrame == nullptr)
+                {
+                    ReadAndQueueNextFrame();
+                }
+                // decode the first video frame
+                DecodeVideoFrame();
+            }
+            // now display / play initial data
+            if (m_mediaInfo.contentType & IO::FileType::Video)
+            {
+                // blit first frame to screen
+                Memory::memcpy32((void *)VRAM, m_videoDecodedFrame, m_videoDecodedFrameSize / 4);
+                // start time for video frame rate
+                REG_TM2CNT_H |= TIMER_START;
+            }
+            if (m_mediaInfo.contentType & IO::FileType::Audio)
+            {
+                // start and enable sound playback
+                AudioBufferRequest();
+                REG_SOUNDCNT_X = SOUND3_PLAY;
+            }
         }
     }
 
-    auto stop() -> void
+    IWRAM_FUNC auto HasMoreFrames() -> bool
+    {
+        return m_playing && IO::Vid2h::HasMoreFrames(m_mediaInfo, m_mediaFrame);
+    }
+
+    IWRAM_FUNC auto DecodeAndPlay() -> void
     {
         if (m_playing)
         {
+            // read frames from media data
+            if (m_audioFramesRequested > 0 && m_queuedAudioFrame == nullptr)
+            {
+                ReadAndQueueNextFrame();
+            }
+            if (m_videoFramesRequested > 0 && m_queuedVideoFrame == nullptr)
+            {
+                ReadAndQueueNextFrame();
+            }
+            // decode queued frames if we have any (prefer audio here, as it is more time-critical)
+            if (m_audioFramesDecoded < 1 && m_queuedAudioFrame != nullptr)
+            {
+                --m_audioFramesRequested;
+                DecodeAudioFrame();
+            }
+            if (m_videoFramesDecoded < 1 && m_queuedVideoFrame != nullptr)
+            {
+                --m_videoFramesRequested;
+                DecodeVideoFrame();
+            }
+        }
+    }
+
+    auto Stop() -> void
+    {
+        if (m_playing)
+        {
+            m_playing = false;
+            m_audioFramesRequested = 0;
+            m_videoFramesRequested = 0;
+            // disable sound for now
+            REG_SOUNDCNT_X = 0;
+            // disable audio timers
+            REG_TM0CNT_H = 0;
+            REG_TM1CNT_H = 0;
+            irqDisable(irqMASKS::IRQ_TIMER1);
+            // disable audio DMAs
+            REG_DMA1CNT = 0;
+            if (m_mediaInfo.audioChannels == 2)
+            {
+                REG_DMA2CNT = 0;
+            }
+            // disable video timer
             REG_TM2CNT_H = 0;
             irqDisable(irqMASKS::IRQ_TIMER2);
-            m_playing = false;
-            m_framesRequested = 0;
 #ifdef DEBUG_PLAYER
             Debug::printf("Avg. decode: %f ms (max. %f ms)", m_accFrameDecodeMs / m_nrOfFramesDecoded, m_maxFrameDecodeMs);
             Debug::printf("Avg. blit: %f ms (max. %f ms)", m_accFrameBlitMs / m_nrOfFramesBlit, m_maxFrameBlitMs);
@@ -112,60 +381,4 @@ namespace Video
 #endif
         }
     }
-
-    IWRAM_FUNC auto hasMoreFrames() -> bool
-    {
-        return m_playing && m_videoFrame.index < static_cast<int32_t>(m_videoInfo.nrOfFrames - 1);
-    }
-
-    IWRAM_FUNC auto decodeAndBlitFrame(uint32_t *dst) -> void
-    {
-        if (m_playing)
-        {
-            if (m_framesDecoded < 1)
-            {
-                ++m_framesDecoded;
-#ifdef DEBUG_PLAYER
-                auto startTime = Time::now();
-#endif
-                // read next frame from data
-                m_videoFrame = GetNextFrame(m_videoInfo, m_videoFrame);
-                // uncompress frame
-                m_decodedFrame = decode(m_scratchPad, m_scratchPadSize, m_videoInfo, m_videoFrame);
-#ifdef DEBUG_PLAYER
-                auto duration = Time::now() * 1000 - startTime * 1000;
-                m_accFrameDecodeMs += duration;
-                m_maxFrameDecodeMs = m_maxFrameDecodeMs < duration ? duration : m_maxFrameDecodeMs;
-                ++m_nrOfFramesDecoded;
-#endif
-            }
-            if (m_framesRequested > 0)
-            {
-                --m_framesRequested;
-                if (m_framesDecoded > 0)
-                {
-#ifdef DEBUG_PLAYER
-                    auto startTime = Time::now();
-#endif
-                    // we're waiting for a frame and have one. blit it!
-                    m_framesDecoded = 0;
-                    Memory::memcpy32(dst, m_decodedFrame, m_decodedFrameSize / 4);
-#ifdef DEBUG_PLAYER
-                    auto duration = Time::now() * 1000 - startTime * 1000;
-                    m_accFrameBlitMs += duration;
-                    m_maxFrameBlitMs = m_maxFrameBlitMs < duration ? duration : m_maxFrameBlitMs;
-                    ++m_nrOfFramesBlit;
-#endif
-                }
-                if (m_framesRequested > 0)
-                {
-#ifdef DEBUG_PLAYER
-                    Debug::printf("Skipping %d frame(s)", m_framesRequested);
-#endif
-                    m_framesRequested = 0;
-                }
-            }
-        }
-    }
-
 }
