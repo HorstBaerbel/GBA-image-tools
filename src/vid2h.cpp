@@ -541,14 +541,22 @@ int main(int argc, const char *argv[])
         const auto audioSamplesRemaining = audioSampleBuffer.nrOfSamplesPerChannel();
         if (audioSamplesRemaining > 0)
         {
-            Audio::Frame outFrame = audioSampleBuffer.pop_front(audioSamplesRemaining);
+            auto audioSamplesThisFrame = audioSamplesRemaining;
+            // round up to multiple of 16 samples
+            if (audioSamplesThisFrame % 16 != 0)
+            {
+                audioSamplesThisFrame += 16 - (audioSamplesThisFrame % 16);
+                // push silence to the buffer to extend samples
+                audioSampleBuffer.push_silence(audioSamplesThisFrame - audioSamplesRemaining);
+            }
+            Audio::Frame outFrame = audioSampleBuffer.pop_front(audioSamplesThisFrame);
             outFrame.index = audioOutNrOfAudioFrames;
             audioOutInfo = outFrame.info;
             // get sample information
             const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
             audioOutCompressedSize += sampleDataSize;
             audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
-            audioOutNrOfAudioSamples += audioSamplesRemaining;
+            audioOutNrOfAudioSamples += audioSamplesThisFrame;
             // add processing info to sample data
             outFrame = Audio::Processing::prependProcessingInfo(outFrame, sampleDataSize, Audio::ProcessingType::Uncompressed, true);
             // write samples to file

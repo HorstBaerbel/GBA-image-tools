@@ -19,6 +19,14 @@ namespace Audio
         REQUIRE(bSamples.size() != 0, std::runtime_error, "Empty sample data");
         const auto aNrOfSamples = aSamples.size();
         const auto bNrOfSamples = bSamples.size();
+        if (aNrOfSamples == 0)
+        {
+            return bSamples;
+        }
+        if (bNrOfSamples == 0)
+        {
+            return aSamples;
+        }
         std::vector<T> result;
         result.reserve(aNrOfSamples + bNrOfSamples);
         if (channelFormat == ChannelFormat::Stereo)
@@ -36,6 +44,14 @@ namespace Audio
             std::copy(bSamples.cbegin(), bSamples.cend(), std::back_inserter(result));
         }
         return result;
+    }
+
+    template <typename T>
+    auto combineSilence(const SampleData &a, std::size_t nrOfSamplesPerChannel, T value, ChannelFormat channelFormat) -> std::vector<T>
+    {
+        const auto &channelInfo = Audio::formatInfo(channelFormat);
+        SampleData silence = std::vector<T>(nrOfSamplesPerChannel * channelInfo.nrOfChannels, value);
+        return combineSamples<T>(a, silence, channelFormat);
     }
 
     template <typename T>
@@ -121,6 +137,30 @@ namespace Audio
             break;
         case Audio::SampleFormat::Float32P:
             m_samples = combineSamples<float>(m_samples, frame.data, m_channelFormat);
+            break;
+        default:
+            THROW(std::runtime_error, "Bad sample format");
+        }
+    }
+
+    auto SampleBuffer::push_silence(std::size_t nrOfSamplesPerChannel) -> void
+    {
+        switch (m_sampleFormat)
+        {
+        case Audio::SampleFormat::Signed8P:
+            m_samples = combineSilence<int8_t>(m_samples, nrOfSamplesPerChannel, 0, m_channelFormat);
+            break;
+        case Audio::SampleFormat::Unsigned8P:
+            m_samples = combineSilence<uint8_t>(m_samples, nrOfSamplesPerChannel, 128, m_channelFormat);
+            break;
+        case Audio::SampleFormat::Signed16P:
+            m_samples = combineSilence<int16_t>(m_samples, nrOfSamplesPerChannel, 0, m_channelFormat);
+            break;
+        case Audio::SampleFormat::Unsigned16P:
+            m_samples = combineSilence<uint16_t>(m_samples, nrOfSamplesPerChannel, 32768, m_channelFormat);
+            break;
+        case Audio::SampleFormat::Float32P:
+            m_samples = combineSilence<float>(m_samples, nrOfSamplesPerChannel, 0.0F, m_channelFormat);
             break;
         default:
             THROW(std::runtime_error, "Bad sample format");

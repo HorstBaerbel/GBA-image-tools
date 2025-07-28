@@ -30,6 +30,10 @@ namespace Audio
         /// @throws std::runtime_exception if frame does not have the same format as in the SampleBuffer constructor
         auto push_back(const Frame &frame) -> void;
 
+        /// @brief Push silence samples to the end of the buffer(s)
+        /// @param nrOfSamplesPerChannel Number of samples per channel to add
+        auto push_silence(std::size_t nrOfSamplesPerChannel) -> void;
+
         /// @brief Pop samples from the beginning of the buffer(s)
         /// @param nrOfSamplesPerChannel Number of samples per channel to return
         /// @return Audio samples
