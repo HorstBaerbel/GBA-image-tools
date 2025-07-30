@@ -30,9 +30,9 @@ Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DA
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
 * ```AUDIO CONVERSION``` options are optional:
-  * ```channelformat=``` - Audio channel format ["mono" or "stereo"].
-  * ```sampleformat=``` - Audio sample format ["s8p" (signed 8-bit), "u8p" (unsigned 8-bit), "s16p" (signed 16-bit), "u16p" (unsigned 16-bit), "f32p" (32-bit floating-point)]. All sample formats are planar (non-interleaved).
-  * ```samplerate=``` - Audio sample rate in Hz [4000, 48000].
+  * ```channelformat=F``` - Audio channel format F ["mono" or "stereo"].
+  * ```sampleformat=F``` - Audio sample format F ["s8p" (signed 8-bit), "u8p" (unsigned 8-bit), "s16p" (signed 16-bit), "u16p" (unsigned 16-bit), "f32p" (32-bit floating-point)]. All sample formats are planar (non-interleaved).
+  * ```samplerate=R``` - Audio sample rate R [4000, 48000] in Hz.
   Note that all input audio is currently converted to signed 16-bit data and multiple channels are reduced to stereo.
 * ```OPTIONS``` are optional:
   * ```--dryrun``` - Process data, but do not write output files.
