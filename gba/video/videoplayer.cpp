@@ -308,8 +308,8 @@ namespace Media
             if (m_mediaInfo.contentType & IO::FileType::Audio)
             {
                 // start and enable sound playback
-                AudioBufferRequest();
                 REG_SOUNDCNT_X = SOUND3_PLAY;
+                AudioBufferRequest();
             }
         }
     }
