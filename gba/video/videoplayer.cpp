@@ -23,26 +23,22 @@ namespace Media
     IWRAM_DATA IO::Vid2h::Frame m_mediaFrame;
 
     // audio
-    IWRAM_DATA uint32_t *m_audioScratchPad = nullptr;
-    IWRAM_DATA uint32_t m_audioScratchPadSize = 0;
     IWRAM_DATA const uint32_t *m_queuedAudioFrame = nullptr;
-    IWRAM_DATA int32_t m_audioFrameIndex = -1;
-    IWRAM_DATA volatile int32_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
-    IWRAM_DATA volatile int32_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
-    IWRAM_DATA uint32_t *m_audioPlaySampleBuffer = nullptr; // Pointer to planar data for left / mono channel and right channel currently playing
-    IWRAM_DATA uint32_t *m_audioBackSampleBuffer = nullptr; // Pointer to planar data for left / mono channel and right channel currently decoding
-    IWRAM_DATA uint32_t m_audioSampleBufferChannelSize = 0; // Size of data stored per channel == number of samples per channel
+    IWRAM_DATA volatile int16_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
+    IWRAM_DATA volatile int16_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
+    IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing
+    IWRAM_DATA uint32_t *m_audioBackBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently decoding
+    IWRAM_DATA uint16_t m_audioBufferSize = 0;              // Size of one audio buffer
+    IWRAM_DATA uint16_t m_audioBufferChannelSize = 0;       // Size of data stored per channel == number of samples per channel
 
     // video
     IWRAM_DATA uint32_t *m_videoScratchPad = nullptr;
     IWRAM_DATA uint32_t m_videoScratchPadSize = 0;
     IWRAM_DATA uint32_t m_clearColor = 0;
     IWRAM_DATA const uint32_t *m_queuedColorMapFrame = nullptr;
-    IWRAM_DATA int32_t m_colorMapFrameIndex = 0;
     IWRAM_DATA const uint32_t *m_queuedVideoFrame = nullptr;
-    IWRAM_DATA int32_t m_videoFrameIndex = -1;
-    IWRAM_DATA volatile int32_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
-    IWRAM_DATA volatile int32_t m_videoFramesRequested = 0;   // Number of video frames requested by VideoFrameRequest()
+    IWRAM_DATA volatile int16_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
+    IWRAM_DATA volatile int16_t m_videoFramesRequested = 0;   // Number of video frames requested by VideoFrameRequest()
     IWRAM_DATA const uint32_t *m_videoDecodedFrame = nullptr; // Pointer to decoded video frame
     IWRAM_DATA uint32_t m_videoDecodedFrameSize = 0;          // Size of decoded video frame
 
@@ -76,19 +72,19 @@ namespace Media
             if (m_audioFramesDecoded > 0)
             {
                 // swap sample buffers
-                std::swap(m_audioPlaySampleBuffer, m_audioBackSampleBuffer);
+                std::swap(m_audioPlayBuffer, m_audioBackBuffer);
                 // calculate buffer start
-                const auto sampleBufferStart = reinterpret_cast<uint32_t>(m_audioPlaySampleBuffer);
+                const auto sampleBufferStart = reinterpret_cast<uint32_t>(m_audioPlayBuffer);
                 // set DMA channels to read from new buffer and restart DMA
                 REG_DMA1SAD = sampleBufferStart;
                 REG_DMA1CNT |= DMA_ENABLE;
                 if (m_mediaInfo.audioChannels == 2)
                 {
-                    REG_DMA2SAD = sampleBufferStart + m_audioSampleBufferChannelSize;
+                    REG_DMA2SAD = sampleBufferStart + m_audioBufferChannelSize;
                     REG_DMA2CNT |= DMA_ENABLE;
                 }
                 // set timer 1 count to number of words in new buffer
-                REG_TM1CNT_L = 65536U - m_audioSampleBufferChannelSize;
+                REG_TM1CNT_L = 65536U - m_audioBufferChannelSize;
                 // start both timers
                 REG_TM0CNT_H |= TIMER_START;
                 REG_TM1CNT_H |= TIMER_START;
@@ -144,10 +140,9 @@ namespace Media
         if (m_mediaInfo.contentType & IO::FileType::Audio)
         {
             // set up audio buffers
-            m_audioScratchPad = audioScratchPad;
-            m_audioScratchPadSize = audioScratchPadSize;
-            m_audioPlaySampleBuffer = audioScratchPad;
-            m_audioBackSampleBuffer = audioScratchPad + audioScratchPadSize / (2 * 4);
+            m_audioPlayBuffer = audioScratchPad;
+            m_audioBackBuffer = audioScratchPad + audioScratchPadSize / (2 * 4);
+            m_audioBufferSize = audioScratchPadSize / 2;
         }
     }
 
@@ -168,19 +163,16 @@ namespace Media
         {
             // queue video frame
             m_queuedVideoFrame = m_mediaFrame.data;
-            ++m_videoFrameIndex;
         }
         else if (m_mediaFrame.dataType == IO::FrameType::Colormap)
         {
             // queue color map frame
             m_queuedColorMapFrame = m_mediaFrame.data;
-            ++m_colorMapFrameIndex;
         }
         else if (m_mediaFrame.dataType == IO::FrameType::Audio)
         {
             // queue audio frame
             m_queuedAudioFrame = m_mediaFrame.data;
-            ++m_audioFrameIndex;
         }
     }
 
@@ -189,8 +181,8 @@ namespace Media
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
 #endif
-        auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackSampleBuffer, m_audioScratchPadSize / 2, m_mediaInfo, m_queuedAudioFrame);
-        m_audioSampleBufferChannelSize = audioDecodedFrameSize / m_mediaInfo.audioChannels;
+        auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackBuffer, m_audioBufferSize, m_mediaInfo, m_queuedAudioFrame);
+        m_audioBufferChannelSize = audioDecodedFrameSize / m_mediaInfo.audioChannels;
         m_queuedAudioFrame = nullptr;
         ++m_audioFramesDecoded;
 #ifdef DEBUG_PLAYER
@@ -221,16 +213,12 @@ namespace Media
     {
         if (!m_playing)
         {
-            m_mediaFrame.index = -1;
             m_mediaFrame.header = nullptr;
             m_mediaFrame.data = nullptr;
-            m_audioFrameIndex = -1;
             m_audioFramesRequested = 0;
             m_audioFramesDecoded = 0;
-            m_videoFrameIndex = -1;
             m_videoFramesRequested = 0;
             m_videoFramesDecoded = 0;
-            m_colorMapFrameIndex = -1;
             m_playing = true;
 #ifdef DEBUG_PLAYER
             m_videoStats = FrameStatistics{};
@@ -243,7 +231,7 @@ namespace Media
                 // disable all sounds for now
                 REG_SOUNDCNT_X = 0;
                 // fill audio buffers with silence
-                Memory::memset32(m_audioScratchPad, 0, m_audioScratchPadSize / 4);
+                Memory::memset32(m_audioBackBuffer, 0, m_audioBufferSize / 4);
                 // enable DMA 1 to copy words to sound FIFO A
                 REG_DMA1DAD = reinterpret_cast<uint32_t>(&REG_FIFO_A);                        // write to sound FIFO A
                 REG_DMA1CNT = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
@@ -301,7 +289,7 @@ namespace Media
             {
                 // blit first frame to screen
                 Memory::memcpy32((void *)VRAM, m_videoDecodedFrame, m_videoDecodedFrameSize / 4);
-                // start time for video frame rate
+                // start timer for video frame rate
                 REG_TM2CNT_H |= TIMER_START;
             }
             if (m_mediaInfo.contentType & IO::FileType::Audio)
