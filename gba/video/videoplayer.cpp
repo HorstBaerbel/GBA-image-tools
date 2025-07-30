@@ -23,8 +23,8 @@ namespace Media
     IWRAM_DATA IO::Vid2h::Frame m_mediaFrame;
 
     // audio
-    uint32_t *m_audioScratchPad = nullptr;
-    uint32_t m_audioScratchPadSize = 0;
+    IWRAM_DATA uint32_t *m_audioScratchPad = nullptr;
+    IWRAM_DATA uint32_t m_audioScratchPadSize = 0;
     IWRAM_DATA const uint32_t *m_queuedAudioFrame = nullptr;
     IWRAM_DATA int32_t m_audioFrameIndex = -1;
     IWRAM_DATA volatile int32_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
@@ -34,9 +34,9 @@ namespace Media
     IWRAM_DATA uint32_t m_audioSampleBufferChannelSize = 0; // Size of data stored per channel == number of samples per channel
 
     // video
-    uint32_t *m_videoScratchPad = nullptr;
-    uint32_t m_videoScratchPadSize = 0;
-    uint32_t m_clearColor = 0;
+    IWRAM_DATA uint32_t *m_videoScratchPad = nullptr;
+    IWRAM_DATA uint32_t m_videoScratchPadSize = 0;
+    IWRAM_DATA uint32_t m_clearColor = 0;
     IWRAM_DATA const uint32_t *m_queuedColorMapFrame = nullptr;
     IWRAM_DATA int32_t m_colorMapFrameIndex = 0;
     IWRAM_DATA const uint32_t *m_queuedVideoFrame = nullptr;
@@ -60,8 +60,7 @@ namespace Media
     IWRAM_DATA FrameStatistics m_audioStats;
 #endif
 
-    IWRAM_FUNC auto
-    AudioBufferRequest() -> void
+    IWRAM_FUNC auto AudioBufferRequest() -> void
     {
         if (m_playing)
         {
@@ -162,7 +161,7 @@ namespace Media
         return m_mediaInfo;
     }
 
-    auto ReadAndQueueNextFrame() -> void
+    IWRAM_FUNC auto ReadAndQueueNextFrame() -> void
     {
         m_mediaFrame = IO::Vid2h::GetNextFrame(m_mediaInfo, m_mediaFrame);
         if (m_mediaFrame.dataType == IO::FrameType::Pixels)
@@ -185,7 +184,7 @@ namespace Media
         }
     }
 
-    auto DecodeAudioFrame() -> void
+    IWRAM_FUNC auto DecodeAudioFrame() -> void
     {
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
@@ -202,7 +201,7 @@ namespace Media
 #endif
     }
 
-    auto DecodeVideoFrame() -> void
+    IWRAM_FUNC auto DecodeVideoFrame() -> void
     {
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();

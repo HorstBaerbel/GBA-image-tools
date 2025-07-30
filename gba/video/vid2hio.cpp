@@ -55,12 +55,12 @@ namespace IO::Vid2h
         return info;
     }
 
-    auto HasMoreFrames(const Info &info, const Frame &previous) -> bool
+    IWRAM_FUNC auto HasMoreFrames(const Info &info, const Frame &previous) -> bool
     {
         return previous.index < static_cast<int32_t>(info.nrOfFrames - 1);
     }
 
-    Frame GetNextFrame(const Info &info, const Frame &previous)
+    IWRAM_FUNC Frame GetNextFrame(const Info &info, const Frame &previous)
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
         Frame frame;
