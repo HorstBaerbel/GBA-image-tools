@@ -15,12 +15,6 @@
 #include "time.h"
 #endif
 
-// General playback:
-// * On Play() start, require frame, reset decoded frames
-// * On DecodeAndBlitFrame():
-//   * Get frame
-//   * Decode frame
-
 namespace Media
 {
     // general
@@ -53,15 +47,21 @@ namespace Media
     IWRAM_DATA uint32_t m_videoDecodedFrameSize = 0;          // Size of decoded video frame
 
 #ifdef DEBUG_PLAYER
-    IWRAM_DATA int32_t m_accFrameDecodeMs = 0;
-    IWRAM_DATA int32_t m_maxFrameDecodeMs = 0;
-    IWRAM_DATA int32_t m_nrOfFramesDecoded = 0;
-    IWRAM_DATA int32_t m_accFrameBlitMs = 0;
-    IWRAM_DATA int32_t m_maxFrameBlitMs = 0;
-    IWRAM_DATA int32_t m_nrOfFramesBlit = 0;
+    struct FrameStatistics
+    {
+        int32_t m_accDecodedMs = 0; // Accumulated time decoding frames
+        int32_t m_maxDecodedMs = 0; // Max. time decoding frames
+        int32_t m_nrDecoded = 0;    // Number of frames decoded so far
+        int32_t m_accCopiedMs = 0;  // Accumulated time displaying / copying frames
+        int32_t m_maxCopiedMs = 0;  // Max. time displaying / copying  frames
+        int32_t m_nrCopied = 0;     // Number of frames displayed / copied so far
+    };
+    IWRAM_DATA FrameStatistics m_videoStats;
+    IWRAM_DATA FrameStatistics m_audioStats;
 #endif
 
-    IWRAM_FUNC auto AudioBufferRequest() -> void
+    IWRAM_FUNC auto
+    AudioBufferRequest() -> void
     {
         if (m_playing)
         {
@@ -120,15 +120,6 @@ namespace Media
     {
         if (m_playing)
         {
-            if (m_videoFramesDecoded > 0)
-            {
-                // we're waiting for a frame and have one. blit it!
-                REG_DMA3SAD = reinterpret_cast<uint32_t>(m_videoDecodedFrame);
-                REG_DMA3DAD = (uint32_t)VRAM;
-                REG_DMA3CNT = DMA_DST_INC | DMA_SRC_INC | DMA32 | DMA_IMMEDIATE | DMA_ENABLE | (m_videoDecodedFrameSize / 4);
-                // we've used up the decoded frame
-                m_videoFramesDecoded = 0;
-            }
             // request more video frames for playback
             ++m_videoFramesRequested;
         }
@@ -196,11 +187,19 @@ namespace Media
 
     auto DecodeAudioFrame() -> void
     {
-        // uncompress audio frame
+#ifdef DEBUG_PLAYER
+        auto startTime = Time::now();
+#endif
         auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackSampleBuffer, m_audioScratchPadSize / 2, m_mediaInfo, m_queuedAudioFrame);
         m_audioSampleBufferChannelSize = audioDecodedFrameSize / m_mediaInfo.audioChannels;
         m_queuedAudioFrame = nullptr;
         ++m_audioFramesDecoded;
+#ifdef DEBUG_PLAYER
+        auto duration = Time::now() * 1000 - startTime * 1000;
+        m_audioStats.m_accDecodedMs += duration;
+        m_audioStats.m_maxDecodedMs = m_audioStats.m_maxDecodedMs < duration ? duration : m_audioStats.m_maxDecodedMs;
+        m_audioStats.m_nrDecoded++;
+#endif
     }
 
     auto DecodeVideoFrame() -> void
@@ -208,15 +207,14 @@ namespace Media
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
 #endif
-        // uncompress video frame
         m_videoDecodedFrame = DecodeVideo(m_videoScratchPad, m_videoScratchPadSize, m_mediaInfo, m_queuedVideoFrame);
         m_queuedVideoFrame = nullptr;
         ++m_videoFramesDecoded;
 #ifdef DEBUG_PLAYER
         auto duration = Time::now() * 1000 - startTime * 1000;
-        m_accFrameDecodeMs += duration;
-        m_maxFrameDecodeMs = m_maxFrameDecodeMs < duration ? duration : m_maxFrameDecodeMs;
-        ++m_nrOfFramesDecoded;
+        m_videoStats.m_accDecodedMs += duration;
+        m_videoStats.m_maxDecodedMs = m_videoStats.m_maxDecodedMs < duration ? duration : m_videoStats.m_maxDecodedMs;
+        m_videoStats.m_nrDecoded++;
 #endif
     }
 
@@ -236,12 +234,8 @@ namespace Media
             m_colorMapFrameIndex = -1;
             m_playing = true;
 #ifdef DEBUG_PLAYER
-            m_accFrameDecodeMs = 0;
-            m_maxFrameDecodeMs = 0;
-            m_nrOfFramesDecoded = 0;
-            m_accFrameBlitMs = 0;
-            m_maxFrameBlitMs = 0;
-            m_nrOfFramesBlit = 0;
+            m_videoStats = FrameStatistics{};
+            m_audioStats = FrameStatistics{};
             Time::start();
 #endif
             // load and decode initial frame(s)
@@ -329,6 +323,23 @@ namespace Media
     {
         if (m_playing)
         {
+            // blit video frame if one is pending
+            if (m_videoFramesRequested > 0 && m_videoFramesDecoded > 0)
+            {
+#ifdef DEBUG_PLAYER
+                auto startTime = Time::now();
+#endif
+                // we're waiting for a frame and have one. blit it!
+                Memory::memcpy32((void *)VRAM, m_videoDecodedFrame, m_videoDecodedFrameSize / 4);
+                // we've used up the decoded frame
+                m_videoFramesDecoded = 0;
+#ifdef DEBUG_PLAYER
+                auto duration = Time::now() * 1000 - startTime * 1000;
+                m_videoStats.m_accCopiedMs += duration;
+                m_videoStats.m_maxCopiedMs = m_videoStats.m_maxCopiedMs < duration ? duration : m_videoStats.m_maxCopiedMs;
+                m_videoStats.m_nrCopied++;
+#endif
+            }
             // read frames from media data
             if (m_audioFramesRequested > 0 && m_queuedAudioFrame == nullptr)
             {
@@ -375,8 +386,9 @@ namespace Media
             REG_TM2CNT_H = 0;
             irqDisable(irqMASKS::IRQ_TIMER2);
 #ifdef DEBUG_PLAYER
-            Debug::printf("Avg. decode: %f ms (max. %f ms)", m_accFrameDecodeMs / m_nrOfFramesDecoded, m_maxFrameDecodeMs);
-            Debug::printf("Avg. blit: %f ms (max. %f ms)", m_accFrameBlitMs / m_nrOfFramesBlit, m_maxFrameBlitMs);
+            Debug::printf("Audio avg. decode: %f ms (max. %f ms)", m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded, m_audioStats.m_maxDecodedMs);
+            Debug::printf("Video avg. decode: %f ms (max. %f ms)", m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded, m_videoStats.m_maxDecodedMs);
+            Debug::printf("Video avg. blit: %f ms (max. %f ms)", m_videoStats.m_accCopiedMs / m_videoStats.m_nrCopied, m_videoStats.m_maxCopiedMs);
             Time::stop();
 #endif
         }
