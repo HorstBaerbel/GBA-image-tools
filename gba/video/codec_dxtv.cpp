@@ -174,10 +174,11 @@ namespace DXTV
             // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
-            auto srcPtr16 = fromPrev ? reinterpret_cast<const uint16_t *>(prevPtr32) : reinterpret_cast<const uint16_t *>(currPtr32);
+            auto srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
             // convert offsets to signed values
-            auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
-            auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
+            constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
+            const auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
+            const auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
@@ -225,10 +226,11 @@ namespace DXTV
             // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
             const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
-            auto srcPtr16 = fromPrev ? reinterpret_cast<const uint16_t *>(prevPtr32) : reinterpret_cast<const uint16_t *>(currPtr32);
+            auto srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
             // convert offsets to signed values
-            auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
-            auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - ((1 << BLOCK_MOTION_BITS) / 2 - 1);
+            constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
+            const auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
+            const auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
