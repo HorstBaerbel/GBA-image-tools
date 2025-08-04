@@ -1,6 +1,7 @@
 #include "codec_dxtv.h"
 
 #include "dxtv.h"
+#include "dxtv_constants.h"
 #include "image/dxt_tables.h"
 #include "memory/memory.h"
 #include "print/output.h"
@@ -46,20 +47,6 @@ namespace DXTV
     //   Bit 13-11: Currently unused
     //   Bit 10-5: y pixel motion of referenced block [-15,16] from top-left corner
     //   Bit  4-0: x pixel motion of referenced block [-15,16] from top-left corner
-
-    static constexpr uint16_t FRAME_KEEP = 0x40; // 1 for frames that are considered a direct copy of the previous frame and can be kept
-
-    static constexpr uint32_t BLOCK_MAX_DIM = 8;           // Maximum block size is 8x8 pixels
-    static constexpr bool BLOCK_NO_SPLIT = false;          // The block is a full block
-    static constexpr bool BLOCK_IS_SPLIT = true;           // The block is split into smaller sub-blocks
-    static constexpr uint16_t BLOCK_IS_DXT = 0;            // The block is a verbatim DXT block
-    static constexpr uint16_t BLOCK_IS_REF = (1 << 15);    // The block is a motion-compensated block from the current or previous frame
-    static constexpr uint16_t BLOCK_FROM_CURR = (0 << 14); // The reference block is from from the current frame
-    static constexpr uint16_t BLOCK_FROM_PREV = (1 << 14); // The reference block is from from the previous frame
-
-    static constexpr uint32_t BLOCK_MOTION_BITS = 5;                                      // Bits available for pixel motion
-    static constexpr uint16_t BLOCK_MOTION_MASK = (uint16_t(1) << BLOCK_MOTION_BITS) - 1; // Block x pixel motion mask
-    static constexpr uint16_t BLOCK_MOTION_Y_SHIFT = BLOCK_MOTION_BITS;                   // Block y pixel motion shift
 
     IWRAM_DATA ALIGN(4) uint16_t blockColors[4]; // intermediate DXT block color storage
 
@@ -183,12 +170,11 @@ namespace DXTV
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
-            // copyBlock<4>(currPtr32, srcPtr16, LineStride16);
-            DXTV::CopyBlock4x4(srcPtr16, currPtr32, LineStride16 * 2);
+            copyBlock<4>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
-            /*// get DXT block colors
+            // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
             // get pixel color indices and set pixels accordingly
             uint16_t indices = *dataPtr16++;
@@ -212,9 +198,7 @@ namespace DXTV
             currPtr16[0] = blockColors[(indices >> 8) & 0x3];
             currPtr16[1] = blockColors[(indices >> 10) & 0x3];
             currPtr16[2] = blockColors[(indices >> 12) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 14) & 0x3];*/
-            DXTV::UnDxtBlock4x4(dataPtr16, currPtr16, LineStride16 * 2);
-            dataPtr16 += 4;
+            currPtr16[3] = blockColors[(indices >> 14) & 0x3];
         }
         return dataPtr16;
     }
@@ -302,10 +286,14 @@ namespace DXTV
                 // check if block is split
                 if (flags & 1)
                 {
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32, prevPtr32, LineStride16);                                                                         // A - upper-left
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4HStride32, prevPtr32 + Block4HStride32, LineStride16);                                     // B - upper-right
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32, prevPtr32 + Block4VStride32, LineStride16);                                     // C - lower-left
-                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, prevPtr32 + Block4VStride32 + Block4HStride32, LineStride16); // D - lower-right
+                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32, prevPtr32, LineStride16);                                                                         // A - upper-left
+                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4HStride32, prevPtr32 + Block4HStride32, LineStride16);                                     // B - upper-right
+                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32, prevPtr32 + Block4VStride32, LineStride16);                                     // C - lower-left
+                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, prevPtr32 + Block4VStride32 + Block4HStride32, LineStride16); // D - lower-right
+                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);                                                                         // A - upper-left
+                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4HStride32);                                     // B - upper-right
+                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32, LineStride16 * 2, prevPtr32 + Block4VStride32);                                     // C - lower-left
+                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4VStride32 + Block4HStride32); // D - lower-right
                 }
                 else
                 {
