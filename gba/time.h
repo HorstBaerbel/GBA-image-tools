@@ -5,7 +5,7 @@
 namespace Time
 {
 
-	/// @brief Enable timer. now() value increases every ~2.5ms now.
+	/// @brief Enable timer. now() value increases every ~1ms now.
 	void start();
 
 	/// @brief Stop timer. now() value will not increase anymore.

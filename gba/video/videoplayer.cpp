@@ -9,11 +9,19 @@
 #include <gba_sound.h>
 #include <gba_timers.h>
 
-// #define DEBUG_PLAYER
+#define DEBUG_PLAYER
 #ifdef DEBUG_PLAYER
 #include "print/output.h"
 #include "time.h"
 #endif
+
+// BBB
+// Video avg. decode: 23.28 ms (max. 35.16 ms) C++
+// Video avg. decode: 22.78 ms (max. 33.20 ms) ASM
+
+// AF
+// Video avg. decode: 26.61 ms (max. 34.18 ms) C++
+// Video avg. decode: 21.13 ms (max. 30.27 ms) ASM
 
 namespace Media
 {
