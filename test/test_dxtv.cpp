@@ -43,7 +43,7 @@ auto testEncodeBlock(const Image::Frame &data, const float quality, const float 
     // output image
     std::vector<Color::XRGB8888> outImage(data.data.pixels().size());
     // compress block
-    auto [blockSplitFlag, compressedData] = DXTV::encodeBlock<DXTV::BLOCK_MAX_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, DXTV::BLOCK_MAX_DIM>(), inBlock, quality, swapToBGR);
+    auto [blockSplitFlag, compressedData] = DXTV::encodeBlock<DXTV_CONSTANTS::BLOCK_MAX_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, DXTV_CONSTANTS::BLOCK_MAX_DIM>(), inBlock, quality, swapToBGR);
     // uncompress block
     auto dataPtr = reinterpret_cast<const uint16_t *>(compressedData.data());
     auto currPtr = outImage.data();
@@ -63,7 +63,7 @@ auto testEncodeBlock(const Image::Frame &data, const float quality, const float 
     auto outCodeBook = DXTV::CodeBook8x8(outImage, size.width(), size.height(), false);
     auto outPixels = currentCodeBook.block(0).pixels();
     auto psnr = Color::psnr(inPixels, outPixels);
-    std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << DXTV::BLOCK_MAX_DIM << "x" << DXTV::BLOCK_MAX_DIM << " block, psnr: " << std::setprecision(4) << psnr << std::endl;
+    std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << DXTV_CONSTANTS::BLOCK_MAX_DIM << "x" << DXTV_CONSTANTS::BLOCK_MAX_DIM << " block, psnr: " << std::setprecision(4) << psnr << std::endl;
     CATCH_REQUIRE(psnr >= allowedPsnr);
 }
 
