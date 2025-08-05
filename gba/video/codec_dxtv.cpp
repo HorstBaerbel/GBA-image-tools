@@ -287,15 +287,15 @@ namespace DXTV
                     // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4HStride32, prevPtr32 + Block4HStride32, LineStride16);                                     // B - upper-right
                     // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32, prevPtr32 + Block4VStride32, LineStride16);                                     // C - lower-left
                     // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, prevPtr32 + Block4VStride32 + Block4HStride32, LineStride16); // D - lower-right
-                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);                                                                         // A - upper-left
-                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4HStride32);                                     // B - upper-right
-                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32, LineStride16 * 2, prevPtr32 + Block4VStride32);                                     // C - lower-left
-                    dataPtr16 = DXTV::DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4VStride32 + Block4HStride32); // D - lower-right
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);                                                                         // A - upper-left
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4HStride32);                                     // B - upper-right
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32, LineStride16 * 2, prevPtr32 + Block4VStride32);                                     // C - lower-left
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4VStride32 + Block4HStride32); // D - lower-right
                 }
                 else
                 {
                     // dataPtr16 = decodeBlock<8>(dataPtr16, currPtr32, prevPtr32, LineStride16);
-                    dataPtr16 = DXTV::DecodeBlock8x8(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);
+                    dataPtr16 = DecodeBlock8x8(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);
                 }
                 currPtr32 += Block8HStride32;
                 prevPtr32 += Block8HStride32;

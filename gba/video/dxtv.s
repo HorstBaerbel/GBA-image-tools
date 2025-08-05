@@ -26,7 +26,7 @@ DecodeBlock4x4:
     @ r0: pointer to DXTV source data, must be 2-byte-aligned (will point to the next DXTV data block on return)
     @ r1: pointer to the destination pixel buffer, must be 4-byte-aligned (trashed)
     @ r2: line stride in bytes (remains unchanged)
-    @ r3: pointer to the previous destination pixel buffer, must be 4-byte-aligned (trashed)
+    @ r3: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
     stmfd sp!, {r4 - r7}
     ldrh r4, [r0], #2 @ load block type / color 0
     ands r5, r4, #BLOCK_IS_REF @ check if block is a motion compensated or DXT block
@@ -229,7 +229,7 @@ DecodeBlock8x8:
     @ r0: pointer to DXTV source data, must be 2-byte-aligned (will point to the next DXTV data block on return)
     @ r1: pointer to the destination pixel buffer, must be 4-byte-aligned (trashed)
     @ r2: line stride in bytes (remains unchanged)
-    @ r3: pointer to the previous destination pixel buffer, must be 4-byte-aligned (trashed)
+    @ r3: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
     stmfd sp!, {r4 - r10}
     ldrh r4, [r0], #2 @ load block type / color 0
     ands r5, r4, #BLOCK_IS_REF @ check if block is a motion compensated or DXT block
