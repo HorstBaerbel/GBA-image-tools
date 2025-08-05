@@ -231,40 +231,40 @@ UnDxtBlock8x8:
     @ r2: line stride in pixels (remains unchanged)
     stmfd sp!, {r3 - r11}
     // get anchor colors c0 and c1
-    ldrh r4, [r0], #2 @ load c0 to r3
-    ldrh r5, [r0], #2 @ load c1 to r4
-   // get blue components of c0 and c1 to r6
-    and r6, r4, #0x7c00
-    and r7, r5, #0x7c00
-    lsr r6, r6, #5
-    orr r6, r6, r7, lsr #10
+    ldrh r4, [r0], #2 @ load c0 to r4
+    ldrh r5, [r0], #2 @ load c1 to r5
+    // get blue components of c0 and c1 to r6
+    and r3, r4, #0x7c00
+    and r8, r5, #0x7c00
+    lsr r3, r3, #5
+    orr r6, r3, r8, lsr #10
     // get green components of c0 and c1 to r7
-    and r7, r4, #0x03E0
+    and r3, r4, #0x03E0
     and r8, r5, #0x03E0
-    orr r7, r7, r8, lsr #5
+    orr r7, r3, r8, lsr #5
     // get red components of c0 and c1 to r8
+    and r3, r4, #0x001F
     and r8, r5, #0x001F
-    and r9, r4, #0x001F
-    orr r8, r8, r9, lsl #5
+    orr r8, r8, r3, lsl #5
     // check which intermediate colors mode we're using
     cmp r4, r5
     bgt .udb8x8_third
 .udb8x8_half:
     // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
-    ldr r9, =C2_ModeHalf_5bit
-    ldrb r6, [r9, r6]
-    ldrb r7, [r9, r7]
-    ldrb r8, [r9, r8]
+    ldr r3, =C2_ModeHalf_5bit
+    ldrb r6, [r3, r6]
+    ldrb r7, [r3, r7]
+    ldrb r8, [r3, r8]
     orr r6, r8, r6, lsl #10
     orr r6, r6, r7, lsl #5
     mov r7, #0x0000 @ r7 is c3, which is always black
     b .udb8x8_store_colors
 .udb8x8_third:
     // calculate intermediate colors c2 and c3 at 1/3 and 2/3 of c0 and c1
-    ldr r9, =C2C3_ModeThird_5bit
-    ldr r6, [r9, r6, lsl #2]
-    ldr r7, [r9, r7, lsl #2]
-    ldr r8, [r9, r8, lsl #2]
+    ldr r3, =C2C3_ModeThird_5bit
+    ldr r6, [r3, r6, lsl #2]
+    ldr r7, [r3, r7, lsl #2]
+    ldr r8, [r3, r8, lsl #2]
     orr r7, r8, r7, lsl #5
     orr r7, r7, r6, lsl #10
     mov r6, r7, lsl #16 @ move c3 from the lower part of r7 to r6
