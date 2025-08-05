@@ -1,4 +1,4 @@
-#include "dxtv_constants.h"
+#include "codec/dxtv_constants.h"
 
  .global DXT_C2_ModeHalf_5bit
  .global DXT_C2C3_ModeThird_5bit
@@ -21,20 +21,20 @@ DecodeBlock4x4:
     @ r3: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
     stmfd sp!, {r4 - r7}
     ldrh r4, [r0], #2 @ load block type / color 0
-    ands r5, r4, #BLOCK_IS_REF @ check if block is a motion compensated or DXT block
+    ands r5, r4, #DXTV_FORMAT_BLOCK_IS_REF @ check if block is a motion compensated or DXT block
     beq .db4x4_dxt
 .db4x4_mc:
     // ----- copy motion compensated block -----
-    ands r5, r4, #BLOCK_FROM_PREV @ check if block is from the previous frame
+    ands r5, r4, #DXTV_FORMAT_BLOCK_FROM_PREV @ check if block is from the previous frame
     moveq r3, r1 @ r3 = same frame (r1) or previous frame (r3)
     // get x-offset of the source block
-    and r5, r4, #BLOCK_MOTION_MASK
-    subs r5, r5, #BLOCK_HALF_RANGE
+    and r5, r4, #DXTV_FORMAT_BLOCK_MOTION_MASK
+    subs r5, r5, #DXTV_FORMAT_BLOCK_HALF_RANGE
     lsl r5, r5, #1 @ multiply x-offset by 2, because pixels are 2 bytes wide
     // get y-offset of the source block
-    lsr r4, r4, #BLOCK_MOTION_Y_SHIFT
-    and r4, r4, #BLOCK_MOTION_MASK
-    subs r4, r4, #BLOCK_HALF_RANGE
+    lsr r4, r4, #DXTV_FORMAT_BLOCK_MOTION_Y_SHIFT
+    and r4, r4, #DXTV_FORMAT_BLOCK_MOTION_MASK
+    subs r4, r4, #DXTV_FORMAT_BLOCK_HALF_RANGE
     // calculate offset to source block
     mlas r6, r4, r2, r5 @ multiply y-offset by line stride and add x-offset
     adds r3, r3, r6 @ calculate source address
@@ -224,20 +224,20 @@ DecodeBlock8x8:
     @ r3: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
     stmfd sp!, {r4 - r10}
     ldrh r4, [r0], #2 @ load block type / color 0
-    ands r5, r4, #BLOCK_IS_REF @ check if block is a motion compensated or DXT block
+    ands r5, r4, #DXTV_FORMAT_BLOCK_IS_REF @ check if block is a motion compensated or DXT block
     beq .db8x8_dxt
 .db8x8_mc:
     // ----- copy motion compensated block -----
-    ands r5, r4, #BLOCK_FROM_PREV @ check if block is from the previous frame
+    ands r5, r4, #DXTV_FORMAT_BLOCK_FROM_PREV @ check if block is from the previous frame
     moveq r3, r1 @ r3 = same frame (r1) or previous frame (r3)
     // get x-offset of the source block
-    and r5, r4, #BLOCK_MOTION_MASK
-    subs r5, r5, #BLOCK_HALF_RANGE
+    and r5, r4, #DXTV_FORMAT_BLOCK_MOTION_MASK
+    subs r5, r5, #DXTV_FORMAT_BLOCK_HALF_RANGE
     lsl r5, r5, #1 @ multiply x-offset by 2, because pixels are 2 bytes wide
     // get y-offset of the source block
-    lsr r4, r4, #BLOCK_MOTION_Y_SHIFT
-    and r4, r4, #BLOCK_MOTION_MASK
-    subs r4, r4, #BLOCK_HALF_RANGE
+    lsr r4, r4, #DXTV_FORMAT_BLOCK_MOTION_Y_SHIFT
+    and r4, r4, #DXTV_FORMAT_BLOCK_MOTION_MASK
+    subs r4, r4, #DXTV_FORMAT_BLOCK_HALF_RANGE
     // calculate offset to source block
     mlas r6, r4, r2, r5 @ multiply y-offset by line stride and add x-offset
     adds r3, r3, r6 @ calculate source address

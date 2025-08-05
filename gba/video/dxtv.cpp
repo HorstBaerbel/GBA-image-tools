@@ -1,8 +1,9 @@
 #include "dxtv.h"
 
+#include "codec/dxt_tables.h"
+#include "codec/dxtv_constants.h"
 #include "dxtv_asm.h"
-#include "dxtv_constants.h"
-#include "image/dxt_tables.h"
+#include "image/dxt.h"
 #include "memory/memory.h"
 #include "print/output.h"
 
@@ -20,7 +21,7 @@ namespace DXTV
     //
     // Image data:
     //
-    // The image is split into 8x8 pixel blocks (BLOCK_MAX_DIM) which can be futher split into 4x4 blocks.
+    // The image is split into 8x8 pixel blocks (DXTV_FORMAT::BLOCK_MAX_DIM) which can be futher split into 4x4 blocks.
     //
     // Every 8x8 block (block size 0) has one flag:
     // Bit 0: Block handled entirely (0) or block split into 4x4 (1)
@@ -157,16 +158,16 @@ namespace DXTV
     FORCEINLINE auto decodeBlock<4>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
         auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
-        if (*dataPtr16 & BLOCK_IS_REF)
+        if (*dataPtr16 & DXTV_FORMAT::BLOCK_IS_REF)
         {
             // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
-            const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
+            const bool fromPrev = blockInfo & DXTV_FORMAT::BLOCK_FROM_PREV;
             auto srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
             // convert offsets to signed values
-            constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
-            const auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
-            const auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
+            constexpr int32_t halfRange = (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1;
+            const auto offsetX = static_cast<int32_t>(blockInfo & DXTV_FORMAT::BLOCK_MOTION_MASK) - halfRange;
+            const auto offsetY = static_cast<int32_t>((blockInfo >> DXTV_FORMAT::BLOCK_MOTION_Y_SHIFT) & DXTV_FORMAT::BLOCK_MOTION_MASK) - halfRange;
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
@@ -209,16 +210,16 @@ namespace DXTV
     FORCEINLINE auto decodeBlock<8>(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t *prevPtr32, const uint32_t LineStride16) -> const uint16_t *
     {
         auto currPtr16 = reinterpret_cast<uint16_t *>(currPtr32);
-        if (*dataPtr16 & BLOCK_IS_REF)
+        if (*dataPtr16 & DXTV_FORMAT::BLOCK_IS_REF)
         {
             // get motion-compensated block info
             const uint16_t blockInfo = *dataPtr16++;
-            const bool fromPrev = blockInfo & BLOCK_FROM_PREV;
+            const bool fromPrev = blockInfo & DXTV_FORMAT::BLOCK_FROM_PREV;
             auto srcPtr16 = reinterpret_cast<const uint16_t *>(fromPrev ? prevPtr32 : currPtr32);
             // convert offsets to signed values
-            constexpr int32_t halfRange = (1 << BLOCK_MOTION_BITS) / 2 - 1;
-            const auto offsetX = static_cast<int32_t>(blockInfo & BLOCK_MOTION_MASK) - halfRange;
-            const auto offsetY = static_cast<int32_t>((blockInfo >> BLOCK_MOTION_Y_SHIFT) & BLOCK_MOTION_MASK) - halfRange;
+            constexpr int32_t halfRange = (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1;
+            const auto offsetX = static_cast<int32_t>(blockInfo & DXTV_FORMAT::BLOCK_MOTION_MASK) - halfRange;
+            const auto offsetY = static_cast<int32_t>((blockInfo >> DXTV_FORMAT::BLOCK_MOTION_Y_SHIFT) & DXTV_FORMAT::BLOCK_MOTION_MASK) - halfRange;
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
@@ -260,19 +261,19 @@ namespace DXTV
         const uint16_t headerFlags = *dataPtr16++;
         dataPtr16++;
         // check if we want to keep this duplicate frame
-        if ((headerFlags & FRAME_KEEP) != 0)
+        if ((headerFlags & DXTV_FORMAT::FRAME_KEEP) != 0)
         {
             // Debug::printf("Duplicate frame");
             return;
         }
         // set up some variables
-        for (uint32_t by = 0; by < height / BLOCK_MAX_DIM; ++by)
+        for (uint32_t by = 0; by < height / DXTV_FORMAT::BLOCK_MAX_DIM; ++by)
         {
             uint32_t flags = 0;
             uint32_t flagsAvailable = 0;
-            auto currPtr32 = dst + by * LineStride32 * BLOCK_MAX_DIM;
-            auto prevPtr32 = prevSrc == nullptr ? nullptr : prevSrc + by * LineStride32 * BLOCK_MAX_DIM;
-            for (uint32_t bx = 0; bx < width / BLOCK_MAX_DIM; ++bx)
+            auto currPtr32 = dst + by * LineStride32 * DXTV_FORMAT::BLOCK_MAX_DIM;
+            auto prevPtr32 = prevSrc == nullptr ? nullptr : prevSrc + by * LineStride32 * DXTV_FORMAT::BLOCK_MAX_DIM;
+            for (uint32_t bx = 0; bx < width / DXTV_FORMAT::BLOCK_MAX_DIM; ++bx)
             {
                 // read flags if we need to
                 if (flagsAvailable < 1)

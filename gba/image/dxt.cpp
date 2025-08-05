@@ -1,9 +1,5 @@
 #include "dxt.h"
 
-#include "dxt_tables.h"
-
-#include "sys/base.h"
-
 namespace DXT
 {
 

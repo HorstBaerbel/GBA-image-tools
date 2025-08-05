@@ -6,7 +6,7 @@
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
 #include "color/xrgb8888.h"
-#include "dxttables.h"
+#include "dxt_tables.h"
 #include "exception.h"
 #include "math/linefit.h"
 
@@ -350,14 +350,14 @@ auto decodeBlockInternal(const uint16_t *colorStart, const uint16_t *indexStart,
             uint32_t b = ((c0 & 0xF800) >> 6) | ((c1 & 0xF800) >> 11);
             uint32_t g = ((c0 & 0x7E0) << 1) | ((c1 & 0x7E0) >> 5);
             uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-            c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 11) | (DXTTables::C2C3_ModeThird_6bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
+            c2c3 = (DXT_C2C3_ModeThird_5bit[b] << 11) | (DXT_C2C3_ModeThird_6bit[g] << 5) | DXT_C2C3_ModeThird_5bit[r];
         }
         else
         {
             uint32_t b = ((c0 & 0x7C00) >> 5) | ((c1 & 0x7C00) >> 10);
             uint32_t g = (c0 & 0x3E0) | ((c1 & 0x3E0) >> 5);
             uint32_t r = ((c0 & 0x1F) << 5) | (c1 & 0x1F);
-            c2c3 = (DXTTables::C2C3_ModeThird_5bit[b] << 10) | (DXTTables::C2C3_ModeThird_5bit[g] << 5) | DXTTables::C2C3_ModeThird_5bit[r];
+            c2c3 = (DXT_C2C3_ModeThird_5bit[b] << 10) | (DXT_C2C3_ModeThird_5bit[g] << 5) | DXT_C2C3_ModeThird_5bit[r];
         }
         uint16_t c2 = (c2c3 & 0x0000FFFF);
         uint16_t c3 = ((c2c3 & 0xFFFF0000) >> 16);

@@ -3,6 +3,7 @@
 #include "blockview.h"
 #include "codebook.h"
 #include "color/xrgb8888.h"
+#include "dxtv_constants.h"
 #include "statistics/statistics.h"
 
 #include <cstdint>
@@ -11,26 +12,12 @@
 class DXTV
 {
 public:
-    static constexpr uint16_t FRAME_KEEP = 0x40;      // 1 for frames that are considered a direct copy of the previous frame and can be kept
+    static constexpr std::pair<int32_t, int32_t> CurrMotionHOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for current frame for 8, 4
+    static constexpr std::pair<int32_t, int32_t> CurrMotionVOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), 0};                                         // Block position search offsets for current frame for 8, 4
+    static constexpr std::pair<int32_t, int32_t> PrevMotionHOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
+    static constexpr std::pair<int32_t, int32_t> PrevMotionVOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
 
-    static constexpr uint32_t BLOCK_MAX_DIM = 8;           // Maximum block size is 8x8 pixels
-    static constexpr bool BLOCK_NO_SPLIT = false;          // The block is a full block
-    static constexpr bool BLOCK_IS_SPLIT = true;           // The block is split into smaller sub-blocks
-    static constexpr uint16_t BLOCK_IS_DXT = 0;            // The block is a verbatim DXT block
-    static constexpr uint16_t BLOCK_IS_REF = (1 << 15);    // The block is a motion-compensated block from the current or previous frame
-    static constexpr uint16_t BLOCK_FROM_CURR = (0 << 14); // The reference block is from from the current frame
-    static constexpr uint16_t BLOCK_FROM_PREV = (1 << 14); // The reference block is from from the previous frame
-
-    static constexpr uint32_t BLOCK_MOTION_BITS = 5;                                         // Bits available for pixel motion
-    static constexpr uint16_t BLOCK_MOTION_MASK = (uint16_t(1) << BLOCK_MOTION_BITS) - 1;    // Block x pixel motion mask
-    static constexpr uint16_t BLOCK_MOTION_Y_SHIFT = BLOCK_MOTION_BITS;                      // Block y pixel motion shift
-
-    static constexpr std::pair<int32_t, int32_t> CurrMotionHOffset{-((1 << BLOCK_MOTION_BITS) / 2 - 1), (1 << BLOCK_MOTION_BITS) / 2}; // Block position search offsets for current frame for 8, 4
-    static constexpr std::pair<int32_t, int32_t> CurrMotionVOffset{-((1 << BLOCK_MOTION_BITS) / 2 - 1), 0};                            // Block position search offsets for current frame for 8, 4
-    static constexpr std::pair<int32_t, int32_t> PrevMotionHOffset{-((1 << BLOCK_MOTION_BITS) / 2 - 1), (1 << BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
-    static constexpr std::pair<int32_t, int32_t> PrevMotionVOffset{-((1 << BLOCK_MOTION_BITS) / 2 - 1), (1 << BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
-
-    using CodeBook8x8 = CodeBook<Color::XRGB8888, BLOCK_MAX_DIM>; // Code book for storing 8x8 RGB pixel blocks
+    using CodeBook8x8 = CodeBook<Color::XRGB8888, DXTV_FORMAT::BLOCK_MAX_DIM>; // Code book for storing 8x8 RGB pixel blocks
 
     /// @brief Frame header for one DTXV frame
     struct FrameHeader
