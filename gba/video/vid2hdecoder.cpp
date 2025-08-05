@@ -1,7 +1,7 @@
 #include "vid2hdecoder.h"
 
-#include "codec_dxtv.h"
 #include "compression/lz77.h"
+#include "dxtv.h"
 #include "memory/memory.h"
 #include "sys/base.h"
 #include "sys/decompress.h"

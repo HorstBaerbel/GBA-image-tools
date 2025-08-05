@@ -1,10 +1,12 @@
-#include "codec_dxtv.h"
-
 #include "dxtv.h"
+
+#include "dxtv_asm.h"
 #include "dxtv_constants.h"
 #include "image/dxt_tables.h"
 #include "memory/memory.h"
 #include "print/output.h"
+
+#define USE_ASM
 
 namespace DXTV
 {
@@ -47,8 +49,6 @@ namespace DXTV
     //   Bit 13-11: Currently unused
     //   Bit 10-5: y pixel motion of referenced block [-15,16] from top-left corner
     //   Bit  4-0: x pixel motion of referenced block [-15,16] from top-left corner
-
-    IWRAM_DATA ALIGN(4) uint16_t blockColors[4]; // intermediate DXT block color storage
 
     /// @brief Copy (un-)aligned block from src to curr
     template <uint32_t BLOCK_DIM>
@@ -175,30 +175,30 @@ namespace DXTV
         else
         {
             // get DXT block colors
-            dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
+            dataPtr16 = DXT::getBlockColors(dataPtr16, DXT_BlockColors);
             // get pixel color indices and set pixels accordingly
             uint16_t indices = *dataPtr16++;
             // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-            currPtr16[0] = blockColors[(indices >> 0) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 2) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 4) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 6) & 0x3];
+            currPtr16[0] = DXT_BlockColors[(indices >> 0) & 0x3];
+            currPtr16[1] = DXT_BlockColors[(indices >> 2) & 0x3];
+            currPtr16[2] = DXT_BlockColors[(indices >> 4) & 0x3];
+            currPtr16[3] = DXT_BlockColors[(indices >> 6) & 0x3];
             currPtr16 += LineStride16;
-            currPtr16[0] = blockColors[(indices >> 8) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 10) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 12) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 14) & 0x3];
+            currPtr16[0] = DXT_BlockColors[(indices >> 8) & 0x3];
+            currPtr16[1] = DXT_BlockColors[(indices >> 10) & 0x3];
+            currPtr16[2] = DXT_BlockColors[(indices >> 12) & 0x3];
+            currPtr16[3] = DXT_BlockColors[(indices >> 14) & 0x3];
             currPtr16 += LineStride16;
             indices = *dataPtr16++;
-            currPtr16[0] = blockColors[(indices >> 0) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 2) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 4) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 6) & 0x3];
+            currPtr16[0] = DXT_BlockColors[(indices >> 0) & 0x3];
+            currPtr16[1] = DXT_BlockColors[(indices >> 2) & 0x3];
+            currPtr16[2] = DXT_BlockColors[(indices >> 4) & 0x3];
+            currPtr16[3] = DXT_BlockColors[(indices >> 6) & 0x3];
             currPtr16 += LineStride16;
-            currPtr16[0] = blockColors[(indices >> 8) & 0x3];
-            currPtr16[1] = blockColors[(indices >> 10) & 0x3];
-            currPtr16[2] = blockColors[(indices >> 12) & 0x3];
-            currPtr16[3] = blockColors[(indices >> 14) & 0x3];
+            currPtr16[0] = DXT_BlockColors[(indices >> 8) & 0x3];
+            currPtr16[1] = DXT_BlockColors[(indices >> 10) & 0x3];
+            currPtr16[2] = DXT_BlockColors[(indices >> 12) & 0x3];
+            currPtr16[3] = DXT_BlockColors[(indices >> 14) & 0x3];
         }
         return dataPtr16;
     }
@@ -227,20 +227,20 @@ namespace DXTV
         else
         {
             // get DXT block colors
-            dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
+            dataPtr16 = DXT::getBlockColors(dataPtr16, DXT_BlockColors);
             // get pixel color indices and set pixels accordingly
             for (uint32_t i = 0; i < 8; ++i)
             {
                 uint16_t indices = *dataPtr16++;
                 // select color by 2 bit index from [c0, c1, c2, c3], then move to next line in destination vertically
-                currPtr16[0] = blockColors[(indices >> 0) & 0x3];
-                currPtr16[1] = blockColors[(indices >> 2) & 0x3];
-                currPtr16[2] = blockColors[(indices >> 4) & 0x3];
-                currPtr16[3] = blockColors[(indices >> 6) & 0x3];
-                currPtr16[4] = blockColors[(indices >> 8) & 0x3];
-                currPtr16[5] = blockColors[(indices >> 10) & 0x3];
-                currPtr16[6] = blockColors[(indices >> 12) & 0x3];
-                currPtr16[7] = blockColors[(indices >> 14) & 0x3];
+                currPtr16[0] = DXT_BlockColors[(indices >> 0) & 0x3];
+                currPtr16[1] = DXT_BlockColors[(indices >> 2) & 0x3];
+                currPtr16[2] = DXT_BlockColors[(indices >> 4) & 0x3];
+                currPtr16[3] = DXT_BlockColors[(indices >> 6) & 0x3];
+                currPtr16[4] = DXT_BlockColors[(indices >> 8) & 0x3];
+                currPtr16[5] = DXT_BlockColors[(indices >> 10) & 0x3];
+                currPtr16[6] = DXT_BlockColors[(indices >> 12) & 0x3];
+                currPtr16[7] = DXT_BlockColors[(indices >> 14) & 0x3];
                 currPtr16 += LineStride16;
             }
         }
@@ -283,19 +283,25 @@ namespace DXTV
                 // check if block is split
                 if (flags & 1)
                 {
-                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32, prevPtr32, LineStride16);                                                                         // A - upper-left
-                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4HStride32, prevPtr32 + Block4HStride32, LineStride16);                                     // B - upper-right
-                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32, prevPtr32 + Block4VStride32, LineStride16);                                     // C - lower-left
-                    // dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, prevPtr32 + Block4VStride32 + Block4HStride32, LineStride16); // D - lower-right
+#ifdef USE_ASM
                     dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);                                                                         // A - upper-left
                     dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4HStride32);                                     // B - upper-right
                     dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32, LineStride16 * 2, prevPtr32 + Block4VStride32);                                     // C - lower-left
                     dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, LineStride16 * 2, prevPtr32 + Block4VStride32 + Block4HStride32); // D - lower-right
+#else
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32, prevPtr32, LineStride16);                                                                         // A - upper-left
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4HStride32, prevPtr32 + Block4HStride32, LineStride16);                                     // B - upper-right
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32, prevPtr32 + Block4VStride32, LineStride16);                                     // C - lower-left
+                    dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4VStride32 + Block4HStride32, prevPtr32 + Block4VStride32 + Block4HStride32, LineStride16); // D - lower-right
+#endif
                 }
                 else
                 {
-                    // dataPtr16 = decodeBlock<8>(dataPtr16, currPtr32, prevPtr32, LineStride16);
+#ifdef USE_ASM
                     dataPtr16 = DecodeBlock8x8(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);
+#else
+                    dataPtr16 = decodeBlock<8>(dataPtr16, currPtr32, prevPtr32, LineStride16);
+#endif
                 }
                 currPtr32 += Block8HStride32;
                 prevPtr32 += Block8HStride32;

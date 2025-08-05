@@ -1,16 +1,8 @@
 #include "dxtv_constants.h"
 
- .global C2_ModeHalf_5bit
- .global C2C3_ModeThird_5bit
-
- .data
- .align 4
-#ifdef __NDS__
- .section .itcm, "ax", %progbits
-#else
- .section .iwram, "ax", %progbits
-#endif
-    dxtcolors: .hword 0,0,0,0
+ .global DXT_C2_ModeHalf_5bit
+ .global DXT_C2C3_ModeThird_5bit
+ .global DXT_BlockColors
 
  .arm
  .align
@@ -130,7 +122,7 @@ DecodeBlock4x4:
     bgt .dxt4x4_third
 .dxt4x4_half:
     // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
-    ldr r3, =C2_ModeHalf_5bit
+    ldr r3, =DXT_C2_ModeHalf_5bit
     ldrb r6, [r3, r6]
     ldrb r7, [r3, r7]
     ldrb r12, [r3, r12]
@@ -140,7 +132,7 @@ DecodeBlock4x4:
     b .dxt4x4_store_colors
 .dxt4x4_third:
     // calculate intermediate colors c2 and c3 at 1/3 and 2/3 of c0 and c1
-    ldr r3, =C2C3_ModeThird_5bit
+    ldr r3, =DXT_C2C3_ModeThird_5bit
     ldr r6, [r3, r6, lsl #2]
     ldr r7, [r3, r7, lsl #2]
     ldr r12, [r3, r12, lsl #2]
@@ -151,7 +143,7 @@ DecodeBlock4x4:
     lsr r7, r7, #16 @ move c2 to the lower part of r7
 .dxt4x4_store_colors:
     // we now have c0, c1, c2 and c3 in r4, r5, r6 and r7. store them in the LUT
-    ldr r3, =dxtcolors
+    ldr r3, =DXT_BlockColors
     strh r4, [r3, #0] @ store c0
     strh r5, [r3, #2] @ store c1
     strh r6, [r3, #4] @ store c2
@@ -308,7 +300,7 @@ DecodeBlock8x8:
     bgt .dxt8x8_third
 .dxt8x8_half:
     // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
-    ldr r3, =C2_ModeHalf_5bit
+    ldr r3, =DXT_C2_ModeHalf_5bit
     ldrb r6, [r3, r6]
     ldrb r7, [r3, r7]
     ldrb r12, [r3, r12]
@@ -318,7 +310,7 @@ DecodeBlock8x8:
     b .dxt8x8_store_colors
 .dxt8x8_third:
     // calculate intermediate colors c2 and c3 at 1/3 and 2/3 of c0 and c1
-    ldr r3, =C2C3_ModeThird_5bit
+    ldr r3, =DXT_C2C3_ModeThird_5bit
     ldr r6, [r3, r6, lsl #2]
     ldr r7, [r3, r7, lsl #2]
     ldr r12, [r3, r12, lsl #2]
@@ -329,7 +321,7 @@ DecodeBlock8x8:
     lsr r7, r7, #16 @ move c2 to the lower part of r7
 .dxt8x8_store_colors:
     // we now have c0, c1, c2 and c3 in r4, r5, r6 and r7. store them in the LUT
-    ldr r3, =dxtcolors
+    ldr r3, =DXT_BlockColors
     strh r4, [r3, #0] @ store c0
     strh r5, [r3, #2] @ store c1
     strh r6, [r3, #4] @ store c2

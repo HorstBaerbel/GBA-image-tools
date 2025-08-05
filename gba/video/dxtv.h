@@ -1,20 +1,17 @@
 #pragma once
 
+#include "sys/base.h"
+
 #include <cstdint>
 
 namespace DXTV
 {
-    /// @brief Decompress a 4x4 block of DXT data
-    /// @param dataPtr16 Pointer to the compressed DXT data
-    /// @param currPtr32 Pointer to the current output buffer
-    /// @param prevPtr32 Pointer to the previous output buffer
-    /// @param LineStride Line stride of the output buffer in bytes
-    extern "C" auto DecodeBlock4x4(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t LineStride, const uint32_t *prevPtr32) -> const uint16_t *;
 
-    /// @brief Decompress a 8x8 block of DXT data
-    /// @param dataPtr16 Pointer to the compressed DXT data
-    /// @param currPtr32 Pointer to the current output buffer
-    /// @param prevPtr32 Pointer to the previous output buffer
-    /// @param LineStride Line stride of the output buffer in bytes
-    extern "C" auto DecodeBlock8x8(const uint16_t *dataPtr16, uint32_t *currPtr32, const uint32_t LineStride, const uint32_t *prevPtr32) -> const uint16_t *;
+    // Decompresses one DXT1-ish 4x4 block consisting of 2 bytes color0 (RGB555), 2 bytes color1 (RGB555) and 16*2 bit = 4 bytes index information
+    // See: https://www.khronos.org/opengl/wiki/S3_Texture_Compression#DXT1_Format
+    // Blocks are stored sequentially from left to right, top to bottom
+    // See also: https://stackoverflow.com/questions/56474930/efficiently-implementing-dxt1-texture-decompression-in-hardware
+    template <uint32_t RESOLUTION_X>
+    void UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, uint32_t width, uint32_t height);
+
 }

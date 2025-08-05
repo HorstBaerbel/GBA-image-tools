@@ -45,8 +45,8 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	sys/decompress.cpp
 	compression/lz77.s
 	image/dxt_tables.cpp
-	video/codec_dxtv.cpp
-	video/dxtv.s
+	video/dxtv.cpp
+	video/dxtv_asm.s
 	video/vid2hdecoder.cpp
 	video/vid2hio.cpp
 	video/videoplayer.cpp
