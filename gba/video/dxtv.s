@@ -3,6 +3,15 @@
  .global C2_ModeHalf_5bit
  .global C2C3_ModeThird_5bit
 
+ .data
+ .align 4
+#ifdef __NDS__
+ .section .itcm, "ax", %progbits
+#else
+ .section .iwram, "ax", %progbits
+#endif
+    dxtcolors: .hword 0,0,0,0
+
  .arm
  .align
  .global DecodeBlock4x4
@@ -14,11 +23,11 @@
 #endif
 DecodeBlock4x4:
     @ Decode a 4x4 block of DXTV data
-    @ r0: pointer to DXTV source data (will point to the next DXTV data block on return)
-    @ r1: pointer to the destination pixel buffer (trashed)
-    @ r2: line stride in pixels (unchanged)
-    @ r3: pointer to the previous destination pixel buffer (trashed)
-    stmfd sp!, {r4 - r9, lr}
+    @ r0: pointer to DXTV source data, must be 2-byte-aligned (will point to the next DXTV data block on return)
+    @ r1: pointer to the destination pixel buffer, must be 4-byte-aligned (trashed)
+    @ r2: line stride in bytes (remains unchanged)
+    @ r3: pointer to the previous destination pixel buffer, must be 4-byte-aligned (trashed)
+    stmfd sp!, {r4 - r8, lr}
     ldrh r4, [r0], #2 @ load block type / color 0
     ands r5, r4, #BLOCK_IS_REF @ check if block is a motion compensated or DXT block
     beq .db4x4_dxt
@@ -82,146 +91,128 @@ DecodeBlock4x4:
 .mc4x4_aligned:
     // handle aligned block copy
     // line 0
-    ldmia r3, {r4 - r5}
-    stmia r1, {r4 - r5}
+    ldmia r3, {r4, r5}
+    stmia r1, {r4, r5}
     add r3, r3, r2
     add r1, r1, r2
     // line 1
-    ldmia r3, {r4 - r5}
-    stmia r1, {r4 - r5}
+    ldmia r3, {r4, r5}
+    stmia r1, {r4, r5}
     add r3, r3, r2
     add r1, r1, r2
     // line 2
-    ldmia r3, {r4 - r5}
-    stmia r1, {r4 - r5}
+    ldmia r3, {r4, r5}
+    stmia r1, {r4, r5}
     add r3, r3, r2
     add r1, r1, r2
     // line 3
-    ldmia r3, {r4 - r5}
-    stmia r1, {r4 - r5}
+    ldmia r3, {r4, r5}
+    stmia r1, {r4, r5}
     b .db4x4_end
 .db4x4_dxt:
     // ----- uncompress DXT block -----
     ldrh r5, [r0], #2 @ load c1 to r5
     // get blue components of c0 and c1 to r6
-    and r6, r4, #0x7c00
-    and r7, r5, #0x7c00
-    lsr r6, r6, #5
-    orr r6, r6, r7, lsr #10
+    and r3, r4, #0x7c00
+    and r8, r5, #0x7c00
+    lsr r3, r3, #5
+    orr r6, r3, r8, lsr #10
     // get green components of c0 and c1 to r7
-    and r7, r4, #0x03E0
+    and r3, r4, #0x03E0
     and r8, r5, #0x03E0
-    orr r7, r7, r8, lsr #5
+    orr r7, r3, r8, lsr #5
     // get red components of c0 and c1 to r8
+    and r3, r4, #0x001F
     and r8, r5, #0x001F
-    and r9, r4, #0x001F
-    orr r8, r8, r9, lsl #5
+    orr r8, r8, r3, lsl #5
     // check which intermediate colors mode we're using
     cmp r4, r5
     bgt .dxt4x4_third
 .dxt4x4_half:
     // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
-    ldr r9, =C2_ModeHalf_5bit
-    ldrb r6, [r9, r6]
-    ldrb r7, [r9, r7]
-    ldrb r8, [r9, r8]
+    ldr r3, =C2_ModeHalf_5bit
+    ldrb r6, [r3, r6]
+    ldrb r7, [r3, r7]
+    ldrb r8, [r3, r8]
     orr r6, r8, r6, lsl #10
     orr r6, r6, r7, lsl #5
     mov r7, #0x0000 @ r7 is c3, which is always black
-    b .dxt4x4_decode
+    b .dxt4x4_store_colors
 .dxt4x4_third:
     // calculate intermediate colors c2 and c3 at 1/3 and 2/3 of c0 and c1
-    ldr r9, =C2C3_ModeThird_5bit
-    ldr r6, [r9, r6, lsl #2]
-    ldr r7, [r9, r7, lsl #2]
-    ldr r8, [r9, r8, lsl #2]
+    ldr r3, =C2C3_ModeThird_5bit
+    ldr r6, [r3, r6, lsl #2]
+    ldr r7, [r3, r7, lsl #2]
+    ldr r8, [r3, r8, lsl #2]
     orr r7, r8, r7, lsl #5
     orr r7, r7, r6, lsl #10
     mov r6, r7, lsl #16 @ move c3 from the lower part of r7 to r6
     mov r6, r6, lsr #16
     lsr r7, r7, #16 @ move c2 to the lower part of r7
+.dxt4x4_store_colors:
+    // we now have c0, c1, c2 and c3 in r4, r5, r6 and r7. store them in the LUT
+    ldr r3, =dxtcolors
+    strh r4, [r3, #0] @ store c0
+    strh r5, [r3, #2] @ store c1
+    strh r6, [r3, #4] @ store c2
+    strh r7, [r3, #6] @ store c3
 .dxt4x4_decode:
-    // we now have c0, c1, c2 and c3 in r4, r5, r6 and r7 respectively
-    sub r1, r1, r2 @ decrease destination pointer by line stride (for first line)
-    mov r3, #2 @ number of lines to decode
-.dxt4x4_line:
-    ldrh r8, [r0], #2 @ load indices to r8
-    // pixel 0, line 1
-    ands r9, r8, #0x03 @ get the index of the color
-    streqh r4, [r1, r2]! @ store c0, cost 5
-    beq .dxt4x4_skip0
-    cmp r9, #2
-    strloh r5, [r1, r2]! @ store c1, cost 7
-    streqh r6, [r1, r2]! @ store c2, cost 7
-    strhih r7, [r1, r2]! @ store c3, cost 7
-.dxt4x4_skip0:
-    // pixel 1
-    ands r9, r8, #0x0C @ get the index of the color
-    streqh r4, [r1, #2] @ store c0
-    beq .dxt4x4_skip1
-    cmp r9, #8
-    strloh r5, [r1, #2] @ store c1
-    streqh r6, [r1, #2] @ store c2
-    strhih r7, [r1, #2] @ store c3
-.dxt4x4_skip1:
-    // pixel 2
-    ands r9, r8, #0x30 @ get the index of the color
-    streqh r4, [r1, #4] @ store c0
-    beq .dxt4x4_skip2
-    cmp r9, #32
-    strloh r5, [r1, #4] @ store c1
-    streqh r6, [r1, #4] @ store c2
-    strhih r7, [r1, #4] @ store c3
-.dxt4x4_skip2:
-    // pixel 3
-    ands r9, r8, #0xC0 @ get the index of the color
-    streqh r4, [r1, #6] @ store c0
-    beq .dxt4x4_skip3
-    cmp r9, #128
-    strloh r5, [r1, #6] @ store c1
-    streqh r6, [r1, #6] @ store c2
-    strhih r7, [r1, #6] @ store c3
-.dxt4x4_skip3:
-    // pixel 0, line 2
-    ands r9, r8, #0x300 @ get the index of the color
-    streqh r4, [r1, r2]! @ store c0
-    beq .dxt4x4_skip4
-    cmp r9, #512
-    strloh r5, [r1, r2]! @ store c1
-    streqh r6, [r1, r2]! @ store c2
-    strhih r7, [r1, r2]! @ store c3
-.dxt4x4_skip4:
-    // pixel 1
-    ands r9, r8, #0xC00 @ get the index of the color
-    streqh r4, [r1, #2] @ store c0
-    beq .dxt4x4_skip5
-    cmp r9, #2048
-    strloh r5, [r1, #2] @ store c1
-    streqh r6, [r1, #2] @ store c2
-    strhih r7, [r1, #2] @ store c3
-.dxt4x4_skip5:    
-    // pixel 2
-    ands r9, r8, #0x3000 @ get the index of the color
-    streqh r4, [r1, #4] @ store c0
-    beq .dxt4x4_skip6
-    cmp r9, #8192
-    strloh r5, [r1, #4] @ store c1
-    streqh r6, [r1, #4] @ store c2
-    strhih r7, [r1, #4] @ store c3
-.dxt4x4_skip6:
-    // pixel 3
-    ands r9, r8, #0xC000 @ get the index of the color
-    streqh r4, [r1, #6] @ store c0
-    beq .dxt4x4_skip7
-    cmp r9, #32768
-    strloh r5, [r1, #6] @ store c1
-    streqh r6, [r1, #6] @ store c2
-    strhih r7, [r1, #6] @ store c3
-.dxt4x4_skip7:
-    subs r3, r3, #1 @ decrement line counter
-    bne .dxt4x4_line @ repeat for the next line
+    mov r8, #0x06 @ = index mask 0x03 << 1 because of halfword-indexing for ldrh
+    // line 0
+    ldrh r4, [r0], #2 @ load indices to r4
+    and r5, r8, r4, lsl #1
+    and r6, r8, r4, lsr #1
+    ldrh r5, [r3, r5]
+    ldrh r6, [r3, r6]
+    orr r5, r5, r6, lsl #16
+    and r6, r8, r4, lsr #3
+    and r7, r8, r4, lsr #5
+    ldrh r6, [r3, r6]
+    ldrh r7, [r3, r7]
+    orr r6, r6, r7, lsl #16
+    stmia r1, {r5, r6}
+    add r1, r1, r2 @ increment destination pointer by line stride
+    // line 1
+    and r5, r8, r4, lsr #7
+    and r6, r8, r4, lsr #9
+    ldrh r5, [r3, r5]
+    ldrh r6, [r3, r6]
+    orr r5, r5, r6, lsl #16
+    and r6, r8, r4, lsr #11
+    and r7, r8, r4, lsr #13
+    ldrh r6, [r3, r6]
+    ldrh r7, [r3, r7]
+    orr r6, r6, r7, lsl #16
+    stmia r1, {r5, r6}
+    add r1, r1, r2 @ increment destination pointer by line stride
+    // line 2
+    ldrh r4, [r0], #2 @ load indices to r4
+    and r5, r8, r4, lsl #1
+    and r6, r8, r4, lsr #1
+    ldrh r5, [r3, r5]
+    ldrh r6, [r3, r6]
+    orr r5, r5, r6, lsl #16
+    and r6, r8, r4, lsr #3
+    and r7, r8, r4, lsr #5
+    ldrh r6, [r3, r6]
+    ldrh r7, [r3, r7]
+    orr r6, r6, r7, lsl #16
+    stmia r1, {r5, r6}
+    add r1, r1, r2 @ increment destination pointer by line stride
+    // line 3
+    and r5, r8, r4, lsr #7
+    and r6, r8, r4, lsr #9
+    ldrh r5, [r3, r5]
+    ldrh r6, [r3, r6]
+    orr r5, r5, r6, lsl #16
+    and r6, r8, r4, lsr #11
+    and r7, r8, r4, lsr #13
+    ldrh r6, [r3, r6]
+    ldrh r7, [r3, r7]
+    orr r6, r6, r7, lsl #16
+    stmia r1, {r5, r6}
 .db4x4_end:
-    ldmfd sp!, {r4 - r9, lr}
+    ldmfd sp!, {r4 - r8, lr}
     bx lr
 
  .arm
@@ -238,129 +229,87 @@ UnDxtBlock8x8:
     @ r0: pointer to source data (trashed)
     @ r1: pointer to the destination buffer (trashed)
     @ r2: line stride in pixels (remains unchanged)
-    stmfd sp!, {r3 - r9}
+    stmfd sp!, {r3 - r11}
     // get anchor colors c0 and c1
-    ldrh r3, [r0], #2 @ load c0 to r3
-    ldrh r4, [r0], #2 @ load c1 to r4
-    // get blue components of c0 and c1 to r5
-    and r5, r3, #0x7c00
+    ldrh r4, [r0], #2 @ load c0 to r3
+    ldrh r5, [r0], #2 @ load c1 to r4
+   // get blue components of c0 and c1 to r6
     and r6, r4, #0x7c00
-    lsr r5, r5, #5
-    orr r5, r5, r6, lsr #10
-    // get green components of c0 and c1 to r6
-    and r6, r3, #0x03E0
+    and r7, r5, #0x7c00
+    lsr r6, r6, #5
+    orr r6, r6, r7, lsr #10
+    // get green components of c0 and c1 to r7
     and r7, r4, #0x03E0
-    orr r6, r6, r7, lsr #5
-    // get red components of c0 and c1 to r7
-    and r7, r4, #0x001F
-    and r8, r3, #0x001F
-    orr r7, r7, r8, lsl #5
+    and r8, r5, #0x03E0
+    orr r7, r7, r8, lsr #5
+    // get red components of c0 and c1 to r8
+    and r8, r5, #0x001F
+    and r9, r4, #0x001F
+    orr r8, r8, r9, lsl #5
     // check which intermediate colors mode we're using
-    cmp r3, r4
+    cmp r4, r5
     bgt .udb8x8_third
 .udb8x8_half:
     // calculate intermediate color c2 at 1/2 of c0 and c1 with rounding and set c3 to black
-    ldr r8, =C2_ModeHalf_5bit
-    ldrb r5, [r8, r5]
-    ldrb r6, [r8, r6]
-    ldrb r7, [r8, r7]
-    orr r5, r7, r5, lsl #10
-    orr r5, r5, r6, lsl #5
-    mov r6, #0x0000 @ r6 is c3, which is always black
-    b .udb8x8_decode
+    ldr r9, =C2_ModeHalf_5bit
+    ldrb r6, [r9, r6]
+    ldrb r7, [r9, r7]
+    ldrb r8, [r9, r8]
+    orr r6, r8, r6, lsl #10
+    orr r6, r6, r7, lsl #5
+    mov r7, #0x0000 @ r7 is c3, which is always black
+    b .udb8x8_store_colors
 .udb8x8_third:
     // calculate intermediate colors c2 and c3 at 1/3 and 2/3 of c0 and c1
-    ldr r8, =C2C3_ModeThird_5bit
-    ldr r5, [r8, r5, lsl #2]
-    ldr r6, [r8, r6, lsl #2]
-    ldr r7, [r8, r7, lsl #2]
-    orr r6, r7, r6, lsl #5
-    orr r6, r6, r5, lsl #10
-    mov r5, r6, lsl #16 @ move c3 from the lower part of r6 to r5
-    mov r5, r5, lsr #16
-    lsr r6, r6, #16 @ move c2 to the lower part of r6
+    ldr r9, =C2C3_ModeThird_5bit
+    ldr r6, [r9, r6, lsl #2]
+    ldr r7, [r9, r7, lsl #2]
+    ldr r8, [r9, r8, lsl #2]
+    orr r7, r8, r7, lsl #5
+    orr r7, r7, r6, lsl #10
+    mov r6, r7, lsl #16 @ move c3 from the lower part of r7 to r6
+    mov r6, r6, lsr #16
+    lsr r7, r7, #16 @ move c2 to the lower part of r7
+.udb8x8_store_colors:
+    // we now have c0, c1, c2 and c3 in r4, r5, r6 and r7. store them in the LUT
+    ldr r3, =dxtcolors
+    strh r4, [r3, #0] @ store c0
+    strh r5, [r3, #2] @ store c1
+    strh r6, [r3, #4] @ store c2
+    strh r7, [r3, #6] @ store c3
 .udb8x8_decode:
-    // we now have c0, c1, c2 and c3 in r3, r4, r5 and r6 respectively
-    sub r1, r1, r2 @ decrease destination pointer by line stride (for first line)
-    mov r9, #8 @ number of lines to decode
+    mov r10, #0x06 @ = index mask 0x03 << 1 because of halfword-indexing for ldrh
+    mov r11, #8 @ line counter, 8 lines to decode
 .udb8x8_line:
-    ldrh r7, [r0], #2 @ load indices to r7
-    // pixel 0, line 1
-    ands r8, r7, #0x03 @ get the index of the color
-    streqh r3, [r1, r2]! @ store c0, cost 5
-    beq .udb8x8_skip0
-    cmp r8, #2
-    strloh r4, [r1, r2]! @ store c1, cost 7
-    streqh r5, [r1, r2]! @ store c2, cost 7
-    strhih r6, [r1, r2]! @ store c3, cost 7
-.udb8x8_skip0:
-    // pixel 1
-    ands r8, r7, #0x0C @ get the index of the color
-    streqh r3, [r1, #2] @ store c0
-    beq .udb8x8_skip1
-    cmp r8, #8
-    strloh r4, [r1, #2] @ store c1
-    streqh r5, [r1, #2] @ store c2
-    strhih r6, [r1, #2] @ store c3
-.udb8x8_skip1:
-    // pixel 2
-    ands r8, r7, #0x30 @ get the index of the color
-    streqh r3, [r1, #4] @ store c0
-    beq .udb8x8_skip2
-    cmp r8, #32
-    strloh r4, [r1, #4] @ store c1
-    streqh r5, [r1, #4] @ store c2
-    strhih r6, [r1, #4] @ store c3
-.udb8x8_skip2:
-    // pixel 3
-    ands r8, r7, #0xC0 @ get the index of the color
-    streqh r3, [r1, #6] @ store c0
-    beq .udb8x8_skip3
-    cmp r8, #128
-    strloh r4, [r1, #6] @ store c1
-    streqh r5, [r1, #6] @ store c2
-    strhih r6, [r1, #6] @ store c3
-.udb8x8_skip3:
-    // pixel 0, line 2
-    ands r8, r7, #0x300 @ get the index of the color
-    streqh r3, [r1, #8] @ store c0
-    beq .udb8x8_skip4
-    cmp r8, #512
-    strloh r4, [r1, #8] @ store c1
-    streqh r5, [r1, #8] @ store c2
-    strhih r6, [r1, #8] @ store c3
-.udb8x8_skip4:
-    // pixel 1
-    ands r8, r7, #0xC00 @ get the index of the color
-    streqh r3, [r1, #10] @ store c0
-    beq .udb8x8_skip5
-    cmp r8, #2048
-    strloh r4, [r1, #10] @ store c1
-    streqh r5, [r1, #10] @ store c2
-    strhih r6, [r1, #10] @ store c3
-.udb8x8_skip5:
-    // pixel 2
-    ands r8, r7, #0x3000 @ get the index of the color
-    streqh r3, [r1, #12] @ store c0
-    beq .udb8x8_skip6
-    cmp r8, #8192
-    strloh r4, [r1, #12] @ store c1
-    streqh r5, [r1, #12] @ store c2
-    strhih r6, [r1, #12] @ store c3
-.udb8x8_skip6:
-    // pixel 3
-    ands r8, r7, #0xC000 @ get the index of the color
-    streqh r3, [r1, #14] @ store c0
-    beq .udb8x8_skip7
-    cmp r8, #32768
-    strloh r4, [r1, #14] @ store c1
-    streqh r5, [r1, #14] @ store c2
-    strhih r6, [r1, #14] @ store c3
-.udb8x8_skip7:
-    subs r9, r9, #1 @ decrement line counter
+    ldrh r4, [r0], #2 @ load indices to r4
+    // load first 4 pixels
+    and r5, r10, r4, lsl #1
+    and r6, r10, r4, lsr #1
+    ldrh r5, [r3, r5]
+    ldrh r6, [r3, r6]
+    orr r5, r5, r6, lsl #16
+    and r6, r10, r4, lsr #3
+    and r7, r10, r4, lsr #5
+    ldrh r6, [r3, r6]
+    ldrh r7, [r3, r7]
+    orr r6, r6, r7, lsl #16
+    // load second 4 pixels
+    and r7, r10, r4, lsr #7
+    and r8, r10, r4, lsr #9
+    ldrh r7, [r3, r7]
+    ldrh r8, [r3, r8]
+    orr r7, r7, r8, lsl #16
+    and r8, r10, r4, lsr #11
+    and r9, r10, r4, lsr #13
+    ldrh r8, [r3, r8]
+    ldrh r9, [r3, r9]
+    orr r8, r8, r9, lsl #16
+    stmia r1, {r5 - r8} @ store all 8 pixels in the destination buffer
+    add r1, r1, r2 @ increment destination pointer by line stride
+    subs r11, r11, #1 @ decrement line counter
     bne .udb8x8_line @ repeat for the next line
 .udb8x8_end:
-    ldmfd sp!, {r3 - r9}
+    ldmfd sp!, {r3 - r11}
     bx lr
 
 .arm
