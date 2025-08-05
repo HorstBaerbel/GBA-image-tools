@@ -9,7 +9,7 @@
 //
 // Image data:
 //
-// The image is split into 8x8 pixel blocks (DXTV_FORMAT::BLOCK_MAX_DIM) which can be futher split into 4x4 blocks.
+// The image is split into 8x8 pixel blocks (DXTV_CONSTANTS::BLOCK_MAX_DIM) which can be futher split into 4x4 blocks.
 //
 // Every 8x8 block (block size 0) has one flag:
 // Bit 0: Block handled entirely (0) or block split into 4x4 (1)
@@ -43,7 +43,7 @@
 // DXTV file format constants for including in C++ files
 #include <cstdint>
 
-namespace DXTV_FORMAT
+namespace DXTV_CONSTANTS
 {
     static constexpr uint16_t FRAME_KEEP = 0x40;                                          // 1 for frames that are considered a direct copy of the previous frame and can be kept
     static constexpr uint32_t BLOCK_MAX_DIM = 8;                                          // Maximum block size is 8x8 pixels
@@ -61,13 +61,13 @@ namespace DXTV_FORMAT
 
 #else
 // DXTV file format constants for including in assembly files
-#define DXTV_FORMAT_FRAME_KEEP 0x40                                                 // 1 for frames that are considered a direct copy of the previous frame and can be kept
-#define DXTV_FORMAT_BLOCK_MAX_DIM 8                                                 // Maximum block size is 8x8 pixels
-#define DXTV_FORMAT_BLOCK_IS_REF (1 << 15)                                          // The block is a motion-compensated block from the current or previous frame
-#define DXTV_FORMAT_BLOCK_FROM_PREV (1 << 14)                                       // The reference block is from from the previous frame
-#define DXTV_FORMAT_BLOCK_MOTION_BITS 5                                             // Bits available for pixel motion
-#define DXTV_FORMAT_BLOCK_MOTION_MASK ((1 << DXTV_FORMAT_BLOCK_MOTION_BITS) - 1)    // Block x pixel motion mask
-#define DXTV_FORMAT_BLOCK_MOTION_Y_SHIFT DXTV_FORMAT_BLOCK_MOTION_BITS              // Block y pixel motion shift
-#define DXTV_FORMAT_BLOCK_HALF_RANGE ((1 << DXTV_FORMAT_BLOCK_MOTION_BITS) / 2 - 1) // Half range of pixel motion values [-15,15] from top-left corner
+#define DXTV_CONSTANTS_FRAME_KEEP 0x40                                                    // 1 for frames that are considered a direct copy of the previous frame and can be kept
+#define DXTV_CONSTANTS_BLOCK_MAX_DIM 8                                                    // Maximum block size is 8x8 pixels
+#define DXTV_CONSTANTS_BLOCK_IS_REF (1 << 15)                                             // The block is a motion-compensated block from the current or previous frame
+#define DXTV_CONSTANTS_BLOCK_FROM_PREV (1 << 14)                                          // The reference block is from from the previous frame
+#define DXTV_CONSTANTS_BLOCK_MOTION_BITS 5                                                // Bits available for pixel motion
+#define DXTV_CONSTANTS_BLOCK_MOTION_MASK ((1 << DXTV_CONSTANTS_BLOCK_MOTION_BITS) - 1)    // Block x pixel motion mask
+#define DXTV_CONSTANTS_BLOCK_MOTION_Y_SHIFT DXTV_CONSTANTS_BLOCK_MOTION_BITS              // Block y pixel motion shift
+#define DXTV_CONSTANTS_BLOCK_HALF_RANGE ((1 << DXTV_CONSTANTS_BLOCK_MOTION_BITS) / 2 - 1) // Half range of pixel motion values [-15,15] from top-left corner
 
 #endif

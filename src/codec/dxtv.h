@@ -12,12 +12,12 @@
 class DXTV
 {
 public:
-    static constexpr std::pair<int32_t, int32_t> CurrMotionHOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for current frame for 8, 4
-    static constexpr std::pair<int32_t, int32_t> CurrMotionVOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), 0};                                         // Block position search offsets for current frame for 8, 4
-    static constexpr std::pair<int32_t, int32_t> PrevMotionHOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
-    static constexpr std::pair<int32_t, int32_t> PrevMotionVOffset{-((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
+    static constexpr std::pair<int32_t, int32_t> CurrMotionHOffset{-((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for current frame for 8, 4
+    static constexpr std::pair<int32_t, int32_t> CurrMotionVOffset{-((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1), 0};                                            // Block position search offsets for current frame for 8, 4
+    static constexpr std::pair<int32_t, int32_t> PrevMotionHOffset{-((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
+    static constexpr std::pair<int32_t, int32_t> PrevMotionVOffset{-((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1), (1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
 
-    using CodeBook8x8 = CodeBook<Color::XRGB8888, DXTV_FORMAT::BLOCK_MAX_DIM>; // Code book for storing 8x8 RGB pixel blocks
+    using CodeBook8x8 = CodeBook<Color::XRGB8888, DXTV_CONSTANTS::BLOCK_MAX_DIM>; // Code book for storing 8x8 RGB pixel blocks
 
     /// @brief Frame header for one DTXV frame
     struct FrameHeader

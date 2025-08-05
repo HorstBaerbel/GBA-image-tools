@@ -63,8 +63,8 @@ auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockV
     const int32_t yStart = (blockY + offsetV.first) < 0 ? 0 : (blockY + offsetV.first);
     const int32_t yEnd = (blockY + offsetV.second) > yMax ? yMax : (blockY + offsetV.second);
     // if we're searching in the current codebook, do not allow searching past the already decoded macro-block
-    const int32_t yMacroBlock = blockY - (blockY % DXTV_FORMAT::BLOCK_MAX_DIM);
-    const int32_t vEnd = fromCurrCodeBook && yEnd > (yMacroBlock + DXTV_FORMAT::BLOCK_MAX_DIM - BLOCK_DIM) ? (yMacroBlock + DXTV_FORMAT::BLOCK_MAX_DIM - BLOCK_DIM) : yEnd;
+    const int32_t yMacroBlock = blockY - (blockY % DXTV_CONSTANTS::BLOCK_MAX_DIM);
+    const int32_t vEnd = fromCurrCodeBook && yEnd > (yMacroBlock + DXTV_CONSTANTS::BLOCK_MAX_DIM - BLOCK_DIM) ? (yMacroBlock + DXTV_CONSTANTS::BLOCK_MAX_DIM - BLOCK_DIM) : yEnd;
     // search similar blocks
     const auto blockPixels = block.pixels();
     return_type bestMotion = {std::numeric_limits<float>::max(), 0, 0};
@@ -92,9 +92,9 @@ auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockV
 template <std::size_t BLOCK_DIM>
 auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
 {
-    static_assert(DXTV_FORMAT::BLOCK_MAX_DIM >= BLOCK_DIM);
-    static constexpr std::size_t BLOCK_LEVEL = std::log2(DXTV_FORMAT::BLOCK_MAX_DIM) - std::log2(BLOCK_DIM);
-    bool blockWasSplit = DXTV_FORMAT::BLOCK_NO_SPLIT;
+    static_assert(DXTV_CONSTANTS::BLOCK_MAX_DIM >= BLOCK_DIM);
+    static constexpr std::size_t BLOCK_LEVEL = std::log2(DXTV_CONSTANTS::BLOCK_MAX_DIM) - std::log2(BLOCK_DIM);
+    bool blockWasSplit = DXTV_CONSTANTS::BLOCK_NO_SPLIT;
     std::vector<uint8_t> data;
     // calculate allowed MSE for blocks. Map from [0, 100] to [1, 0]
     const float allowedError = std::pow((100.0F - quality) / 100.0F, 2.0F);
@@ -116,13 +116,13 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         REQUIRE(static_cast<int32_t>(block.x()) + offsetX + BLOCK_DIM <= previousCodeBook.width() && static_cast<int32_t>(block.y()) + offsetY + BLOCK_DIM <= previousCodeBook.height(), std::runtime_error, "Reference block coordinates out of bounds");
         block.copyPixelsFrom(previousCodeBook.blockPixels<BLOCK_DIM>(static_cast<int32_t>(block.x()) + offsetX, static_cast<int32_t>(block.y()) + offsetY));
         // convert offsets to unsigned value
-        offsetX += ((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1);
-        offsetY += ((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1);
+        offsetX += ((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1);
+        offsetY += ((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1);
         // store reference to previous frame
-        uint16_t refData = DXTV_FORMAT::BLOCK_IS_REF;
-        refData |= DXTV_FORMAT::BLOCK_FROM_PREV;
-        refData |= (offsetY & DXTV_FORMAT::BLOCK_MOTION_MASK) << DXTV_FORMAT::BLOCK_MOTION_Y_SHIFT;
-        refData |= (offsetX & DXTV_FORMAT::BLOCK_MOTION_MASK);
+        uint16_t refData = DXTV_CONSTANTS::BLOCK_IS_REF;
+        refData |= DXTV_CONSTANTS::BLOCK_FROM_PREV;
+        refData |= (offsetY & DXTV_CONSTANTS::BLOCK_MOTION_MASK) << DXTV_CONSTANTS::BLOCK_MOTION_Y_SHIFT;
+        refData |= (offsetX & DXTV_CONSTANTS::BLOCK_MOTION_MASK);
         data.push_back(refData & 0xFF);
         data.push_back((refData >> 8) & 0xFF);
         Statistics::incValue(statistics, "motionBlocksPrev", 1, BLOCK_LEVEL);
@@ -138,13 +138,13 @@ auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBoo
         REQUIRE(static_cast<int32_t>(block.x()) + offsetX + BLOCK_DIM <= currentCodeBook.width() && static_cast<int32_t>(block.y()) + offsetY + BLOCK_DIM <= currentCodeBook.height(), std::runtime_error, "Reference block coordinates out of bounds");
         block.copyPixelsFrom(currentCodeBook.blockPixels<BLOCK_DIM>(static_cast<int32_t>(block.x()) + offsetX, static_cast<int32_t>(block.y()) + offsetY));
         // convert offsets to unsigned value
-        offsetX += ((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1);
-        offsetY += ((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1);
+        offsetX += ((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1);
+        offsetY += ((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1);
         // store reference to current frame
-        uint16_t refData = DXTV_FORMAT::BLOCK_IS_REF;
-        refData |= DXTV_FORMAT::BLOCK_FROM_CURR;
-        refData |= (offsetY & DXTV_FORMAT::BLOCK_MOTION_MASK) << DXTV_FORMAT::BLOCK_MOTION_Y_SHIFT;
-        refData |= (offsetX & DXTV_FORMAT::BLOCK_MOTION_MASK);
+        uint16_t refData = DXTV_CONSTANTS::BLOCK_IS_REF;
+        refData |= DXTV_CONSTANTS::BLOCK_FROM_CURR;
+        refData |= (offsetY & DXTV_CONSTANTS::BLOCK_MOTION_MASK) << DXTV_CONSTANTS::BLOCK_MOTION_Y_SHIFT;
+        refData |= (offsetX & DXTV_CONSTANTS::BLOCK_MOTION_MASK);
         data.push_back(refData & 0xFF);
         data.push_back((refData >> 8) & 0xFF);
         Statistics::incValue(statistics, "motionBlocksCurr", 1, BLOCK_LEVEL);
@@ -219,7 +219,7 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
     {
         // frame is a duplicate. pass header only
         FrameHeader frameHeader;
-        frameHeader.frameFlags = DXTV_FORMAT::FRAME_KEEP;
+        frameHeader.frameFlags = DXTV_CONSTANTS::FRAME_KEEP;
         std::vector<uint8_t> compressedFrameData;
         auto headerData = frameHeader.toVector();
         assert((headerData.size() % 4) == 0);
@@ -301,21 +301,21 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
 template <std::size_t BLOCK_DIM>
 auto decodeBlockInternal(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *
 {
-    static_assert(DXTV_FORMAT::BLOCK_MAX_DIM >= BLOCK_DIM);
+    static_assert(DXTV_CONSTANTS::BLOCK_MAX_DIM >= BLOCK_DIM);
     REQUIRE(data != nullptr, std::runtime_error, "Data can not be nullptr");
     REQUIRE(currBlock != nullptr, std::runtime_error, "currBlock can not be nullptr");
     REQUIRE(width > 0, std::runtime_error, "width must be > 0");
     auto dstPtr = currBlock;
     auto data0 = *data;
-    if (data0 & DXTV_FORMAT::BLOCK_IS_REF)
+    if (data0 & DXTV_CONSTANTS::BLOCK_IS_REF)
     {
         // decode block reference
-        const bool fromPrev = data0 & DXTV_FORMAT::BLOCK_FROM_PREV;
+        const bool fromPrev = data0 & DXTV_CONSTANTS::BLOCK_FROM_PREV;
         const XRGB8888 *srcPtr = fromPrev ? prevBlock : currBlock;
         REQUIRE(srcPtr != nullptr, std::runtime_error, fromPrev ? "Previous image referenced, but empty" : "Current image referenced, but empty");
         // convert offsets to signed values
-        auto offsetX = static_cast<int32_t>(data0 & DXTV_FORMAT::BLOCK_MOTION_MASK) - ((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1);
-        auto offsetY = static_cast<int32_t>((data0 >> DXTV_FORMAT::BLOCK_MOTION_Y_SHIFT) & DXTV_FORMAT::BLOCK_MOTION_MASK) - ((1 << DXTV_FORMAT::BLOCK_MOTION_BITS) / 2 - 1);
+        auto offsetX = static_cast<int32_t>(data0 & DXTV_CONSTANTS::BLOCK_MOTION_MASK) - ((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1);
+        auto offsetY = static_cast<int32_t>((data0 >> DXTV_CONSTANTS::BLOCK_MOTION_Y_SHIFT) & DXTV_CONSTANTS::BLOCK_MOTION_MASK) - ((1 << DXTV_CONSTANTS::BLOCK_MOTION_BITS) / 2 - 1);
         // calculate start of block to copy
         srcPtr += offsetY * static_cast<int32_t>(width) + offsetX;
         // copy pixels to output block
@@ -368,7 +368,7 @@ auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> 
     REQUIRE(width > 0, std::runtime_error, "width must be > 0");
     REQUIRE(height > 0, std::runtime_error, "height must be > 0");
     const auto frameHeader = FrameHeader::fromVector(data);
-    if (frameHeader.frameFlags == DXTV_FORMAT::FRAME_KEEP)
+    if (frameHeader.frameFlags == DXTV_CONSTANTS::FRAME_KEEP)
     {
         REQUIRE(previousImage.size() == width * height, std::runtime_error, "Frame should be repeated, but previous image is empty or has wrong size");
         return previousImage;
@@ -376,13 +376,13 @@ auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> 
     auto frameData = data.data() + sizeof(FrameHeader);
     auto dataPtr = reinterpret_cast<const uint16_t *>(frameData);
     std::vector<XRGB8888> image(width * height);
-    for (uint32_t by = 0; by < height / DXTV_FORMAT::BLOCK_MAX_DIM; ++by)
+    for (uint32_t by = 0; by < height / DXTV_CONSTANTS::BLOCK_MAX_DIM; ++by)
     {
         uint16_t flags = 0;
         uint32_t flagsAvailable = 0;
-        auto currPtr = image.data() + by * width * DXTV_FORMAT::BLOCK_MAX_DIM;
-        auto prevPtr = previousImage.empty() ? nullptr : previousImage.data() + by * width * DXTV_FORMAT::BLOCK_MAX_DIM;
-        for (uint32_t bx = 0; bx < width / DXTV_FORMAT::BLOCK_MAX_DIM; ++bx)
+        auto currPtr = image.data() + by * width * DXTV_CONSTANTS::BLOCK_MAX_DIM;
+        auto prevPtr = previousImage.empty() ? nullptr : previousImage.data() + by * width * DXTV_CONSTANTS::BLOCK_MAX_DIM;
+        for (uint32_t bx = 0; bx < width / DXTV_CONSTANTS::BLOCK_MAX_DIM; ++bx)
         {
             // read flags if we need to
             if (flagsAvailable < 1)
