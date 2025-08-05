@@ -21,7 +21,7 @@
 
 // AF
 // Video avg. decode: 26.61 ms (max. 34.18 ms) C++
-// Video avg. decode: 19.96 ms (max. 26.37 ms) ASM
+// Video avg. decode: 19.67 ms (max. 26.37 ms) ASM
 
 namespace Media
 {

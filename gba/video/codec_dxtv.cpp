@@ -222,12 +222,11 @@ namespace DXTV
             // calculate start of block to copy
             srcPtr16 += offsetY * LineStride16 + offsetX;
             // copy pixels to output block
-            // copyBlock<8>(currPtr32, srcPtr16, LineStride16);
-            DXTV::CopyBlock8x8(srcPtr16, currPtr32, LineStride16 * 2);
+            copyBlock<8>(currPtr32, srcPtr16, LineStride16);
         }
         else
         {
-            /*// get DXT block colors
+            // get DXT block colors
             dataPtr16 = DXT::getBlockColors(dataPtr16, blockColors);
             // get pixel color indices and set pixels accordingly
             for (uint32_t i = 0; i < 8; ++i)
@@ -243,9 +242,7 @@ namespace DXTV
                 currPtr16[6] = blockColors[(indices >> 12) & 0x3];
                 currPtr16[7] = blockColors[(indices >> 14) & 0x3];
                 currPtr16 += LineStride16;
-            }*/
-            DXTV::UnDxtBlock8x8(dataPtr16, currPtr16, LineStride16 * 2);
-            dataPtr16 += 10;
+            }
         }
         return dataPtr16;
     }
@@ -297,7 +294,8 @@ namespace DXTV
                 }
                 else
                 {
-                    dataPtr16 = decodeBlock<8>(dataPtr16, currPtr32, prevPtr32, LineStride16);
+                    // dataPtr16 = decodeBlock<8>(dataPtr16, currPtr32, prevPtr32, LineStride16);
+                    dataPtr16 = DXTV::DecodeBlock8x8(dataPtr16, currPtr32, LineStride16 * 2, prevPtr32);
                 }
                 currPtr32 += Block8HStride32;
                 prevPtr32 += Block8HStride32;
