@@ -17,6 +17,7 @@
 #include "quantization.h"
 #include "spritehelpers.h"
 
+#include <iomanip>
 #include <iostream>
 #include <memory>
 // #include <filesystem>
@@ -359,6 +360,12 @@ namespace Image
         auto result = data;
         result.data.pixels() = PixelData(Compression::encodeLZ10(result.data.pixels().convertDataToRaw(), vramCompatible), Color::Format::Unknown);
         result.type.setCompressed();
+        // print statistics
+        if (statistics != nullptr)
+        {
+            const auto ratioPercent = static_cast<double>(result.data.pixels().rawSize() * 100.0 / static_cast<double>(data.data.pixels().rawSize()));
+            std::cout << "LZ10 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+        }
         return result;
     }
 
@@ -411,7 +418,7 @@ namespace Image
         // convert image using DXTV compression
         auto result = data;
         auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
-        auto compressedData = DXTV::encode(data.data.pixels().data<Color::XRGB8888>(), previousImage, data.info.size.width(), data.info.size.height(), quality, format == Color::Format::XBGR1555);
+        auto compressedData = DXTV::encode(data.data.pixels().data<Color::XRGB8888>(), previousImage, data.info.size.width(), data.info.size.height(), quality, format == Color::Format::XBGR1555, statistics);
         result.data.pixels() = PixelData(compressedData.first, Color::Format::Unknown);
         result.info.pixelFormat = format;
         result.info.colorMapFormat = Color::Format::Unknown;

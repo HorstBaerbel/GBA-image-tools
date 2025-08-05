@@ -74,6 +74,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.channelFormat.cxxOption);
         opts.add_option("", options.sampleFormat.cxxOption);
         opts.add_option("", options.sampleRateHz.cxxOption);
+        opts.add_option("", options.printStats.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.add_option("", options.dumpImage.cxxOption);
         opts.add_option("", options.dumpAudio.cxxOption);
@@ -196,6 +197,7 @@ void printUsage()
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
+    std::cout << options.printStats.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << options.dumpAudio.helpString() << std::endl;
@@ -337,11 +339,11 @@ int main(int argc, const char *argv[])
         }
         if (options.dxt)
         {
-            imageProcessing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value}, true, true);
+            imageProcessing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value}, true, options.printStats);
         }
         if (options.dxtv)
         {
-            imageProcessing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, true);
+            imageProcessing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, options.printStats);
         }
         /*if (options.gvid)
         {
@@ -364,7 +366,7 @@ int main(int argc, const char *argv[])
         }*/
         if (options.lz10)
         {
-            imageProcessing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true);
+            imageProcessing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true, options.printStats);
         }
         imageProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
         // audio processing

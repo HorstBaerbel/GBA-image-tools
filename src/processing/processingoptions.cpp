@@ -361,6 +361,10 @@ ProcessingOptions::OptionT<Audio::SampleFormat> ProcessingOptions::sampleFormat{
         }
     }};
 
+ProcessingOptions::Option ProcessingOptions::printStats{
+    false,
+    {"statistics", "Print statistics about the processing steps.", cxxopts::value(printStats.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::dryRun{
     false,
     {"dryrun", "Process data, but do not write output files.", cxxopts::value(dryRun.isSet)}};

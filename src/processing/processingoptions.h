@@ -64,6 +64,7 @@ public:
     static OptionT<Audio::SampleFormat> sampleFormat;
 
     // General options
+    static Option printStats;
     static Option dryRun;
     static Option dumpImage;
     static Option dumpAudio;
