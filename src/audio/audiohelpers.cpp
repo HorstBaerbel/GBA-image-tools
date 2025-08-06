@@ -103,6 +103,11 @@ namespace AudioHelpers
             using T = std::decay_t<decltype(data)>::value_type;
             REQUIRE(data.size() > 0, std::runtime_error, "Empty sample data");
             REQUIRE(data.size() % nrOfChannels == 0, std::runtime_error, "Sample count must be a multiple of the number of channels (" << nrOfChannels << ")");
+            // if sample data is already uint8_t, return it
+            if constexpr (std::is_same_v<T, uint8_t>)
+            {
+                return data;
+            }
             // build output data
             std::vector<uint8_t> result(sizeof(T) * data.size());
             // direct memory copy
@@ -123,7 +128,12 @@ namespace AudioHelpers
             std::vector<uint8_t> result(sizeof(T) * data.size());
             if (nrOfChannels == 1)
             {
-                // direct memory copy
+                // if sample data is already uint8_t, return it
+                if constexpr (std::is_same_v<T, uint8_t>)
+                {
+                    return data;
+                }
+                // not uint8_t, but one channel. do simple memory copy
                 std::memcpy(result.data(), data.data(), result.size());
             }
             else
