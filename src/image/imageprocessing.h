@@ -29,7 +29,7 @@ namespace Image
         /// @param type Processing type
         /// @param parameters Parameters to pass to processing
         /// @param prependProcessingInfo If true the input data size and processing type will be prepended to the result
-        /// @param addStatistics The step should output statistics to the container set with setStatisticsContainer()
+        /// @param addStatistics The step should output statistics to the statistics container
         void addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessingInfo = false, bool addStatistics = false);
 
         /// @brief Get current # of steps in processing pipeline

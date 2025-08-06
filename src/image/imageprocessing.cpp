@@ -29,11 +29,11 @@ namespace Image
         Processing::ProcessingFunctions = {
             {ProcessingType::ConvertBlackWhite, {"binary", OperationType::Convert, FunctionType(toBlackWhite)}},
             {ProcessingType::ConvertPaletted, {"paletted", OperationType::Convert, FunctionType(toPaletted)}},
-            {ProcessingType::ConvertCommonPalette, {"common palette", OperationType::BatchConvert, FunctionType(toCommonPalette)}},
             {ProcessingType::ConvertTruecolor, {"truecolor", OperationType::Convert, FunctionType(toTruecolor)}},
-            {ProcessingType::BuildTileMap, {"tilemap", OperationType::Convert, FunctionType(toUniqueTileMap)}},
+            {ProcessingType::ConvertCommonPalette, {"common palette", OperationType::BatchConvert, FunctionType(toCommonPalette)}},
             {ProcessingType::ConvertTiles, {"tiles", OperationType::Convert, FunctionType(toTiles)}},
             {ProcessingType::ConvertSprites, {"sprites", OperationType::Convert, FunctionType(toSprites)}},
+            {ProcessingType::BuildTileMap, {"tilemap", OperationType::Convert, FunctionType(toUniqueTileMap)}},
             {ProcessingType::AddColor0, {"add color #0", OperationType::Convert, FunctionType(addColor0)}},
             {ProcessingType::MoveColor0, {"move color #0", OperationType::Convert, FunctionType(moveColor0)}},
             {ProcessingType::ReorderColors, {"reorder colors", OperationType::Convert, FunctionType(reorderColors)}},
@@ -41,18 +41,18 @@ namespace Image
             {ProcessingType::PruneIndices, {"prune indices", OperationType::Convert, FunctionType(pruneIndices)}},
             {ProcessingType::ConvertDelta8, {"delta-8", OperationType::Convert, FunctionType(toDelta8)}},
             {ProcessingType::ConvertDelta16, {"delta-16", OperationType::Convert, FunctionType(toDelta16)}},
+            {ProcessingType::DeltaImage, {"pixel diff", OperationType::ConvertState, FunctionType(pixelDiff)}},
             {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXT, {"compress DXT", OperationType::Convert, FunctionType(compressDXT)}},
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
             {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
-            {ProcessingType::PadPixelData, {"pad pixel data", OperationType::Convert, FunctionType(padPixelData)}},
             {ProcessingType::ConvertPixelsToRaw, {"convert pixels", OperationType::Convert, FunctionType(convertPixelsToRaw)}},
-            {ProcessingType::PadColorMapData, {"pad color map data", OperationType::Convert, FunctionType(padColorMapData)}},
-            {ProcessingType::ConvertColorMapToRaw, {"convert color map", OperationType::Convert, FunctionType(convertColorMapToRaw)}},
+            {ProcessingType::PadPixelData, {"pad pixel data", OperationType::Convert, FunctionType(padPixelData)}},
             {ProcessingType::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
             {ProcessingType::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
-            {ProcessingType::DeltaImage, {"pixel diff", OperationType::ConvertState, FunctionType(pixelDiff)}}};
+            {ProcessingType::ConvertColorMapToRaw, {"convert color map", OperationType::Convert, FunctionType(convertColorMapToRaw)}},
+            {ProcessingType::PadColorMapData, {"pad color map data", OperationType::Convert, FunctionType(padColorMapData)}}};
 
     Frame Processing::toBlackWhite(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
     {
@@ -613,6 +613,8 @@ namespace Image
         // no state, return input data
         return data;
     }
+
+    // ----------------------------------------------------------------------------
 
     void Processing::addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessingInfo, bool addStatistics)
     {
