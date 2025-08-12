@@ -11,7 +11,7 @@
 namespace Media
 {
 
-    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *
+    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
     {
         auto currentSrc = frame.data;
         uint32_t uncompressedSize = frame.dataSize; // if the frame data is initially uncompressed its size will be == frame data size
@@ -45,7 +45,7 @@ namespace Media
                 uncompressedSize = DXTV::UnCompGetSize(currentSrc);
                 break;
             default:
-                return currentDst;
+                return {currentDst, uncompressedSize};
             }
             // break if this was the last processing operation
             if (isFinal)
@@ -55,7 +55,7 @@ namespace Media
             // our old destination is the new source
             currentSrc = currentDst;
         }
-        return currentDst;
+        return {currentDst, uncompressedSize};
     }
 
     IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>

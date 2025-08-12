@@ -142,8 +142,6 @@ namespace Media
             // set up video buffers
             m_videoScratchPad = videoScratchPad;
             m_videoScratchPadSize = videoScratchPadSize;
-            auto bytesPerPixel = (m_mediaInfo.video.bitsPerPixel + 7) / 8;
-            m_videoDecodedFrameSize = m_mediaInfo.video.width * m_mediaInfo.video.height * bytesPerPixel;
         }
         if (m_mediaInfo.contentType & IO::FileType::Audio)
         {
@@ -206,7 +204,9 @@ namespace Media
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
 #endif
-        m_videoDecodedFrame = DecodeVideo(m_videoScratchPad, m_videoScratchPadSize, m_mediaInfo, m_queuedVideoFrame);
+        auto [videoDecodedFrame, videoDecodedFramesize] = DecodeVideo(m_videoScratchPad, m_videoScratchPadSize, m_mediaInfo, m_queuedVideoFrame);
+        m_videoDecodedFrame = videoDecodedFrame;
+        m_videoDecodedFrameSize = videoDecodedFramesize;
         m_queuedVideoFrame.data = nullptr;
         ++m_videoFramesDecoded;
 #ifdef DEBUG_PLAYER
@@ -222,6 +222,9 @@ namespace Media
         if (!m_playing)
         {
             m_mediaFrame.data = nullptr;
+            m_queuedAudioFrame.data = nullptr;
+            m_queuedVideoFrame.data = nullptr;
+            m_queuedColorMapFrame.data = nullptr;
             m_audioFramesRequested = 0;
             m_audioFramesDecoded = 0;
             m_videoFramesRequested = 0;
