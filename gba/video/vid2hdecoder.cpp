@@ -75,7 +75,6 @@ namespace Media
             switch (processingType)
             {
             case Audio::ProcessingType::Uncompressed:
-                // copy audio data to sample buffer
                 Memory::memcpy32(currentDst, currentSrc, uncompressedSize / 4);
                 break;
             case Audio::ProcessingType::CompressLZ10:

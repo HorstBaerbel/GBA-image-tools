@@ -81,32 +81,28 @@ namespace Media
             auto inData = frame.second;
             REQUIRE(!inData.empty(), std::runtime_error, "Frame pixel data empty");
             std::vector<Color::XRGB8888> outData;
-            // check if we have any decode steps at all
-            if (m_fileHeader.audio.processing[0] != Audio::ProcessingType::Invalid)
+            // do decoding steps
+            for (uint32_t pi = 0; pi < sizeof(m_fileHeader.video.processing); ++pi)
             {
-                // do decoding steps
-                for (uint32_t pi = 0; pi < 4; ++pi)
+                // this is the final operation either if we don't have any more steps, the current step is just a copy, or the next step is invalid
+                const auto processingType = m_fileHeader.video.processing[pi] == Image::ProcessingType::Invalid ? Image::ProcessingType::Uncompressed : m_fileHeader.video.processing[pi];
+                const auto isFinal = (pi >= 3) || (processingType == Image::ProcessingType::Uncompressed) || (m_fileHeader.video.processing[pi + 1] == Image::ProcessingType::Invalid);
+                // reverse processing operation used in this stage
+                switch (processingType)
                 {
-                    // this is the final operation either if we don't have any more steps or the next step is empty
-                    const auto isFinal = (pi >= 3) || (m_fileHeader.video.processing[pi + 1] == Image::ProcessingType::Invalid);
-                    const auto processingType = m_fileHeader.video.processing[pi];
-                    // reverse processing operation used in this stage
-                    switch (processingType)
-                    {
-                    case Image::ProcessingType::CompressLZ10:
-                        inData = Compression::decodeLZ10(inData);
-                        break;
-                    case Image::ProcessingType::CompressDXTV:
-                        outData = DXTV::decode(inData, m_previousPixels, m_fileHeader.video.width, m_fileHeader.video.height, m_fileHeader.video.swappedRedBlue);
-                        break;
-                    default:
-                        THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));
-                    }
-                    // break if this was the last processing operation
-                    if (isFinal)
-                    {
-                        break;
-                    }
+                case Image::ProcessingType::CompressLZ10:
+                    inData = Compression::decodeLZ10(inData);
+                    break;
+                case Image::ProcessingType::CompressDXTV:
+                    outData = DXTV::decode(inData, m_previousPixels, m_fileHeader.video.width, m_fileHeader.video.height, m_fileHeader.video.swappedRedBlue);
+                    break;
+                default:
+                    THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));
+                }
+                // break if this was the last processing operation
+                if (isFinal)
+                {
+                    break;
                 }
             }
             // return color data or convert pixel data to XRGB8888
@@ -122,18 +118,12 @@ namespace Media
             auto inData = frame.second;
             REQUIRE(!inData.empty(), std::runtime_error, "Frame audio data empty");
             std::vector<int16_t> outData;
-            // check if we have any decode steps at all
-            if (m_fileHeader.audio.processing[0] == Audio::ProcessingType::Invalid)
-            {
-                // no decoding necessary, copy directly to output
-                outData = AudioHelpers::toSigned16(inData, m_info.audioSampleFormat);
-            }
             // do decoding steps
-            for (uint32_t pi = 0; pi < 4; ++pi)
+            for (uint32_t pi = 0; pi < sizeof(m_fileHeader.audio.processing); ++pi)
             {
-                // this is the final operation either if we don't have any more steps or the next step is empty
-                const auto isFinal = (pi >= 3) || (m_fileHeader.audio.processing[pi + 1] == Audio::ProcessingType::Invalid);
-                const auto processingType = m_fileHeader.audio.processing[pi];
+                // this is the final operation either if we don't have any more steps, the current step is just a copy, or the next step is invalid
+                const auto processingType = m_fileHeader.audio.processing[pi] == Audio::ProcessingType::Invalid ? Audio::ProcessingType::Uncompressed : m_fileHeader.audio.processing[pi];
+                const auto isFinal = (pi >= 3) || (processingType == Audio::ProcessingType::Uncompressed) || (m_fileHeader.audio.processing[pi + 1] == Audio::ProcessingType::Invalid);
                 // reverse processing operation used in this stage
                 switch (processingType)
                 {
