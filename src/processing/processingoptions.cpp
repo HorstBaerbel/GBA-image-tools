@@ -361,6 +361,10 @@ ProcessingOptions::OptionT<Audio::SampleFormat> ProcessingOptions::sampleFormat{
         }
     }};
 
+ProcessingOptions::Option ProcessingOptions::adpcm{
+    false,
+    {"adpcm", "Compress audio using 4-bit APDCM.", cxxopts::value(adpcm.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::printStats{
     false,
     {"statistics", "Print statistics about the processing steps.", cxxopts::value(printStats.isSet)}};

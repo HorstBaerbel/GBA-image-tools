@@ -74,6 +74,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.channelFormat.cxxOption);
         opts.add_option("", options.sampleFormat.cxxOption);
         opts.add_option("", options.sampleRateHz.cxxOption);
+        opts.add_option("", options.adpcm.cxxOption);
         opts.add_option("", options.printStats.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.add_option("", options.dumpImage.cxxOption);
@@ -160,14 +161,14 @@ void printUsage()
 {
     // 80 chars:  --------------------------------------------------------------------------------
     std::cout << "Convert and compress a video file to .h / .c files or a binary file" << std::endl;
-    std::cout << "Usage: vid2h IMG [IMG_CONV] [IMG_COMP] [COMP] AUD INFILE OUTNAME" << std::endl;
-    std::cout << "IMaGe format options (mutually exclusive):" << std::endl;
+    std::cout << "Usage: vid2h IMG [IMG_CONV] [IMG_COMP] [COMP] AUD [AUD_COMP] INFILE OUTNAME" << std::endl;
+    std::cout << "Image format options (mutually exclusive):" << std::endl;
     std::cout << options.blackWhite.helpString() << std::endl;
     std::cout << options.paletted.helpString() << std::endl;
     std::cout << options.truecolor.helpString() << std::endl;
     std::cout << "Output color format (must be set):" << std::endl;
     std::cout << options.outformat.helpString() << std::endl;
-    std::cout << "IMaGe CONVert options (all optional):" << std::endl;
+    std::cout << "Image conversion options (all optional):" << std::endl;
     std::cout << options.quantizationmethod.helpString() << std::endl;
     std::cout << options.addColor0.helpString() << std::endl;
     std::cout << options.moveColor0.helpString() << std::endl;
@@ -178,25 +179,27 @@ void printUsage()
     std::cout << options.deltaImage.helpString() << std::endl;
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
-    std::cout << "IMaGe COMPress options (mutually exclusive):" << std::endl;
+    std::cout << "Image compression options (mutually exclusive):" << std::endl;
     std::cout << options.dxt.helpString() << std::endl;
     std::cout << options.dxtv.helpString() << std::endl;
     // std::cout << options.gvid.helpString() << std::endl;
-    std::cout << "COMPress options (mutually exclusive):" << std::endl;
+    std::cout << "Compression options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
-    std::cout << "COMPress modifiers (optional):" << std::endl;
+    std::cout << "Compression modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
-    std::cout << "AUDio options:" << std::endl;
+    std::cout << "Output audio format (all optional):" << std::endl;
     std::cout << options.channelFormat.helpString() << std::endl;
     std::cout << options.sampleFormat.helpString() << std::endl;
     std::cout << options.sampleRateHz.helpString() << std::endl;
+    std::cout << "Audio compression options (all optional):" << std::endl;
+    std::cout << options.adpcm.helpString() << std::endl;
     std::cout << "INFILE: Input video file to convert, e.g. \"foo.avi\"" << std::endl;
     std::cout << "OUTNAME: is determined from the first non-existant file path. It can be an " << std::endl;
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
-    std::cout << "MISC options (all optional):" << std::endl;
+    std::cout << "Misc options (all optional):" << std::endl;
     std::cout << options.printStats.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << options.dumpImage.helpString() << std::endl;
