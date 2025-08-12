@@ -27,17 +27,19 @@ using namespace Color;
 
 std::vector<uint8_t> DXTV::FrameHeader::toVector() const
 {
-    std::vector<uint8_t> result(4);
+    std::vector<uint8_t> result(8);
     *reinterpret_cast<uint16_t *>(result.data() + 0) = frameFlags;
     *reinterpret_cast<uint16_t *>(result.data() + 2) = 0;
+    *reinterpret_cast<uint32_t *>(result.data() + 4) = uncompressedSize;
     return result;
 }
 
 auto DXTV::FrameHeader::fromVector(const std::vector<uint8_t> &data) -> DXTV::FrameHeader
 {
-    REQUIRE(data.size() >= 4, std::runtime_error, "Data size must be >= 4");
+    REQUIRE(data.size() >= 8, std::runtime_error, "Data size must be >= 8");
     auto frameFlags = *reinterpret_cast<const uint16_t *>(data.data() + 0);
-    return {frameFlags, 0};
+    auto uncompressedSize = *reinterpret_cast<const uint32_t *>(data.data() + 4);
+    return {frameFlags, 0, uncompressedSize};
 }
 
 /// @brief Search for entry in codebook with minimum error
@@ -220,6 +222,7 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
         // frame is a duplicate. pass header only
         FrameHeader frameHeader;
         frameHeader.frameFlags = DXTV_CONSTANTS::FRAME_KEEP;
+        frameHeader.uncompressedSize = width * height * 2;
         std::vector<uint8_t> compressedFrameData;
         auto headerData = frameHeader.toVector();
         assert((headerData.size() % 4) == 0);
@@ -230,6 +233,7 @@ auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888
     const auto blockFlagBytesPerLine = blockFlagBitsPerLine / 8;
     // add frame header to compressed frame data
     FrameHeader frameHeader;
+    frameHeader.uncompressedSize = width * height * 2;
     auto headerData = frameHeader.toVector();
     assert((headerData.size() % 4) == 0);
     std::vector<uint8_t> compressedFrameData = headerData;

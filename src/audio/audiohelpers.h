@@ -18,6 +18,12 @@ namespace AudioHelpers
     /// @return Sample buffer for sample format
     auto createSampleBuffer(Audio::SampleFormat sampleFormat) -> Audio::SampleData;
 
+    /// @brief Get number of samples in data
+    /// @param samples Planar sample data (e.g. L0 L1 ... R0 R1 ...)
+    /// @param channelFormat Sample data channel format
+    /// @return Number of samples in data
+    auto nrOfSamples(const Audio::SampleData &samples, Audio::ChannelFormat channelFormat) -> uint32_t;
+
     /// @brief Get raw size of sample data in bytes
     /// @return Raw size of sample data in bytes
     auto rawDataSize(const Audio::SampleData &samples) -> uint32_t;

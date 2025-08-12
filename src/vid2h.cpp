@@ -251,11 +251,11 @@ int main(int argc, const char *argv[])
             std::cerr << "Failed to open video file: " << e.what() << std::endl;
             return 1;
         }
-        // build processing pipeline - input
-        Image::Processing imageProcessing;
+        // ----- build image processing pipeline - input -----
+        Image::Processing videoProcessing;
         if (options.blackWhite)
         {
-            imageProcessing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.quantizationmethod.value, options.blackWhite.value});
+            videoProcessing.addStep(Image::ProcessingType::ConvertBlackWhite, {options.quantizationmethod.value, options.blackWhite.value});
         }
         else if (options.paletted)
         {
@@ -272,7 +272,7 @@ int main(int argc, const char *argv[])
             default:
                 colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
             }
-            imageProcessing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, colorSpaceMap});
+            videoProcessing.addStep(Image::ProcessingType::ConvertPaletted, {options.quantizationmethod.value, options.paletted.value, colorSpaceMap});
         }
         else if (options.commonPalette)
         {
@@ -289,76 +289,76 @@ int main(int argc, const char *argv[])
             default:
                 colorSpaceMap = ColorHelpers::buildColorMapFor(options.outformat.value);
             }
-            imageProcessing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, colorSpaceMap});
+            videoProcessing.addStep(Image::ProcessingType::ConvertCommonPalette, {options.quantizationmethod.value, options.commonPalette.value, colorSpaceMap});
         }
         else if (options.truecolor)
         {
-            imageProcessing.addStep(Image::ProcessingType::ConvertTruecolor, {options.truecolor.value});
+            videoProcessing.addStep(Image::ProcessingType::ConvertTruecolor, {options.truecolor.value});
         }
-        // build processing pipeline - conversion
+        // build image processing pipeline - conversion
         if (options.paletted)
         {
-            imageProcessing.addStep(Image::ProcessingType::ReorderColors, {});
+            videoProcessing.addStep(Image::ProcessingType::ReorderColors, {});
             if (options.addColor0)
             {
-                imageProcessing.addStep(Image::ProcessingType::AddColor0, {options.addColor0.value});
+                videoProcessing.addStep(Image::ProcessingType::AddColor0, {options.addColor0.value});
             }
             if (options.moveColor0)
             {
-                imageProcessing.addStep(Image::ProcessingType::MoveColor0, {options.moveColor0.value});
+                videoProcessing.addStep(Image::ProcessingType::MoveColor0, {options.moveColor0.value});
             }
             if (options.shiftIndices)
             {
-                imageProcessing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
+                videoProcessing.addStep(Image::ProcessingType::ShiftIndices, {options.shiftIndices.value});
             }
             if (options.pruneIndices)
             {
-                imageProcessing.addStep(Image::ProcessingType::PruneIndices, {});
+                videoProcessing.addStep(Image::ProcessingType::PruneIndices, {});
                 // TODO store 1, 2, 4 bits
-                imageProcessing.addStep(Image::ProcessingType::PadColorMap, {uint32_t(16)});
+                videoProcessing.addStep(Image::ProcessingType::PadColorMap, {uint32_t(16)});
             }
             else
             {
-                imageProcessing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
+                videoProcessing.addStep(Image::ProcessingType::PadColorMap, {options.paletted.value + (options.addColor0 ? 1 : 0)});
             }
-            imageProcessing.addStep(Image::ProcessingType::ConvertColorMapToRaw, {options.outformat.value});
-            imageProcessing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
+            videoProcessing.addStep(Image::ProcessingType::ConvertColorMapToRaw, {options.outformat.value});
+            videoProcessing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)
         {
-            imageProcessing.addStep(Image::ProcessingType::ConvertSprites, {options.sprites.value.front()});
+            videoProcessing.addStep(Image::ProcessingType::ConvertSprites, {options.sprites.value.front()});
         }
         if (options.tiles)
         {
-            imageProcessing.addStep(Image::ProcessingType::ConvertTiles, {});
+            videoProcessing.addStep(Image::ProcessingType::ConvertTiles, {});
         }
-        // image compression
+        // build image processing pipeline - image compression
         if (options.deltaImage)
         {
-            imageProcessing.addStep(Image::ProcessingType::DeltaImage, {});
+            videoProcessing.addStep(Image::ProcessingType::DeltaImage, {});
         }
         if (options.dxt)
         {
-            imageProcessing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value}, true, options.printStats);
+            videoProcessing.addStep(Image::ProcessingType::CompressDXT, {options.outformat.value}, true, options.printStats);
         }
         if (options.dxtv)
         {
-            imageProcessing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, options.printStats);
+            videoProcessing.addStep(Image::ProcessingType::CompressDXTV, {options.outformat.value, options.dxtv.value}, true, options.printStats);
         }
         /*if (options.gvid)
         {
             processing.addStep(Image::ProcessingType::CompressGVID, {}, true, true);
         }*/
         // convert to raw data (only if not raw data already)
-        imageProcessing.addStep(Image::ProcessingType::ConvertPixelsToRaw, {options.outformat.value});
-        // entropy compression
+        videoProcessing.addStep(Image::ProcessingType::ConvertPixelsToRaw, {options.outformat.value});
+        // build image processing pipeline - entropy compression
         if (options.delta8)
         {
-            imageProcessing.addStep(Image::ProcessingType::ConvertDelta8, {});
+            videoProcessing.addStep(Image::ProcessingType::ConvertDelta8, {});
         }
         if (options.delta16)
         {
-            imageProcessing.addStep(Image::ProcessingType::ConvertDelta16, {});
+            videoProcessing.addStep(Image::ProcessingType::ConvertDelta16, {});
         }
         /*if (options.rle)
         {
@@ -366,39 +366,32 @@ int main(int argc, const char *argv[])
         }*/
         if (options.lz10)
         {
-            imageProcessing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true, options.printStats);
+            videoProcessing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet}, true, options.printStats);
         }
-        imageProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
-        // audio processing
-        auto audioOutChannelFormat = options.channelFormat ? options.channelFormat.value : mediaInfo.audioChannelFormat;
-        auto audioOutSampleRateHz = options.sampleRateHz ? options.sampleRateHz.value : mediaInfo.audioSampleRateHz;
-        auto audioOutSampleFormat = options.sampleFormat ? options.sampleFormat.value : mediaInfo.audioSampleFormat;
-        std::shared_ptr<Audio::Resampler> resampler;
+        videoProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
+        // print image processing pipeline configuration
+        const auto imageProcessingDesc = videoProcessing.getProcessingDescription();
+        std::cout << "Applying image processing: " << imageProcessingDesc << std::endl;
+        // ----- build audio processing pipeline - input -----
+        Audio::Processing audioProcessing;
+        const auto audioOutSampleRateHz = options.sampleRateHz ? options.sampleRateHz.value : mediaInfo.audioSampleRateHz;
         if (options.channelFormat || options.sampleRateHz || options.sampleFormat)
         {
-            resampler = std::make_shared<Audio::Resampler>(mediaInfo.audioChannelFormat, mediaInfo.audioSampleRateHz, audioOutChannelFormat, audioOutSampleRateHz, audioOutSampleFormat);
-            std::cout << "Converting audio to: " << Audio::formatInfo(audioOutChannelFormat).description << ", " << audioOutSampleRateHz << " Hz, " << Audio::formatInfo(audioOutSampleFormat).description << std::endl;
+            const auto audioOutChannelFormat = options.channelFormat ? options.channelFormat.value : mediaInfo.audioChannelFormat;
+            const auto audioOutSampleFormat = options.sampleFormat ? options.sampleFormat.value : mediaInfo.audioSampleFormat;
+            audioProcessing.addStep(Audio::ProcessingType::Resample, {audioOutChannelFormat, audioOutSampleRateHz, audioOutSampleFormat});
         }
-        // audio dumping
-        std::shared_ptr<IO::WavWriter> wavWriter;
-        if (options.dumpAudio)
-        {
-            wavWriter = std::make_shared<IO::WavWriter>();
-            try
-            {
-                wavWriter->open("result.wav");
-                std::cout << "Dumping result audio to result.wav" << std::endl;
-            }
-            catch (const std::runtime_error &e)
-            {
-                std::cerr << e.what() << std::endl;
-                return 1;
-            }
-        }
-
-        // print image processing pipeline configuration
-        const auto processingDescription = imageProcessing.getProcessingDescription();
-        std::cout << "Applying image processing: " << processingDescription << std::endl;
+        // ----- build audio processing pipeline - frame sample packaging
+        // We need to provide enough samples for one frame of video at the video frame rate
+        // We also need to make sure audio frames size requirements are met:
+        // * Multiple of 16 int8_t samples per channel for GBA audio playback (sound DMA always copies 16 * int8_t when buffer drains)
+        // * Multiple of 4 bytes per channel for NDS audio playback
+        // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
+        const double audioOutSamplesPerFrame = audioOutSampleRateHz / mediaInfo.videoFrameRateHz; // Number of audio samples per channel needed per frame of video
+        audioProcessing.addStep(Audio::ProcessingType::Repackage, {audioOutSamplesPerFrame, uint32_t(16)});
+        // print audio processing pipeline configuration
+        const auto audioProcessingDesc = audioProcessing.getProcessingDescription();
+        std::cout << "Applying audio processing: " << audioProcessingDesc << std::endl;
         // check if we want to write output files
         std::ofstream binFile;
         if (!options.dryRun)
@@ -432,29 +425,21 @@ int main(int argc, const char *argv[])
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
         // Video info
-        uint32_t videoFrameIndex = 0;      // Index of last frame processed
+        uint32_t videoFrameIndex = 0;         // Index of last frame processed
         uint64_t videoOutCompressedSize = 0;  // Combined size of compressed video data
         uint32_t videoOutMaxMemoryNeeded = 0; // Maximum memory needed for decoding video frames
         Image::FrameInfo videoOutInfo;        // Information about video from media decoder
         // Audio info
-        uint32_t audioFrameIndex = 0;                                                              // Index of last audio frame processed
-        uint64_t audioOutCompressedSize = 0;                                                       // Combined size of compressed audio data
-        uint32_t audioOutMaxMemoryNeeded = 0;                                                      // Maximum memory needed for decoding audio frames
-        int32_t audioFirstFrameOffset = 0;                                                         // Offset of first audio frame in samples
-        const double audioSamplesPerFrame = audioOutSampleRateHz / mediaInfo.videoFrameRateHz;     // Number of audio samples per channel needed per frame of video
-        double audioSampleDeltaPrevFrame = 0;                                                      // Number of audio samples per channel last frame in comparison to audioSamplesPerFrame
-        Audio::SampleBuffer audioSampleBuffer(audioOutChannelFormat, audioOutSampleRateHz, audioOutSampleFormat); // Buffer for audio samples from media decoder
-        Audio::FrameInfo audioOutInfo;
-        uint32_t audioOutNrOfAudioFrames = 0;
-        uint32_t audioOutNrOfAudioSamples = 0;
-        while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioFrameIndex < mediaInfo.audioNrOfFrames)
+        uint64_t audioOutCompressedSize = 0; // Combined size of compressed audio data
+        int32_t audioFirstFrameOffset = 0;   // Offset of first audio frame in samples
+        while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioProcessing.nrOfInputFrames() < mediaInfo.audioNrOfFrames)
         {
             const auto inFrame = mediaReader.readFrame();
             // check if EOF
             if (inFrame.frameType == IO::FrameType::Unknown)
             {
                 REQUIRE(videoFrameIndex == mediaInfo.videoNrOfFrames, std::runtime_error, "Expected " << mediaInfo.videoNrOfFrames << " video frames, but got " << videoFrameIndex);
-                REQUIRE(audioFrameIndex == mediaInfo.audioNrOfFrames, std::runtime_error, "Expected " << mediaInfo.audioNrOfFrames << " audio frames, but got " << audioFrameIndex);
+                REQUIRE(audioProcessing.nrOfInputFrames() == mediaInfo.audioNrOfFrames, std::runtime_error, "Expected " << mediaInfo.audioNrOfFrames << " audio frames, but got " << audioProcessing.nrOfInputFrames());
                 break;
             }
             // check if image frame
@@ -463,9 +448,9 @@ int main(int argc, const char *argv[])
                 const auto &inImage = std::get<std::vector<Color::XRGB8888>>(inFrame.data);
                 REQUIRE(inImage.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected image size");
                 // build internal image from pixels and apply processing
-                Image::FrameInfo imageInfo = {{mediaInfo.videoWidth, mediaInfo.videoHeight}, Color::Format::Unknown, Color::Format::Unknown, 0, 0};
-                Image::MapInfo mapInfo = {{0, 0}, {}};
-                auto outFrame = imageProcessing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, inImage, mapInfo}, statistics);
+                const Image::FrameInfo imageInfo = {{mediaInfo.videoWidth, mediaInfo.videoHeight}, Color::Format::Unknown, Color::Format::Unknown, 0, 0};
+                const Image::MapInfo mapInfo = {{0, 0}, {}};
+                const auto outFrame = videoProcessing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, inImage, mapInfo}, statistics);
                 videoOutCompressedSize += outFrame.data.pixels().rawSize() + (options.paletted ? outFrame.data.colorMap().rawSize() : 0);
                 videoOutMaxMemoryNeeded = videoOutMaxMemoryNeeded < outFrame.info.maxMemoryNeeded ? outFrame.info.maxMemoryNeeded : videoOutMaxMemoryNeeded;
                 videoOutInfo = outFrame.info;
@@ -479,106 +464,53 @@ int main(int argc, const char *argv[])
             else if (inFrame.frameType == IO::FrameType::Audio)
             {
                 // build audio frame from sample data
-                Audio::Frame audioFrame = {audioFrameIndex, "", {mediaInfo.audioSampleRateHz, mediaInfo.audioChannelFormat, mediaInfo.audioSampleFormat, false, 0}, std::get<std::vector<int16_t>>(inFrame.data)};
-                // pipe samples through resampler to adjust channels, sample rate and sample format
-                // on the last audio frame from the media file, flush the resampling buffer
-                const bool isLastAudioFrame = audioFrameIndex == mediaInfo.audioNrOfFrames - 1;
-                audioFrame = resampler ? resampler->resample(audioFrame, isLastAudioFrame) : audioFrame;
-                // append output samples to sample buffer
-                audioSampleBuffer.push_back(audioFrame);
-                // dump the audio frame if user wants to
-                if (wavWriter)
+                const Audio::Frame audioFrame = {audioProcessing.nrOfInputFrames(), "", {mediaInfo.audioSampleRateHz, mediaInfo.audioChannelFormat, mediaInfo.audioSampleFormat, false, 0}, std::get<std::vector<int16_t>>(inFrame.data), 0};
+                const auto outFrameOpt = audioProcessing.processStream(audioFrame, false, statistics);
+                if (outFrameOpt.has_value())
                 {
-                    wavWriter->writeFrame(audioFrame);
-                }
-                // We need to provide enough samples for one frame of video at the video frame rate
-                // We also need to make sure audio frames size requirements are met:
-                // * Multiple of 16 int8_t samples per channel for GBA audio playback
-                // * Multiple of 4 bytes per channel for NDS audio playback
-                // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
-                auto audioSamplesThisFrame = static_cast<int32_t>(std::ceil(audioSamplesPerFrame - audioSampleDeltaPrevFrame));
-                // round up to multiple of 16 samples
-                if (audioSamplesThisFrame % 16 != 0)
-                {
-                    audioSamplesThisFrame += 16 - (audioSamplesThisFrame % 16);
-                }
-                // check if our buffer has this many samples
-                if (audioSampleBuffer.nrOfSamplesPerChannel() >= audioSamplesThisFrame)
-                {
-                    auto outFrame = audioSampleBuffer.pop_front(audioSamplesThisFrame);
-                    outFrame.index = audioOutNrOfAudioFrames;
-                    audioOutInfo = outFrame.info;
-                    // get sample information
-                    const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
-                    audioOutCompressedSize += sampleDataSize;
-                    audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
-                    audioSampleDeltaPrevFrame += audioSamplesThisFrame - audioSamplesPerFrame;
-                    audioOutNrOfAudioSamples += audioSamplesThisFrame;
-                    // add processing info to sample data
-                    outFrame = Audio::Processing::prependProcessingInfo(outFrame, sampleDataSize, Audio::ProcessingType::Uncompressed, true);
+                    const auto &outFrame = outFrameOpt.value();
+                    audioOutCompressedSize += AudioHelpers::rawDataSize(outFrame.data);
                     // write samples to file
                     if (!options.dryRun && binFile.is_open())
                     {
                         IO::Vid2h::writeFrame(binFile, outFrame);
                     }
-                    ++audioOutNrOfAudioFrames;
                 }
-                ++audioFrameIndex;
             }
             // calculate progress
-            uint32_t newProgress = ((100 * videoFrameIndex) / mediaInfo.videoNrOfFrames);
+            const uint32_t newProgress = ((100 * videoFrameIndex) / mediaInfo.videoNrOfFrames);
             if (lastProgress != newProgress)
             {
                 lastProgress = newProgress;
-                auto newTime = std::chrono::steady_clock::now();
-                auto timePassedMs = std::chrono::duration<double>(newTime - startTime);
-                auto fps = static_cast<double>(videoFrameIndex) / timePassedMs.count();
-                auto restS = (mediaInfo.videoNrOfFrames - videoFrameIndex) / fps;
+                const auto newTime = std::chrono::steady_clock::now();
+                const auto timePassedMs = std::chrono::duration<double>(newTime - startTime);
+                const auto fps = static_cast<double>(videoFrameIndex) / timePassedMs.count();
+                const auto restS = (mediaInfo.videoNrOfFrames - videoFrameIndex) / fps;
                 std::cout << std::fixed << std::setprecision(1) << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
             }
             // update statistics
             window.update();
         }
-        // check if we have audio samples left
-        const auto audioSamplesRemaining = audioSampleBuffer.nrOfSamplesPerChannel();
-        if (audioSamplesRemaining > 0)
+        // flush remaining buffers
+        auto outFrameOpt = audioProcessing.processStream(Audio::Frame(), true, statistics);
+        if (outFrameOpt.has_value())
         {
-            auto audioSamplesThisFrame = audioSamplesRemaining;
-            // round up to multiple of 16 samples
-            if (audioSamplesThisFrame % 16 != 0)
-            {
-                audioSamplesThisFrame += 16 - (audioSamplesThisFrame % 16);
-                // push silence to the buffer to extend samples
-                audioSampleBuffer.push_silence(audioSamplesThisFrame - audioSamplesRemaining);
-            }
-            Audio::Frame outFrame = audioSampleBuffer.pop_front(audioSamplesThisFrame);
-            outFrame.index = audioOutNrOfAudioFrames;
-            audioOutInfo = outFrame.info;
-            // get sample information
-            const auto sampleDataSize = AudioHelpers::rawDataSize(outFrame.data);
-            audioOutCompressedSize += sampleDataSize;
-            audioOutMaxMemoryNeeded = audioOutMaxMemoryNeeded < sampleDataSize ? sampleDataSize : audioOutMaxMemoryNeeded;
-            audioOutNrOfAudioSamples += audioSamplesThisFrame;
-            // add processing info to sample data
-            outFrame = Audio::Processing::prependProcessingInfo(outFrame, sampleDataSize, Audio::ProcessingType::Uncompressed, true);
+            const auto &outFrame = outFrameOpt.value();
+            audioOutCompressedSize += AudioHelpers::rawDataSize(outFrame.data);
             // write samples to file
             if (!options.dryRun && binFile.is_open())
             {
                 IO::Vid2h::writeFrame(binFile, outFrame);
             }
-            ++audioOutNrOfAudioFrames;
         }
         // write final file header to start of stream
         if (!options.dryRun && binFile.is_open())
         {
             binFile.seekp(0);
-            IO::Vid2h::writeMediaFileHeader(binFile, videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, audioOutInfo, audioOutNrOfAudioFrames, audioOutNrOfAudioSamples, 0, audioOutMaxMemoryNeeded);
+            const auto audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), audioProcessing.getDecodingSteps());
+            const auto videoHeader = IO::Vid2h::createVideoHeader(videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, videoProcessing.getDecodingSteps());
+            IO::Vid2h::writeMediaFileHeader(binFile, videoHeader, audioHeader);
             binFile.close();
-        }
-        // close wave writer if open
-        if (wavWriter)
-        {
-            wavWriter->close();
         }
         // output some info about data
         const auto videoInputSize = mediaInfo.videoWidth * mediaInfo.videoHeight * 3 * mediaInfo.videoNrOfFrames;
@@ -590,7 +522,8 @@ int main(int argc, const char *argv[])
         std::cout << "  Max. intermediate memory for decompression: " << videoOutMaxMemoryNeeded << " Byte" << std::endl;
         std::cout << "Audio:" << std::endl;
         std::cout << "  Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(audioOutCompressedSize) / (1024 * 1024) << " MB" << std::endl;
-        std::cout << "  Max. intermediate memory for decompression: " << audioOutMaxMemoryNeeded << " Byte" << std::endl;
+        std::cout << "  Avg. frame size: " << audioOutCompressedSize / audioProcessing.nrOfOutputFrames() << " Byte" << std::endl;
+        std::cout << "  Max. intermediate memory for decompression: " << audioProcessing.outputMaxMemoryNeeded() << " Byte" << std::endl;
     }
     catch (const std::runtime_error &e)
     {

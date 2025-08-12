@@ -545,8 +545,8 @@ namespace Image
     {
         REQUIRE(data.data.colorMap().isRaw(), std::runtime_error, "Color map data padding is only possible for raw data");
         // get parameter(s)
-        REQUIRE(parameters.size() == 1 && std::holds_alternative<uint32_t>(parameters.front()), std::runtime_error, "padColorMapData expects a single uint32_t pad modulo parameter");
-        auto multipleOf = std::get<uint32_t>(parameters.front());
+        REQUIRE(VariantHelpers::hasTypes<uint32_t>(parameters), std::runtime_error, "padColorMapData expects a single uint32_t pad modulo parameter");
+        auto multipleOf = VariantHelpers::getValue<uint32_t, 0>(parameters);
         // pad raw color map data
         auto result = data;
         result.data.colorMap() = PixelData(DataHelpers::fillUpToMultipleOf(data.data.colorMap().convertDataToRaw(), multipleOf), Color::Format::Unknown);
@@ -621,17 +621,18 @@ namespace Image
         m_steps.push_back({type, parameters, prependProcessingInfo, addStatistics});
     }
 
-    std::size_t Processing::size() const
+    std::size_t Processing::nrOfSteps() const
     {
         return m_steps.size();
     }
 
-    void Processing::clear()
+    void Processing::clearSteps()
     {
+        reset();
         m_steps.clear();
     }
 
-    void Processing::clearState()
+    void Processing::reset()
     {
         for (std::size_t si = 0; si < m_steps.size(); si++)
         {
@@ -692,17 +693,6 @@ namespace Image
         return result;
     }
 
-    Frame prependProcessingInfo(const Frame &processedData, uint32_t originalSize, ProcessingType type, bool isFinal)
-    {
-        auto rawData = processedData.data.pixels().convertDataToRaw();
-        REQUIRE(rawData.size() < (1 << 24), std::runtime_error, "Raw data size stored must be < 16MB");
-        REQUIRE(static_cast<uint32_t>(type) <= 127, std::runtime_error, "Type value must be <= 127");
-        const uint32_t sizeAndType = ((originalSize & 0xFFFFFF) << 8) | ((static_cast<uint32_t>(type) & 0x7F) | (isFinal ? static_cast<uint32_t>(ProcessingTypeFinal) : 0));
-        auto result = processedData;
-        result.data.pixels() = PixelData(DataHelpers::prependValue(rawData, sizeAndType), Color::Format::Unknown);
-        return result;
-    }
-
     std::vector<Frame> Processing::processBatch(const std::vector<Frame> &data)
     {
         REQUIRE(data.size() > 0, std::runtime_error, "Empty data passed to processing");
@@ -726,10 +716,6 @@ namespace Image
                 {
                     const auto inputSize = img.data.pixels().rawSize();
                     img = convertFunc(img, stepIt->parameters, nullptr);
-                    if (stepIt->prependProcessingInfo)
-                    {
-                        img = prependProcessingInfo(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
-                    }
                     // record max. memory needed for everything, but the first step
                     auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : img.data.pixels().rawSize() + sizeof(uint32_t);
                     img.info.maxMemoryNeeded = (img.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.info.maxMemoryNeeded;
@@ -742,10 +728,6 @@ namespace Image
                 {
                     const uint32_t inputSize = img.data.pixels().rawSize();
                     img = convertFunc(img, stepIt->parameters, stepIt->state, nullptr);
-                    if (stepIt->prependProcessingInfo)
-                    {
-                        img = prependProcessingInfo(img, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
-                    }
                     // record max. memory needed for everything, but the first step
                     auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : img.data.pixels().rawSize() + sizeof(uint32_t);
                     img.info.maxMemoryNeeded = (img.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.info.maxMemoryNeeded;
@@ -761,11 +743,6 @@ namespace Image
                 processed = batchFunc(processed, stepIt->parameters, nullptr);
                 for (auto pIt = processed.begin(); pIt != processed.end(); pIt++)
                 {
-                    if (stepIt->prependProcessingInfo)
-                    {
-                        const uint32_t inputSize = inputSizes.at(std::distance(processed.begin(), pIt));
-                        *pIt = prependProcessingInfo(*pIt, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
-                    }
                     // record max. memory needed for everything, but the first step
                     auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : pIt->data.pixels().rawSize() + sizeof(uint32_t);
                     pIt->info.maxMemoryNeeded = (pIt->info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : pIt->info.maxMemoryNeeded;
@@ -801,21 +778,25 @@ namespace Image
                 processed = convertFunc(processed, stepIt->parameters, stepIt->state, stepStatistics);
             }
             // we're silently ignoring OperationType::BatchInput ::BatchConvert and ::Reduce operations here
-            if (stepIt->prependProcessingInfo)
-            {
-                // check if this was the final processing step (first non-input processing)
-                bool isFinalStep = false;
-                if (!finalStepFound)
-                {
-                    isFinalStep = true;
-                    finalStepFound = true;
-                }
-                processed = prependProcessingInfo(processed, static_cast<uint32_t>(inputSize), stepIt->type, isFinalStep);
-            }
             // record max. memory needed for everything, but the first step
             auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : processed.data.pixels().rawSize() + sizeof(uint32_t);
             processed.info.maxMemoryNeeded = (processed.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.info.maxMemoryNeeded;
         }
         return processed;
+    }
+
+    std::vector<ProcessingType> Processing::getDecodingSteps() const
+    {
+        std::vector<ProcessingType> decodingSteps;
+        auto srIt = m_steps.crbegin();
+        while (srIt != m_steps.crend())
+        {
+            if (srIt->decodeRelevant)
+            {
+                decodingSteps.push_back(srIt->type);
+            }
+            ++srIt;
+        }
+        return decodingSteps;
     }
 }

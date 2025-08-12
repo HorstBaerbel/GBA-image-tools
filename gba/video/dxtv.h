@@ -14,4 +14,7 @@ namespace DXTV
     template <uint32_t RESOLUTION_X>
     void UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, uint32_t width, uint32_t height);
 
+    /// @brief Get stored uncompressed size of image data after decoding
+    /// @param data Pointer to DXTV data
+    uint32_t UnCompGetSize(const uint32_t *data);
 }

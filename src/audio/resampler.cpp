@@ -111,57 +111,67 @@ namespace Audio
 
     auto Resampler::resample(const Frame &inFrame, bool flush) -> Frame
     {
-        REQUIRE(std::holds_alternative<std::vector<int16_t>>(inFrame.data), std::runtime_error, "Input sample type must be int16_t");
-        REQUIRE(inFrame.info.sampleRateHz == m_inSampleRateHz, std::runtime_error, "Frame sample rate does not match initial sample rate");
-        REQUIRE(inFrame.info.channelFormat == m_inChannelFormat, std::runtime_error, "Frame channel format does not match initial channel format");
-        // get sample data from frame
-        auto &inSamples = std::get<std::vector<int16_t>>(inFrame.data);
-        REQUIRE(m_inChannelFormat == ChannelFormat::Mono || inSamples.size() % 2 == 0, std::runtime_error, "Stereo data must have an even number of samples");
-        // check if we need to reallocate audio conversion output buffers
-        const auto inDataNrOfSamples = m_inChannelFormat == ChannelFormat::Mono ? inSamples.size() : inSamples.size() / 2;
-        const auto maxNrOfOutputSamples = swr_get_out_samples(m_state->swrContext, inDataNrOfSamples);
-        REQUIRE(maxNrOfOutputSamples >= 0, std::runtime_error, "Failed to get maximum number of output samples: " << maxNrOfOutputSamples);
-        // we keep some extra samples need for flushing the buffer
-        const auto nrOfExtraSamples = (m_outSampleRateHz / 100) * (m_outChannelFormat == ChannelFormat::Mono ? 1 : 2);
-        if ((maxNrOfOutputSamples + nrOfExtraSamples) > m_state->outDataMaxSamples)
+        auto nrOfOutputSamples = 0;
+        auto outputRawBufferSize = 0;
+        // check if we have any frame data
+        if (std::holds_alternative<std::vector<int16_t>>(inFrame.data) && std::get<std::vector<int16_t>>(inFrame.data).size() > 0)
         {
-            // we only need to free the first planar sample buffer as this will free all the buffers. this sort of makes sense in a weird ffmpeg way
-            if (m_state->outData[0])
+            REQUIRE(std::holds_alternative<std::vector<int16_t>>(inFrame.data), std::runtime_error, "Input sample type must be int16_t");
+            REQUIRE(inFrame.info.sampleRateHz == m_inSampleRateHz, std::runtime_error, "Frame sample rate does not match initial sample rate");
+            REQUIRE(inFrame.info.channelFormat == m_inChannelFormat, std::runtime_error, "Frame channel format does not match initial channel format");
+            // get sample data from frame
+            auto &inSamples = std::get<std::vector<int16_t>>(inFrame.data);
+            REQUIRE(m_inChannelFormat == ChannelFormat::Mono || inSamples.size() % 2 == 0, std::runtime_error, "Stereo data must have an even number of samples");
+            // check if we need to reallocate audio conversion output buffers
+            const auto inDataNrOfSamples = m_inChannelFormat == ChannelFormat::Mono ? inSamples.size() : inSamples.size() / 2;
+            const auto maxNrOfOutputSamples = swr_get_out_samples(m_state->swrContext, inDataNrOfSamples);
+            REQUIRE(maxNrOfOutputSamples >= 0, std::runtime_error, "Failed to get maximum number of output samples: " << maxNrOfOutputSamples);
+            // we keep some extra samples need for flushing the buffer
+            const auto nrOfExtraSamples = (m_outSampleRateHz / 100) * (m_outChannelFormat == ChannelFormat::Mono ? 1 : 2);
+            if ((maxNrOfOutputSamples + nrOfExtraSamples) > m_state->outDataMaxSamples)
             {
-                av_freep(&m_state->outData[0]);
-                m_state->outDataMaxSamples = 0;
+                // we only need to free the first planar sample buffer as this will free all the buffers. this sort of makes sense in a weird ffmpeg way
+                if (m_state->outData[0])
+                {
+                    av_freep(&m_state->outData[0]);
+                    m_state->outDataMaxSamples = 0;
+                }
+                const auto allocateResult = av_samples_alloc(m_state->outData, nullptr, m_state->outLayout.nb_channels, maxNrOfOutputSamples + nrOfExtraSamples, m_state->outFormat, 1);
+                REQUIRE(allocateResult >= 0, std::runtime_error, "Failed to allocate audio conversion buffer: " << allocateResult);
+                m_state->outDataMaxSamples = maxNrOfOutputSamples + nrOfExtraSamples;
             }
-            const auto allocateResult = av_samples_alloc(m_state->outData, nullptr, m_state->outLayout.nb_channels, maxNrOfOutputSamples + nrOfExtraSamples, m_state->outFormat, 1);
-            REQUIRE(allocateResult >= 0, std::runtime_error, "Failed to allocate audio conversion buffer: " << allocateResult);
-            m_state->outDataMaxSamples = maxNrOfOutputSamples + nrOfExtraSamples;
+            // create pointers to planar stereo input samples
+            auto inChannel0Ptr = reinterpret_cast<const uint8_t *>(inSamples.data());
+            auto inChannel1Ptr = reinterpret_cast<const uint8_t *>(inSamples.data() + inSamples.size() / 2);
+            const uint8_t *inData[2] = {inChannel0Ptr, inChannel1Ptr};
+            // convert audio format using Ffmpeg sw resampler. do NOT use &m_state->outData[0] or &inData[0] here
+            const auto nrOfSamplesConverted = swr_convert(m_state->swrContext, m_state->outData, m_state->outDataMaxSamples, inData, inDataNrOfSamples);
+            REQUIRE(nrOfSamplesConverted >= 0, std::runtime_error, "Failed to convert audio data: " << nrOfSamplesConverted);
+            nrOfOutputSamples += nrOfSamplesConverted;
+            // get size of a raw, combined, byte buffer needed to hold all sample data of all converted channels
+            const auto convertedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->outLayout.nb_channels, nrOfSamplesConverted, m_state->outFormat, 1);
+            REQUIRE(convertedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples converted to buffer: " << convertedRawBufferSize);
+            outputRawBufferSize += convertedRawBufferSize;
         }
-        // create pointers to planar stereo input samples
-        auto inChannel0Ptr = reinterpret_cast<const uint8_t *>(inSamples.data());
-        auto inChannel1Ptr = reinterpret_cast<const uint8_t *>(inSamples.data() + inSamples.size() / 2);
-        const uint8_t *inData[2] = {inChannel0Ptr, inChannel1Ptr};
-        // convert audio format using Ffmpeg sw resampler. do NOT use &m_state->outData[0] or &inData[0] here
-        const auto nrOfSamplesConverted = swr_convert(m_state->swrContext, m_state->outData, m_state->outDataMaxSamples, inData, inDataNrOfSamples);
-        REQUIRE(nrOfSamplesConverted >= 0, std::runtime_error, "Failed to convert audio data: " << nrOfSamplesConverted);
-        // get size of a raw, combined, byte buffer needed to hold all sample data of all converted channels
-        auto convertedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->outLayout.nb_channels, nrOfSamplesConverted, m_state->outFormat, 1);
-        REQUIRE(convertedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples converted to buffer: " << convertedRawBufferSize);
         if (flush)
         {
-            // if we're flushing the buffer we need to adjust the output buffers to output behind already converted data
-            const auto nrOfBytesPerChannel = m_outChannelFormat == ChannelFormat::Mono ? convertedRawBufferSize : convertedRawBufferSize / 2;
+            // if we're flushing the buffer we need to adjust the output buffers to output behind already converted data (if any)
+            const auto nrOfBytesPerChannel = m_outChannelFormat == ChannelFormat::Mono ? outputRawBufferSize : outputRawBufferSize / 2;
             uint8_t *flushData[2] = {m_state->outData[0] + nrOfBytesPerChannel, m_state->outData[1] + nrOfBytesPerChannel};
-            REQUIRE(m_state->outDataMaxSamples - nrOfSamplesConverted > 0, std::runtime_error, "Audio output buffer too small for flushing");
-            const auto nrOfSamplesFlushed = swr_convert(m_state->swrContext, flushData, m_state->outDataMaxSamples - nrOfSamplesConverted, nullptr, 0);
+            REQUIRE(m_state->outDataMaxSamples - nrOfOutputSamples > 0, std::runtime_error, "Audio output buffer too small for flushing");
+            const auto nrOfSamplesFlushed = swr_convert(m_state->swrContext, flushData, m_state->outDataMaxSamples - nrOfOutputSamples, nullptr, 0);
             REQUIRE(nrOfSamplesFlushed >= 0, std::runtime_error, "Failed to flush audio data: " << nrOfSamplesFlushed);
+            nrOfOutputSamples += nrOfSamplesFlushed;
             // get size of a raw, combined, byte buffer needed to hold all sample data of all flushed channels
             const auto flushedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->outLayout.nb_channels, nrOfSamplesFlushed, m_state->outFormat, 1);
             REQUIRE(flushedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples flushed to buffer: " << flushedRawBufferSize);
-            convertedRawBufferSize += flushedRawBufferSize;
+            outputRawBufferSize += flushedRawBufferSize;
         }
         // build output frame
         Frame outFrame;
         outFrame.index = inFrame.index;
         outFrame.fileName = inFrame.fileName;
+        outFrame.nrOfSamples = nrOfOutputSamples;
         outFrame.info.compressed = inFrame.info.compressed;
         outFrame.info.maxMemoryNeeded = inFrame.info.maxMemoryNeeded;
         outFrame.info.channelFormat = m_outChannelFormat;
@@ -173,7 +183,7 @@ namespace Audio
         case SampleFormat::Signed8P:
         {
             // ffmpeg supports no S8P, so we converted to U8P to resample. correctly convert to int8_t now
-            auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
+            auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
             std::vector<int8_t> dataI8;
             dataI8.reserve(dataU8.size());
             std::transform(dataU8.cbegin(), dataU8.cend(), std::back_inserter(dataI8), [](auto v)
@@ -185,15 +195,15 @@ namespace Audio
             break;
         }
         case SampleFormat::Unsigned8P:
-            outFrame.data = rawBufferToVector<uint8_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
+            outFrame.data = rawBufferToVector<uint8_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
             break;
         case SampleFormat::Signed16P:
-            outFrame.data = rawBufferToVector<int16_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
+            outFrame.data = rawBufferToVector<int16_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
             break;
         case SampleFormat::Unsigned16P:
         {
             // ffmpeg supports no U16P, so we converted to S16P to resample. correctly convert to uint16_t now
-            auto dataS16 = rawBufferToVector<int16_t>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
+            auto dataS16 = rawBufferToVector<int16_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
             std::vector<uint16_t> dataU16;
             dataU16.reserve(dataS16.size());
             std::transform(dataS16.cbegin(), dataS16.cend(), std::back_inserter(dataU16), [](auto v)
@@ -205,7 +215,7 @@ namespace Audio
             break;
         }
         case SampleFormat::Float32P:
-            outFrame.data = rawBufferToVector<float>(m_state->outData, convertedRawBufferSize, m_state->outLayout.nb_channels);
+            outFrame.data = rawBufferToVector<float>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
             break;
         default:
             THROW(std::runtime_error, "Bad output sample format");

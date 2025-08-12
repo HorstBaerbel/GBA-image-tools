@@ -11,4 +11,6 @@ namespace Decompress
     /// @brief Decompress LZSS GBA variant 10, writing 16 bit at a time. Safe for VRAM
     extern "C" void LZ77UnCompWrite16bit(const void *source, void *destination);
 
+    /// @brief Get the size of the uncompressed data of BIOS-compatible data
+    extern "C" unsigned int BIOSUnCompGetSize(const void *source);
 }

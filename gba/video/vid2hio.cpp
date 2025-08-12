@@ -11,9 +11,9 @@ namespace IO::Vid2h
         Info info;
         Memory::memcpy32(&info, data, sizeof(FileHeader) / 4);
         info.fileData = data;
-        info.nrOfFrames = info.videoNrOfFrames + info.videoNrOfColorMapFrames + info.audioNrOfFrames;
-        info.imageSize = info.videoWidth * info.videoHeight;
-        switch (info.videoBitsPerColor)
+        info.nrOfFrames = info.video.nrOfFrames + info.video.nrOfColorMapFrames + info.audio.nrOfFrames;
+        info.imageSize = info.video.width * info.video.height;
+        switch (info.video.bitsPerColor)
         {
         case 1:
             info.imageSize = (info.imageSize + 7) / 8;
@@ -38,8 +38,8 @@ namespace IO::Vid2h
             // TODO: What?
             break;
         }
-        info.colorMapSize = info.videoColorMapEntries;
-        switch (info.videoBitsPerColor)
+        info.colorMapSize = info.video.colorMapEntries;
+        switch (info.video.bitsPerColor)
         {
         case 15:
         case 16:
@@ -75,12 +75,11 @@ namespace IO::Vid2h
         {
             // read next frame
             frame.index = previous.index + 1;
-            frameStart = previous.header + sizeof(FrameHeader) / 4 + previous.dataSize / 4;
+            frameStart = previous.data + previous.dataSize / 4;
         }
         auto frameHeader = reinterpret_cast<const FrameHeader *>(frameStart);
         frame.dataType = frameHeader->dataType;
         frame.dataSize = frameHeader->dataSize;
-        frame.header = frameStart;
         frame.data = frameStart + sizeof(FrameHeader) / 4;
         return frame;
     }

@@ -217,9 +217,9 @@ namespace DXTV
         constexpr uint32_t Block4VStride32 = 4 * LineStride32;    // vertical stride to next 4x4 block in dst in words / 2 pixels
         constexpr uint32_t Block8HStride32 = 2 * Block4HStride32; // horizontal stride to next 8x8 block in dst in words / 2 pixels
         auto dataPtr16 = reinterpret_cast<const uint16_t *>(data);
-        // copy frame header and skip dummy flags
+        // copy frame header and skip dummy flags and uncompressed size
         const uint16_t headerFlags = *dataPtr16++;
-        dataPtr16++;
+        dataPtr16 += 3;
         // check if we want to keep this duplicate frame
         if ((headerFlags & DXTV_CONSTANTS::FRAME_KEEP) != 0)
         {
@@ -270,5 +270,10 @@ namespace DXTV
                 --flagsAvailable;
             }
         }
+    }
+
+    uint32_t UnCompGetSize(const uint32_t *data)
+    {
+        return data[1];
     }
 }

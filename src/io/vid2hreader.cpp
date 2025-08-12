@@ -23,37 +23,37 @@ namespace Media
         // generate video info
         if ((m_fileHeader.contentType & IO::FileType::Video) != 0)
         {
-            REQUIRE(m_fileHeader.videoNrOfFrames != 0, std::runtime_error, "Number of frames can not be 0");
-            REQUIRE(m_fileHeader.videoFrameRateHz != 0, std::runtime_error, "Frame rate can not be 0");
-            REQUIRE(m_fileHeader.videoWidth != 0 && m_fileHeader.videoHeight != 0, std::runtime_error, "Width or height can not be 0");
-            REQUIRE(m_fileHeader.videoBitsPerPixel == 1 || m_fileHeader.videoBitsPerPixel == 2 || m_fileHeader.videoBitsPerPixel == 4 || m_fileHeader.videoBitsPerPixel == 8 || m_fileHeader.videoBitsPerPixel == 15 || m_fileHeader.videoBitsPerPixel == 16 || m_fileHeader.videoBitsPerPixel == 24, std::runtime_error, "Unsupported pixel bit depth: " << m_fileHeader.videoBitsPerPixel);
-            REQUIRE(m_fileHeader.videoBitsPerColor == 0 || m_fileHeader.videoBitsPerColor == 15 || m_fileHeader.videoBitsPerColor == 16 || m_fileHeader.videoBitsPerPixel == 24, std::runtime_error, "Unsupported color map bit depth: " << m_fileHeader.videoBitsPerColor);
-            REQUIRE(m_fileHeader.videoBitsPerColor == 0 || m_fileHeader.videoNrOfColorMapFrames != 0, std::runtime_error, "Color map format specified, but number of color map frames is 0");
-            m_info.videoNrOfFrames = m_fileHeader.videoNrOfFrames;
-            const double fps = static_cast<double>(m_fileHeader.videoFrameRateHz) / 65536.0;
+            REQUIRE(m_fileHeader.video.nrOfFrames != 0, std::runtime_error, "Number of frames can not be 0");
+            REQUIRE(m_fileHeader.video.frameRateHz != 0, std::runtime_error, "Frame rate can not be 0");
+            REQUIRE(m_fileHeader.video.width != 0 && m_fileHeader.video.height != 0, std::runtime_error, "Width or height can not be 0");
+            REQUIRE(m_fileHeader.video.bitsPerPixel == 1 || m_fileHeader.video.bitsPerPixel == 2 || m_fileHeader.video.bitsPerPixel == 4 || m_fileHeader.video.bitsPerPixel == 8 || m_fileHeader.video.bitsPerPixel == 15 || m_fileHeader.video.bitsPerPixel == 16 || m_fileHeader.video.bitsPerPixel == 24, std::runtime_error, "Unsupported pixel bit depth: " << m_fileHeader.video.bitsPerPixel);
+            REQUIRE(m_fileHeader.video.bitsPerColor == 0 || m_fileHeader.video.bitsPerColor == 15 || m_fileHeader.video.bitsPerColor == 16 || m_fileHeader.video.bitsPerPixel == 24, std::runtime_error, "Unsupported color map bit depth: " << m_fileHeader.video.bitsPerColor);
+            REQUIRE(m_fileHeader.video.bitsPerColor == 0 || m_fileHeader.video.nrOfColorMapFrames != 0, std::runtime_error, "Color map format specified, but number of color map frames is 0");
+            m_info.videoNrOfFrames = m_fileHeader.video.nrOfFrames;
+            const double fps = static_cast<double>(m_fileHeader.video.frameRateHz) / 65536.0;
             m_info.videoFrameRateHz = fps;
-            m_info.videoDurationS = static_cast<double>(m_fileHeader.videoNrOfFrames) / fps;
+            m_info.videoDurationS = static_cast<double>(m_fileHeader.video.nrOfFrames) / fps;
             m_info.videoCodecName = "vid2h";
             m_info.videoStreamIndex = 0;
-            m_info.videoWidth = m_fileHeader.videoWidth;
-            m_info.videoHeight = m_fileHeader.videoHeight;
-            m_info.videoPixelFormat = Color::findFormat(m_fileHeader.videoBitsPerPixel, m_fileHeader.videoColorMapEntries != 0, m_fileHeader.videoSwappedRedBlue);
-            m_info.videoColorMapFormat = Color::findFormat(m_fileHeader.videoBitsPerColor, false, m_fileHeader.videoSwappedRedBlue);
+            m_info.videoWidth = m_fileHeader.video.width;
+            m_info.videoHeight = m_fileHeader.video.height;
+            m_info.videoPixelFormat = Color::findFormat(m_fileHeader.video.bitsPerPixel, m_fileHeader.video.colorMapEntries != 0, m_fileHeader.video.swappedRedBlue);
+            m_info.videoColorMapFormat = Color::findFormat(m_fileHeader.video.bitsPerColor, false, m_fileHeader.video.swappedRedBlue);
         }
         // generate audio info
         if ((m_fileHeader.contentType & IO::FileType::Audio) != 0)
         {
-            m_info.audioNrOfFrames = m_fileHeader.audioNrOfFrames;
-            m_info.audioNrOfSamples = m_fileHeader.audioNrOfSamples;
-            m_info.audioDurationS = static_cast<double>(m_fileHeader.audioNrOfSamples) / static_cast<double>(m_fileHeader.audioSampleRateHz);
+            m_info.audioNrOfFrames = m_fileHeader.audio.nrOfFrames;
+            m_info.audioNrOfSamples = m_fileHeader.audio.nrOfSamples;
+            m_info.audioDurationS = static_cast<double>(m_fileHeader.audio.nrOfSamples) / static_cast<double>(m_fileHeader.audio.sampleRateHz);
             m_info.audioCodecName = "vid2h";
             m_info.audioStreamIndex = 0;
-            m_info.audioSampleRateHz = m_fileHeader.audioSampleRateHz;
-            REQUIRE(m_fileHeader.audioChannels == 1 || m_fileHeader.audioChannels == 2, std::runtime_error, "Number of audio channels must 1 or 2");
-            m_info.audioChannelFormat = m_fileHeader.audioChannels == 1 ? Audio::ChannelFormat::Mono : Audio::ChannelFormat::Stereo;
-            REQUIRE(m_fileHeader.audioSampleBits == 8 || m_fileHeader.audioSampleBits == 16 || m_fileHeader.audioSampleBits == 32, std::runtime_error, "Number of audio samples must 8, 16 or or 32");
-            m_info.audioSampleFormat = Audio::findSampleFormat(m_fileHeader.audioSampleBits, true);
-            m_info.audioOffsetS = static_cast<double>(m_fileHeader.audioOffsetSamples) / static_cast<double>(m_fileHeader.audioSampleRateHz);
+            m_info.audioSampleRateHz = m_fileHeader.audio.sampleRateHz;
+            REQUIRE(m_fileHeader.audio.channels == 1 || m_fileHeader.audio.channels == 2, std::runtime_error, "Number of audio channels must 1 or 2");
+            m_info.audioChannelFormat = m_fileHeader.audio.channels == 1 ? Audio::ChannelFormat::Mono : Audio::ChannelFormat::Stereo;
+            REQUIRE(m_fileHeader.audio.sampleBits == 8 || m_fileHeader.audio.sampleBits == 16 || m_fileHeader.audio.sampleBits == 32, std::runtime_error, "Number of audio samples must 8, 16 or or 32");
+            m_info.audioSampleFormat = Audio::findSampleFormat(m_fileHeader.audio.sampleBits, true);
+            m_info.audioOffsetS = static_cast<double>(m_fileHeader.audio.offsetSamples) / static_cast<double>(m_fileHeader.audio.sampleRateHz);
         }
     }
 
@@ -80,33 +80,35 @@ namespace Media
         {
             auto inData = frame.second;
             REQUIRE(!inData.empty(), std::runtime_error, "Frame pixel data empty");
-            // split chunk data into header and data
             std::vector<Color::XRGB8888> outData;
-            do
+            // check if we have any decode steps at all
+            if (m_fileHeader.audio.processing[0] != Audio::ProcessingType::Invalid)
             {
-                const auto [srcHeader, srcData] = IO::Vid2h::splitChunk(inData);
-                const auto isFinal = (srcHeader.processingType & Image::ProcessingTypeFinal) != 0;
-                const auto processingType = static_cast<Image::ProcessingType>(srcHeader.processingType & (~Image::ProcessingTypeFinal));
-                // reverse processing operation used in this stage
-                switch (processingType)
+                // do decoding steps
+                for (uint32_t pi = 0; pi < 4; ++pi)
                 {
-                case Image::ProcessingType::CompressLZ10:
-                    inData = Compression::decodeLZ10(srcData);
-                    REQUIRE(inData.size() == srcHeader.uncompressedSize, std::runtime_error, "Bad uncompressed size");
-                    break;
-                case Image::ProcessingType::CompressDXTV:
-                    outData = DXTV::decode(srcData, m_previousPixels, m_fileHeader.videoWidth, m_fileHeader.videoHeight, m_fileHeader.videoSwappedRedBlue);
-                    REQUIRE(outData.size() * sizeof(Color::XRGB8888) == srcHeader.uncompressedSize, std::runtime_error, "Bad uncompressed size");
-                    break;
-                default:
-                    THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));
+                    // this is the final operation either if we don't have any more steps or the next step is empty
+                    const auto isFinal = (pi >= 3) || (m_fileHeader.video.processing[pi + 1] == Image::ProcessingType::Invalid);
+                    const auto processingType = m_fileHeader.video.processing[pi];
+                    // reverse processing operation used in this stage
+                    switch (processingType)
+                    {
+                    case Image::ProcessingType::CompressLZ10:
+                        inData = Compression::decodeLZ10(inData);
+                        break;
+                    case Image::ProcessingType::CompressDXTV:
+                        outData = DXTV::decode(inData, m_previousPixels, m_fileHeader.video.width, m_fileHeader.video.height, m_fileHeader.video.swappedRedBlue);
+                        break;
+                    default:
+                        THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));
+                    }
+                    // break if this was the last processing operation
+                    if (isFinal)
+                    {
+                        break;
+                    }
                 }
-                // break if this was the last processing operation
-                if (isFinal)
-                {
-                    break;
-                }
-            } while (true);
+            }
             // return color data or convert pixel data to XRGB8888
             if (outData.empty())
             {
@@ -119,22 +121,27 @@ namespace Media
         {
             auto inData = frame.second;
             REQUIRE(!inData.empty(), std::runtime_error, "Frame audio data empty");
-            // split chunk data into header and data
             std::vector<int16_t> outData;
-            do
+            // check if we have any decode steps at all
+            if (m_fileHeader.audio.processing[0] == Audio::ProcessingType::Invalid)
             {
-                const auto [srcHeader, srcData] = IO::Vid2h::splitChunk(inData);
-                const auto isFinal = (srcHeader.processingType & Audio::ProcessingTypeFinal) != 0;
-                const auto processingType = static_cast<Audio::ProcessingType>(srcHeader.processingType & (~Audio::ProcessingTypeFinal));
+                // no decoding necessary, copy directly to output
+                outData = AudioHelpers::toSigned16(inData, m_info.audioSampleFormat);
+            }
+            // do decoding steps
+            for (uint32_t pi = 0; pi < 4; ++pi)
+            {
+                // this is the final operation either if we don't have any more steps or the next step is empty
+                const auto isFinal = (pi >= 3) || (m_fileHeader.audio.processing[pi + 1] == Audio::ProcessingType::Invalid);
+                const auto processingType = m_fileHeader.audio.processing[pi];
                 // reverse processing operation used in this stage
                 switch (processingType)
                 {
                 case Audio::ProcessingType::Uncompressed:
-                    outData = AudioHelpers::toSigned16(srcData, m_info.audioSampleFormat);
+                    outData = AudioHelpers::toSigned16(inData, m_info.audioSampleFormat);
                     break;
                 case Audio::ProcessingType::CompressLZ10:
-                    inData = Compression::decodeLZ10(srcData);
-                    REQUIRE(inData.size() == srcHeader.uncompressedSize, std::runtime_error, "Bad uncompressed size");
+                    inData = Compression::decodeLZ10(inData);
                     break;
                 default:
                     THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));
@@ -144,7 +151,7 @@ namespace Media
                 {
                     break;
                 }
-            } while (true);
+            }
             // clamp audio data to [-32767,32767] instead of [-32768,32767] to center around 0
             std::for_each(outData.begin(), outData.end(), [](auto &v)
                           { v = v < -32767 ? -32767 : v; });

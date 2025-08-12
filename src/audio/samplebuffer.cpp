@@ -170,6 +170,7 @@ namespace Audio
     auto SampleBuffer::pop_front(std::size_t nrOfSamplesPerChannel) -> Frame
     {
         Frame frame;
+        frame.nrOfSamples = nrOfSamplesPerChannel;
         frame.info.channelFormat = m_channelFormat;
         frame.info.sampleRateHz = m_sampleRateHz;
         frame.info.sampleFormat = m_sampleFormat;

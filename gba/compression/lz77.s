@@ -251,3 +251,37 @@ LZ77UnCompWrite8bit:
 .lz77_16bit_end:
     ldmfd sp!, {r3 - r8}
     bx lr
+
+.arm
+ .align
+ .global BIOSUnCompGetSize
+ .type BIOSUnCompGetSize,function
+#ifdef __NDS__
+ .section .itcm, "ax", %progbits
+#else
+ .section .iwram, "ax", %progbits
+#endif
+BIOSUnCompGetSize:
+    @ Read header word:
+    @ bit0-3:  reserved
+    @ bit4-7:  compressed type (1 for LZ77)
+    @ bit8-31: size of compressed data
+    ldrb r2, [r0, #0]
+    lsr r2, r2, #4
+    @ Stop if this isn't LZ77 and set return value to 0
+    cmp r2, #1
+    movne r0, #0
+    bne .biosuncomp_getsize_end
+    @ Don't make any assumption about initial alignment to
+    @ read the size of the data
+    ldrb r2, [r0, #1]
+    ldrb r3, [r0, #2]
+    lsl r3, r3, #8
+    orr r2, r2, r3
+    ldrb r3, [r0, #3]
+    add r0, r0, #4
+    lsl r3, r3, #16
+    orrs r2, r2, r3
+    mov r0, r2
+.biosuncomp_getsize_end:
+    bx lr

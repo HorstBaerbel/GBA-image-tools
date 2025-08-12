@@ -86,6 +86,20 @@ namespace AudioHelpers
         return result;
     }
 
+    auto nrOfSamples(const Audio::SampleData &samples, Audio::ChannelFormat channelFormat) -> uint32_t
+    {
+        return std::visit([channelFormat](auto data)
+                          { 
+            if (data.empty())
+            {
+                return 0U;
+            }
+            REQUIRE(channelFormat != Audio::ChannelFormat::Unknown, std::runtime_error, "Bad channel format");
+            const auto nrOfChannels = Audio::formatInfo(channelFormat).nrOfChannels;
+            REQUIRE(data.size() % nrOfChannels == 0, std::runtime_error, "Sample count must be a multiple of the number of channels (" << nrOfChannels << ")");
+            return uint32_t(data.size() / nrOfChannels); }, samples);
+    }
+
     auto rawDataSize(const Audio::SampleData &samples) -> uint32_t
     {
         return std::visit([](auto data)
@@ -96,14 +110,18 @@ namespace AudioHelpers
 
     auto toRawData(const Audio::SampleData &samples, Audio::ChannelFormat channelFormat) -> std::vector<uint8_t>
     {
-        REQUIRE(channelFormat != Audio::ChannelFormat::Unknown, std::runtime_error, "Bad channel format");
-        const auto nrOfChannels = Audio::formatInfo(channelFormat).nrOfChannels;
-        return std::visit([nrOfChannels](auto data)
-                          { 
-            using T = std::decay_t<decltype(data)>::value_type;
-            REQUIRE(data.size() > 0, std::runtime_error, "Empty sample data");
+        return std::visit([channelFormat](auto data)
+                          {
+            // Return empty data if buffer is empty
+            if (data.empty())
+            {
+                return std::vector<uint8_t>();
+            }
+            REQUIRE(channelFormat != Audio::ChannelFormat::Unknown, std::runtime_error, "Bad channel format");
+            const auto nrOfChannels = Audio::formatInfo(channelFormat).nrOfChannels;
             REQUIRE(data.size() % nrOfChannels == 0, std::runtime_error, "Sample count must be a multiple of the number of channels (" << nrOfChannels << ")");
             // if sample data is already uint8_t, return it
+            using T = std::decay_t<decltype(data)>::value_type;
             if constexpr (std::is_same_v<T, uint8_t>)
             {
                 return data;
@@ -117,14 +135,18 @@ namespace AudioHelpers
 
     auto toRawInterleavedData(const Audio::SampleData &samples, Audio::ChannelFormat channelFormat) -> std::vector<uint8_t>
     {
-        REQUIRE(channelFormat != Audio::ChannelFormat::Unknown, std::runtime_error, "Bad channel format");
-        const auto nrOfChannels = Audio::formatInfo(channelFormat).nrOfChannels;
-        return std::visit([nrOfChannels](auto data)
+        return std::visit([channelFormat](auto data)
                           { 
-            using T = std::decay_t<decltype(data)>::value_type;
-            REQUIRE(data.size() > 0, std::runtime_error, "Empty sample data");
+            // Return empty data if buffer is empty
+            if (data.empty())
+            {
+                return std::vector<uint8_t>();
+            }
+            REQUIRE(channelFormat != Audio::ChannelFormat::Unknown, std::runtime_error, "Bad channel format");
+            const auto nrOfChannels = Audio::formatInfo(channelFormat).nrOfChannels;
             REQUIRE(data.size() % nrOfChannels == 0, std::runtime_error, "Sample count must be a multiple of the number of channels (" << nrOfChannels << ")");
             // build output data
+            using T = std::decay_t<decltype(data)>::value_type;
             std::vector<uint8_t> result(sizeof(T) * data.size());
             if (nrOfChannels == 1)
             {

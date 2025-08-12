@@ -21,10 +21,11 @@ namespace Audio
     /// @brief Stores data for an audio frame
     struct Frame
     {
-        uint32_t index = 0;   // Input frame index counter
-        std::string fileName; // Input file name
-        FrameInfo info;       // Frame information
-        SampleData data;      // Raw / compressed data of mono or (planar) stereo channels
+        uint32_t index = 0;       // Input frame index counter
+        std::string fileName;     // Input file name
+        FrameInfo info;           // Frame information
+        SampleData data;          // Raw / compressed data of mono or (planar) stereo channels
+        uint32_t nrOfSamples = 0; // Number of samples per channel in data
     };
 
 }

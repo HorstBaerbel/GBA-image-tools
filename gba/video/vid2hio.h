@@ -20,7 +20,6 @@ namespace IO::Vid2h
     struct Frame : public FrameHeader
     {
         int32_t index = -1;               // Frame index in video
-        const uint32_t *header = nullptr; // Pointer to frame start / header
         const uint32_t *data = nullptr;   // Pointer to frame data
     } __attribute__((aligned(4), packed));
 

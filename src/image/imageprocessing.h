@@ -28,18 +28,18 @@ namespace Image
         /// @brief Add a processing step and its parameters
         /// @param type Processing type
         /// @param parameters Parameters to pass to processing
-        /// @param prependProcessingInfo If true the input data size and processing type will be prepended to the result
+        /// @param decodeRelevant If true the processing type is recorded for a call to getDecodingSteps().
         /// @param addStatistics The step should output statistics to the statistics container
-        void addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessingInfo = false, bool addStatistics = false);
+        void addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool decodeRelevant = false, bool addStatistics = false);
 
         /// @brief Get current # of steps in processing pipeline
-        std::size_t size() const;
+        std::size_t nrOfSteps() const;
 
-        /// @brief Remove all processing steps
-        void clear();
+        /// @brief Remove all processing steps. Will also reset()
+        void clearSteps();
 
         /// @brief Clear the internal state of all processing steps. Call to reset state if you want to run the processing pipeline multiple times
-        void clearState();
+        void reset();
 
         /// @brief Get human-readable description for processing steps in pipeline
         std::string getProcessingDescription(const std::string &seperator = ", ");
@@ -53,6 +53,10 @@ namespace Image
         /// @param data Input data and file name
         /// @note Will silently ignore OperationType::BatchConvert and ::Reduce operations
         Frame processStream(const Frame &data, Statistics::Container::SPtr statistics = nullptr);
+
+        /// @brief Get the processing needed to decode the data (steps reversed). These might not be all steps added with addStep()
+        /// @return Processing steps needed to decode the data
+        std::vector<ProcessingType> getDecodingSteps() const;
 
         // --- image conversion functions ------------------------------------
 
@@ -147,7 +151,7 @@ namespace Image
         static Frame compressDXT(const Frame &image, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
 
         /// @brief Encode a truecolor RGB888 or RGB555 image as DXT1-ish image with RGB555 pixels
-        /// Has additional intra- and inter-frame compression in comparison to DTXG
+        /// Has additional intra- and inter-frame compression in comparison to DXT
         /// @param parameters:
         /// - Color format XRGB1555 or XBGR1555
         /// - Maximum error for I-frame (keyframes) and P-frame references (inter-frames)
@@ -202,7 +206,7 @@ namespace Image
         {
             ProcessingType type;                // Type of processing operation applied
             std::vector<Parameter> parameters;  // Input parameters for operation
-            bool prependProcessingInfo = false; // If processing information should stored in the data
+            bool decodeRelevant = false;        // If processing information is needed for decoding
             bool addStatistics = false;         // If operation statistics should be written to
             std::vector<uint8_t> state;         // The input / output state for stateful operations
         };

@@ -11,38 +11,38 @@
 namespace Media
 {
 
-    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const uint32_t *frameData) -> const uint32_t *
+    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> const uint32_t *
     {
-        static_assert(sizeof(IO::Vid2h::ChunkHeader) % 4 == 0);
-        // get pointer to start of data chunk. audio data is stored first
-        auto currentChunk = frameData;
+        auto currentSrc = frame.data;
+        uint32_t uncompressedSize = frame.dataSize; // if the frame data is initially uncompressed its size will be == frame data size
         uint32_t *currentDst = nullptr;
-        do
+        // do decoding steps
+        for (uint32_t pi = 0; pi < sizeof(info.video.processing); ++pi)
         {
-            const auto chunk = reinterpret_cast<const IO::Vid2h::ChunkHeader *>(currentChunk);
-            const auto isFinal = (chunk->processingType & Image::ProcessingTypeFinal) != 0;
-            // get size of output data in words
-            const auto uncompressedSize32 = isFinal ? (info.imageSize + 3) / 4 : (chunk->uncompressedSize + 3) / 4;
-            // get pointer to start of frame data
-            auto currentSrc = currentChunk + sizeof(IO::Vid2h::ChunkHeader) / 4;
+            // this is the final operation either if we don't have any more steps, the current step is just a copy, or the next step is invalid
+            const auto processingType = info.video.processing[pi] == Image::ProcessingType::Invalid ? Image::ProcessingType::Uncompressed : info.video.processing[pi];
+            const auto isFinal = (pi >= 3) || (processingType == Image::ProcessingType::Uncompressed) || (info.video.processing[pi + 1] == Image::ProcessingType::Invalid);
             // if we're reading from start of scratchpad, write to the end and vice versa
-            currentDst = currentChunk == scratchPad ? scratchPad + ((scratchPadSize / 4) - uncompressedSize32) : scratchPad;
+            currentDst = currentSrc == scratchPad ? scratchPad + scratchPadSize / 8 : scratchPad;
             // check wether destination is in VRAM (no 8-bit writes possible)
             const bool dstInVRAM = (((uint32_t)currentDst) >= 0x05000000) && (((uint32_t)currentDst) < 0x08000000);
             // reverse processing operation used in this stage
-            switch (static_cast<Image::ProcessingType>(chunk->processingType & (~Image::ProcessingTypeFinal)))
+            switch (processingType)
             {
             case Image::ProcessingType::Uncompressed:
-                Memory::memcpy32(currentDst, currentSrc, uncompressedSize32);
+                Memory::memcpy32(currentDst, currentSrc, uncompressedSize / 4);
                 break;
             case Image::ProcessingType::CompressLZ10:
                 dstInVRAM ? Decompress::LZ77UnCompWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
+                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
             case Image::ProcessingType::CompressRLE:
                 dstInVRAM ? BIOS::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
+                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
             case Image::ProcessingType::CompressDXTV:
-                DXTV::UnCompWrite16bit<240>(currentSrc, currentDst, (const uint32_t *)VRAM, info.videoWidth, info.videoHeight);
+                DXTV::UnCompWrite16bit<240>(currentSrc, currentDst, (const uint32_t *)VRAM, info.video.width, info.video.height);
+                uncompressedSize = DXTV::UnCompGetSize(currentSrc);
                 break;
             default:
                 return currentDst;
@@ -52,54 +52,51 @@ namespace Media
             {
                 break;
             }
-            // decide where to decode the next chunk from. our old destination is the new source
-            currentChunk = currentDst;
-        } while (true);
+            // our old destination is the new source
+            currentSrc = currentDst;
+        }
         return currentDst;
     }
 
-    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const uint32_t *frameData) -> std::pair<const uint32_t *, uint32_t>
+    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
     {
-        static_assert(sizeof(IO::Vid2h::ChunkHeader) % 4 == 0);
-        // get pointer to start of data chunk. audio data is stored first
-        auto currentChunk = frameData;
-        uint32_t chunkUncompressedSize = 0;
+        auto currentSrc = frame.data;
+        uint32_t uncompressedSize = frame.dataSize; // if the frame data is initially uncompressed its size will be == frame data size
         uint32_t *currentDst = nullptr;
-        do
+        // do decoding steps
+        for (uint32_t pi = 0; pi < sizeof(info.audio.processing); ++pi)
         {
-            const auto chunk = reinterpret_cast<const IO::Vid2h::ChunkHeader *>(currentChunk);
-            const auto isFinal = (chunk->processingType & Image::ProcessingTypeFinal) != 0;
-            // get size of output data in words
-            chunkUncompressedSize = chunk->uncompressedSize;
-            const auto uncompressedSize32 = (chunkUncompressedSize + 3) / 4;
-            // get pointer to start of frame data
-            auto currentSrc = currentChunk + sizeof(IO::Vid2h::ChunkHeader) / 4;
+            // this is the final operation either if we don't have any more steps, the current step is just a copy, or the next step is invalid
+            const auto processingType = info.audio.processing[pi] == Audio::ProcessingType::Invalid ? Audio::ProcessingType::Uncompressed : info.audio.processing[pi];
+            const auto isFinal = (pi >= 3) || (processingType == Audio::ProcessingType::Uncompressed) || (info.audio.processing[pi + 1] == Audio::ProcessingType::Invalid);
             // if we're reading from start of scratchpad, write to the end and vice versa
-            currentDst = currentChunk == scratchPad ? scratchPad + ((scratchPadSize / 4) - uncompressedSize32) : scratchPad;
+            currentDst = currentSrc == scratchPad ? scratchPad + scratchPadSize / 8 : scratchPad;
             // reverse processing operation used in this stage
-            switch (static_cast<Image::ProcessingType>(chunk->processingType & (~Image::ProcessingTypeFinal)))
+            switch (processingType)
             {
-            case Image::ProcessingType::Uncompressed:
+            case Audio::ProcessingType::Uncompressed:
                 // copy audio data to sample buffer
-                Memory::memcpy32(currentDst, currentSrc, uncompressedSize32);
+                Memory::memcpy32(currentDst, currentSrc, uncompressedSize / 4);
                 break;
-            case Image::ProcessingType::CompressLZ10:
+            case Audio::ProcessingType::CompressLZ10:
                 Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
+                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
-            case Image::ProcessingType::CompressRLE:
+            case Audio::ProcessingType::CompressRLE:
                 BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
+                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
             default:
-                return {currentDst, chunkUncompressedSize};
+                return {currentDst, uncompressedSize};
             }
             // break if this was the last processing operation
             if (isFinal)
             {
                 break;
             }
-            // decide where to decode the next chunk from. our old destination is the new source
-            currentChunk = currentDst;
-        } while (true);
-        return {currentDst, chunkUncompressedSize};
+            // our old destination is the new source
+            currentSrc = currentDst;
+        }
+        return {currentDst, uncompressedSize};
     }
 }
