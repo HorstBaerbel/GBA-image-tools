@@ -32,9 +32,9 @@ add_subdirectory(Catch2)
 # Define targets
 
 set(TARGET_SRC
-    ${PROJECT_SOURCE_DIR}/src/codec/dxt.cpp
-    ${PROJECT_SOURCE_DIR}/src/codec/dxt_tables.cpp
-    ${PROJECT_SOURCE_DIR}/src/codec/dxtv.cpp
+    ${PROJECT_SOURCE_DIR}/src/image_codec/dxt.cpp
+    ${PROJECT_SOURCE_DIR}/src/image_codec/dxt_tables.cpp
+    ${PROJECT_SOURCE_DIR}/src/image_codec/dxtv.cpp
     ${PROJECT_SOURCE_DIR}/src/color/conversions.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorformat.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorhelpers.cpp
