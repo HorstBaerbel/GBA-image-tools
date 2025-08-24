@@ -97,15 +97,15 @@ add_executable(hex2gba ${HEX2GBA_SRC})
 target_link_libraries(hex2gba)
 
 add_executable(img2h ${IMG2H_SRC})
-target_link_libraries(img2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+target_link_libraries(img2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 adpcm-lib stdc++fs pthread)
 add_dependencies(img2h BuildLibplumBasefiles)
 
 add_executable(vid2h ${VID2H_SRC})
-target_link_libraries(vid2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+target_link_libraries(vid2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 adpcm-lib stdc++fs pthread)
 add_dependencies(vid2h BuildLibplumBasefiles)
 
 add_executable(vid2hplay ${VID2HPLAY_SRC})
-target_link_libraries(vid2hplay PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 stdc++fs pthread)
+target_link_libraries(vid2hplay PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 adpcm-lib stdc++fs pthread)
 add_dependencies(vid2hplay BuildLibplumBasefiles)
 
 #-------------------------------------------------------------------------------

@@ -17,5 +17,6 @@ add_custom_target(BuildLibplumBasefiles
         ${PROJECT_SOURCE_DIR}/libplum
 )
 
+add_subdirectory(adpcm-xq)
 add_subdirectory(src)
 add_subdirectory(test)
