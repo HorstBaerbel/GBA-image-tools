@@ -27,19 +27,17 @@ using namespace Color;
 
 std::vector<uint8_t> DXTV::FrameHeader::toVector() const
 {
-    std::vector<uint8_t> result(8);
-    *reinterpret_cast<uint16_t *>(result.data() + 0) = frameFlags;
-    *reinterpret_cast<uint16_t *>(result.data() + 2) = 0;
-    *reinterpret_cast<uint32_t *>(result.data() + 4) = uncompressedSize;
+    REQUIRE(uncompressedSize < 2 ^ 24, std::runtime_error, "Uncompressed size must be < 2^24");
+    std::vector<uint8_t> result(4);
+    *reinterpret_cast<uint32_t *>(result.data()) = (static_cast<uint32_t>(frameFlags) << 24) | uncompressedSize;
     return result;
 }
 
 auto DXTV::FrameHeader::fromVector(const std::vector<uint8_t> &data) -> DXTV::FrameHeader
 {
-    REQUIRE(data.size() >= 8, std::runtime_error, "Data size must be >= 8");
-    auto frameFlags = *reinterpret_cast<const uint16_t *>(data.data() + 0);
-    auto uncompressedSize = *reinterpret_cast<const uint32_t *>(data.data() + 4);
-    return {frameFlags, 0, uncompressedSize};
+    REQUIRE(data.size() >= 4, std::runtime_error, "Data size must be >= 4");
+    auto header = *reinterpret_cast<const uint32_t *>(data.data());
+    return {static_cast<uint8_t>(header >> 24), header & 0xFFFFFF};
 }
 
 /// @brief Search for entry in codebook with minimum error
