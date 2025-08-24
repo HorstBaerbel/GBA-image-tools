@@ -22,9 +22,8 @@ public:
     /// @brief Frame header for one DTXV frame
     struct FrameHeader
     {
-        uint16_t frameFlags = 0;       // General frame flags, e.g. FRAME_IS_PFRAME or FRAME_KEEP
-        uint16_t dummy = 0;            // currently unused
-        uint32_t uncompressedSize = 0; // Uncompressed size of data in bytes
+        uint8_t frameFlags = 0;             // General frame flags, e.g. FRAME_IS_PFRAME or FRAME_KEEP
+        uint32_t uncompressedSize : 24 = 0; // Uncompressed size of data in bytes
 
         std::vector<uint8_t> toVector() const;
         static auto fromVector(const std::vector<uint8_t> &data) -> FrameHeader;

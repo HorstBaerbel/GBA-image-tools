@@ -45,7 +45,7 @@
 
 namespace DXTV_CONSTANTS
 {
-    static constexpr uint16_t FRAME_KEEP = 0x40;                                          // 1 for frames that are considered a direct copy of the previous frame and can be kept
+    static constexpr uint8_t FRAME_KEEP = 0x40;                                           // 1 for frames that are considered a direct copy of the previous frame and can be kept
     static constexpr uint32_t BLOCK_MAX_DIM = 8;                                          // Maximum block size is 8x8 pixels
     static constexpr bool BLOCK_NO_SPLIT = false;                                         // The block is a full block
     static constexpr bool BLOCK_IS_SPLIT = true;                                          // The block is split into smaller sub-blocks
