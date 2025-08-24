@@ -2,10 +2,10 @@
 
 #include "audio/audiohelpers.h"
 #include "audio/processingtype.h"
-#include "codec/dxtv.h"
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
 #include "image/processingtype.h"
+#include "image_codec/dxtv.h"
 
 namespace Media
 {

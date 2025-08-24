@@ -1,8 +1,5 @@
 #include "imageprocessing.h"
 
-#include "codec/dxt.h"
-#include "codec/dxtv.h"
-#include "codec/gvid.h"
 #include "color/colorhelpers.h"
 #include "color/optimizedistance.h"
 #include "color/rgb565.h"
@@ -10,6 +7,9 @@
 #include "color/xrgb8888.h"
 #include "compression/lzss.h"
 #include "exception.h"
+#include "image_codec/dxt.h"
+#include "image_codec/dxtv.h"
+#include "image_codec/gvid.h"
 #include "imagehelpers.h"
 #include "math/colorfit.h"
 #include "processing/datahelpers.h"

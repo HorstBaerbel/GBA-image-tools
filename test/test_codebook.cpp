@@ -1,7 +1,7 @@
 #include "testmacros.h"
 
-#include "codec/codebook.h"
 #include "color/xrgb8888.h"
+#include "image_codec/codebook.h"
 
 #include <array>
 #include <cstdint>

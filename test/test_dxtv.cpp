@@ -1,10 +1,10 @@
 #include "testmacros.h"
 
-#include "codec/blockview.h"
-#include "codec/codebook.h"
-#include "codec/dxtv.h"
 #include "color/psnr.h"
 #include "color/rgb888.h"
+#include "image_codec/blockview.h"
+#include "image_codec/codebook.h"
+#include "image_codec/dxtv.h"
 #include "io/imageio.h"
 
 #include <algorithm>
