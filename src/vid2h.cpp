@@ -392,6 +392,11 @@ int main(int argc, const char *argv[])
         // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
         const double audioOutSamplesPerFrame = audioOutSampleRateHz / mediaInfo.videoFrameRateHz; // Number of audio samples per channel needed per frame of video
         audioProcessing.addStep(Audio::ProcessingType::Repackage, {audioOutSamplesPerFrame, uint32_t(16)});
+        // build audio processing pipeline - audio compression
+        if (options.adpcm)
+        {
+            audioProcessing.addStep(Audio::ProcessingType::CompressADPCM, {}, true);
+        }
         // print audio processing pipeline configuration
         const auto audioProcessingDesc = audioProcessing.getProcessingDescription();
         std::cout << "Applying audio processing: " << audioProcessingDesc << std::endl;

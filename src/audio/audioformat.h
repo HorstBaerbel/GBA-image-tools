@@ -9,7 +9,7 @@ namespace Audio
 {
 
     /// @brief Raw / compressed audio sample data
-    /// @note Data ranges are [-127,127], [1,255], [-32767,32767], [1,65535], [-1,1]
+    /// @note Data ranges are [-127,127], [1,255], [-32767,32767], [1,65535], [-1.0,1.0]
     using SampleData = std::variant<std::vector<int8_t>, std::vector<uint8_t>, std::vector<int16_t>, std::vector<uint16_t>, std::vector<float>>;
 
     /// @brief Audio channel format identifier

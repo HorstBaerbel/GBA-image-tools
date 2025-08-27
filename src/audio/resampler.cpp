@@ -111,6 +111,7 @@ namespace Audio
 
     auto Resampler::resample(const Frame &inFrame, bool flush) -> Frame
     {
+        REQUIRE(!inFrame.info.compressed, std::runtime_error, "Can not resample compressed data");
         auto nrOfOutputSamples = 0;
         auto outputRawBufferSize = 0;
         // check if we have any frame data

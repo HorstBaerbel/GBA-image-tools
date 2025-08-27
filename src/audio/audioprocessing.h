@@ -1,5 +1,6 @@
 #pragma once
 
+#include "audio_codec/adpcm.h"
 #include "audiostructs.h"
 #include "processingtype.h"
 #include "resampler.h"
@@ -19,7 +20,7 @@ namespace Audio
     {
     public:
         /// @brief Variable parameters for processing step
-        using Parameter = std::variant<bool, int32_t, uint32_t, double, ChannelFormat, SampleFormat, Frame, std::string>;
+        using Parameter = std::variant<bool, int32_t, uint32_t, double, ChannelFormat, SampleFormat>;
 
         /// @brief Construct an audio processing pipeline
         Processing() = default;
@@ -147,14 +148,15 @@ namespace Audio
         };
         std::vector<ProcessingStep> m_steps; // Processing steps used in pipeline
 
-        uint32_t m_nrOfInputFrames = 0;                // Number of frames input into processing
-        uint32_t m_nrOfOutputFrames = 0;               // Number of frames output from processing
-        uint32_t m_nrOfOutputSamples = 0;              // Number of samples output from processing
-        uint32_t m_outputMaxMemoryNeeded = 0;          // Max. buffer size needed for decompression
-        FrameInfo m_outputFrameInfo;                   // Frame info from last frame output from processStream()
-        std::shared_ptr<Audio::Resampler> m_resampler; // Audio resampler using FFmpeg
-        std::shared_ptr<SampleBuffer> m_sampleBuffer;  // Audio buffer for repackaging samples
-        double m_sampleDeltaPrevFrame = 0;             // Number of audio samples per channel last frame in comparison to requested audioSamplesPerFrame
+        uint32_t m_nrOfInputFrames = 0;               // Number of frames input into processing
+        uint32_t m_nrOfOutputFrames = 0;              // Number of frames output from processing
+        uint32_t m_nrOfOutputSamples = 0;             // Number of samples output from processing
+        uint32_t m_outputMaxMemoryNeeded = 0;         // Max. buffer size needed for decompression
+        FrameInfo m_outputFrameInfo;                  // Frame info from last frame output from processStream()
+        std::shared_ptr<Resampler> m_resampler;       // Audio resampler using FFmpeg
+        std::shared_ptr<SampleBuffer> m_sampleBuffer; // Audio buffer for repackaging samples
+        double m_sampleDeltaPrevFrame = 0;            // Number of audio samples per channel last frame in comparison to requested audioSamplesPerFrame
+        std::shared_ptr<ADPCM> m_codecAdpcm;          // ADPCM compressor
 
         enum class OperationType
         {

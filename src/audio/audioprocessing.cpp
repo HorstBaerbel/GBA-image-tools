@@ -31,6 +31,7 @@ namespace Audio
         const auto outChannelFormat = VariantHelpers::getValue<ChannelFormat, 0>(parameters);
         const auto outSampleRateHz = VariantHelpers::getValue<uint32_t, 1>(parameters);
         const auto outSampleFormat = VariantHelpers::getValue<SampleFormat, 2>(parameters);
+        // resample data
         if (processing.m_resampler == nullptr)
         {
             processing.m_resampler = std::make_shared<Audio::Resampler>(frame.info.channelFormat, frame.info.sampleRateHz, outChannelFormat, outSampleRateHz, outSampleFormat);
@@ -121,7 +122,15 @@ namespace Audio
 
     std::optional<Frame> Processing::compressADPCM(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
     {
-        THROW(std::runtime_error, "Not implemented");
+        // compress data
+        if (processing.m_codecAdpcm == nullptr)
+        {
+            processing.m_codecAdpcm = std::make_shared<ADPCM>(frame.info.channelFormat, frame.info.sampleRateHz);
+        }
+        auto result = frame;
+        result.data = processing.m_codecAdpcm->encode(frame.data, statistics);
+        result.info.compressed = true;
+        return result;
     }
 
     // ----------------------------------------------------------------------------
@@ -225,11 +234,6 @@ namespace Audio
                     result += Audio::formatInfo(std::get<Audio::SampleFormat>(p)).id;
                     result += (pi < (step.parameters.size() - 1) ? " " : "");
                 }
-                else if (std::holds_alternative<std::string>(p))
-                {
-                    result += std::get<std::string>(p);
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
-                }
             }
             result += (si < (m_steps.size() - 1) ? seperator : "");
         }
@@ -253,7 +257,7 @@ namespace Audio
                 auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
                 auto result = convertFunc(*this, processed, stepIt->parameters, flushBuffers, stepStatistics);
                 // check if we got an output frame, else report to the caller
-                if (!result)
+                if (!result.has_value())
                 {
                     return {};
                 }

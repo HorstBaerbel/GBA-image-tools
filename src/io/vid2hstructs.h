@@ -34,7 +34,7 @@ namespace IO::Vid2h
         uint32_t nrOfSamples = 0;             // Number of audio samples per channel
         uint16_t sampleRateHz = 0;            // Audio sample rate in Hz
         uint8_t channels = 0;                 // Audio channels used (only 1 or 2 supported)
-        uint8_t sampleBits = 0;               // Audio sample bit depth (8, 16), always signed
+        uint8_t sampleBits = 0;               // Audio sample bit depth (8, 16), always a signed data type
         int16_t offsetSamples = 0;            // Audio offset in comparison to video in # of samples
         uint16_t memoryNeeded = 0;            // Max. intermediate memory needed to decompress an audio frame. 0 if data can be directly written to destination (single compression stage)
         Audio::ProcessingType processing[4] = // Audio processing steps. See audio/processingtypes.h

@@ -2,6 +2,7 @@
 
 #include "audio/audiohelpers.h"
 #include "audio/processingtype.h"
+#include "audio_codec/adpcm.h"
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
 #include "image/processingtype.h"
@@ -132,6 +133,9 @@ namespace Media
                     break;
                 case Audio::ProcessingType::CompressLZ10:
                     inData = Compression::decodeLZ10(inData);
+                    break;
+                case Audio::ProcessingType::CompressADPCM:
+                    outData = std::get<std::vector<int16_t>>(Audio::ADPCM::decode(inData));
                     break;
                 default:
                     THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));
