@@ -11,8 +11,8 @@ namespace Audio
     class ADPCM
     {
     public:
-        static constexpr int BITS_PER_SAMPLE = 4;
-        static constexpr int LOOKAHEAD = 3;
+        static constexpr int BITS_PER_SAMPLE = 4; // ADPCM bits per sample
+        static constexpr int LOOKAHEAD = 3;       // Lookahead value for ADPCM encoder. The more the better quality, but slower encoding
 
         struct FrameHeader
         {

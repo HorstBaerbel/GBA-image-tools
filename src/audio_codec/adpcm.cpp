@@ -48,7 +48,7 @@ namespace Audio
     /// @brief ADPCM-XQ state for (de-)compression
     struct ADPCM::State
     {
-        void *context = nullptr;
+        void *context[2] = {nullptr, nullptr}; // ADPCM-XQ state per channel
     };
 
     ADPCM::ADPCM(Audio::ChannelFormat channelFormat, uint32_t sampleRateHz)
@@ -57,8 +57,11 @@ namespace Audio
         const auto channelFormatInfo = formatInfo(channelFormat);
         m_nrOfChannels = channelFormatInfo.nrOfChannels;
         REQUIRE(m_nrOfChannels == 1 || m_nrOfChannels == 2, std::runtime_error, "Number of channels must be 1 or 2");
-        m_state->context = adpcm_create_context(m_nrOfChannels, static_cast<int>(sampleRateHz), LOOKAHEAD, NOISE_SHAPING_DYNAMIC);
-        REQUIRE(m_state->context != nullptr, std::runtime_error, "Failed to allocate ADPCM-XQ context");
+        for (uint32_t ch = 0; ch < m_nrOfChannels; ++ch)
+        {
+            m_state->context[ch] = adpcm_create_context(1, static_cast<int>(sampleRateHz), LOOKAHEAD, NOISE_SHAPING_DYNAMIC);
+            REQUIRE(m_state->context != nullptr, std::runtime_error, "Failed to allocate ADPCM-XQ context for channel " << ch);
+        }
     }
 
     auto ADPCM::encode(const Audio::SampleData &samples, Statistics::Frame::SPtr statistics) -> std::vector<uint8_t>
@@ -68,23 +71,30 @@ namespace Audio
         auto &pcmSamples = std::get<std::vector<int16_t>>(samples);
         const auto pcmNrOfSamples = pcmSamples.size() / m_nrOfChannels;
         REQUIRE(m_nrOfChannels == 1 || pcmSamples.size() % 2 == 0, std::runtime_error, "Stereo data must have an even number of samples");
+        const auto pcmDataSize = pcmSamples.size() * sizeof(pcmSamples.front());
+        REQUIRE(pcmDataSize < (2 ^ 16), std::runtime_error, "PCM data size must be < 2^16");
         // generate frame header
         FrameHeader frameHeader;
         frameHeader.flags = 0;
         frameHeader.nrOfChannels = m_nrOfChannels;
         frameHeader.pcmBitsPerSample = 16;
         frameHeader.adpcmBitsPerSample = BITS_PER_SAMPLE;
-        frameHeader.uncompressedSize = pcmSamples.size() * sizeof(pcmSamples.front());
+        frameHeader.uncompressedSize = pcmDataSize;
         // allocate audio conversion buffer and add frame header
         std::vector<uint8_t> result = frameHeader.toVector();
-        const auto adpcmBlockSize = adpcm_sample_count_to_block_size(pcmNrOfSamples, m_nrOfChannels, BITS_PER_SAMPLE);
-        REQUIRE(adpcmBlockSize < 2 ^ 16, std::runtime_error, "Block size must be < 2^16");
-        result.resize(result.size() + adpcmBlockSize);
-        // convert samples to ADPCM format
-        auto adpcmDataPtr = result.data() + sizeof(FrameHeader);
-        size_t adpcmDataSize = 0;
-        adpcm_encode_block_ex(m_state->context, adpcmDataPtr, &adpcmDataSize, pcmSamples.data(), pcmNrOfSamples, BITS_PER_SAMPLE);
-        REQUIRE(adpcmDataSize == adpcmBlockSize, std::runtime_error, "Failed to encode block (expected " << adpcmBlockSize << "bytes , got " << adpcmDataSize << " bytes)");
+        const auto adpcmChannelBlockSize = adpcm_sample_count_to_block_size(pcmNrOfSamples, 1, BITS_PER_SAMPLE);
+        result.resize(result.size() + adpcmChannelBlockSize * m_nrOfChannels);
+        // convert samples to ADPCM format one channel at a time
+        auto pcmChannelDataPtr = pcmSamples.data();
+        auto adpcmChannelDataPtr = result.data() + sizeof(FrameHeader);
+        for (uint32_t ch = 0; ch < m_nrOfChannels; ++ch)
+        {
+            size_t adpcmConvertedDataSize = 0;
+            adpcm_encode_block_ex(m_state->context[ch], adpcmChannelDataPtr, &adpcmConvertedDataSize, pcmChannelDataPtr, pcmNrOfSamples, BITS_PER_SAMPLE);
+            REQUIRE(adpcmConvertedDataSize == adpcmChannelBlockSize, std::runtime_error, "Failed to encode channel " << ch << " (expected " << adpcmChannelBlockSize << " bytes , got " << adpcmConvertedDataSize << " bytes)");
+            pcmChannelDataPtr += pcmNrOfSamples;
+            adpcmChannelDataPtr += adpcmChannelBlockSize;
+        }
         return result;
     }
 
@@ -95,22 +105,33 @@ namespace Audio
         const auto frameHeader = FrameHeader::fromVector(data);
         // allocate audio conversion buffers
         const auto adpcmDataSize = data.size() - sizeof(FrameHeader);
-        const auto adpcmNrOfSamples = adpcm_block_size_to_sample_count(adpcmDataSize, frameHeader.nrOfChannels, BITS_PER_SAMPLE);
-        std::vector<int16_t> pcmSamples(adpcmNrOfSamples * frameHeader.nrOfChannels);
+        const auto adpcmChannelBlockSize = adpcmDataSize / frameHeader.nrOfChannels;
+        const auto adpcmChannelNrOfSamples = adpcm_block_size_to_sample_count(adpcmChannelBlockSize, 1, BITS_PER_SAMPLE);
+        std::vector<int16_t> pcmSamples(adpcmChannelNrOfSamples * frameHeader.nrOfChannels);
         // decode ADPCM samples
-        auto adpcmDataPtr = data.data() + sizeof(FrameHeader);
-        auto pcmDataPtr = pcmSamples.data();
-        const auto pcmNrOfSamples = adpcm_decode_block_ex(pcmDataPtr, adpcmDataPtr, adpcmDataSize, frameHeader.nrOfChannels, BITS_PER_SAMPLE);
-        REQUIRE(adpcmNrOfSamples == pcmNrOfSamples, std::runtime_error, "Failed to decode block (expected " << adpcmNrOfSamples << " samples , got " << pcmNrOfSamples << " samples)");
+        auto adpcmChannelDataPtr = data.data() + sizeof(FrameHeader);
+        auto pcmChannelDataPtr = pcmSamples.data();
+        for (uint32_t ch = 0; ch < frameHeader.nrOfChannels; ++ch)
+        {
+            const auto pcmChannelNrOfSamples = adpcm_decode_block_ex(pcmChannelDataPtr, adpcmChannelDataPtr, adpcmChannelBlockSize, 1, BITS_PER_SAMPLE);
+            REQUIRE(adpcmChannelNrOfSamples == pcmChannelNrOfSamples, std::runtime_error, "Failed to decode channel " << ch << " (expected " << adpcmChannelNrOfSamples << " samples , got " << pcmChannelNrOfSamples << " samples)");
+            pcmChannelDataPtr += pcmChannelNrOfSamples;
+            adpcmChannelDataPtr += adpcmChannelBlockSize;
+        }
         return pcmSamples;
     }
 
     ADPCM::~ADPCM()
     {
-        if (m_state->context)
+        if (m_state->context[0])
         {
-            adpcm_free_context(m_state->context);
-            m_state->context = nullptr;
+            adpcm_free_context(m_state->context[0]);
+            m_state->context[0] = nullptr;
+        }
+        if (m_state->context[1])
+        {
+            adpcm_free_context(m_state->context[1]);
+            m_state->context[1] = nullptr;
         }
     }
 
