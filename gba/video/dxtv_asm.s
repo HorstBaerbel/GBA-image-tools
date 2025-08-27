@@ -1,4 +1,4 @@
-#include "codec/dxtv_constants.h"
+#include "image_codec/dxtv_constants.h"
 
  .global DXT_C2_ModeHalf_5bit
  .global DXT_C2C3_ModeThird_5bit

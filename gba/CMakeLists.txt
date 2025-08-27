@@ -44,7 +44,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	print/output.cpp
 	sys/decompress.cpp
 	compression/lz77.s
-	../src/codec/dxt_tables.cpp
+	../src/image_codec/dxt_tables.cpp
 	video/dxtv.cpp
 	video/dxtv_asm.s
 	video/vid2hdecoder.cpp
@@ -67,7 +67,7 @@ LIST(APPEND IMAGE_SOURCE_FILES
 	sys/decompress.cpp
 	compression/lz77.s
 	image/dxt.cpp
-	../src/codec/dxt_tables.cpp
+	../src/image_codec/dxt_tables.cpp
 	data/font_8x8.c
 )
 

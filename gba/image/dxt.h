@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "codec/dxt_tables.h"
+#include "image_codec/dxt_tables.h"
 #include "sys/base.h"
 
 namespace DXT

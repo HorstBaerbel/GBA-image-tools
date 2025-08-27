@@ -1,9 +1,9 @@
 #include "dxtv.h"
 
-#include "codec/dxt_tables.h"
-#include "codec/dxtv_constants.h"
 #include "dxtv_asm.h"
 #include "image/dxt.h"
+#include "image_codec/dxt_tables.h"
+#include "image_codec/dxtv_constants.h"
 #include "memory/memory.h"
 #include "print/output.h"
 
@@ -216,10 +216,8 @@ namespace DXTV
         constexpr uint32_t Block4HStride32 = 2;                   // horizontal stride to next 4x4 block in dst in words / 2 pixels
         constexpr uint32_t Block4VStride32 = 4 * LineStride32;    // vertical stride to next 4x4 block in dst in words / 2 pixels
         constexpr uint32_t Block8HStride32 = 2 * Block4HStride32; // horizontal stride to next 8x8 block in dst in words / 2 pixels
-        auto dataPtr16 = reinterpret_cast<const uint16_t *>(data);
-        // copy frame header and skip dummy flags and uncompressed size
-        const uint16_t headerFlags = *dataPtr16++;
-        dataPtr16 += 3;
+        // copy frame header and skip to data
+        const uint32_t headerFlags = *data++ & 0xFF;
         // check if we want to keep this duplicate frame
         if ((headerFlags & DXTV_CONSTANTS::FRAME_KEEP) != 0)
         {
@@ -227,6 +225,7 @@ namespace DXTV
             return;
         }
         // set up some variables
+        auto dataPtr16 = reinterpret_cast<const uint16_t *>(data);
         for (uint32_t by = 0; by < height / DXTV_CONSTANTS::BLOCK_MAX_DIM; ++by)
         {
             uint32_t flags = 0;
@@ -274,6 +273,6 @@ namespace DXTV
 
     uint32_t UnCompGetSize(const uint32_t *data)
     {
-        return data[1];
+        return data[0] >> 8;
     }
 }

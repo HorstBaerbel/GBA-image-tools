@@ -27,7 +27,7 @@ public:
 
         std::vector<uint8_t> toVector() const;
         static auto fromVector(const std::vector<uint8_t> &data) -> FrameHeader;
-    };
+    } __attribute__((aligned(4), packed));
 
     /// @brief Compress image block to DXTV format
     template <std::size_t BLOCK_DIM>

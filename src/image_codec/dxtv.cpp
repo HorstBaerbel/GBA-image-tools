@@ -27,17 +27,22 @@ using namespace Color;
 
 std::vector<uint8_t> DXTV::FrameHeader::toVector() const
 {
+    static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
     REQUIRE(uncompressedSize < 2 ^ 24, std::runtime_error, "Uncompressed size must be < 2^24");
-    std::vector<uint8_t> result(4);
-    *reinterpret_cast<uint32_t *>(result.data()) = (static_cast<uint32_t>(frameFlags) << 24) | uncompressedSize;
+    std::vector<uint8_t> result(sizeof(FrameHeader));
+    *reinterpret_cast<uint32_t *>(result.data()) = (uncompressedSize << 8) | static_cast<uint32_t>(frameFlags);
     return result;
 }
 
 auto DXTV::FrameHeader::fromVector(const std::vector<uint8_t> &data) -> DXTV::FrameHeader
 {
-    REQUIRE(data.size() >= 4, std::runtime_error, "Data size must be >= 4");
-    auto header = *reinterpret_cast<const uint32_t *>(data.data());
-    return {static_cast<uint8_t>(header >> 24), header & 0xFFFFFF};
+    static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
+    REQUIRE(data.size() >= sizeof(FrameHeader), std::runtime_error, "Data size must be >= " << sizeof(FrameHeader));
+    auto data32 = *reinterpret_cast<const uint32_t *>(data.data());
+    FrameHeader header;
+    header.frameFlags = data32 & 0xFF;
+    header.uncompressedSize = (data32 & 0xFFFFFF) >> 8;
+    return header;
 }
 
 /// @brief Search for entry in codebook with minimum error
@@ -205,7 +210,6 @@ auto DXTV::encodeBlock<8>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previ
 
 auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
 {
-    static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
     REQUIRE(width % CodeBook8x8::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of " << CodeBook8x8::BlockMaxDim << " for DXTV compression");
     REQUIRE(height % CodeBook8x8::BlockMaxDim == 0, std::runtime_error, "Image height must be a multiple of " << CodeBook8x8::BlockMaxDim << " for DXTV compression");
     REQUIRE(quality >= 0 && quality <= 100, std::runtime_error, "Max. block error must be in [0,100]");
