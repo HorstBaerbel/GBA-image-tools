@@ -188,10 +188,7 @@ namespace Audio
             std::vector<int8_t> dataI8;
             dataI8.reserve(dataU8.size());
             std::transform(dataU8.cbegin(), dataU8.cend(), std::back_inserter(dataI8), [](auto v)
-                           {
-                // clamp audio data to [1,255] instead of [0,255] to center around 128
-                v = v < 1 ? 1 : v;
-                return static_cast<int32_t>(v) - 128; });
+                           { return static_cast<int32_t>(v) - 128; });
             outFrame.data = dataI8;
             break;
         }
@@ -208,10 +205,7 @@ namespace Audio
             std::vector<uint16_t> dataU16;
             dataU16.reserve(dataS16.size());
             std::transform(dataS16.cbegin(), dataS16.cend(), std::back_inserter(dataU16), [](auto v)
-                           { 
-                // clamp audio data to [-32767,32767] instead of [-32768,32767] to center around 0
-                v = v < -32767 ? -32767 : v;
-                return static_cast<uint16_t>(static_cast<int32_t>(v) + 32768); });
+                           { return static_cast<uint16_t>(static_cast<int32_t>(v) + 32768); });
             outFrame.data = dataU16;
             break;
         }

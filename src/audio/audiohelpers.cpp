@@ -50,6 +50,7 @@ namespace AudioHelpers
                 // we choose the later here
                 float s = static_cast<float>(samplesPtr32[i]) * 32768;
                 s = s > 32767 ? 32767 : s;
+                s = s < -32768 ? -32768 : s;
                 result.push_back(static_cast<int16_t>(s));
             }
             break;

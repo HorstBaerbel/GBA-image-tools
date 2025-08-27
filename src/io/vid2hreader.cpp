@@ -146,9 +146,6 @@ namespace Media
                     break;
                 }
             }
-            // clamp audio data to [-32767,32767] instead of [-32768,32767] to center around 0
-            std::for_each(outData.begin(), outData.end(), [](auto &v)
-                          { v = v < -32767 ? -32767 : v; });
             return {IO::FrameType::Audio, outData};
         }
     }
