@@ -5,6 +5,7 @@
 #include "mediatypes.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <variant>
 #include <vector>
@@ -16,6 +17,8 @@ namespace Media
     class Reader
     {
     public:
+        using SPtr = std::shared_ptr<Reader>;
+
         /// @brief Information about opened media file
         struct MediaInfo
         {
@@ -50,7 +53,10 @@ namespace Media
             std::variant<std::vector<Color::XRGB8888>, std::vector<int16_t>> data; // Raw, uncompressed pixel or (planar) audio data
         };
 
-        /// @brief Destruktor. Calls close()
+        /// @brief Default constructor.
+        Reader() = default;
+
+        /// @brief Destructor. Calls close()
         virtual ~Reader();
 
         /// @brief Open reader on a file so you can later readFrame() from it
@@ -65,5 +71,9 @@ namespace Media
 
         /// @brief Close reader opened with open()
         virtual auto close() -> void;
+
+    private:
+        Reader(const Reader &) = delete;            // non construction-copyable
+        Reader &operator=(const Reader &) = delete; // non copyable
     };
 }
