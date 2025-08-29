@@ -44,6 +44,11 @@ namespace Ui
         return !m_quit;
     }
 
+    auto SDLWindow::quitEvent(SDL_Event event) -> bool
+    {
+        return true;
+    }
+
     auto SDLWindow::pushUserEvent(int32_t code, void *data1, void *data2) -> void
     {
         SDL_Event e;
@@ -110,7 +115,7 @@ namespace Ui
                     break;
                 }
             }
-            SDL_Delay(0);
+            SDL_Delay(1);
         }
         SDL_DestroyRenderer(w->m_sdlRenderer);
         w->m_sdlRenderer = nullptr;

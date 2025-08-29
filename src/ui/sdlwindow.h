@@ -19,13 +19,14 @@ namespace Ui
         /// @return True if window is still active
         auto isActive() const -> bool;
 
-        ~SDLWindow();
+        virtual ~SDLWindow();
 
     protected:
         /// @brief Called when a quit event is received through the window system
+        /// The default implementation will return true
         /// @param event Event data
         /// @return Pass true if you want to close the window, false if not
-        virtual auto quitEvent(SDL_Event event) -> bool = 0;
+        virtual auto quitEvent(SDL_Event event) -> bool;
 
         /// @brief Called when a user event is received through the window system
         /// @param event User event

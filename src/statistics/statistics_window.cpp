@@ -74,11 +74,6 @@ namespace Statistics
         }
     }
 
-    auto Window::quitEvent(SDL_Event event) -> bool
-    {
-        return true;
-    }
-
     auto Window::userEvent(SDL_Event event) -> void
     {
         // lock to check if data from other thread
@@ -118,7 +113,7 @@ namespace Statistics
                 }
                 std::memcpy(surface->pixels, data.image.data(), data.image.size());
                 auto *texture = SDL_CreateTextureFromSurface(getRenderer(), surface);
-                if (surface == nullptr)
+                if (texture == nullptr)
                 {
                     SDL_FreeSurface(surface);
                     return;

@@ -8,9 +8,9 @@
 #include "io/vid2hio.h"
 #include "io/vid2hreader.h"
 #include "io/wavwriter.h"
+#include "media/mediawindow.h"
 #include "processing/datahelpers.h"
 #include "processing/processingoptions.h"
-#include "statistics/statistics_window.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -117,13 +117,13 @@ int main(int argc, const char *argv[])
         const auto nrOfProcessors = omp_get_num_procs();
         omp_set_num_threads(nrOfProcessors);
         // fire up video reader and open video file
-        Media::Vid2hReader mediaReader;
+        auto mediaReader = std::make_shared<Media::Vid2hReader>();
         Media::Reader::MediaInfo mediaInfo;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
-            mediaReader.open(m_inFile);
-            mediaInfo = mediaReader.getInfo();
+            mediaReader->open(m_inFile);
+            mediaInfo = mediaReader->getInfo();
             std::cout << "Video stream: " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
             std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
             std::cout << "Audio stream: " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
@@ -152,43 +152,11 @@ int main(int argc, const char *argv[])
             }
         }
         // create statistics window
-        Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
-        // read video file
-        const auto startTime = std::chrono::steady_clock::now();
-        const double videoFrameInterval = 1.0 / mediaInfo.videoFrameRateHz;
-        uint32_t videoFrameIndex = 0;
-        for (uint32_t frameIndex = 0; frameIndex < (mediaInfo.videoNrOfFrames + mediaInfo.audioNrOfFrames); ++frameIndex)
+        Media::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
+        window.play(mediaReader);
+        while (window.getPlayState() != Media::Window::PlayState::Stopped)
         {
-            auto mediaFrame = mediaReader.readFrame();
-            REQUIRE(mediaFrame.frameType != IO::FrameType::Unknown, std::runtime_error, "Bad frame type");
-            // check if image frame
-            if (mediaFrame.frameType == IO::FrameType::Pixels)
-            {
-                const auto &image = std::get<std::vector<Color::XRGB8888>>(mediaFrame.data);
-                REQUIRE(image.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected frame size");
-                // update statistics
-                while ((std::chrono::steady_clock::now() - startTime) < std::chrono::duration<double>(videoFrameIndex * videoFrameInterval))
-                {
-                    std::this_thread::yield();
-                }
-                window.displayImage(reinterpret_cast<const uint8_t *>(image.data()), image.size() * sizeof(std::remove_reference<decltype(image.front())>::type), Ui::ColorFormat::XRGB8888, mediaInfo.videoWidth, mediaInfo.videoHeight);
-                ++videoFrameIndex;
-            }
-            else if (mediaFrame.frameType == IO::FrameType::Audio)
-            {
-                // build audio frame from sample data. Audio is always returned as int16_t samples
-                Audio::Frame audioFrame = {0, "", {mediaInfo.audioSampleRateHz, mediaInfo.audioChannelFormat, Audio::SampleFormat::Signed16P, false, 0}, std::get<std::vector<int16_t>>(mediaFrame.data)};
-                // dump the audio frame if user wants to
-                if (wavWriter)
-                {
-                    wavWriter->writeFrame(audioFrame);
-                }
-            }
-        }
-        // close wave writer if open
-        if (wavWriter)
-        {
-            wavWriter->close();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
     catch (const std::runtime_error &e)

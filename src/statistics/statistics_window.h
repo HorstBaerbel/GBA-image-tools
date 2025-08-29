@@ -27,7 +27,6 @@ namespace Statistics
         auto update() -> void;
 
     private:
-        auto quitEvent(SDL_Event event) -> bool override;
         auto userEvent(SDL_Event event) -> void override;
 
         struct DisplayImage
