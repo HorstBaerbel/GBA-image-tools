@@ -52,68 +52,46 @@ Some general information:
 
 vid2h will store binary file header fields and frame header fields (see [vid2hstructs.h](src/io/vid2hstructs.h), [vid2hio.h](src/io/vid2hio.h) and [vid2hio.cpp](src/io/vid2hio.cpp)):
 
-| Field                                          | Size    |                                                                                                                  |
-| ---------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
-| **File header**                                |
-| Magic bytes "v2h0"                             | 4 bytes | To identify the file type and version (currently "0")                                                            |
-| File content type                              | 1 byte  | Bitfield: Audio 0x01, Video 0x02                                                                                 |
-| Number of video frames in file                 | 3 bytes |
-| Frames / s                                     | 4 bytes | Frames / s in 16:16 fixed-point format                                                                           |
-| Frame width in pixels                          | 2 bytes |
-| Frame height in pixels                         | 2 bytes |
-| Image data bits / pixel                        | 1 byte  | Can be 1, 2, 4, 8, 15, 16, 24                                                                                    |
-| Color map data bits / color                    | 1 byte  | Can be 0 (no color map), 15, 16, 24                                                                              |
-| Color map entries M                            | 1 byte  | Color map stored if M > 0                                                                                        |
-| Number of color map frames in file             | 3 byte  |
-| Red-blue channel swap flag                     | 1 byte  | If != 0 red and blue channel are swapped                                                                         |
-| Max. intermediate video memory needed          | 3 bytes | Max. intermediate memory needed to decompress a video frame. If 0 size should be determined by video frame size  |
-| ---                                            | 1 byte  |
-| Number of audio frames in file                 | 3 bytes |
-| Number of audio samples per channel            | 4 bytes |
-| Audio sample rate                              | 2 bytes | Audio data sample rate in Hz                                                                                     |
-| Number of audio channels                       | 1 byte  | Currently only 1 or 2 allowed                                                                                    |
-| Audio sample bit depth                         | 1 byte  | Audio data bit depth                                                                                             |
-| Audio sample offset                            | 2 bytes | Signed offset of audio relative to video in number of samples                                                    |
-| Audio sample offset                            | 2 bytes | Signed offset of audio relative to video in number of samples                                                    |
-| Max. intermediate audio memory needed          | 2 bytes | Max. intermediate memory needed to decompress an audio frame. If 0 size should be determined by audio frame size |
-|                                                |         |
-| **Frame header #0**                            |
-| &emsp; Frame data type                         | 1 byte  | Enum: Pixels 0x01, Color map 0x02, Audio 0x03                                                                    |
-| &emsp; Frame size                              | 3 bytes | Size of frame data                                                                                               |
-| ... one of ...                                 |
-| &emsp; **Pixel data chunk #0**                 |
-| &emsp; &emsp; Processing type                  | 1 byte  | See following table and [processingtypes.h](src/image/processingtypes.h)                                         |
-| &emsp; &emsp; Uncompressed pixel data size     | 3 bytes |
-| &emsp; &emsp; Pixel data                       | N bytes | Padded to multiple of 4 (might have multiple layered chunks inside)                                              |
-| &emsp; **Color map data chunk #0**             |
-| &emsp; &emsp; ---                              | 1 byte  |
-| &emsp; &emsp; Uncompressed color map data size | 3 bytes |
-| &emsp; &emsp; Color map data                   | N bytes | Padded to multiple of 4 (might have multiple layered chunks inside)                                              |
-| &emsp; **Audio data chunk #0**                 |
-| &emsp; &emsp; Processing type                  | 1 byte  | See following table and [processingtypes.h](src/audio/processingtypes.h)                                         |
-| &emsp; &emsp; Uncompressed audio data size     | 3 bytes |
-| &emsp; &emsp; Audio data                       | N bytes | Padded to multiple of 4 (might have multiple layered chunks inside)                                              |
-|                                                |         |
-| **Frame header #1**                            |
-| ...                                            |
+| Field                                 | Size    |                                                                                                                                      |
+| ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **File header**                       |
+| Magic bytes "v2h0"                    | 4 bytes | To identify the file type and version (currently "0")                                                                                |
+| File content type                     | 1 byte  | Bitfield: Audio 0x01, Video 0x02, Audio+Video 0x03                                                                                   |
+| ---                                   | 1 byte  |
+| **Audio header**                      |
+| Number of audio frames in file        | 2 bytes |
+| Number of audio samples per channel   | 2 bytes |
+| Audio sample rate                     | 2 bytes | Audio data sample rate in Hz                                                                                                         |
+| Number of audio channels              | 1 byte  | Currently only 1 or 2 allowed                                                                                                        |
+| Audio sample bit depth                | 1 byte  | Audio data bit depth                                                                                                                 |
+| Audio sample offset                   | 2 bytes | Signed offset of audio relative to video in number of samples                                                                        |
+| Max. intermediate audio memory needed | 2 bytes | Max. intermediate memory needed to decompress an audio frame. If 0 size should be determined by audio frame size                     |
+| Audio processing types                | 4 bytes | Max. of 4 audio processings or Audio::ProcessingType::Invalid, see [processingtypes.h](src/audio/processingtype.h). In reverse order |
+| **Video header**                      |
+| Number of video frames in file        | 2 bytes |
+| Frames / s                            | 4 bytes | Frames / s in 16:16 fixed-point format                                                                                               |
+| Frame width in pixels                 | 2 bytes |
+| Frame height in pixels                | 2 bytes |
+| Image data bits / pixel               | 1 byte  | Can be 1, 2, 4, 8, 15, 16, 24                                                                                                        |
+| Color map data bits / color           | 1 byte  | Can be 0 (no color map), 15, 16, 24                                                                                                  |
+| Color map entries M                   | 1 byte  | Color map stored if M > 0                                                                                                            |
+| Red-blue channel swap flag            | 1 byte  | If != 0 red and blue channel are swapped                                                                                             |
+| Number of color map frames in file    | 2 byte  |
+| Max. intermediate video memory needed | 3 bytes | Max. intermediate memory needed to decompress a video frame. If 0 size should be determined by video frame size                      |
+| Image processing types                | 4 bytes | Max. of 4 image processings or Image::ProcessingType::Invalid, see [processingtypes.h](src/image/processingtype.h). In reverse order |
+|                                       |         |
+| **Frame header #0**                   |
+| &emsp; Frame data type                | 1 byte  | Enum: Pixels 0x01, Color map 0x02, Audio 0x03                                                                                        |
+| &emsp; Frame size                     | 3 bytes | Size of frame data                                                                                                                   |
+| &emsp; **Data chunk #0**              |
+| &emsp; &emsp; Data                    | N bytes | Padded to multiple of 4 (might have multiple layered chunks inside)                                                                  |
+|                                       |         |
+| **Frame header #1**                   |
+| ...                                   |
 
 Note that (if the file header is aligned to 4 bytes) every *Frame* and every *Data chunk* in the file will be aligned to 4 bytes. If you use aligned memory as a scratchpad when decoding, again, every *Chunk data* will be aligned too.
 
-Image processing type meaning (see also [processingtypes.h](src/image/processingtypes.h)):
-
-| Processing type byte | Meaning                                                         |
-| -------------------- | --------------------------------------------------------------- |
-| 0                    | Verbatim copy                                                   |
-| 50                   | Image data is 8-bit deltas                                      |
-| 51                   | Image data is 16-bit deltas                                     |
-| 55                   | Image data is signed pixel difference between successive images |
-| 60                   | Image data is compressed using LZ77 variant 10                  |
-| 65                   | Image data is compressed using run-length-encoding              |
-| 70                   | Image data is compressed using DXT                              |
-| 71                   | Image data is compressed using DXTV(ideo)                       |
-| 128 (ORed w/ type)   | Final compression / processing step on data                     |
-
-Thus a processing chain could be `50, 65, 188` meaning `8-bit deltas, RLE, LZ77 10 (final step)`. A chain of DXVT + LZ10 is a good fit for video.
+For processing types see e.g. [processingtypes.h](src/image/processingtype.h). A processing chain could be `60, 50, 255` meaning `LZ77 10, 8-bit deltas, End` (reverse order / correct order for decoding).
 
 ## Decompression on PC
 
@@ -125,6 +103,5 @@ An example for a small video player can be found in the [gba](gba) subdirectory.
 
 ## Todo
 
-* Much faster DXTV decompression
 * VQ-based compression using YCgCoR. Should yield better compression ratio and decompress faster
 * Better image / video preview (in + out)
