@@ -55,9 +55,7 @@ namespace Media
         Timer m_frameTimer;
         PlayState m_playState = PlayState::Stopped;
 
-        static constexpr const int32_t EVENT_REQUEST_VIDEO_FRAME = 1;
-        static constexpr const int32_t EVENT_REQUEST_AUDIO_FRAME = 2;
-        static constexpr const int32_t EVENT_DISPLAY_FRAME = 3;
+        static constexpr const int32_t EVENT_DISPLAY_FRAME = 1;
     };
 
 }

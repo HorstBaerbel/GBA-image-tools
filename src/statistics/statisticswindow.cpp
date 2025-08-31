@@ -92,19 +92,19 @@ namespace Statistics
                 switch (data.format)
                 {
                 case Ui::ColorFormat::XRGB1555:
-                    surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 15, SDL_PIXELFORMAT_RGB555);
+                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_XRGB1555);
                     break;
                 case Ui::ColorFormat::RGB565:
-                    surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 16, SDL_PIXELFORMAT_RGB565);
+                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_RGB565);
                     break;
                 case Ui::ColorFormat::XBGR1555:
-                    surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 15, SDL_PIXELFORMAT_BGR555);
+                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_XBGR1555);
                     break;
                 case Ui::ColorFormat::BGR565:
-                    surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 16, SDL_PIXELFORMAT_BGR565);
+                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_BGR565);
                     break;
                 case Ui::ColorFormat::XRGB8888:
-                    surface = SDL_CreateRGBSurfaceWithFormat(0, data.width, data.height, 32, SDL_PIXELFORMAT_XRGB8888);
+                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_XRGB8888);
                     break;
                 }
                 if (surface == nullptr)
@@ -115,14 +115,15 @@ namespace Statistics
                 auto *texture = SDL_CreateTextureFromSurface(getRenderer(), surface);
                 if (texture == nullptr)
                 {
-                    SDL_FreeSurface(surface);
+                    SDL_DestroySurface(surface);
                     return;
                 }
+                SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
                 // SDL_Rect dstRect = {data.x, data.y, static_cast<int>(data.width), static_cast<int>(data.height)};
-                SDL_RenderCopy(getRenderer(), texture, nullptr, nullptr); //&dstRect);
+                SDL_RenderTexture(getRenderer(), texture, nullptr, nullptr); //&dstRect);
                 SDL_RenderPresent(getRenderer());
                 SDL_DestroyTexture(texture);
-                SDL_FreeSurface(surface);
+                SDL_DestroySurface(surface);
             }
         }
         else

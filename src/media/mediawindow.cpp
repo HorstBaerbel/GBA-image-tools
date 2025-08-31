@@ -2,7 +2,7 @@
 
 #include "exception.h"
 
-#include <SDL_audio.h>
+#include <SDL3/SDL_audio.h>
 
 #include <cstring>
 
@@ -139,12 +139,13 @@ namespace Media
                     void *pixels = nullptr;
                     int pitch = 0;
                     auto lockResult = SDL_LockTexture(m_sdlTexture, nullptr, &pixels, &pitch);
-                    if (lockResult == 0 && pixels != nullptr && pitch != 0)
+                    if (lockResult && pixels != nullptr && pitch != 0)
                     {
                         std::memcpy(pixels, image.data(), image.size() * sizeof(Color::XRGB8888));
                         SDL_UnlockTexture(m_sdlTexture);
                     }
-                    SDL_RenderCopy(getRenderer(), m_sdlTexture, nullptr, nullptr); //&dstRect);
+                    SDL_SetTextureScaleMode(m_sdlTexture, SDL_SCALEMODE_NEAREST);
+                    SDL_RenderTexture(getRenderer(), m_sdlTexture, nullptr, nullptr); //&dstRect);
                     SDL_RenderPresent(getRenderer());
                 }
             }

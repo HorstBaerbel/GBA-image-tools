@@ -3,8 +3,10 @@ cmake_minimum_required(VERSION 3.21)
 #-------------------------------------------------------------------------------
 # Add required libraries
  
+# PkgConfig require for ffmpeg
 find_package(PkgConfig REQUIRED)
 
+# Require ffmepg packages
 pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libavcodec
     libavformat
@@ -12,10 +14,11 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
     libswscale
     libswresample
 )
-pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET
-    sdl2
-)
 
+# Require SDL3
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
+
+# Require OpenMP
 find_package(OpenMP REQUIRED)
 
 #-------------------------------------------------------------------------------
@@ -87,25 +90,25 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/glob
     ${PROJECT_SOURCE_DIR}/src
     ${LIBPLUM_INCLUDE_DIR}
+    SDL3::Headers
 )
 
 add_executable(gencolormaps ${GENCOLORMAPS_SRC})
-target_link_libraries(gencolormaps OpenMP::OpenMP_CXX)
+target_link_libraries(gencolormaps PRIVATE OpenMP::OpenMP_CXX)
 add_dependencies(gencolormaps BuildLibplumBasefiles)
 
 add_executable(hex2gba ${HEX2GBA_SRC})
-target_link_libraries(hex2gba)
 
 add_executable(img2h ${IMG2H_SRC})
-target_link_libraries(img2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 adpcm-lib stdc++fs pthread)
+target_link_libraries(img2h PRIVATE PkgConfig::LIBAV OpenMP::OpenMP_CXX SDL3::SDL3 adpcm-lib stdc++fs pthread)
 add_dependencies(img2h BuildLibplumBasefiles)
 
 add_executable(vid2h ${VID2H_SRC})
-target_link_libraries(vid2h PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 adpcm-lib stdc++fs pthread)
+target_link_libraries(vid2h PRIVATE PkgConfig::LIBAV OpenMP::OpenMP_CXX SDL3::SDL3 adpcm-lib stdc++fs pthread)
 add_dependencies(vid2h BuildLibplumBasefiles)
 
 add_executable(vid2hplay ${VID2HPLAY_SRC})
-target_link_libraries(vid2hplay PkgConfig::LIBAV OpenMP::OpenMP_CXX PkgConfig::SDL2 adpcm-lib stdc++fs pthread)
+target_link_libraries(vid2hplay PRIVATE PkgConfig::LIBAV OpenMP::OpenMP_CXX SDL3::SDL3 adpcm-lib stdc++fs pthread)
 add_dependencies(vid2hplay BuildLibplumBasefiles)
 
 #-------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include <atomic>
 #include <deque>
@@ -59,7 +59,7 @@ namespace Ui
         static auto MessageLoop(void *object) -> int;
 
         std::atomic<bool> m_quit = false;
-        std::atomic<SDL_mutex *> m_eventMutex = nullptr;
+        std::atomic<SDL_Mutex *> m_eventMutex = nullptr;
         std::atomic<SDL_Thread *> m_msgLoopThread = nullptr;
         SDL_Window *m_sdlWindow = nullptr;
         SDL_Renderer *m_sdlRenderer = nullptr;

@@ -1,6 +1,7 @@
 #include "sdlwindow.h"
 
-#include <SDL_video.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_video.h>
 
 #include <cstring>
 #include <iostream>
@@ -52,7 +53,7 @@ namespace Ui
     auto SDLWindow::pushUserEvent(int32_t code, void *data1, void *data2) -> void
     {
         SDL_Event e;
-        e.type = SDL_USEREVENT;
+        e.type = SDL_EVENT_USER;
         e.user.code = code;
         e.user.data1 = data1;
         e.user.data2 = data2;
@@ -87,13 +88,13 @@ namespace Ui
             std::cerr << "Bad object pointer" << std::endl;
             return -1;
         }
-        w->m_sdlWindow = SDL_CreateWindow(w->m_title.data(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w->m_width, w->m_height, SDL_WINDOW_VULKAN);
+        w->m_sdlWindow = SDL_CreateWindow(w->m_title.data(), w->m_width, w->m_height, SDL_WINDOW_VULKAN);
         if (w->m_sdlWindow == nullptr)
         {
             std::cerr << "Failed to create SDL window" << std::endl;
             return -2;
         }
-        w->m_sdlRenderer = SDL_CreateRenderer(w->m_sdlWindow, -1, 0);
+        w->m_sdlRenderer = SDL_CreateRenderer(w->m_sdlWindow, nullptr);
         if (w->m_sdlRenderer == nullptr)
         {
             std::cerr << "Failed to create SDL renderer" << std::endl;
@@ -107,10 +108,10 @@ namespace Ui
             {
                 switch (event.type)
                 {
-                case SDL_QUIT:
+                case SDL_EVENT_QUIT:
                     w->m_quit = w->quitEvent(event);
                     break;
-                case SDL_USEREVENT:
+                case SDL_EVENT_USER:
                     w->userEvent(event);
                     break;
                 }
