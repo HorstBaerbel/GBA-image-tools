@@ -128,22 +128,38 @@ int main(int argc, const char *argv[])
             std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
             std::cout << "Audio stream: " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
             std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
-            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
+            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
         }
         catch (const std::runtime_error &e)
         {
             std::cerr << "Failed to open video file: " << e.what() << std::endl;
             return 1;
         }
-        // set up WAV writer
-        std::shared_ptr<IO::WavWriter> wavWriter;
+        // check if we want to dump video or audio
         if (options.dumpAudio)
         {
-            wavWriter = std::make_shared<IO::WavWriter>();
+            if (mediaInfo.fileType & IO::FileType::Audio == 0)
+            {
+                std::cout << "Can't dump audio. No audio in file." << std::endl;
+                return 1;
+            }
             try
             {
-                wavWriter->open("result.wav");
+                // set up WAV writer
+                IO::WavWriter wavWriter;
+                wavWriter.open("result.wav");
                 std::cout << "Dumping result audio to result.wav" << std::endl;
+                Media::Reader::FrameData inFrame;
+                do
+                {
+                    inFrame = mediaReader->readFrame();
+                    if (inFrame.frameType == IO::FrameType::Audio)
+                    {
+                        const Audio::Frame audioFrame = {0, "", {mediaInfo.audioSampleRateHz, mediaInfo.audioChannelFormat, Audio::SampleFormat::Signed16P, false, 0}, std::get<std::vector<int16_t>>(inFrame.data), 0};
+                        wavWriter.writeFrame(audioFrame);
+                    }
+                } while (inFrame.frameType != IO::FrameType::Unknown);
+                wavWriter.close();
             }
             catch (const std::runtime_error &e)
             {
@@ -151,12 +167,16 @@ int main(int argc, const char *argv[])
                 return 1;
             }
         }
-        // create statistics window
-        Media::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
-        window.play(mediaReader);
-        while (window.getPlayState() != Media::Window::PlayState::Stopped)
+        // create player window if we're not dumping
+        if (!options.dumpAudio)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            Media::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
+            window.play(mediaReader);
+            // wait until the player stops
+            while (window.getPlayState() != Media::Window::PlayState::Stopped)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
     }
     catch (const std::runtime_error &e)

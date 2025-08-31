@@ -247,7 +247,7 @@ int main(int argc, const char *argv[])
             std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
             std::cout << "Audio stream #" << mediaInfo.audioStreamIndex << ": " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
             std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
-            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
+            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
         }
         catch (const std::runtime_error &e)
         {

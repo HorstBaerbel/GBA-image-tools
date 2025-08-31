@@ -66,6 +66,7 @@ namespace IO
         Audio::SampleFormatInfo m_sampleInfo;
         Audio::ChannelFormatInfo m_channelInfo;
         WavHeader m_fileHeader;
+        bool m_isFirstFrame = true;
         std::ofstream m_os;
     };
 

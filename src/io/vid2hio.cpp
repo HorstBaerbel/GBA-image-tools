@@ -166,6 +166,11 @@ namespace IO::Vid2h
 
     auto readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<IO::FrameType, std::vector<uint8_t>>
     {
+        // check if we're at the end of the file
+        if (is.eof() || is.peek() == std::istream::traits_type::eof())
+        {
+            return {IO::FrameType::Unknown, {}};
+        }
         // read frame header
         FrameHeader frameHeader;
         is.read(reinterpret_cast<char *>(&frameHeader), sizeof(FrameHeader));

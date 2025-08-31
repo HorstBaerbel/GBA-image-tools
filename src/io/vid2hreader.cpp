@@ -67,17 +67,7 @@ namespace Media
     {
         REQUIRE(m_is.is_open() && !m_is.fail(), std::runtime_error, "File stream not open");
         auto frame = IO::Vid2h::readFrame(m_is, m_fileHeader);
-        if (frame.first == IO::FrameType::Colormap)
-        {
-            // convert color map to XRGB8888
-            REQUIRE(!frame.second.empty(), std::runtime_error, "Frame color map data empty");
-            REQUIRE(m_info.videoColorMapFormat != Color::Format::Unknown, std::runtime_error, "Bad color map format");
-            std::vector<Color::XRGB8888> outColorMap;
-            outColorMap = ColorHelpers::toXRGB8888(frame.second, m_info.videoColorMapFormat);
-            m_previousColorMap = outColorMap;
-            return {IO::FrameType::Colormap, outColorMap};
-        }
-        else if (frame.first == IO::FrameType::Pixels)
+        if (frame.first == IO::FrameType::Pixels)
         {
             auto inData = frame.second;
             REQUIRE(!inData.empty(), std::runtime_error, "Frame pixel data empty");
@@ -114,7 +104,17 @@ namespace Media
             m_previousPixels = outData;
             return {IO::FrameType::Pixels, outData};
         }
-        else
+        else if (frame.first == IO::FrameType::Colormap)
+        {
+            // convert color map to XRGB8888
+            REQUIRE(!frame.second.empty(), std::runtime_error, "Frame color map data empty");
+            REQUIRE(m_info.videoColorMapFormat != Color::Format::Unknown, std::runtime_error, "Bad color map format");
+            std::vector<Color::XRGB8888> outColorMap;
+            outColorMap = ColorHelpers::toXRGB8888(frame.second, m_info.videoColorMapFormat);
+            m_previousColorMap = outColorMap;
+            return {IO::FrameType::Colormap, outColorMap};
+        }
+        else if (frame.first == IO::FrameType::Audio)
         {
             auto inData = frame.second;
             REQUIRE(!inData.empty(), std::runtime_error, "Frame audio data empty");
@@ -148,6 +148,7 @@ namespace Media
             }
             return {IO::FrameType::Audio, outData};
         }
+        return {IO::FrameType::Unknown, {}};
     }
 
     auto Vid2hReader::close() -> void

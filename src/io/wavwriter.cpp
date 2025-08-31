@@ -20,7 +20,7 @@ namespace IO
 
     auto WavWriter::writeFrame(const Audio::Frame &frame) -> void
     {
-        if (frame.index == 0)
+        if (m_isFirstFrame)
         {
             REQUIRE(frame.info.channelFormat != Audio::ChannelFormat::Unknown, std::runtime_error, "Bad audio channel format");
             REQUIRE(frame.info.sampleRateHz > 0 && frame.info.sampleRateHz <= 48000, std::runtime_error, "Bad audio sample rate " << frame.info.sampleRateHz << " Hz");
@@ -37,6 +37,7 @@ namespace IO
             m_fileHeader.bytesPerSec = ((m_sampleInfo.bitsPerSample + 7) / 8) * m_channelInfo.nrOfChannels * m_info.sampleRateHz;
             m_fileHeader.blockAlign = ((m_sampleInfo.bitsPerSample + 7) / 8) * m_channelInfo.nrOfChannels;
             m_fileHeader.bitsPerSample = m_sampleInfo.bitsPerSample;
+            m_isFirstFrame = false;
         }
         else
         {
@@ -86,6 +87,7 @@ namespace IO
     auto WavWriter::close() -> void
     {
         m_os.close();
+        m_isFirstFrame = true;
     }
 
     WavWriter::~WavWriter()
