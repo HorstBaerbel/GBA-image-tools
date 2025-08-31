@@ -14,7 +14,7 @@
 #include "io/wavwriter.h"
 #include "processing/datahelpers.h"
 #include "processing/processingoptions.h"
-#include "statistics/statistics_window.h"
+#include "statistics/statisticswindow.h"
 
 #include <cstdlib>
 #include <cstring>

@@ -1,4 +1,4 @@
-#include "statistics_window.h"
+#include "statisticswindow.h"
 
 namespace Statistics
 {
