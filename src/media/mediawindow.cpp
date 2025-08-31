@@ -1,5 +1,6 @@
 #include "mediawindow.h"
 
+#include "audio/audiohelpers.h"
 #include "exception.h"
 
 #include <SDL3/SDL_audio.h>
@@ -35,27 +36,22 @@ namespace Media
             m_videoFrameIndex = 0;
             m_mediaReader = mediaReader;
             m_mediaInfo = m_mediaReader->getInfo();
-            REQUIRE(m_mediaInfo.fileType & IO::FileType::Audio == 0 || m_mediaInfo.audioNrOfFrames > 0, std::runtime_error, "Audio file, but no audio frames");
-            REQUIRE(m_mediaInfo.fileType & IO::FileType::Video == 0 || m_mediaInfo.videoNrOfFrames > 0, std::runtime_error, "Video file, but no video frames");
-            // read first frames
-            int32_t requestedAudioFrames = m_mediaInfo.fileType & IO::FileType::Audio != 0 && m_mediaInfo.audioNrOfFrames > m_audioFrameIndex ? 1 : 0;
-            int32_t requestedVideoFrames = m_mediaInfo.fileType & IO::FileType::Video != 0 && m_mediaInfo.videoNrOfFrames > m_videoFrameIndex ? 1 : 0;
-            while (requestedAudioFrames > 0 || requestedVideoFrames > 0)
+            const bool hasAudio = m_mediaInfo.fileType & IO::FileType::Audio != 0;
+            REQUIRE(!hasAudio || m_mediaInfo.audioNrOfFrames > 0, std::runtime_error, "Audio file, but no audio frames");
+            const bool hasVideo = m_mediaInfo.fileType & IO::FileType::Video != 0;
+            REQUIRE(!hasVideo || m_mediaInfo.videoNrOfFrames > 0, std::runtime_error, "Video file, but no video frames");
+            // open audio device in paused state
+            if (hasAudio)
             {
-                auto frame = m_mediaReader->readFrame();
-                if (frame.frameType == IO::FrameType::Audio)
-                {
-                    ++m_audioFrameIndex;
-                    --requestedAudioFrames;
-                    m_audioData.push_back(std::get<std::vector<int16_t>>(frame.data));
-                }
-                else if (frame.frameType == IO::FrameType::Pixels)
-                {
-                    ++m_videoFrameIndex;
-                    --requestedVideoFrames;
-                    m_videoData.push_back(std::get<std::vector<Color::XRGB8888>>(frame.data));
-                }
+                SDL_AudioSpec audioSpec;
+                audioSpec.channels = Audio::formatInfo(m_mediaInfo.audioChannelFormat).nrOfChannels;
+                audioSpec.format = SDL_AUDIO_S16LE;
+                audioSpec.freq = static_cast<int>(m_mediaInfo.audioSampleRateHz);
+                m_sdlAudioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audioSpec, nullptr, nullptr);
+                REQUIRE(m_sdlAudioStream != nullptr, std::runtime_error, "Failed to create SDL audio stream: " << SDL_GetError());
             }
+            // read first audio and video frames
+            readFrames();
             // start frame timer
             const auto interval = 1000.0 / m_mediaInfo.videoFrameRateHz;
             m_frameTimer.start(interval, [this]()
@@ -72,6 +68,7 @@ namespace Media
             if (m_playState == PlayState::Playing)
             {
                 m_playState == PlayState::Paused;
+                SDL_PauseAudioStreamDevice(m_sdlAudioStream);
             }
         }
         else
@@ -79,6 +76,7 @@ namespace Media
             if (m_playState == PlayState::Paused)
             {
                 m_playState == PlayState::Playing;
+                SDL_ResumeAudioStreamDevice(m_sdlAudioStream);
             }
         }
         unlockEventMutex();
@@ -90,7 +88,14 @@ namespace Media
         if (m_playState != PlayState::Stopped)
         {
             m_playState = PlayState::Stopped;
+            SDL_PauseAudioStreamDevice(m_sdlAudioStream);
+            SDL_ClearAudioStream(m_sdlAudioStream);
             m_frameTimer.stop();
+        }
+        if (m_sdlAudioStream != nullptr)
+        {
+            SDL_DestroyAudioStream(m_sdlAudioStream);
+            m_sdlAudioStream = nullptr;
         }
         unlockEventMutex();
     }
@@ -110,29 +115,42 @@ namespace Media
 
     auto Window::userEvent(SDL_Event event) -> void
     {
+        // check if we want to stop playback
+        if (event.user.code == EVENT_STOP)
+        {
+            stop();
+        }
         // lock to check if data from other thread
         lockEventMutex();
-        // check if we need to allocate a texture
-        if (m_sdlTexture == nullptr)
-        {
-            m_sdlTexture = SDL_CreateTexture(getRenderer(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, m_mediaInfo.videoWidth, m_mediaInfo.videoHeight);
-            if (m_sdlTexture == nullptr)
-            {
-                unlockEventMutex();
-                return;
-            }
-        }
         // check if if we want to display a frame
         if (event.user.code == EVENT_DISPLAY_FRAME)
         {
             // check if we have video / audio data pending
+            if (!m_audioData.empty())
+            {
+                // we have audio data, get it, remove from the queue
+                auto samples = m_audioData.front();
+                m_audioData.pop_front();
+                // copy data to stream and play
+                SDL_PutAudioStreamData(m_sdlAudioStream, samples.data(), samples.size());
+                SDL_ResumeAudioStreamDevice(m_sdlAudioStream);
+            }
             if (!m_videoData.empty())
             {
-                // we have data, get it, remove from the queue and unlock
+                // we have video data, get it, remove from the queue
                 auto image = m_videoData.front();
                 m_videoData.pop_front();
-                unlockEventMutex();
-                // process data
+                // check if we need to allocate a texture
+                if (m_sdlTexture == nullptr)
+                {
+                    m_sdlTexture = SDL_CreateTexture(getRenderer(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, m_mediaInfo.videoWidth, m_mediaInfo.videoHeight);
+                    if (m_sdlTexture == nullptr)
+                    {
+                        unlockEventMutex();
+                        return;
+                    }
+                }
+                // copy data to texture and render
                 if (m_sdlTexture != nullptr && image.size() == m_mediaInfo.videoWidth * m_mediaInfo.videoHeight)
                 {
                     // SDL_Rect dstRect = {data.x, data.y, static_cast<int>(data.width), static_cast<int>(data.height)};
@@ -150,13 +168,8 @@ namespace Media
                 }
             }
             // else: we're skipping frames...
-            // check if we can stop playing
-            // ???
         }
-        else
-        {
-            unlockEventMutex();
-        }
+        unlockEventMutex();
     }
 
     auto Window::displayEvent(void *data) -> void
@@ -169,29 +182,39 @@ namespace Media
             // check if we have already reached the end of the media file
             if (m_mediaInfo.audioNrOfFrames <= m_audioFrameIndex && m_mediaInfo.videoNrOfFrames <= m_videoFrameIndex)
             {
+                // push event to stop playback
+                pushUserEvent(EVENT_STOP);
                 unlockEventMutex();
-                stop();
             }
-            // read next frames
-            int32_t requestedAudioFrames = m_mediaInfo.fileType & IO::FileType::Audio != 0 && m_mediaInfo.audioNrOfFrames > m_audioFrameIndex ? 1 : 0;
-            int32_t requestedVideoFrames = m_mediaInfo.fileType & IO::FileType::Video != 0 && m_mediaInfo.videoNrOfFrames > m_videoFrameIndex ? 1 : 0;
-            while (requestedAudioFrames > 0 || requestedVideoFrames > 0)
+            else
             {
-                auto frame = m_mediaReader->readFrame();
-                if (frame.frameType == IO::FrameType::Audio)
-                {
-                    ++m_audioFrameIndex;
-                    --requestedAudioFrames;
-                    m_audioData.push_back(std::get<std::vector<int16_t>>(frame.data));
-                }
-                else if (frame.frameType == IO::FrameType::Pixels)
-                {
-                    ++m_videoFrameIndex;
-                    --requestedVideoFrames;
-                    m_videoData.push_back(std::get<std::vector<Color::XRGB8888>>(frame.data));
-                }
+                // read next audio and video frames
+                readFrames();
             }
         }
         unlockEventMutex();
+    }
+
+    auto Window::readFrames() -> void
+    {
+        int32_t requestedAudioFrames = m_mediaInfo.fileType & IO::FileType::Audio != 0 && m_mediaInfo.audioNrOfFrames > m_audioFrameIndex ? 1 : 0;
+        int32_t requestedVideoFrames = m_mediaInfo.fileType & IO::FileType::Video != 0 && m_mediaInfo.videoNrOfFrames > m_videoFrameIndex ? 1 : 0;
+        while (requestedAudioFrames > 0 || requestedVideoFrames > 0)
+        {
+            auto frame = m_mediaReader->readFrame();
+            if (frame.frameType == IO::FrameType::Audio)
+            {
+                ++m_audioFrameIndex;
+                --requestedAudioFrames;
+                const auto &planarSamples = std::get<std::vector<int16_t>>(frame.data);
+                m_audioData.push_back(AudioHelpers::toRawInterleavedData(planarSamples, m_mediaInfo.audioChannelFormat));
+            }
+            else if (frame.frameType == IO::FrameType::Pixels)
+            {
+                ++m_videoFrameIndex;
+                --requestedVideoFrames;
+                m_videoData.push_back(std::get<std::vector<Color::XRGB8888>>(frame.data));
+            }
+        }
     }
 }

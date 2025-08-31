@@ -40,15 +40,17 @@ namespace Media
     private:
         auto quitEvent(SDL_Event event) -> bool override;
         auto userEvent(SDL_Event event) -> void override;
-
         auto displayEvent(void *data) -> void;
+
+        auto readFrames() -> void;
 
         std::deque<std::vector<Color::XRGB8888>> m_videoData;
         uint32_t m_videoFrameIndex = 0;
-        std::deque<std::vector<int16_t>> m_audioData;
+        std::deque<std::vector<uint8_t>> m_audioData;
         uint32_t m_audioFrameIndex = 0;
 
         SDL_Texture *m_sdlTexture = nullptr;
+        SDL_AudioStream *m_sdlAudioStream = nullptr;
 
         std::shared_ptr<Reader> m_mediaReader;
         Reader::MediaInfo m_mediaInfo;
@@ -56,6 +58,7 @@ namespace Media
         PlayState m_playState = PlayState::Stopped;
 
         static constexpr const int32_t EVENT_DISPLAY_FRAME = 1;
+        static constexpr const int32_t EVENT_STOP = 2;
     };
 
 }
