@@ -27,7 +27,8 @@ namespace Statistics
         auto update() -> void;
 
     private:
-        auto userEvent(SDL_Event event) -> void override;
+        auto quitEvent(SDL_Event event) -> bool override;
+        auto userEvent(SDL_Event event) -> int override;
 
         struct DisplayImage
         {
@@ -39,6 +40,10 @@ namespace Statistics
             int32_t y = 0;
         };
 
+        SDL_Texture *m_sdlTexture = nullptr;
+        SDL_PixelFormat m_sdlTexturePixelFormat = SDL_PIXELFORMAT_UNKNOWN;
+        uint32_t m_sdlTextureWidth = 0;
+        uint32_t m_sdlTextureHeight = 0;
         std::deque<std::variant<DisplayImage>> m_eventData;
         Container::SPtr m_container;
     };

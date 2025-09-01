@@ -1,5 +1,7 @@
 #include "statisticswindow.h"
 
+#include <iostream>
+
 namespace Statistics
 {
 
@@ -74,7 +76,22 @@ namespace Statistics
         }
     }
 
-    auto Window::userEvent(SDL_Event event) -> void
+    auto Window::quitEvent(SDL_Event event) -> bool
+    {
+        lockEventMutex();
+        if (m_sdlTexture != nullptr)
+        {
+            SDL_DestroyTexture(m_sdlTexture);
+            m_sdlTexture = nullptr;
+            m_sdlTexturePixelFormat = SDL_PIXELFORMAT_UNKNOWN;
+            m_sdlTextureWidth = 0;
+            m_sdlTextureHeight = 0;
+        }
+        unlockEventMutex();
+        return true;
+    }
+
+    auto Window::userEvent(SDL_Event event) -> int
     {
         // lock to check if data from other thread
         lockEventMutex();
@@ -83,52 +100,83 @@ namespace Statistics
             // we have data, get it, remove from the queue and unlock
             auto eventData = m_eventData.front();
             m_eventData.pop_front();
-            unlockEventMutex();
             // process data
             if (std::holds_alternative<DisplayImage>(eventData))
             {
-                SDL_Surface *surface = nullptr;
                 const auto &data = std::get<DisplayImage>(eventData);
+                SDL_PixelFormat requiredPixelFormat = SDL_PIXELFORMAT_UNKNOWN;
                 switch (data.format)
                 {
                 case Ui::ColorFormat::XRGB1555:
-                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_XRGB1555);
+                    requiredPixelFormat = SDL_PIXELFORMAT_XRGB1555;
                     break;
                 case Ui::ColorFormat::RGB565:
-                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_RGB565);
+                    requiredPixelFormat = SDL_PIXELFORMAT_RGB565;
                     break;
                 case Ui::ColorFormat::XBGR1555:
-                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_XBGR1555);
+                    requiredPixelFormat = SDL_PIXELFORMAT_XBGR1555;
                     break;
                 case Ui::ColorFormat::BGR565:
-                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_BGR565);
+                    requiredPixelFormat = SDL_PIXELFORMAT_BGR565;
                     break;
                 case Ui::ColorFormat::XRGB8888:
-                    surface = SDL_CreateSurface(data.width, data.height, SDL_PIXELFORMAT_XRGB8888);
+                    requiredPixelFormat = SDL_PIXELFORMAT_XRGB8888;
                     break;
+                default:
+                    std::cerr << "Unkown data pixel format: " << static_cast<int>(data.format) << std::endl;
+                    return -1;
                 }
-                if (surface == nullptr)
+                // check if we need to (re-)allocate the texture
+                if (m_sdlTexture == nullptr || m_sdlTexturePixelFormat != requiredPixelFormat || m_sdlTextureWidth != data.width || m_sdlTextureHeight != data.height)
                 {
-                    return;
+                    if (m_sdlTexture != nullptr)
+                    {
+                        SDL_DestroyTexture(m_sdlTexture);
+                        m_sdlTexture = nullptr;
+                        m_sdlTexturePixelFormat = SDL_PIXELFORMAT_UNKNOWN;
+                        m_sdlTextureWidth = 0;
+                        m_sdlTextureHeight = 0;
+                    }
+                    m_sdlTexture = SDL_CreateTexture(getRenderer(), requiredPixelFormat, SDL_TEXTUREACCESS_STREAMING, data.width, data.height);
+                    if (m_sdlTexture == nullptr)
+                    {
+                        std::cerr << "Failed to create SDL texture: " << SDL_GetError() << std::endl;
+                        unlockEventMutex();
+                        return -1;
+                    }
+                    m_sdlTexturePixelFormat = requiredPixelFormat;
+                    m_sdlTextureWidth = data.width;
+                    m_sdlTextureHeight = data.height;
+                    if (!SDL_SetTextureScaleMode(m_sdlTexture, SDL_SCALEMODE_NEAREST))
+                    {
+                        std::cerr << "Failed to set SDL texture scale mode: " << SDL_GetError() << std::endl;
+                    }
                 }
-                std::memcpy(surface->pixels, data.image.data(), data.image.size());
-                auto *texture = SDL_CreateTextureFromSurface(getRenderer(), surface);
-                if (texture == nullptr)
+                // update texture
+                void *pixels = nullptr;
+                int pitch = 0;
+                auto lockResult = SDL_LockTexture(m_sdlTexture, nullptr, &pixels, &pitch);
+                if (lockResult && pixels != nullptr && pitch != 0)
                 {
-                    SDL_DestroySurface(surface);
-                    return;
+                    std::memcpy(pixels, data.image.data(), data.image.size());
+                    SDL_UnlockTexture(m_sdlTexture);
                 }
-                SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
-                // SDL_Rect dstRect = {data.x, data.y, static_cast<int>(data.width), static_cast<int>(data.height)};
-                SDL_RenderTexture(getRenderer(), texture, nullptr, nullptr); //&dstRect);
-                SDL_RenderPresent(getRenderer());
-                SDL_DestroyTexture(texture);
-                SDL_DestroySurface(surface);
+                // render texture
+                if (!SDL_RenderTexture(getRenderer(), m_sdlTexture, nullptr, nullptr))
+                {
+                    std::cerr << "Failed to render SDL texture: " << SDL_GetError() << std::endl;
+                    unlockEventMutex();
+                    return -1;
+                }
+                if (!SDL_RenderPresent(getRenderer()))
+                {
+                    std::cerr << "Failed to present SDL render: " << SDL_GetError() << std::endl;
+                    unlockEventMutex();
+                    return -1;
+                }
             }
         }
-        else
-        {
-            unlockEventMutex();
-        }
+        unlockEventMutex();
+        return 0;
     }
 }

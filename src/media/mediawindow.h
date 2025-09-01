@@ -39,7 +39,7 @@ namespace Media
 
     private:
         auto quitEvent(SDL_Event event) -> bool override;
-        auto userEvent(SDL_Event event) -> void override;
+        auto userEvent(SDL_Event event) -> int override;
         auto displayEvent(void *data) -> void;
 
         auto readFrames() -> void;

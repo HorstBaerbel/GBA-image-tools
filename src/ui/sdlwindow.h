@@ -30,7 +30,8 @@ namespace Ui
 
         /// @brief Called when a user event is received through the window system
         /// @param event User event
-        virtual auto userEvent(SDL_Event event) -> void = 0;
+        /// @return 0 if everything ok, error code otherwise. The window will quit in that case
+        virtual auto userEvent(SDL_Event event) -> int = 0;
 
         /// @brief Push user event to message loop
         /// @param code User message code

@@ -113,7 +113,7 @@ namespace Media
         return true;
     }
 
-    auto Window::userEvent(SDL_Event event) -> void
+    auto Window::userEvent(SDL_Event event) -> int
     {
         // check if we want to stop playback
         if (event.user.code == EVENT_STOP)
@@ -146,14 +146,18 @@ namespace Media
                     m_sdlTexture = SDL_CreateTexture(getRenderer(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, m_mediaInfo.videoWidth, m_mediaInfo.videoHeight);
                     if (m_sdlTexture == nullptr)
                     {
+                        std::cerr << "Failed to create SDL texture: " << SDL_GetError() << std::endl;
                         unlockEventMutex();
-                        return;
+                        return -1;
+                    }
+                    if (!SDL_SetTextureScaleMode(m_sdlTexture, SDL_SCALEMODE_NEAREST))
+                    {
+                        std::cerr << "Failed to set SDL texture scale mode: " << SDL_GetError() << std::endl;
                     }
                 }
                 // copy data to texture and render
                 if (m_sdlTexture != nullptr && image.size() == m_mediaInfo.videoWidth * m_mediaInfo.videoHeight)
                 {
-                    // SDL_Rect dstRect = {data.x, data.y, static_cast<int>(data.width), static_cast<int>(data.height)};
                     void *pixels = nullptr;
                     int pitch = 0;
                     auto lockResult = SDL_LockTexture(m_sdlTexture, nullptr, &pixels, &pitch);
@@ -162,14 +166,24 @@ namespace Media
                         std::memcpy(pixels, image.data(), image.size() * sizeof(Color::XRGB8888));
                         SDL_UnlockTexture(m_sdlTexture);
                     }
-                    SDL_SetTextureScaleMode(m_sdlTexture, SDL_SCALEMODE_NEAREST);
-                    SDL_RenderTexture(getRenderer(), m_sdlTexture, nullptr, nullptr); //&dstRect);
-                    SDL_RenderPresent(getRenderer());
+                    if (!SDL_RenderTexture(getRenderer(), m_sdlTexture, nullptr, nullptr))
+                    {
+                        std::cerr << "Failed to render SDL texture: " << SDL_GetError() << std::endl;
+                        unlockEventMutex();
+                        return -1;
+                    }
+                    if (!SDL_RenderPresent(getRenderer()))
+                    {
+                        std::cerr << "Failed to present SDL render: " << SDL_GetError() << std::endl;
+                        unlockEventMutex();
+                        return -1;
+                    }
                 }
             }
             // else: we're skipping frames...
         }
         unlockEventMutex();
+        return 0;
     }
 
     auto Window::displayEvent(void *data) -> void

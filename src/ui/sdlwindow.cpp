@@ -1,5 +1,7 @@
 #include "sdlwindow.h"
 
+#include "exception.h"
+
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
 
@@ -13,16 +15,16 @@ namespace Ui
     SDLWindow::SDLWindow(uint32_t width, uint32_t height, const std::string &title)
         : m_width(width), m_height(height), m_title(title)
     {
-        SDL_InitSubSystem(SDL_INIT_VIDEO);
+        REQUIRE(SDL_InitSubSystem(SDL_INIT_VIDEO), std::runtime_error, "Failed to init SDL video: " << SDL_GetError());
         m_eventMutex = SDL_CreateMutex();
-        if (m_eventMutex == nullptr)
-        {
-            throw std::runtime_error(SDL_GetError());
-        }
+        REQUIRE(m_eventMutex != nullptr, std::runtime_error, "Failed to create SDL mutex: " << SDL_GetError());
         m_msgLoopThread = SDL_CreateThread(MessageLoop, "SDL message loop", this);
         if (m_msgLoopThread == nullptr)
         {
-            throw std::runtime_error(SDL_GetError());
+            const auto createError = SDL_GetError();
+            SDL_DestroyMutex(m_eventMutex);
+            m_eventMutex = nullptr;
+            THROW(std::runtime_error, "Failed to create SDL thread: " << createError);
         }
     }
 
@@ -32,10 +34,12 @@ namespace Ui
         if (m_msgLoopThread != nullptr)
         {
             SDL_WaitThread(m_msgLoopThread, nullptr);
+            m_msgLoopThread = nullptr;
         }
         if (m_eventMutex != nullptr)
         {
             SDL_DestroyMutex(m_eventMutex);
+            m_eventMutex = nullptr;
         }
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
     }
@@ -85,21 +89,27 @@ namespace Ui
         SDLWindow *w = reinterpret_cast<SDLWindow *>(object);
         if (w == nullptr)
         {
-            std::cerr << "Bad object pointer" << std::endl;
+            std::cerr << "Bad object pointer in message loop" << std::endl;
             return -1;
         }
         w->m_sdlWindow = SDL_CreateWindow(w->m_title.data(), w->m_width, w->m_height, SDL_WINDOW_VULKAN);
         if (w->m_sdlWindow == nullptr)
         {
-            std::cerr << "Failed to create SDL window" << std::endl;
-            return -2;
+            std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
+            return -1;
         }
         w->m_sdlRenderer = SDL_CreateRenderer(w->m_sdlWindow, nullptr);
         if (w->m_sdlRenderer == nullptr)
         {
-            std::cerr << "Failed to create SDL renderer" << std::endl;
+            std::cerr << "Failed to create SDL renderer: " << SDL_GetError() << std::endl;
             SDL_DestroyWindow(w->m_sdlWindow);
-            return -3;
+            return -1;
+        }
+        // initially present render. this might be needed on Wayland systems
+        if (!SDL_RenderPresent(w->m_sdlRenderer))
+        {
+            std::cerr << "Initial SDL render present failed: " << SDL_GetError() << std::endl;
+            return -1;
         }
         SDL_Event event;
         while (!w->m_quit)
@@ -112,7 +122,11 @@ namespace Ui
                     w->m_quit = w->quitEvent(event);
                     break;
                 case SDL_EVENT_USER:
-                    w->userEvent(event);
+                    if (const auto eventResult = w->userEvent(event); eventResult != 0)
+                    {
+                        w->quitEvent(event);
+                        w->m_quit = true;
+                    }
                     break;
                 }
             }
