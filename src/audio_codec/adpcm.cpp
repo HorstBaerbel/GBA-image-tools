@@ -10,7 +10,7 @@ namespace Audio
     std::vector<uint8_t> ADPCM::FrameHeader::toVector() const
     {
         static_assert(sizeof(FrameHeader) % 4 == 0, "Size of frame header must be a multiple of 4 bytes");
-        REQUIRE(uncompressedSize < 2 ^ 16, std::runtime_error, "Uncompressed size must be < 2^16");
+        REQUIRE(uncompressedSize < (1 << 16), std::runtime_error, "Uncompressed size must be < 2^16");
         REQUIRE(flags == 0, std::runtime_error, "No flags allowed atm");
         REQUIRE(nrOfChannels == 1 || nrOfChannels == 2, std::runtime_error, "Number of channels must be 1 or 2");
         REQUIRE(pcmBitsPerSample >= 1 && pcmBitsPerSample <= 32, std::runtime_error, "Number of PCM bits must be in [1,32]");
@@ -72,7 +72,7 @@ namespace Audio
         const auto pcmNrOfSamples = pcmSamples.size() / m_nrOfChannels;
         REQUIRE(m_nrOfChannels == 1 || pcmSamples.size() % 2 == 0, std::runtime_error, "Stereo data must have an even number of samples");
         const auto pcmDataSize = pcmSamples.size() * sizeof(pcmSamples.front());
-        REQUIRE(pcmDataSize < (2 ^ 16), std::runtime_error, "PCM data size must be < 2^16");
+        REQUIRE(pcmDataSize < (1 << 16), std::runtime_error, "PCM data size must be < 2^16");
         // generate frame header
         FrameHeader frameHeader;
         frameHeader.flags = 0;
