@@ -34,7 +34,21 @@ namespace Media
             const double fps = static_cast<double>(m_fileHeader.video.frameRateHz) / 65536.0;
             m_info.videoFrameRateHz = fps;
             m_info.videoDurationS = static_cast<double>(m_fileHeader.video.nrOfFrames) / fps;
-            m_info.videoCodecName = "vid2h";
+            m_info.videoCodecName = "vid2h (";
+            for (uint32_t pi = 0; pi < sizeof(m_fileHeader.video.processing); ++pi)
+            {
+                const auto processing = m_fileHeader.video.processing[pi];
+                if (processing == Image::ProcessingType::Invalid)
+                {
+                    break;
+                }
+                m_info.videoCodecName += std::to_string(static_cast<int>(processing));
+                if (pi < 3 && m_fileHeader.video.processing[pi + 1] != Image::ProcessingType::Invalid)
+                {
+                    m_info.videoCodecName += ", ";
+                }
+            }
+            m_info.videoCodecName += ")";
             m_info.videoStreamIndex = 0;
             m_info.videoWidth = m_fileHeader.video.width;
             m_info.videoHeight = m_fileHeader.video.height;
@@ -47,7 +61,21 @@ namespace Media
             m_info.audioNrOfFrames = m_fileHeader.audio.nrOfFrames;
             m_info.audioNrOfSamples = m_fileHeader.audio.nrOfSamples;
             m_info.audioDurationS = static_cast<double>(m_fileHeader.audio.nrOfSamples) / static_cast<double>(m_fileHeader.audio.sampleRateHz);
-            m_info.audioCodecName = "vid2h";
+            m_info.audioCodecName = "vid2h (";
+            for (uint32_t pi = 0; pi < sizeof(m_fileHeader.audio.processing); ++pi)
+            {
+                const auto processing = m_fileHeader.audio.processing[pi];
+                if (processing == Audio::ProcessingType::Invalid)
+                {
+                    break;
+                }
+                m_info.audioCodecName += std::to_string(static_cast<int>(processing));
+                if (pi < 3 && m_fileHeader.audio.processing[pi + 1] != Audio::ProcessingType::Invalid)
+                {
+                    m_info.audioCodecName += ", ";
+                }
+            }
+            m_info.audioCodecName += ")";
             m_info.audioStreamIndex = 0;
             m_info.audioSampleRateHz = m_fileHeader.audio.sampleRateHz;
             REQUIRE(m_fileHeader.audio.channels == 1 || m_fileHeader.audio.channels == 2, std::runtime_error, "Number of audio channels must 1 or 2");
