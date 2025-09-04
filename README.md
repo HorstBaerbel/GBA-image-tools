@@ -27,7 +27,7 @@ All of my work is under the [MIT License](LICENSE). It uses:
 * Test images and video from the Blender "[Tears of Steel](https://mango.blender.org/)" movie (c) copyright 2008, Blender Foundation. Licensed as [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 * Test images from [imagecompression.info](https://imagecompression.info/test_images/) resized to fit my needs.
 
-## Prequisites
+## Prerequisites
 
 * You **must** have [OpenMP](https://www.openmp.org/) installed for compiling. Install it with:
 
@@ -37,7 +37,7 @@ All of my work is under the [MIT License](LICENSE). It uses:
 
   ```apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev``` or ```dnf install libavcodec-devel libavformat-devel libavutil-devel libswscale-devel```
 
-* You **must** have [SDL3](https://www.libsdl.org/) installed for compiling vid2h / vid2hplay. Install it with:
+* You **must** have [SDL3](https://www.libsdl.org/) v3.2.0 or higher installed for compiling vid2h / vid2hplay. Install it with:
 
   ```apt install libsdl3-dev``` or ```dnf install SDL3-devel```
 

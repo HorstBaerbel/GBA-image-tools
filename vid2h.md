@@ -83,8 +83,7 @@ vid2h will store binary file header fields and frame header fields (see [vid2hst
 | **Frame header #0**                   |
 | &emsp; Frame data type                | 1 byte  | Enum: Pixels 0x01, Color map 0x02, Audio 0x03                                                                                        |
 | &emsp; Frame size                     | 3 bytes | Size of frame data                                                                                                                   |
-| &emsp; **Data chunk #0**              |
-| &emsp; &emsp; Data                    | N bytes | Padded to multiple of 4 (might have multiple layered chunks inside)                                                                  |
+| &emsp; Frame data                     | N bytes | Padded to multiple of 4                                                                                                              |
 |                                       |         |
 | **Frame header #1**                   |
 | ...                                   |
