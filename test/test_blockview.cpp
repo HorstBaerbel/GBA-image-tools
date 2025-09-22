@@ -1,7 +1,7 @@
 #include "testmacros.h"
 
 #include "color/xrgb8888.h"
-#include "image_codec/blockview.h"
+#include "video_codec/blockview.h"
 
 #include <array>
 #include <cstdint>

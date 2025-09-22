@@ -8,8 +8,8 @@
 #include "compression/lzss.h"
 #include "exception.h"
 #include "image_codec/dxt.h"
-#include "image_codec/dxtv.h"
-#include "image_codec/gvid.h"
+#include "video_codec/dxtv.h"
+#include "video_codec/gvid.h"
 #include "imagehelpers.h"
 #include "math/colorfit.h"
 #include "processing/datahelpers.h"
@@ -418,7 +418,7 @@ namespace Image
         // convert image using DXTV compression
         auto result = data;
         auto previousImage = state.empty() ? std::vector<Color::XRGB8888>() : DataHelpers::convertTo<Color::XRGB8888>(state);
-        auto compressedData = DXTV::encode(data.data.pixels().data<Color::XRGB8888>(), previousImage, data.info.size.width(), data.info.size.height(), quality, format == Color::Format::XBGR1555, statistics);
+        auto compressedData = Video::DXTV::encode(data.data.pixels().data<Color::XRGB8888>(), previousImage, data.info.size.width(), data.info.size.height(), quality, format == Color::Format::XBGR1555, statistics);
         result.data.pixels() = PixelData(compressedData.first, Color::Format::Unknown);
         result.info.pixelFormat = format;
         result.info.colorMapFormat = Color::Format::Unknown;

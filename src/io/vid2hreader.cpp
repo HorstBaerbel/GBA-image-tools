@@ -6,7 +6,7 @@
 #include "color/colorhelpers.h"
 #include "compression/lzss.h"
 #include "image/processingtype.h"
-#include "image_codec/dxtv.h"
+#include "video_codec/dxtv.h"
 
 namespace Media
 {
@@ -113,7 +113,7 @@ namespace Media
                     inData = Compression::decodeLZ10(inData);
                     break;
                 case Image::ProcessingType::CompressDXTV:
-                    outData = DXTV::decode(inData, m_previousPixels, m_fileHeader.video.width, m_fileHeader.video.height, m_fileHeader.video.swappedRedBlue);
+                    outData = Video::DXTV::decode(inData, m_previousPixels, m_fileHeader.video.width, m_fileHeader.video.height, m_fileHeader.video.swappedRedBlue);
                     break;
                 default:
                     THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));

@@ -6,7 +6,7 @@
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
 #include "color/xrgb8888.h"
-#include "dxt_tables.h"
+#include "if/dxt_tables.h"
 #include "exception.h"
 #include "math/linefit.h"
 

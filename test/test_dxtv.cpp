@@ -2,9 +2,9 @@
 
 #include "color/psnr.h"
 #include "color/rgb888.h"
-#include "image_codec/blockview.h"
-#include "image_codec/codebook.h"
-#include "image_codec/dxtv.h"
+#include "video_codec/blockview.h"
+#include "video_codec/codebook.h"
+#include "video_codec/dxtv.h"
 #include "io/imageio.h"
 
 #include <algorithm>
@@ -37,33 +37,33 @@ auto testEncodeBlock(const Image::Frame &data, const float quality, const float 
 {
     // input image
     const auto size = data.info.size;
-    auto currentCodeBook = DXTV::CodeBook8x8(data.data.pixels().convertData<Color::XRGB8888>(), size.width(), size.height(), false);
+    auto currentCodeBook = Video::DXTV::CodeBook8x8(data.data.pixels().convertData<Color::XRGB8888>(), size.width(), size.height(), false);
     auto &inBlock = currentCodeBook.block(0);
     const auto inPixels = inBlock.pixels();
     // output image
     std::vector<Color::XRGB8888> outImage(data.data.pixels().size());
     // compress block
-    auto [blockSplitFlag, compressedData] = DXTV::encodeBlock<DXTV_CONSTANTS::BLOCK_MAX_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, DXTV_CONSTANTS::BLOCK_MAX_DIM>(), inBlock, quality, swapToBGR);
+    auto [blockSplitFlag, compressedData] = Video::DXTV::encodeBlock<Video::DxtvConstants::BLOCK_MAX_DIM>(currentCodeBook, CodeBook<Color::XRGB8888, Video::DxtvConstants::BLOCK_MAX_DIM>(), inBlock, quality, swapToBGR);
     // uncompress block
     auto dataPtr = reinterpret_cast<const uint16_t *>(compressedData.data());
     auto currPtr = outImage.data();
     const Color::XRGB8888 *prevPtr = nullptr;
     if (blockSplitFlag)
     {
-        dataPtr = DXTV::decodeBlock<4>(dataPtr, currPtr, prevPtr, size.width(), swapToBGR);                                               // A - upper-left
-        dataPtr = DXTV::decodeBlock<4>(dataPtr, currPtr + 4, prevPtr + 4, size.width(), swapToBGR);                                       // B - upper-right
-        dataPtr = DXTV::decodeBlock<4>(dataPtr, currPtr + 4 * size.width(), prevPtr + 4 * size.width(), size.width(), swapToBGR);         // C - lower-left
-        dataPtr = DXTV::decodeBlock<4>(dataPtr, currPtr + 4 * size.width() + 4, prevPtr + 4 * size.width() + 4, size.width(), swapToBGR); // D - lower-right
+        dataPtr = Video::DXTV::decodeBlock<4>(dataPtr, currPtr, prevPtr, size.width(), swapToBGR);                                               // A - upper-left
+        dataPtr = Video::DXTV::decodeBlock<4>(dataPtr, currPtr + 4, prevPtr + 4, size.width(), swapToBGR);                                       // B - upper-right
+        dataPtr = Video::DXTV::decodeBlock<4>(dataPtr, currPtr + 4 * size.width(), prevPtr + 4 * size.width(), size.width(), swapToBGR);         // C - lower-left
+        dataPtr = Video::DXTV::decodeBlock<4>(dataPtr, currPtr + 4 * size.width() + 4, prevPtr + 4 * size.width() + 4, size.width(), swapToBGR); // D - lower-right
     }
     else
     {
-        dataPtr = DXTV::decodeBlock<8>(dataPtr, currPtr, prevPtr, size.width(), swapToBGR);
+        dataPtr = Video::DXTV::decodeBlock<8>(dataPtr, currPtr, prevPtr, size.width(), swapToBGR);
     }
     // compare input and output
-    auto outCodeBook = DXTV::CodeBook8x8(outImage, size.width(), size.height(), false);
+    auto outCodeBook = Video::DXTV::CodeBook8x8(outImage, size.width(), size.height(), false);
     auto outPixels = currentCodeBook.block(0).pixels();
     auto psnr = Color::psnr(inPixels, outPixels);
-    std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << DXTV_CONSTANTS::BLOCK_MAX_DIM << "x" << DXTV_CONSTANTS::BLOCK_MAX_DIM << " block, psnr: " << std::setprecision(4) << psnr << std::endl;
+    std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << Video::DxtvConstants::BLOCK_MAX_DIM << "x" << Video::DxtvConstants::BLOCK_MAX_DIM << " block, psnr: " << std::setprecision(4) << psnr << std::endl;
     CATCH_REQUIRE(psnr >= allowedPsnr);
 }
 
@@ -74,8 +74,8 @@ auto testEncode(const Image::Frame &data, const float quality, const float allow
     const auto size = data.info.size;
     const auto inPixels = data.data.pixels().convertData<Color::XRGB8888>();
     // compress image
-    const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, {}, size.width(), size.height(), quality, swapToBGR);
-    auto outPixels = DXTV::decode(compressedData, {}, size.width(), size.height(), swapToBGR);
+    const auto [compressedData, frameBuffer] = Video::DXTV::encode(inPixels, {}, size.width(), size.height(), quality, swapToBGR);
+    auto outPixels = Video::DXTV::decode(compressedData, {}, size.width(), size.height(), swapToBGR);
     auto psnr = Color::psnr(inPixels, outPixels);
     std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << "image, psnr: " << std::setprecision(4) << psnr << std::endl;
     /*auto encoded = data;
@@ -119,8 +119,8 @@ TEST_CASE("EncodeDecodeVideo")
         const auto size = data.info.size;
         const auto inPixels = data.data.pixels().convertData<Color::XRGB8888>();
         // compress image
-        const auto [compressedData, frameBuffer] = DXTV::encode(inPixels, prevPixels, size.width(), size.height(), ImageQualityDXT8x8, swapToBGR);
-        auto outPixels = DXTV::decode(compressedData, prevPixels, size.width(), size.height(), swapToBGR);
+        const auto [compressedData, frameBuffer] = Video::DXTV::encode(inPixels, prevPixels, size.width(), size.height(), ImageQualityDXT8x8, swapToBGR);
+        auto outPixels = Video::DXTV::decode(compressedData, prevPixels, size.width(), size.height(), swapToBGR);
         auto psnr = Color::psnr(inPixels, outPixels);
         std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << "frame, psnr: " << std::setprecision(4) << psnr << std::endl;
         CATCH_REQUIRE(psnr >= allowedPsnr);

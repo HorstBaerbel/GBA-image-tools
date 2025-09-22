@@ -40,10 +40,10 @@
 //   Bit  4-0: x pixel motion of referenced block [-15,16] from top-left corner
 
 #ifndef __ASSEMBLER__
-// DXTV file format constants for including in C++ files
+// DXTV frame format constants for including in C++ files
 #include <cstdint>
 
-namespace DXTV_CONSTANTS
+namespace Video::DxtvConstants
 {
     static constexpr uint8_t FRAME_KEEP = 0x40;                                           // 1 for frames that are considered a direct copy of the previous frame and can be kept
     static constexpr uint32_t BLOCK_MAX_DIM = 8;                                          // Maximum block size is 8x8 pixels
@@ -60,7 +60,7 @@ namespace DXTV_CONSTANTS
 }
 
 #else
-// DXTV file format constants for including in assembly files
+// DXTV frame format constants for including in assembly files
 #define DXTV_CONSTANTS_FRAME_KEEP 0x40                                                    // 1 for frames that are considered a direct copy of the previous frame and can be kept
 #define DXTV_CONSTANTS_BLOCK_MAX_DIM 8                                                    // Maximum block size is 8x8 pixels
 #define DXTV_CONSTANTS_BLOCK_IS_REF (1 << 15)                                             // The block is a motion-compensated block from the current or previous frame
