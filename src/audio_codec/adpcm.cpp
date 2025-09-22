@@ -44,7 +44,8 @@ namespace Audio
         frameHeader.adpcmBitsPerSample = AdpcmConstants::BITS_PER_SAMPLE;
         frameHeader.uncompressedSize = pcmDataSize;
         // allocate audio conversion buffer and add frame header
-        std::vector<uint8_t> result = frameHeader.toVector();
+        std::vector<uint8_t> result(sizeof(AdpcmFrameHeader));
+        AdpcmFrameHeader::write(reinterpret_cast<uint32_t *>(result.data()), frameHeader);
         const auto adpcmChannelBlockSize = adpcm_sample_count_to_block_size(pcmNrOfSamples, 1, AdpcmConstants::BITS_PER_SAMPLE);
         result.resize(result.size() + adpcmChannelBlockSize * m_nrOfChannels);
         // convert samples to ADPCM format one channel at a time
@@ -65,7 +66,7 @@ namespace Audio
     {
         REQUIRE(data.size() >= sizeof(AdpcmFrameHeader), std::runtime_error, "Not enough data to decode");
         // read frame reader
-        const auto frameHeader = AdpcmFrameHeader::fromVector(data);
+        const AdpcmFrameHeader frameHeader = AdpcmFrameHeader::read(reinterpret_cast<const uint32_t *>(data.data()));
         // allocate audio conversion buffers
         const auto adpcmDataSize = data.size() - sizeof(AdpcmFrameHeader);
         const auto adpcmChannelBlockSize = adpcmDataSize / frameHeader.nrOfChannels;

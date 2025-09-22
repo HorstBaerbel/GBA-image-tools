@@ -1,11 +1,18 @@
 #include "dxtv_structs.h"
 
+#ifndef __arm__
+#include "exception.h"
+#endif
+
 namespace Video
 {
 
     auto DxtvFrameHeader::write(uint32_t *dst, const DxtvFrameHeader &header) -> void
     {
         static_assert(sizeof(DxtvFrameHeader) % 4 == 0, "Size of DXTV frame header must be a multiple of 4 bytes");
+#ifndef __arm__
+        REQUIRE(header.uncompressedSize < (1 << 24), std::runtime_error, "Uncompressed size must be < 2^24");
+#endif
         *dst = (header.uncompressedSize << 8) | static_cast<uint32_t>(header.frameFlags);
     }
 

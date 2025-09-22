@@ -355,7 +355,7 @@ namespace Video
         REQUIRE(data.size() >= sizeof(DxtvFrameHeader), std::runtime_error, "Not enough data to decode");
         REQUIRE(width > 0, std::runtime_error, "width must be > 0");
         REQUIRE(height > 0, std::runtime_error, "height must be > 0");
-        DxtvFrameHeader frameHeader = DxtvFrameHeader::read(reinterpret_cast<const uint32_t *>(data.data()));
+        const DxtvFrameHeader frameHeader = DxtvFrameHeader::read(reinterpret_cast<const uint32_t *>(data.data()));
         if (frameHeader.frameFlags == DxtvConstants::FRAME_KEEP)
         {
             REQUIRE(previousImage.size() == width * height, std::runtime_error, "Frame should be repeated, but previous image is empty or has wrong size");
