@@ -113,7 +113,7 @@ namespace Media
                     inData = Compression::decodeLZ10(inData);
                     break;
                 case Image::ProcessingType::CompressDXTV:
-                    outData = Video::DXTV::decode(inData, m_previousPixels, m_fileHeader.video.width, m_fileHeader.video.height, m_fileHeader.video.swappedRedBlue);
+                    outData = Video::Dxtv::decode(inData, m_previousPixels, m_fileHeader.video.width, m_fileHeader.video.height, m_fileHeader.video.swappedRedBlue);
                     break;
                 default:
                     THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));
@@ -163,7 +163,7 @@ namespace Media
                     inData = Compression::decodeLZ10(inData);
                     break;
                 case Audio::ProcessingType::CompressADPCM:
-                    outData = std::get<std::vector<int16_t>>(Audio::ADPCM::decode(inData));
+                    outData = std::get<std::vector<int16_t>>(Audio::Adpcm::decode(inData));
                     break;
                 default:
                     THROW(std::runtime_error, "Unsupported processing type " << static_cast<uint32_t>(processingType));

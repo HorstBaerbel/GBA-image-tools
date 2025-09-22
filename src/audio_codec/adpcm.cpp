@@ -9,12 +9,12 @@
 namespace Audio
 {
     /// @brief ADPCM-XQ state for (de-)compression
-    struct ADPCM::State
+    struct Adpcm::State
     {
         void *context[2] = {nullptr, nullptr}; // ADPCM-XQ state per channel
     };
 
-    ADPCM::ADPCM(Audio::ChannelFormat channelFormat, uint32_t sampleRateHz)
+    Adpcm::Adpcm(Audio::ChannelFormat channelFormat, uint32_t sampleRateHz)
         : m_state(std::make_shared<State>()), m_sampleRateHz(sampleRateHz)
     {
         const auto channelFormatInfo = formatInfo(channelFormat);
@@ -27,7 +27,7 @@ namespace Audio
         }
     }
 
-    auto ADPCM::encode(const Audio::SampleData &samples, Statistics::Frame::SPtr statistics) -> std::vector<uint8_t>
+    auto Adpcm::encode(const Audio::SampleData &samples, Statistics::Frame::SPtr statistics) -> std::vector<uint8_t>
     {
         REQUIRE(std::holds_alternative<std::vector<int16_t>>(samples), std::runtime_error, "Input sample type must be int16_t");
         // get sample data from frame
@@ -61,7 +61,7 @@ namespace Audio
         return result;
     }
 
-    auto ADPCM::decode(const std::vector<uint8_t> &data) -> Audio::SampleData
+    auto Adpcm::decode(const std::vector<uint8_t> &data) -> Audio::SampleData
     {
         REQUIRE(data.size() >= sizeof(AdpcmFrameHeader), std::runtime_error, "Not enough data to decode");
         // read frame reader
@@ -84,7 +84,7 @@ namespace Audio
         return pcmSamples;
     }
 
-    ADPCM::~ADPCM()
+    Adpcm::~Adpcm()
     {
         if (m_state->context[0])
         {

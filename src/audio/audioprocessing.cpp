@@ -125,7 +125,7 @@ namespace Audio
         // compress data
         if (processing.m_codecAdpcm == nullptr)
         {
-            processing.m_codecAdpcm = std::make_shared<ADPCM>(frame.info.channelFormat, frame.info.sampleRateHz);
+            processing.m_codecAdpcm = std::make_shared<Adpcm>(frame.info.channelFormat, frame.info.sampleRateHz);
         }
         auto result = frame;
         result.data = processing.m_codecAdpcm->encode(frame.data, statistics);

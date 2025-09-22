@@ -156,7 +156,7 @@ namespace Audio
         std::shared_ptr<Resampler> m_resampler;       // Audio resampler using FFmpeg
         std::shared_ptr<SampleBuffer> m_sampleBuffer; // Audio buffer for repackaging samples
         double m_sampleDeltaPrevFrame = 0;            // Number of audio samples per channel last frame in comparison to requested audioSamplesPerFrame
-        std::shared_ptr<ADPCM> m_codecAdpcm;          // ADPCM compressor
+        std::shared_ptr<Adpcm> m_codecAdpcm;          // ADPCM compressor
 
         enum class OperationType
         {

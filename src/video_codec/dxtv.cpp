@@ -32,15 +32,15 @@ namespace Video
     /// @brief Search for entry in codebook with minimum error
     /// @return Returns (error, x offset, y offset) if usable entry found or empty optional, if not
     template <std::size_t BLOCK_DIM>
-    auto findBestMatchingBlockMotion(const DXTV::CodeBook8x8 &codeBook, const BlockView<XRGB8888, bool, BLOCK_DIM> &block, float allowedError, bool fromCurrCodeBook) -> std::optional<std::tuple<float, int32_t, int32_t>>
+    auto findBestMatchingBlockMotion(const Dxtv::CodeBook8x8 &codeBook, const BlockView<XRGB8888, bool, BLOCK_DIM> &block, float allowedError, bool fromCurrCodeBook) -> std::optional<std::tuple<float, int32_t, int32_t>>
     {
         using return_type = std::tuple<float, int32_t, int32_t>;
         if (codeBook.empty())
         {
             return std::optional<return_type>();
         }
-        const auto offsetH = fromCurrCodeBook ? DXTV::CurrMotionHOffset : DXTV::PrevMotionHOffset;
-        const auto offsetV = fromCurrCodeBook ? DXTV::CurrMotionVOffset : DXTV::PrevMotionVOffset;
+        const auto offsetH = fromCurrCodeBook ? Dxtv::CurrMotionHOffset : Dxtv::PrevMotionHOffset;
+        const auto offsetV = fromCurrCodeBook ? Dxtv::CurrMotionVOffset : Dxtv::PrevMotionVOffset;
         // calculate start and end of motion search
         const int32_t blockX = block.x();
         const int32_t blockY = block.y();
@@ -79,7 +79,7 @@ namespace Video
     }
 
     template <std::size_t BLOCK_DIM>
-    auto encodeBlockInternal(DXTV::CodeBook8x8 &currentCodeBook, const DXTV::CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
+    auto encodeBlockInternal(Dxtv::CodeBook8x8 &currentCodeBook, const Dxtv::CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
     {
         static_assert(DxtvConstants::BLOCK_MAX_DIM >= BLOCK_DIM);
         static constexpr std::size_t BLOCK_LEVEL = std::log2(DxtvConstants::BLOCK_MAX_DIM) - std::log2(BLOCK_DIM);
@@ -99,8 +99,8 @@ namespace Video
             // check offset range
             auto offsetX = std::get<1>(prevRef.value());
             auto offsetY = std::get<2>(prevRef.value());
-            REQUIRE(DXTV::PrevMotionHOffset.first <= offsetX && offsetX <= DXTV::PrevMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for previous frame");
-            REQUIRE(DXTV::PrevMotionVOffset.first <= offsetY && offsetY <= DXTV::PrevMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for previous frame");
+            REQUIRE(Dxtv::PrevMotionHOffset.first <= offsetX && offsetX <= Dxtv::PrevMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for previous frame");
+            REQUIRE(Dxtv::PrevMotionVOffset.first <= offsetY && offsetY <= Dxtv::PrevMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for previous frame");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX >= 0 && static_cast<int32_t>(block.y()) + offsetY >= 0, std::runtime_error, "Reference block coordinates out of bounds");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX + BLOCK_DIM <= previousCodeBook.width() && static_cast<int32_t>(block.y()) + offsetY + BLOCK_DIM <= previousCodeBook.height(), std::runtime_error, "Reference block coordinates out of bounds");
             block.copyPixelsFrom(previousCodeBook.blockPixels<BLOCK_DIM>(static_cast<int32_t>(block.x()) + offsetX, static_cast<int32_t>(block.y()) + offsetY));
@@ -121,8 +121,8 @@ namespace Video
             // check offset range
             auto offsetX = std::get<1>(currRef.value());
             auto offsetY = std::get<2>(currRef.value());
-            REQUIRE(DXTV::CurrMotionHOffset.first <= offsetX && offsetX <= DXTV::CurrMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for current frame");
-            REQUIRE(DXTV::CurrMotionVOffset.first <= offsetY && offsetY <= DXTV::CurrMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for current frame");
+            REQUIRE(Dxtv::CurrMotionHOffset.first <= offsetX && offsetX <= Dxtv::CurrMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for current frame");
+            REQUIRE(Dxtv::CurrMotionVOffset.first <= offsetY && offsetY <= Dxtv::CurrMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for current frame");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX >= 0 && static_cast<int32_t>(block.y()) + offsetY >= 0, std::runtime_error, "Reference block coordinates out of bounds");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX + BLOCK_DIM <= currentCodeBook.width() && static_cast<int32_t>(block.y()) + offsetY + BLOCK_DIM <= currentCodeBook.height(), std::runtime_error, "Reference block coordinates out of bounds");
             block.copyPixelsFrom(currentCodeBook.blockPixels<BLOCK_DIM>(static_cast<int32_t>(block.x()) + offsetX, static_cast<int32_t>(block.y()) + offsetY));
@@ -144,14 +144,14 @@ namespace Video
             auto rawBlock = block.pixels();
             auto encodedBlock = DXT::encodeBlock<BLOCK_DIM>(rawBlock, false, swapToBGR);
             auto decodedBlock = DXT::decodeBlock<BLOCK_DIM>(encodedBlock, false, swapToBGR);
-            if constexpr (BLOCK_DIM <= DXTV::CodeBook8x8::BlockMinDim)
+            if constexpr (BLOCK_DIM <= Dxtv::CodeBook8x8::BlockMinDim)
             {
                 // We can't split anymore and can't get better error-wise. Store 4x4 DXT block
                 data = encodedBlock;
                 block.copyPixelsFrom(decodedBlock);
                 Statistics::incValue(statistics, "dxtBlocks", 1, BLOCK_LEVEL);
             }
-            else if constexpr (BLOCK_DIM > DXTV::CodeBook8x8::BlockMinDim)
+            else if constexpr (BLOCK_DIM > Dxtv::CodeBook8x8::BlockMinDim)
             {
                 // We can still split. Check if encoded block is below allowed error or we want to split the block
                 auto encodedBlockError = Color::mse(rawBlock, decodedBlock);
@@ -179,20 +179,20 @@ namespace Video
     }
 
     template <>
-    auto DXTV::encodeBlock<4>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, 4> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
+    auto Dxtv::encodeBlock<4>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, 4> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
     {
         REQUIRE(block.size() == 16, std::runtime_error, "Number of pixels in block must be 16");
         return encodeBlockInternal<4>(currentCodeBook, previousCodeBook, block, quality, swapToBGR, statistics);
     }
 
     template <>
-    auto DXTV::encodeBlock<8>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, 8> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
+    auto Dxtv::encodeBlock<8>(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<XRGB8888, bool, 8> &block, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<bool, std::vector<uint8_t>>
     {
         REQUIRE(block.size() == 64, std::runtime_error, "Number of pixels in block must be 64");
         return encodeBlockInternal<8>(currentCodeBook, previousCodeBook, block, quality, swapToBGR, statistics);
     }
 
-    auto DXTV::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
+    auto Dxtv::encode(const std::vector<XRGB8888> &image, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, float quality, const bool swapToBGR, Statistics::Frame::SPtr statistics) -> std::pair<std::vector<uint8_t>, std::vector<XRGB8888>>
     {
         REQUIRE(width % CodeBook8x8::BlockMaxDim == 0, std::runtime_error, "Image width must be a multiple of " << CodeBook8x8::BlockMaxDim << " for DXTV compression");
         REQUIRE(height % CodeBook8x8::BlockMaxDim == 0, std::runtime_error, "Image height must be a multiple of " << CodeBook8x8::BlockMaxDim << " for DXTV compression");
@@ -339,18 +339,18 @@ namespace Video
     }
 
     template <>
-    auto DXTV::decodeBlock<4>(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *
+    auto Dxtv::decodeBlock<4>(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *
     {
         return decodeBlockInternal<4>(data, currBlock, prevBlock, width, swapToBGR);
     }
 
     template <>
-    auto DXTV::decodeBlock<8>(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *
+    auto Dxtv::decodeBlock<8>(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *
     {
         return decodeBlockInternal<8>(data, currBlock, prevBlock, width, swapToBGR);
     }
 
-    auto DXTV::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, const bool swapToBGR) -> std::vector<XRGB8888>
+    auto Dxtv::decode(const std::vector<uint8_t> &data, const std::vector<XRGB8888> &previousImage, uint32_t width, uint32_t height, const bool swapToBGR) -> std::vector<XRGB8888>
     {
         REQUIRE(data.size() >= sizeof(DxtvFrameHeader), std::runtime_error, "Not enough data to decode");
         REQUIRE(width > 0, std::runtime_error, "width must be > 0");

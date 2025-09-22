@@ -8,12 +8,12 @@
 
 namespace Audio
 {
-    class ADPCM
+    class Adpcm
     {
     public:
-        ADPCM(Audio::ChannelFormat channelFormat, uint32_t sampleRateHz);
+        Adpcm(Audio::ChannelFormat channelFormat, uint32_t sampleRateHz);
 
-        ~ADPCM();
+        ~Adpcm();
 
         /// @brief Compress to ADPCM format
         auto encode(const Audio::SampleData &samples, Statistics::Frame::SPtr statistics = nullptr) -> std::vector<uint8_t>;

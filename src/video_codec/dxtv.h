@@ -12,7 +12,7 @@
 namespace Video
 {
 
-    class DXTV
+    class Dxtv
     {
     public:
         static constexpr std::pair<int32_t, int32_t> CurrMotionHOffset{-((1 << DxtvConstants::BLOCK_MOTION_BITS) / 2 - 1), (1 << DxtvConstants::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for current frame for 8, 4
