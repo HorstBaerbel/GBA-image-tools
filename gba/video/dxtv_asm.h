@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace DXTV
+namespace Dxtv
 {
     /// @brief Decompress a 4x4 block of DXT data
     /// @param dataPtr16 Pointer to the compressed DXT data
