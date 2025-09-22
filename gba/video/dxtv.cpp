@@ -275,6 +275,7 @@ namespace Dxtv
 
     uint32_t UnCompGetSize(const uint32_t *data)
     {
-        return data[0] >> 8;
+        const Video::DxtvFrameHeader frameHeader = Video::DxtvFrameHeader::read(data);
+        return frameHeader.uncompressedSize;
     }
 }
