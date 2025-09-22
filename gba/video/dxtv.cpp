@@ -4,6 +4,7 @@
 #include "image/dxt.h"
 #include "if/dxt_tables.h"
 #include "if/dxtv_constants.h"
+#include "if/dxtv_structs.h"
 #include "memory/memory.h"
 #include "print/output.h"
 
@@ -217,13 +218,14 @@ namespace Dxtv
         constexpr uint32_t Block4VStride32 = 4 * LineStride32;    // vertical stride to next 4x4 block in dst in words / 2 pixels
         constexpr uint32_t Block8HStride32 = 2 * Block4HStride32; // horizontal stride to next 8x8 block in dst in words / 2 pixels
         // copy frame header and skip to data
-        const uint32_t headerFlags = *data++ & 0xFF;
+        const Video::DxtvFrameHeader frameHeader = Video::DxtvFrameHeader::read(data);
         // check if we want to keep this duplicate frame
-        if ((headerFlags & Video::DxtvConstants::FRAME_KEEP) != 0)
+        if ((frameHeader.frameFlags & Video::DxtvConstants::FRAME_KEEP) != 0)
         {
             // Debug::printf("Duplicate frame");
             return;
         }
+        data += sizeof(Video::DxtvFrameHeader) / 4;
         // set up some variables
         auto dataPtr16 = reinterpret_cast<const uint16_t *>(data);
         for (uint32_t by = 0; by < height / Video::DxtvConstants::BLOCK_MAX_DIM; ++by)
