@@ -21,7 +21,7 @@ namespace Video
         static_assert(sizeof(DxtvFrameHeader) % 4 == 0, "Size of DXTV frame header must be a multiple of 4 bytes");
         DxtvFrameHeader header;
         header.frameFlags = *src & 0xFF;
-        header.uncompressedSize = (*src & 0xFFFFFF) >> 8;
+        header.uncompressedSize = (*src & 0xFFFFFF00) >> 8;
         return header;
     }
 }
