@@ -12,7 +12,7 @@
 #include "data/video.h"
 
 EWRAM_DATA ALIGN(4) uint32_t VideoScratchPad[240 * 160 / 2 + 16000 / 4]; // Scratch pad memory for video decompression. Ideally we would dynamically allocate this at the start of decoding
-IWRAM_DATA ALIGN(4) uint32_t AudioSampleBuffer[2 * 3000 / 4];			 // Memory for audio sample double-buffer. Ideally we would dynamically allocate this at the start of decoding
+IWRAM_DATA ALIGN(4) uint32_t AudioSampleBuffer[2 * 6000 / 4];			 // Memory for audio sample double-buffer. Ideally we would dynamically allocate this at the start of decoding
 
 int main()
 {

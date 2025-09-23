@@ -1,7 +1,8 @@
 #include "vid2hdecoder.h"
 
 #include "compression/lz77.h"
-#include "dxtv.h"
+#include "video/dxtv.h"
+#include "audio/adpcm.h"
 #include "memory/memory.h"
 #include "sys/base.h"
 #include "sys/decompress.h"
@@ -84,6 +85,10 @@ namespace Media
             case Audio::ProcessingType::CompressRLE:
                 BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
                 uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
+                break;
+            case Audio::ProcessingType::CompressADPCM:
+                Adpcm::UnCompWrite32bit<8>(currentSrc, uncompressedSize, currentDst);
+                uncompressedSize = Adpcm::UnCompGetSize<8>(currentSrc);
                 break;
             default:
                 return {currentDst, uncompressedSize};

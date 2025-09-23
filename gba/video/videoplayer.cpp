@@ -37,7 +37,8 @@ namespace Media
     IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing
     IWRAM_DATA uint32_t *m_audioBackBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently decoding
     IWRAM_DATA uint16_t m_audioBufferSize = 0;              // Size of one audio buffer
-    IWRAM_DATA uint16_t m_audioBufferChannelSize = 0;       // Size of data stored per channel == number of samples per channel
+    IWRAM_DATA uint16_t m_audioPlayBufferChannelSize = 0;   // Size of data stored per channel == number of samples per channel of buffer currently playing
+    IWRAM_DATA uint16_t m_audioBackBufferChannelSize = 0;   // Size of data stored per channel == number of samples per channel of buffer currently decoding
 
     // video
     IWRAM_DATA uint32_t *m_videoScratchPad = nullptr;
@@ -81,18 +82,21 @@ namespace Media
             {
                 // swap sample buffers
                 std::swap(m_audioPlayBuffer, m_audioBackBuffer);
+                std::swap(m_audioPlayBufferChannelSize, m_audioBackBufferChannelSize);
                 // calculate buffer start
-                const auto sampleBufferStart = reinterpret_cast<uint32_t>(m_audioPlayBuffer);
+                const auto sampleBuffer0 = reinterpret_cast<uint32_t>(m_audioPlayBuffer);
                 // set DMA channels to read from new buffer and restart DMA
-                REG_DMA1SAD = sampleBufferStart;
+                REG_DMA1SAD = sampleBuffer0;
                 REG_DMA1CNT |= DMA_ENABLE;
                 if (m_mediaInfo.audio.channels == 2)
                 {
-                    REG_DMA2SAD = sampleBufferStart + m_audioBufferChannelSize;
+                    // align output buffer to next word boundary
+                    const auto sampleBuffer1 = (sampleBuffer0 + m_audioPlayBufferChannelSize + 3) & 0xFFFFFFFC;
+                    REG_DMA2SAD = sampleBuffer1;
                     REG_DMA2CNT |= DMA_ENABLE;
                 }
                 // set timer 1 count to number of words in new buffer
-                REG_TM1CNT_L = 65536U - m_audioBufferChannelSize;
+                REG_TM1CNT_L = 65536U - m_audioPlayBufferChannelSize;
                 // start both timers
                 REG_TM0CNT_H |= TIMER_START;
                 REG_TM1CNT_H |= TIMER_START;
@@ -188,7 +192,7 @@ namespace Media
         auto startTime = Time::now();
 #endif
         auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackBuffer, m_audioBufferSize, m_mediaInfo, m_queuedAudioFrame);
-        m_audioBufferChannelSize = audioDecodedFrameSize / m_mediaInfo.audio.channels;
+        m_audioBackBufferChannelSize = audioDecodedFrameSize / m_mediaInfo.audio.channels;
         m_queuedAudioFrame.data = nullptr;
         ++m_audioFramesDecoded;
 #ifdef DEBUG_PLAYER
