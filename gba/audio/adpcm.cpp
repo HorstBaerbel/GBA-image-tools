@@ -38,8 +38,8 @@ namespace Adpcm
         {
             // align output buffer to next word boundary
             dst8 = reinterpret_cast<uint8_t *>((reinterpret_cast<uint32_t>(dst8) + 3) & 0xFFFFFFFC);
-            // first sample is stored verbatim
-            int32_t pcmData = static_cast<int32_t>(data8[0]) | (static_cast<int32_t>(data8[1]) << 8);
+            // first sample is stored verbatim in header
+            int32_t pcmData = *reinterpret_cast<const int16_t *>(data8);
             *dst8++ = pcmData >> 8;
             int32_t index = data8[2];
             data8 += 4;
@@ -65,25 +65,28 @@ namespace Adpcm
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
                 pcmData = pcmData > 32767 ? 32767 : pcmData;
                 *dst8++ = pcmData >> 8;
-                // decode second nibble
-                step = StepTable[index];
-                delta = step >> 3;
-                if (*data8 & 0x10)
-                    delta += (step >> 2);
-                if (*data8 & 0x20)
-                    delta += (step >> 1);
-                if (*data8 & 0x40)
-                    delta += step;
-                if (*data8 & 0x80)
-                    pcmData -= delta;
-                else
-                    pcmData += delta;
-                index += IndexTable_4bit[(*data8 >> 4) & 0x7];
-                index = index < 0 ? 0 : index;
-                index = index > 88 ? 88 : index;
-                pcmData = pcmData < -32768 ? -32768 : pcmData;
-                pcmData = pcmData > 32767 ? 32767 : pcmData;
-                *dst8++ = pcmData >> 8;
+                // decode second nibble only if not last sample
+                if (bytesLeft > 0)
+                {
+                    step = StepTable[index];
+                    delta = step >> 3;
+                    if (*data8 & 0x10)
+                        delta += (step >> 2);
+                    if (*data8 & 0x20)
+                        delta += (step >> 1);
+                    if (*data8 & 0x40)
+                        delta += step;
+                    if (*data8 & 0x80)
+                        pcmData -= delta;
+                    else
+                        pcmData += delta;
+                    index += IndexTable_4bit[(*data8 >> 4) & 0x7];
+                    index = index < 0 ? 0 : index;
+                    index = index > 88 ? 88 : index;
+                    pcmData = pcmData < -32768 ? -32768 : pcmData;
+                    pcmData = pcmData > 32767 ? 32767 : pcmData;
+                    *dst8++ = pcmData >> 8;
+                }
                 // advance input data
                 data8++;
             }
@@ -95,6 +98,6 @@ namespace Adpcm
     {
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         // if we're down-converting the PCM sample depth during decompression, adjust the uncompressed data size too
-        return static_cast<uint32_t>(frameHeader.uncompressedSize) * 8 / frameHeader.pcmBitsPerSample + frameHeader.nrOfChannels;
+        return static_cast<uint32_t>(frameHeader.uncompressedSize) * 8 / frameHeader.pcmBitsPerSample; // + frameHeader.nrOfChannels;
     }
 }
