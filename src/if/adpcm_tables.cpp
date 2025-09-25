@@ -5,9 +5,9 @@
 #endif
 
 #ifdef __arm__
-IWRAM_DATA ALIGN(4) const uint16_t StepTable[89] = {
+IWRAM_DATA ALIGN(4) const uint16_t ADPCM_StepTable[89] = {
 #else
-const uint16_t StepTable[89] = {
+const uint16_t ADPCM_StepTable[89] = {
 #endif
     7, 8, 9, 10, 11, 12, 13, 14,
     16, 17, 19, 21, 23, 25, 28, 31,
@@ -23,8 +23,8 @@ const uint16_t StepTable[89] = {
     32767};
 
 #ifdef __arm__
-IWRAM_DATA ALIGN(4) const int16_t IndexTable_4bit[8] = {
+IWRAM_DATA ALIGN(4) const int16_t ADPCM_IndexTable_4bit[8] = {
 #else
-const int16_t IndexTable_4bit[8] = {
+const int16_t ADPCM_IndexTable_4bit[8] = {
 #endif
     -1, -1, -1, -1, 2, 4, 6, 8};

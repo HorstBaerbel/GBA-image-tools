@@ -86,7 +86,7 @@ namespace Audio
             while (bytesLeft--)
             {
                 // decode first nibble
-                uint32_t step = StepTable[index];
+                uint32_t step = ADPCM_StepTable[index];
                 uint32_t delta = step >> 3;
                 if (*data8 & 1)
                     delta += (step >> 2);
@@ -98,7 +98,7 @@ namespace Audio
                     pcmData -= delta;
                 else
                     pcmData += delta;
-                index += IndexTable_4bit[*data8 & 0x7];
+                index += ADPCM_IndexTable_4bit[*data8 & 0x7];
                 index = index < 0 ? 0 : index;
                 index = index > 88 ? 88 : index;
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
@@ -107,7 +107,7 @@ namespace Audio
                 // decode second nibble only if not last sample
                 if (bytesLeft > 0)
                 {
-                    step = StepTable[index];
+                    step = ADPCM_StepTable[index];
                     delta = step >> 3;
                     if (*data8 & 0x10)
                         delta += (step >> 2);
@@ -119,7 +119,7 @@ namespace Audio
                         pcmData -= delta;
                     else
                         pcmData += delta;
-                    index += IndexTable_4bit[(*data8 >> 4) & 0x7];
+                    index += ADPCM_IndexTable_4bit[(*data8 >> 4) & 0x7];
                     index = index < 0 ? 0 : index;
                     index = index > 88 ? 88 : index;
                     pcmData = pcmData < -32768 ? -32768 : pcmData;
