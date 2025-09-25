@@ -45,6 +45,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	sys/decompress.cpp
 	compression/lz77.s
 	../src/if/adpcm_structs.cpp
+	../src/if/adpcm_tables.cpp
 	audio/adpcm.cpp
 	../src/if/dxt_tables.cpp
 	../src/if/dxtv_structs.cpp
