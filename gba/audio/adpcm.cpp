@@ -4,6 +4,7 @@
 #include "if/adpcm_tables.h"
 
 #define DITHER
+#define DITHER_SHIFT 24
 
 namespace Adpcm
 {
@@ -31,8 +32,8 @@ namespace Adpcm
             // first sample is stored verbatim in header
             int32_t pcmData = *reinterpret_cast<const int16_t *>(data8);
 #ifdef DITHER
-            pcmData += (dither >> 24) - lastDither;
-            lastDither = dither >> 24;
+            pcmData += (dither >> DITHER_SHIFT) - lastDither;
+            lastDither = dither >> DITHER_SHIFT;
             dither = ((dither << 4) - dither) ^ 1;
             pcmData = pcmData < -32768 ? -32768 : pcmData;
             pcmData = pcmData > 32767 ? 32767 : pcmData;
@@ -60,8 +61,8 @@ namespace Adpcm
                 index = index < 0 ? 0 : index;
                 index = index > 88 ? 88 : index;
 #ifdef DITHER
-                pcmData += (dither >> 24) - lastDither;
-                lastDither = dither >> 24;
+                pcmData += (dither >> DITHER_SHIFT) - lastDither;
+                lastDither = dither >> DITHER_SHIFT;
                 dither = ((dither << 4) - dither) ^ 1;
 #endif
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
@@ -86,8 +87,8 @@ namespace Adpcm
                     index = index < 0 ? 0 : index;
                     index = index > 88 ? 88 : index;
 #ifdef DITHER
-                    pcmData += (dither >> 24) - lastDither;
-                    lastDither = dither >> 24;
+                    pcmData += (dither >> DITHER_SHIFT) - lastDither;
+                    lastDither = dither >> DITHER_SHIFT;
                     dither = ((dither << 4) - dither) ^ 1;
 #endif
                     pcmData = pcmData < -32768 ? -32768 : pcmData;
