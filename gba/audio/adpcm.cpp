@@ -3,8 +3,15 @@
 #include "if/adpcm_structs.h"
 #include "if/adpcm_tables.h"
 
+#define DITHER
+
 namespace Adpcm
 {
+
+#ifdef DITHER
+    static IWRAM_DATA ALIGN(4) int32_t dither = 0x159A55A0;
+    static IWRAM_DATA ALIGN(4) int32_t lastDither = 0;
+#endif
 
     template <>
     void UnCompWrite32bit<8>(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
@@ -23,6 +30,13 @@ namespace Adpcm
             dst8 = reinterpret_cast<uint8_t *>((reinterpret_cast<uint32_t>(dst8) + 3) & 0xFFFFFFFC);
             // first sample is stored verbatim in header
             int32_t pcmData = *reinterpret_cast<const int16_t *>(data8);
+#ifdef DITHER
+            pcmData += (dither >> 24) - lastDither;
+            lastDither = dither >> 24;
+            dither = ((dither << 4) - dither) ^ 1;
+            pcmData = pcmData < -32768 ? -32768 : pcmData;
+            pcmData = pcmData > 32767 ? 32767 : pcmData;
+#endif
             *dst8++ = pcmData >> 8;
             int32_t index = data8[2];
             data8 += 4;
@@ -45,6 +59,11 @@ namespace Adpcm
                 index += ADPCM_IndexTable_4bit[*data8 & 0x7];
                 index = index < 0 ? 0 : index;
                 index = index > 88 ? 88 : index;
+#ifdef DITHER
+                pcmData += (dither >> 24) - lastDither;
+                lastDither = dither >> 24;
+                dither = ((dither << 4) - dither) ^ 1;
+#endif
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
                 pcmData = pcmData > 32767 ? 32767 : pcmData;
                 *dst8++ = pcmData >> 8;
@@ -66,6 +85,11 @@ namespace Adpcm
                     index += ADPCM_IndexTable_4bit[(*data8 >> 4) & 0x7];
                     index = index < 0 ? 0 : index;
                     index = index > 88 ? 88 : index;
+#ifdef DITHER
+                    pcmData += (dither >> 24) - lastDither;
+                    lastDither = dither >> 24;
+                    dither = ((dither << 4) - dither) ^ 1;
+#endif
                     pcmData = pcmData < -32768 ? -32768 : pcmData;
                     pcmData = pcmData > 32767 ? 32767 : pcmData;
                     *dst8++ = pcmData >> 8;
