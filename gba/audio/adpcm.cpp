@@ -14,7 +14,7 @@ namespace Adpcm
 #endif
 
     template <>
-    void UnCompWrite32bit<8>(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
+    void IWRAM_FUNC UnCompWrite32bit<8>(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
     {
         // copy frame header and skip to data
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
@@ -101,7 +101,7 @@ namespace Adpcm
     }
 
     template <>
-    uint32_t UnCompGetSize<8>(const uint32_t *data)
+    uint32_t IWRAM_FUNC UnCompGetSize<8>(const uint32_t *data)
     {
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         // if we're down-converting the PCM sample depth during decompression, adjust the uncompressed data size too
