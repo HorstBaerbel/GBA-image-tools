@@ -106,6 +106,6 @@ namespace Adpcm
     {
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         // if we're down-converting the PCM sample depth during decompression, adjust the uncompressed data size too
-        return static_cast<uint32_t>(frameHeader.uncompressedSize) * 8 / frameHeader.pcmBitsPerSample; // + frameHeader.nrOfChannels;
+        return (static_cast<uint32_t>(frameHeader.uncompressedSize) * 8 + 7) / frameHeader.pcmBitsPerSample; // + frameHeader.nrOfChannels;
     }
 }
