@@ -48,8 +48,9 @@
                 "--dxtv=95",
                 //"--lz10",
                 "--samplerate=21024",
-                "--sampleformat=s8p",
+                //"--sampleformat=s8p",
                 //"--channelformat=mono",
+                "--adpcm",
                 "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
                 "video"
             ],
@@ -99,7 +100,7 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "--dumpaudio",
+                //"--dumpaudio",
                 "video.bin"
             ],
             "stopAtEntry": false,
