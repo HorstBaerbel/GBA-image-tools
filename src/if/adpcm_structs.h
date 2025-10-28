@@ -1,14 +1,14 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include "adpcm_constants.h"
 
 #include <cstdint>
-#include <vector>
 
 namespace Audio
 {
     /// @brief Frame header for one ADPCM frame
-    /// ADPCM sampels are encoded planar / per channel, e.g. L0 L1 ... R0 R1 ...
+    /// ADPCM samples are encoded planar / per channel, e.g. L0 L1 ... R0 R1 ...
     struct AdpcmFrameHeader
     {
         uint16_t flags : 5;              // Flags (currently unused)
@@ -21,3 +21,8 @@ namespace Audio
         static auto read(const uint32_t *src) -> AdpcmFrameHeader;
     } __attribute__((aligned(4), packed));
 }
+#else
+
+#define ADPCM_FRAMEHEADER_SIZE 4
+
+#endif
