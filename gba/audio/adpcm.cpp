@@ -9,11 +9,6 @@
 namespace Adpcm
 {
 
-#ifdef DITHER
-    static IWRAM_DATA ALIGN(4) int32_t dither = 0x159A55A0;
-    static IWRAM_DATA ALIGN(4) int32_t lastDither = 0;
-#endif
-
     template <>
     void IWRAM_FUNC UnCompWrite32bit<8>(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
     {
@@ -32,9 +27,9 @@ namespace Adpcm
             // first sample is stored verbatim in header
             int32_t pcmData = *reinterpret_cast<const int16_t *>(data8);
 #ifdef DITHER
-            pcmData += (dither >> DITHER_SHIFT) - lastDither;
-            lastDither = dither >> DITHER_SHIFT;
-            dither = ((dither << 4) - dither) ^ 1;
+            pcmData += (ADPCM_DitherState[1] >> DITHER_SHIFT) - ADPCM_DitherState[0];
+            ADPCM_DitherState[0] = ADPCM_DitherState[1] >> DITHER_SHIFT;
+            ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
             pcmData = pcmData < -32768 ? -32768 : pcmData;
             pcmData = pcmData > 32767 ? 32767 : pcmData;
 #endif
@@ -61,9 +56,9 @@ namespace Adpcm
                 index = index < 0 ? 0 : index;
                 index = index > 88 ? 88 : index;
 #ifdef DITHER
-                pcmData += (dither >> DITHER_SHIFT) - lastDither;
-                lastDither = dither >> DITHER_SHIFT;
-                dither = ((dither << 4) - dither) ^ 1;
+                pcmData += (ADPCM_DitherState[1] >> DITHER_SHIFT) - ADPCM_DitherState[0];
+                ADPCM_DitherState[0] = ADPCM_DitherState[1] >> DITHER_SHIFT;
+                ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
 #endif
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
                 pcmData = pcmData > 32767 ? 32767 : pcmData;
@@ -87,9 +82,9 @@ namespace Adpcm
                     index = index < 0 ? 0 : index;
                     index = index > 88 ? 88 : index;
 #ifdef DITHER
-                    pcmData += (dither >> DITHER_SHIFT) - lastDither;
-                    lastDither = dither >> DITHER_SHIFT;
-                    dither = ((dither << 4) - dither) ^ 1;
+                    pcmData += (ADPCM_DitherState[1] >> DITHER_SHIFT) - ADPCM_DitherState[0];
+                    ADPCM_DitherState[0] = ADPCM_DitherState[1] >> DITHER_SHIFT;
+                    ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
 #endif
                     pcmData = pcmData < -32768 ? -32768 : pcmData;
                     pcmData = pcmData > 32767 ? 32767 : pcmData;
