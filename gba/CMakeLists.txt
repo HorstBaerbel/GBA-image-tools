@@ -47,6 +47,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	../src/if/adpcm_structs.cpp
 	../src/if/adpcm_tables.cpp
 	audio/adpcm.cpp
+	audio/adpcm_asm.s
 	../src/if/dxt_tables.cpp
 	../src/if/dxtv_structs.cpp
 	video/dxtv.cpp

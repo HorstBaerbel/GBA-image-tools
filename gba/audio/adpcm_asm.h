@@ -12,5 +12,6 @@ namespace Adpcm
 
     /// @brief Get stored uncompressed size of sample data after decoding and truncating to 8-bit
     /// @param data Pointer to ADPCM data
-    extern "C" auto UnCompGetSize_8bit(const uint32_t *data) -> void;
+    /// @note Only sample depths of (8, 16, 24, 32) are supported!
+    extern "C" auto UnCompGetSize_8bit(const uint32_t *data) -> uint32_t;
 }

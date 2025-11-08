@@ -1,10 +1,13 @@
 #include "adpcm.h"
 
+#include "adpcm_asm.h"
 #include "if/adpcm_structs.h"
 #include "if/adpcm_tables.h"
 
-#define DITHER
-#define DITHER_SHIFT 24
+// #define USE_ASM
+
+#define ADPCM_DITHER
+#define ADPCM_DITHER_SHIFT 24
 
 namespace Adpcm
 {
@@ -12,6 +15,9 @@ namespace Adpcm
     template <>
     void IWRAM_FUNC UnCompWrite32bit<8>(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
     {
+#ifdef USE_ASM
+        UnCompWrite32bit_8bit(data, dataSize, dst);
+#else
         // copy frame header and skip to data
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         data += sizeof(Audio::AdpcmFrameHeader) / 4;
@@ -26,9 +32,9 @@ namespace Adpcm
             dst8 = reinterpret_cast<uint8_t *>((reinterpret_cast<uint32_t>(dst8) + 3) & 0xFFFFFFFC);
             // first sample is stored verbatim in header
             int32_t pcmData = *reinterpret_cast<const int16_t *>(data8);
-#ifdef DITHER
-            pcmData += (ADPCM_DitherState[1] >> DITHER_SHIFT) - ADPCM_DitherState[0];
-            ADPCM_DitherState[0] = ADPCM_DitherState[1] >> DITHER_SHIFT;
+#ifdef ADPCM_DITHER
+            pcmData += (ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT) - ADPCM_DitherState[0];
+            ADPCM_DitherState[0] = ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT;
             ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
             pcmData = pcmData < -32768 ? -32768 : pcmData;
             pcmData = pcmData > 32767 ? 32767 : pcmData;
@@ -55,9 +61,9 @@ namespace Adpcm
                 index += ADPCM_IndexTable_4bit[*data8 & 0x7];
                 index = index < 0 ? 0 : index;
                 index = index > 88 ? 88 : index;
-#ifdef DITHER
-                pcmData += (ADPCM_DitherState[1] >> DITHER_SHIFT) - ADPCM_DitherState[0];
-                ADPCM_DitherState[0] = ADPCM_DitherState[1] >> DITHER_SHIFT;
+#ifdef ADPCM_DITHER
+                pcmData += (ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT) - ADPCM_DitherState[0];
+                ADPCM_DitherState[0] = ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT;
                 ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
 #endif
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
@@ -81,9 +87,9 @@ namespace Adpcm
                     index += ADPCM_IndexTable_4bit[(*data8 >> 4) & 0x7];
                     index = index < 0 ? 0 : index;
                     index = index > 88 ? 88 : index;
-#ifdef DITHER
-                    pcmData += (ADPCM_DitherState[1] >> DITHER_SHIFT) - ADPCM_DitherState[0];
-                    ADPCM_DitherState[0] = ADPCM_DitherState[1] >> DITHER_SHIFT;
+#ifdef ADPCM_DITHER
+                    pcmData += (ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT) - ADPCM_DitherState[0];
+                    ADPCM_DitherState[0] = ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT;
                     ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
 #endif
                     pcmData = pcmData < -32768 ? -32768 : pcmData;
@@ -94,13 +100,18 @@ namespace Adpcm
                 data8++;
             }
         }
+#endif
     }
 
     template <>
     uint32_t IWRAM_FUNC UnCompGetSize<8>(const uint32_t *data)
     {
+#ifdef USE_ASM
+        return UnCompGetSize_8bit(data);
+#else
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         // if we're down-converting the PCM sample depth during decompression, adjust the uncompressed data size too
         return (static_cast<uint32_t>(frameHeader.uncompressedSize) * 8 + 7) / frameHeader.pcmBitsPerSample; // + frameHeader.nrOfChannels;
+#endif
     }
 }
