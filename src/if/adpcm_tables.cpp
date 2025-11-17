@@ -6,15 +6,12 @@
 
 #ifdef __arm__
 IWRAM_DATA ALIGN(4) uint32_t ADPCM_DitherState[2] = {
-    0,         // last dither value
-    0x159A55A0 // current dither value
-};
 #else
 uint32_t ADPCM_DitherState[2] = {
+#endif
     0,         // last dither value
     0x159A55A0 // current dither value
 };
-#endif
 
 #ifdef __arm__
 IWRAM_DATA ALIGN(4) const uint16_t ADPCM_StepTable[89] = {
