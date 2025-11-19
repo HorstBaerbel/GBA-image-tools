@@ -4,9 +4,9 @@
  .global ADPCM_IndexTable_4bit
  .global ADPCM_DitherState
 
- //#define ADPCM_DITHER
- //#define ADPCM_DITHER_SHIFT 24
- //#define ADPCM_CLAMP
+ #define ADPCM_DITHER
+ #define ADPCM_DITHER_SHIFT 24
+ #define ADPCM_CLAMP
 
  .arm
  .align
@@ -25,7 +25,8 @@ UnCompWrite32bit_8bit:
     @ r3 trashed, r4-r12 and r14 used and saved / restored
     push {r4 - r12, r14}
     @ store constants
-    ldr r9, =#0x7FFFFFFF @ used for clamping
+    ldr r8, =ADPCM_DitherState
+    ldr r9, =#0x7FFFFFFF @ used for clamping PCM data
     ldr r10, =ADPCM_StepTable
     ldr r11, =ADPCM_IndexTable_4bit
 
@@ -41,25 +42,23 @@ UnCompWrite32bit_8bit:
     ldrsh r3, [r0], #2 @ load first verbatim PCM sample to r3
 #ifdef ADPCM_DITHER
     @ dither PCM data in r3
-    ldr r6, =ADPCM_DitherState
-    ldmia r6, {r7, r8} @ load r7 = last_dither, r8 = dither
-    sub r3, r3, r7 @ pcmData -= last_dither
-    mov r7, r8 @ r7 = dither
-    rsb r8, r7, r8, lsl #4 @ r8 = (dither << 4) - dither
-    eor r8, r8, #1 @ r8 ^= 1
-    mov r7, r7, lsr #ADPCM_DITHER_SHIFT @ r7 = dither >> ADPCM_DITHER_SHIFT
-    add r3, r3, r7 @ pcmData += dither >> ADPCM_DITHER_SHIFT
-    sub r6, r6, #8 @ move back to start of ADPCM_dither
-    stmia r6, {r7, r8} @ store r7 = new last_dither, r8 = new dither
+    ldmia r8, {r6, r7} @ load r6 = last_dither, r7 = dither
+    sub r3, r3, r6 @ pcmData -= last_dither
+    mov r6, r7 @ r6 = dither
+    rsb r7, r6, r7, lsl #4 @ r7 = (dither << 4) - dither
+    eor r7, r7, #1 @ r7 ^= 1
+    mov r6, r6, lsr #ADPCM_DITHER_SHIFT @ r6 = dither >> ADPCM_DITHER_SHIFT
+    add r3, r3, r6 @ pcmData += dither >> ADPCM_DITHER_SHIFT
+    stmia r8, {r6, r7} @ store r6 = new last_dither, r7 = new dither
 #endif
 #ifdef ADPCM_CLAMP
     @ clamp PCM data in r3 to [-32768, 32767]
-    mov r8, r3, lsl #16 @ r8 = r3 << 16
-    cmp r3, r8, asr #16 @ shift back and sign-extend r8 and compare with r3. check if r3 fits into signed 16-bit
-    eorne r8, r3, r9, asr #31 @ extract sign bit of r3. xor with r9 and apply to saturate
+    mov r7, r3, lsl #16 @ r7 = r3 << 16
+    cmp r3, r7, asr #16 @ shift back and sign-extend r7 and compare with r3. check if r3 fits into signed 16-bit
+    eorne r7, r3, r9, asr #31 @ extract sign bit of r3. xor with r9 and apply to saturate
 #endif
-    mov r8, r3, lsr #8 @ r8 = pcmData >> 8
-    strb r8, [r2], #1 @ store first 8-bit PCM sample
+    mov r7, r3, lsr #8 @ r7 = pcmData >> 8
+    strb r7, [r2], #1 @ store first 8-bit PCM sample
     ldrsh r4, [r0], #2 @ load first index into r4
     sub r12, r1, #4 @ r12 stores ADPCM byte count per channel for loop (-4 as we have already read 4 bytes)
 
@@ -82,32 +81,30 @@ UnCompWrite32bit_8bit:
     and r6, r5, #0x07
     mov r6, r6, lsl #1 @ r6*=2, because uint16_t
     ldrsh r7, [r11, r6] @ load index into r7 and 
-    adds r4, r4, r7 @ add to old index in r4
+    adds r4, r4, r7 @ add to old index in r4. sets flags
     @ clamp index in r4 to [0, 88]
     movmi r4, #0
     cmp r4, #88
     movgt r4, #88
 #ifdef ADPCM_DITHER
     @ dither PCM data in r3
-    ldr r6, =ADPCM_DitherState
-    ldmia r6, {r7, r8} @ load r7 = last_dither, r8 = dither
-    subs r3, r3, r7 @ pcmData -= last_dither
-    mov r7, r8 @ r7 = dither
-    rsb r8, r7, r8, lsl #4 @ r8 = (dither << 4) - dither
-    eor r8, r8, #1 @ r8 ^= 1
-    mov r7, r7, lsr #ADPCM_DITHER_SHIFT @ r7 = dither >> ADPCM_DITHER_SHIFT
-    add r3, r3, r7 @ pcmData += dither >> ADPCM_DITHER_SHIFT
-    sub r6, r6, #8 @ move back to start of ADPCM_dither
-    stmia r6, {r7, r8} @ store r7 = new last_dither, r8 = new dither
+    ldmia r8, {r6, r7} @ load r6 = last_dither, r7 = dither
+    sub r3, r3, r6 @ pcmData -= last_dither
+    mov r6, r7 @ r6 = dither
+    rsb r7, r6, r7, lsl #4 @ r7 = (dither << 4) - dither
+    eor r7, r7, #1 @ r7 ^= 1
+    mov r6, r6, lsr #ADPCM_DITHER_SHIFT @ r6 = dither >> ADPCM_DITHER_SHIFT
+    add r3, r3, r6 @ pcmData += dither >> ADPCM_DITHER_SHIFT
+    stmia r8, {r6, r7} @ store r6 = new last_dither, r7 = new dither
 #endif
 #ifdef ADPCM_CLAMP
     @ clamp PCM data in r3 to [-32768, 32767]
-    mov r8, r3, lsl #16 @ r8 = r3 << 16
-    cmp r3, r8, asr #16 @ shift back and sign-extend r8 and compare with r3. check if r3 fits into signed 16-bit
-    eorne r8, r3, r9, asr #31 @ extract sign bit of r3. xor with r9 and apply to saturate
+    mov r7, r3, lsl #16 @ r7 = r3 << 16
+    cmp r3, r7, asr #16 @ shift back and sign-extend r7 and compare with r3. check if r3 fits into signed 16-bit
+    eorne r7, r3, r9, asr #31 @ extract sign bit of r3. xor with r9 and apply to saturate
 #endif
-    mov r8, r3, lsr #8 @ r8 = pcmData >> 8
-    strb r8, [r2], #1 @ store first nibble / 8-bit PCM sample
+    mov r7, r3, lsr #8 @ r7 = pcmData >> 8
+    strb r7, [r2], #1 @ store first nibble / 8-bit PCM sample
 
     @ if not last sample
     subs r12, r12, #1
@@ -130,32 +127,30 @@ UnCompWrite32bit_8bit:
     and r6, r6, #0x7
     mov r6, r6, lsl #1 @ r6*=2, because uint16_t
     ldrsh r7, [r11, r6]
-    adds r4, r4, r7
+    adds r4, r4, r7 @ add to old index in r4. sets flags
     @ clamp index in r4 to [0, 88]
     movmi r4, #0
     cmp r4, #88
     movgt r4, #88
 #ifdef ADPCM_DITHER
     @ dither PCM data in r3
-    ldr r6, =ADPCM_DitherState
-    ldmia r6, {r7, r8} @ load r7 = last_dither, r8 = dither
-    sub r3, r3, r7 @ pcmData -= last_dither
-    mov r7, r8 @ r7 = dither
-    rsb r8, r7, r8, lsl #4 @ r8 = (dither << 4) - dither
-    eor r8, r8, #1 @ r8 ^= 1
-    mov r7, r7, lsr #ADPCM_DITHER_SHIFT @ r7 = dither >> ADPCM_DITHER_SHIFT
-    add r3, r3, r7 @ pcmData += dither >> ADPCM_DITHER_SHIFT
-    sub r6, r6, #8 @ move back to start of ADPCM_dither
-    stmia r6, {r7, r8} @ store r7 = new last_dither, r8 = new dither
+    ldmia r8, {r6, r7} @ load r6 = last_dither, r7 = dither
+    sub r3, r3, r6 @ pcmData -= last_dither
+    mov r6, r7 @ r6 = dither
+    rsb r7, r6, r7, lsl #4 @ r7 = (dither << 4) - dither
+    eor r7, r7, #1 @ r7 ^= 1
+    mov r6, r6, lsr #ADPCM_DITHER_SHIFT @ r6 = dither >> ADPCM_DITHER_SHIFT
+    add r3, r3, r6 @ pcmData += dither >> ADPCM_DITHER_SHIFT
+    stmia r8, {r6, r7} @ store r6 = new last_dither, r7 = new dither
 #endif
 #ifdef ADPCM_CLAMP
     @ clamp PCM data in r3 to [-32768, 32767]
-    mov r8, r3, lsl #16 @ r8 = r3 << 16
-    cmp r3, r8, asr #16 @ shift back and sign-extend r8 and compare with r3. check if r3 fits into signed 16-bit
-    eorne r8, r3, r9, asr #31 @ extract sign bit of r3. xor with r9 and apply to saturate
+    mov r7, r3, lsl #16 @ r7 = r3 << 16
+    cmp r3, r7, asr #16 @ shift back and sign-extend r7 and compare with r3. check if r3 fits into signed 16-bit
+    eorne r7, r3, r9, asr #31 @ extract sign bit of r3. xor with r9 and apply to saturate
 #endif
-    mov r8, r3, asr #8 @ r8 = pcmData >> 8
-    strb r8, [r2], #1 @ store second nibble / 8-bit PCM sample
+    mov r7, r3, asr #8 @ r7 = pcmData >> 8
+    strb r7, [r2], #1 @ store second nibble / 8-bit PCM sample
 
     @ decrease number of ADPCM bytes left. if not last byte, loop again
     cmp r12, #0
