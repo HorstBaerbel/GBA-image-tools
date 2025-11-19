@@ -4,10 +4,10 @@
 #include "if/adpcm_structs.h"
 #include "if/adpcm_tables.h"
 
-// #define USE_ASM
+#define USE_ASM
 
-// #define ADPCM_DITHER
-// #define ADPCM_DITHER_SHIFT 24
+#define ADPCM_DITHER
+#define ADPCM_DITHER_SHIFT 24
 
 namespace Adpcm
 {
@@ -15,7 +15,9 @@ namespace Adpcm
     template <>
     void IWRAM_FUNC UnCompWrite32bit<8>(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
     {
-        // #else
+#ifdef USE_ASM
+        UnCompWrite32bit_8bit(data, dataSize, dst);
+#else
         //  copy frame header and skip to data
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         auto data8 = reinterpret_cast<const uint8_t *>(data + sizeof(Audio::AdpcmFrameHeader) / 4);
@@ -65,8 +67,8 @@ namespace Adpcm
                 ADPCM_DitherState[0] = ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT;
                 ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
 #endif
-                // pcmData = pcmData < -32768 ? -32768 : pcmData;
-                // pcmData = pcmData > 32767 ? 32767 : pcmData;
+                pcmData = pcmData < -32768 ? -32768 : pcmData;
+                pcmData = pcmData > 32767 ? 32767 : pcmData;
                 *dst8++ = pcmData >> 8;
                 // decode second nibble only if not last sample
                 if (bytesLeft > 0)
@@ -91,16 +93,15 @@ namespace Adpcm
                     ADPCM_DitherState[0] = ADPCM_DitherState[1] >> ADPCM_DITHER_SHIFT;
                     ADPCM_DitherState[1] = ((ADPCM_DitherState[1] << 4) - ADPCM_DitherState[1]) ^ 1;
 #endif
-                    // pcmData = pcmData < -32768 ? -32768 : pcmData;
-                    // pcmData = pcmData > 32767 ? 32767 : pcmData;
+                    pcmData = pcmData < -32768 ? -32768 : pcmData;
+                    pcmData = pcmData > 32767 ? 32767 : pcmData;
                     *dst8++ = pcmData >> 8;
                 }
                 // advance input data
                 data8++;
             }
         }
-        // #endif
-        UnCompWrite32bit_8bit(data, dataSize, dst);
+#endif
     }
 
     template <>
