@@ -79,8 +79,7 @@ UnCompWrite32bit_8bit:
     subne r3, r3, r7
     addeq r3, r3, r7
     and r6, r5, #0x07
-    mov r6, r6, lsl #1 @ r6*=2, because uint16_t
-    ldrsh r7, [r11, r6] @ load index into r7 and 
+    ldrsb r7, [r11, r6] @ load index into r7 and 
     adds r4, r4, r7 @ add to old index in r4. sets flags
     @ clamp index in r4 to [0, 88]
     movmi r4, #0
@@ -125,8 +124,7 @@ UnCompWrite32bit_8bit:
     addeq r3, r7
     mov r6, r5, lsr #4
     and r6, r6, #0x7
-    mov r6, r6, lsl #1 @ r6*=2, because uint16_t
-    ldrsh r7, [r11, r6]
+    ldrsb r7, [r11, r6]
     adds r4, r4, r7 @ add to old index in r4. sets flags
     @ clamp index in r4 to [0, 88]
     movmi r4, #0
