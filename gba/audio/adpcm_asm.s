@@ -39,6 +39,10 @@ UnCompWrite32bit_8bit:
     movgt r1, r1, lsr #1 @ divide size of data by two for stereo data
 
 .adpcm_ucw32_8_channel_loop:
+    @ r3 = PCM data
+    @ r4 = Current ADPCM index
+    @ r5 = Current ADPCM byte (2*4 bit data)
+    @ r6-r8 scratch registers
     ldrsh r3, [r0], #2 @ load first verbatim PCM sample to r3
 #ifdef ADPCM_DITHER
     @ dither PCM data in r3
