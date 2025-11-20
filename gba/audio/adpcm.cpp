@@ -47,19 +47,12 @@ namespace Adpcm
                 // get two ADPCM nibbles
                 const uint32_t nibbles = *data8;
                 // decode first nibble
-                uint32_t step = ADPCM_StepTable[index];
-                uint32_t delta = step >> 3;
-                if (nibbles & 1)
-                    delta += (step >> 2);
-                if (nibbles & 2)
-                    delta += (step >> 1);
-                if (nibbles & 4)
-                    delta += step;
+                uint32_t delta = ADPCM_DeltaTable_4bit[index][nibbles & 0x07];
                 if (nibbles & 8)
                     pcmData -= delta;
                 else
                     pcmData += delta;
-                index += ADPCM_IndexTable_4bit[nibbles & 0x7];
+                index += ADPCM_IndexTable_4bit[nibbles & 0x07];
                 index = index < 0 ? 0 : index;
                 index = index > 88 ? 88 : index;
 #ifdef ADPCM_DITHER
@@ -73,19 +66,12 @@ namespace Adpcm
                 // decode second nibble only if not last sample
                 if (bytesLeft > 0)
                 {
-                    step = ADPCM_StepTable[index];
-                    delta = step >> 3;
-                    if (nibbles & 0x10)
-                        delta += (step >> 2);
-                    if (nibbles & 0x20)
-                        delta += (step >> 1);
-                    if (nibbles & 0x40)
-                        delta += step;
-                    if (nibbles & 0x80)
+                    delta = ADPCM_DeltaTable_4bit[index][(nibbles >> 4) & 0x07];
+                    if ((nibbles >> 4) & 8)
                         pcmData -= delta;
                     else
                         pcmData += delta;
-                    index += ADPCM_IndexTable_4bit[(nibbles >> 4) & 0x7];
+                    index += ADPCM_IndexTable_4bit[(nibbles >> 4) & 0x07];
                     index = index < 0 ? 0 : index;
                     index = index > 88 ? 88 : index;
 #ifdef ADPCM_DITHER

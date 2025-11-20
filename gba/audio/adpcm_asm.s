@@ -1,6 +1,6 @@
 #include "if/adpcm_structs.h"
 
- .global ADPCM_StepTable
+ .global ADPCM_DeltaTable_4bit
  .global ADPCM_IndexTable_4bit
  .global ADPCM_DitherState
 
@@ -27,7 +27,7 @@ UnCompWrite32bit_8bit:
     @ store constants
     ldr r8, =ADPCM_DitherState
     ldr r9, =#0x7FFFFFFF @ used for clamping PCM data
-    ldr r10, =ADPCM_StepTable
+    ldr r10, =ADPCM_DeltaTable_4bit
     ldr r11, =ADPCM_IndexTable_4bit
 
     @ read header
@@ -66,19 +66,13 @@ UnCompWrite32bit_8bit:
     ldrb r5, [r0], #1 @ load two ADPCM nibbles to r5
 
     @ decode first nibble
-    mov r6, r4, lsl #1 @ r6=index*2, because uint16_t
-    ldrh r6, [r10, r6] @ load step to r6
-    mov r7, r6, lsr #3 @ load delta to r7
-    tst r5, #0x01 @ ADPCM value & 1?
-    addne r7, r7, r6, lsr #2
-    tst r5, #0x02 @ ADPCM value & 2?
-    addne r7, r7, r6, lsr #1
-    tst r5, #0x04 @ ADPCM value & 4?
-    addne r7, r7, r6
+    and r6, r5, #0x07 @ r6=nibble&7 
+    mov r7, r4, lsl #4 @ r7=index*2*8, because uint16_t and 8 entries per index
+    add r7, r6, lsl #1 @ r7=index*2*8 + (nibble&7)*2
+    ldrh r7, [r10, r7] @ load delta to r7
     tst r5, #0x08 @ ADPCM value & 8?
     subne r3, r3, r7
     addeq r3, r3, r7
-    and r6, r5, #0x07
     ldrsb r7, [r11, r6] @ load index into r7 and 
     adds r4, r4, r7 @ add to old index in r4. sets flags
     @ clamp index in r4 to [0, 88]
@@ -110,21 +104,15 @@ UnCompWrite32bit_8bit:
     beq .adpcm_ucw32_8_sample_end
 
     @ decode second nibble
-    mov r6, r4, lsl #1 @ r6=index*2, because uint16_t
-    ldrh r6, [r10, r6] @ load step to r6
-    mov r7, r6, lsr #3 @ load delta to r7
-    tst r5, #0x10 @ ADPCM value & 0x10?
-    addne r7, r7, r6, lsr #2
-    tst r5, #0x20 @ ADPCM value & 0x20?
-    addne r7, r7, r6, lsr #1
-    tst r5, #0x40 @ ADPCM value & 0x40?
-    addne r7, r7, r6
-    tst r5, #0x80 @ ADPCM value & 0x80?
-    subne r3, r7
-    addeq r3, r7
-    mov r6, r5, lsr #4
-    and r6, r6, #0x7
-    ldrsb r7, [r11, r6]
+    mov r5, r5, lsr #4 @ r5=(nibble>>4) 
+    and r6, r5, #0x07 @ r6=(nibble>>4)&7
+    mov r7, r4, lsl #4 @ r7=index*2*8, because uint16_t and 8 entries per index
+    add r7, r6, lsl #1 @ r7=index*2*8 + ((nibble>>4)&7)*2
+    ldrh r7, [r10, r7] @ load delta to r7
+    tst r5, #0x08 @ ADPCM value & 8?
+    subne r3, r3, r7
+    addeq r3, r3, r7
+    ldrsb r7, [r11, r6] @ load index into r7 and 
     adds r4, r4, r7 @ add to old index in r4. sets flags
     @ clamp index in r4 to [0, 88]
     movmi r4, #0
