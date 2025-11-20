@@ -85,16 +85,11 @@ namespace Audio
             int32_t bytesLeft = adpcmChannelBlockSize - 4;
             while (bytesLeft--)
             {
+                // get two ADPCM nibbles
+                const uint32_t nibbles = *data8;
                 // decode first nibble
-                uint32_t step = ADPCM_StepTable[index];
-                uint32_t delta = step >> 3;
-                if (*data8 & 1)
-                    delta += (step >> 2);
-                if (*data8 & 2)
-                    delta += (step >> 1);
-                if (*data8 & 4)
-                    delta += step;
-                if (*data8 & 8)
+                uint32_t delta = ADPCM_DeltaTable_4bit[index][nibbles & 0x07];
+                if (nibbles & 8)
                     pcmData -= delta;
                 else
                     pcmData += delta;
@@ -107,19 +102,12 @@ namespace Audio
                 // decode second nibble only if not last sample
                 if (bytesLeft > 0)
                 {
-                    step = ADPCM_StepTable[index];
-                    delta = step >> 3;
-                    if (*data8 & 0x10)
-                        delta += (step >> 2);
-                    if (*data8 & 0x20)
-                        delta += (step >> 1);
-                    if (*data8 & 0x40)
-                        delta += step;
-                    if (*data8 & 0x80)
+                    delta = ADPCM_DeltaTable_4bit[index][(nibbles >> 4) & 0x07];
+                    if ((nibbles >> 4) & 8)
                         pcmData -= delta;
                     else
                         pcmData += delta;
-                    index += ADPCM_IndexTable_4bit[(*data8 >> 4) & 0x7];
+                    index += ADPCM_IndexTable_4bit[(nibbles >> 4) & 0x7];
                     index = index < 0 ? 0 : index;
                     index = index > 88 ? 88 : index;
                     pcmData = pcmData < -32768 ? -32768 : pcmData;
