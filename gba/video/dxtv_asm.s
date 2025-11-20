@@ -30,9 +30,9 @@ DecodeBlock4x4:
     // get x-offset of the source block
     and r5, r4, #DXTV_CONSTANTS_BLOCK_MOTION_MASK
     subs r5, r5, #DXTV_CONSTANTS_BLOCK_HALF_RANGE
-    lsl r5, r5, #1 @ multiply x-offset by 2, because pixels are 2 bytes wide
+    mov r5, r5, lsl #1 @ multiply x-offset by 2, because pixels are 2 bytes wide
     // get y-offset of the source block
-    lsr r4, r4, #DXTV_CONSTANTS_BLOCK_MOTION_Y_SHIFT
+    mov r4, r4, lsr #DXTV_CONSTANTS_BLOCK_MOTION_Y_SHIFT
     and r4, r4, #DXTV_CONSTANTS_BLOCK_MOTION_MASK
     subs r4, r4, #DXTV_CONSTANTS_BLOCK_HALF_RANGE
     // calculate offset to source block
@@ -107,7 +107,7 @@ DecodeBlock4x4:
     // get blue components of c0 and c1 to r6
     and r3, r4, #0x7c00
     and r12, r5, #0x7c00
-    lsr r3, r3, #5
+    mov r3, r3, lsr #5
     orr r6, r3, r12, lsr #10
     // get green components of c0 and c1 to r7
     and r3, r4, #0x03E0
@@ -140,7 +140,7 @@ DecodeBlock4x4:
     orr r7, r7, r6, lsl #10
     mov r6, r7, lsl #16 @ move c3 from the lower part of r7 to r6
     mov r6, r6, lsr #16
-    lsr r7, r7, #16 @ move c2 to the lower part of r7
+    mov r7, r7, lsr #16 @ move c2 to the lower part of r7
 .dxt4x4_store_colors:
     // we now have c0, c1, c2 and c3 in r4, r5, r6 and r7. store them in the LUT
     ldr r3, =DXT_BlockColors
@@ -233,9 +233,9 @@ DecodeBlock8x8:
     // get x-offset of the source block
     and r5, r4, #DXTV_CONSTANTS_BLOCK_MOTION_MASK
     subs r5, r5, #DXTV_CONSTANTS_BLOCK_HALF_RANGE
-    lsl r5, r5, #1 @ multiply x-offset by 2, because pixels are 2 bytes wide
+    mov r5, r5, lsl #1 @ multiply x-offset by 2, because pixels are 2 bytes wide
     // get y-offset of the source block
-    lsr r4, r4, #DXTV_CONSTANTS_BLOCK_MOTION_Y_SHIFT
+    mov r4, r4, lsr #DXTV_CONSTANTS_BLOCK_MOTION_Y_SHIFT
     and r4, r4, #DXTV_CONSTANTS_BLOCK_MOTION_MASK
     subs r4, r4, #DXTV_CONSTANTS_BLOCK_HALF_RANGE
     // calculate offset to source block
@@ -285,7 +285,7 @@ DecodeBlock8x8:
     // get blue components of c0 and c1 to r6
     and r3, r4, #0x7c00
     and r12, r5, #0x7c00
-    lsr r3, r3, #5
+    mov r3, r3, lsr #5
     orr r6, r3, r12, lsr #10
     // get green components of c0 and c1 to r7
     and r3, r4, #0x03E0
@@ -318,7 +318,7 @@ DecodeBlock8x8:
     orr r7, r7, r6, lsl #10
     mov r6, r7, lsl #16 @ move c3 from the lower part of r7 to r6
     mov r6, r6, lsr #16
-    lsr r7, r7, #16 @ move c2 to the lower part of r7
+    mov r7, r7, lsr #16 @ move c2 to the lower part of r7
 .dxt8x8_store_colors:
     // we now have c0, c1, c2 and c3 in r4, r5, r6 and r7. store them in the LUT
     ldr r3, =DXT_BlockColors
