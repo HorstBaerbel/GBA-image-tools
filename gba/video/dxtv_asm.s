@@ -39,7 +39,7 @@ DecodeBlock4x4:
     mlas r6, r4, r2, r5 @ multiply y-offset by line stride and add x-offset
     adds r3, r3, r6 @ calculate source address
     // check if block is word-aligned
-    ands r4, r3, #0x03 @ check if source pointer is aligned
+    ands r4, r3, #0x03 @ check if source pointer is aligned to 4 bytes / 2 pixels
     beq .mc4x4_aligned
 .mc4x4_unaligned:
     // unaligned block copy
@@ -242,7 +242,7 @@ DecodeBlock8x8:
     mlas r6, r4, r2, r5 @ multiply y-offset by line stride and add x-offset
     adds r3, r3, r6 @ calculate source address
     // check if block is word-aligned
-    ands r4, r3, #0x03 @ check if source pointer is aligned
+    ands r4, r3, #0x03 @ check if source pointer is aligned to 4 bytes / 2 pixels
     beq .mc8x8_aligned
 .mc8x8_unaligned:
    // unaligned block copy

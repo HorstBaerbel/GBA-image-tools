@@ -25,7 +25,7 @@ int main()
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
 	// set up video system, clear color and read file header
-	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VideoScratchPad, sizeof(VideoScratchPad), AudioSampleBuffer, sizeof(AudioSampleBuffer));
+	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VideoScratchPad, sizeof(VideoScratchPad), 480, AudioSampleBuffer, sizeof(AudioSampleBuffer));
 	Media::SetClearColor(0);
 	// print video info
 	const auto &videoInfo = Media::GetInfo();

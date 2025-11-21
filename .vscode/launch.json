@@ -51,7 +51,7 @@
                 //"--sampleformat=s8p",
                 //"--channelformat=mono",
                 "--adpcm",
-                "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
+                "\"${workspaceFolder}/data/videos/160x88/BigBuckBunny_160x88_15fps.mp4\"",
                 "video"
             ],
             "stopAtEntry": false,
@@ -101,7 +101,7 @@
             "program": "${command:cmake.launchTargetPath}",
             "args": [
                 //"--dumpaudio",
-                "video.bin"
+                "video_160x88_adpcm.bin"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

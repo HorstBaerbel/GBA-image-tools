@@ -45,7 +45,8 @@ namespace Media
     // video
     IWRAM_DATA uint32_t *m_videoScratchPad = nullptr;
     IWRAM_DATA uint32_t m_videoScratchPadSize = 0;
-    IWRAM_DATA uint32_t m_clearColor = 0;
+    IWRAM_DATA uint16_t m_vramStride = 0;
+    IWRAM_DATA uint16_t m_clearColor = 0;
     IWRAM_DATA IO::Vid2h::Frame m_queuedColorMapFrame{};
     IWRAM_DATA IO::Vid2h::Frame m_queuedVideoFrame{};
     IWRAM_DATA volatile int16_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
@@ -139,7 +140,7 @@ namespace Media
         }
     }
 
-    auto Init(const uint32_t *mediaSrc, uint32_t *videoScratchPad, uint32_t videoScratchPadSize, uint32_t *audioScratchPad, uint32_t audioScratchPadSize) -> void
+    auto Init(const uint32_t *mediaSrc, uint32_t *videoScratchPad, uint32_t videoScratchPadSize, uint32_t vramStride, uint32_t *audioScratchPad, uint32_t audioScratchPadSize) -> void
     {
         // read file header
         m_mediaInfo = IO::Vid2h::GetInfo(mediaSrc);
@@ -148,6 +149,7 @@ namespace Media
             // set up video buffers
             m_videoScratchPad = videoScratchPad;
             m_videoScratchPadSize = videoScratchPadSize;
+            m_vramStride = vramStride;
         }
         if (m_mediaInfo.contentType & IO::FileType::Audio)
         {
@@ -160,7 +162,7 @@ namespace Media
 
     auto SetClearColor(uint16_t color) -> void
     {
-        m_clearColor = static_cast<uint32_t>(color) << 16 | color;
+        m_clearColor = color;
     }
 
     auto GetInfo() -> const IO::Vid2h::Info &
@@ -220,6 +222,38 @@ namespace Media
         m_videoStats.m_accDecodedMs += duration;
         m_videoStats.m_maxDecodedMs = m_videoStats.m_maxDecodedMs < duration ? duration : m_videoStats.m_maxDecodedMs;
         m_videoStats.m_nrDecoded++;
+#endif
+    }
+
+    IWRAM_FUNC auto BlitVideoFrame() -> void
+    {
+#ifdef DEBUG_PLAYER
+        auto startTime = Time::now();
+#endif
+        const uint32_t videoLineStride8 = ((m_mediaInfo.video.bitsPerPixel + 7) / 8) * m_mediaInfo.video.width;
+        if (videoLineStride8 == m_vramStride)
+        {
+            // video fiulls screen completely. simply copy the data over
+            Memory::memcpy32((void *)VRAM, m_videoDecodedFrame, m_videoDecodedFrameSize / 4);
+        }
+        else
+        {
+            // video does not fill screen. copy line by line
+            const uint32_t videoLineStride32 = videoLineStride8 / 4;
+            auto videoPtr32 = m_videoDecodedFrame;
+            auto vramPtr8 = (uint8_t *)VRAM;
+            for (uint32_t y = 0; y < m_mediaInfo.video.height; ++y)
+            {
+                Memory::memcpy32(vramPtr8, videoPtr32, videoLineStride32);
+                videoPtr32 += m_vramStride / 4; // videoLineStride32;
+                vramPtr8 += m_vramStride;
+            }
+        }
+#ifdef DEBUG_PLAYER
+        auto duration = Time::now() * 1000 - startTime * 1000;
+        m_videoStats.m_accCopiedMs += duration;
+        m_videoStats.m_maxCopiedMs = m_videoStats.m_maxCopiedMs < duration ? duration : m_videoStats.m_maxCopiedMs;
+        m_videoStats.m_nrCopied++;
 #endif
     }
 
@@ -284,8 +318,9 @@ namespace Media
             if (m_mediaInfo.contentType & IO::FileType::Video)
             {
                 // fill background and scratch pad to clear color
-                Memory::memset32((void *)VRAM, m_clearColor, m_mediaInfo.video.width * m_mediaInfo.video.height / 2);
-                Memory::memset32(m_videoScratchPad, m_clearColor, m_videoScratchPadSize / 4);
+                const uint32_t clearColor = static_cast<uint32_t>(m_clearColor) << 16 | m_clearColor;
+                Memory::memset32((void *)VRAM, clearColor, m_mediaInfo.video.width * m_mediaInfo.video.height / 2);
+                Memory::memset32(m_videoScratchPad, clearColor, m_videoScratchPadSize / 4);
                 // set up timer 2 to increase with video frame interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
                 // set timer 2 divider to 2 == 1/256 -> 16*1024*1024 cycles/s / 256 = 65536/s
                 irqSet(irqMASKS::IRQ_TIMER2, VideoFrameRequest);
@@ -304,7 +339,7 @@ namespace Media
             if (m_mediaInfo.contentType & IO::FileType::Video)
             {
                 // blit first frame to screen
-                Memory::memcpy32((void *)VRAM, m_videoDecodedFrame, m_videoDecodedFrameSize / 4);
+                BlitVideoFrame();
                 // start timer for video frame rate
                 REG_TM2CNT_H |= TIMER_START;
             }
@@ -329,19 +364,10 @@ namespace Media
             // blit video frame if one is pending
             if (m_videoFramesRequested > 0 && m_videoFramesDecoded > 0)
             {
-#ifdef DEBUG_PLAYER
-                auto startTime = Time::now();
-#endif
                 // we're waiting for a frame and have one. blit it!
-                Memory::memcpy32((void *)VRAM, m_videoDecodedFrame, m_videoDecodedFrameSize / 4);
+                BlitVideoFrame();
                 // we've used up the decoded frame
                 m_videoFramesDecoded = 0;
-#ifdef DEBUG_PLAYER
-                auto duration = Time::now() * 1000 - startTime * 1000;
-                m_videoStats.m_accCopiedMs += duration;
-                m_videoStats.m_maxCopiedMs = m_videoStats.m_maxCopiedMs < duration ? duration : m_videoStats.m_maxCopiedMs;
-                m_videoStats.m_nrCopied++;
-#endif
             }
             // read frames from media data
             if (m_audioFramesRequested > 0 && m_queuedAudioFrame.data == nullptr)
