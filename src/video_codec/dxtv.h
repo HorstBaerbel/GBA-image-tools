@@ -26,18 +26,28 @@ namespace Video
         template <std::size_t BLOCK_DIM>
         static auto encodeBlock(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<Color::XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<bool, std::vector<uint8_t>>;
 
-        /// @brief Compress image data to format similar to DXT1. See: https://www.khronos.org/opengl/wiki/S3_Texture_Compression#DXT1_Format
-        // DXT1 compresses one 4x4 block to 2 bytes color0, 2 bytes color1 and 16*2 bit = 4 bytes index information
-        /// Difference is that colors will be stored as RGB555 only
+        /// @brief Compress image to format similar to DXT1 (https://www.khronos.org/opengl/wiki/S3_Texture_Compression#DXT1_Format) while also using motion-compensation.
+        /// The frame and block format can be found in src/if/dxtv_constants.h
+        /// @param image Input image to compress
+        /// @param previousImage Previous image to detect motion-compensated blocks
+        /// @param width Image width. Must be a multiple of 8!
+        /// @param height Image height. Must be a multiple of 8!
         /// @param quality Quality for block references and splitting of blocks. The higher, the better quality. Range [0,100]
-        /// @return Returns (compressed data, decompressed frame)
+        /// @param swapToBGR If true colors will have the blue and red color component swapped
+        /// @param statistics Image processing statistics container
+        /// @return Returns (compressed data, compressed/decompressed frame)
         static auto encode(const std::vector<Color::XRGB8888> &image, const std::vector<Color::XRGB8888> &previousImage, uint32_t width, uint32_t height, float quality, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<std::vector<uint8_t>, std::vector<Color::XRGB8888>>;
 
         /// @brief Decompress block from DXTV format
         template <std::size_t BLOCK_DIM>
         static auto decodeBlock(const uint16_t *data, XRGB8888 *currBlock, const XRGB8888 *prevBlock, uint32_t width, const bool swapToBGR) -> const uint16_t *;
 
-        /// @brief Decompress from DXTV format
+        /// @brief Decompress image from DXTV format
+        /// @param data Compressed image data in DXTV format
+        /// @param previousImage Previous image to copy motion-compensated blocks from
+        /// @param width Image width. Must be a multiple of 8!
+        /// @param height Image height. Must be a multiple of 8!
+        /// @param swapToBGR If true colors will have the blue and red color component swapped
         static auto decode(const std::vector<uint8_t> &data, const std::vector<Color::XRGB8888> &previousImage, uint32_t width, uint32_t height, const bool swapToBGR = false) -> std::vector<Color::XRGB8888>;
     };
 
