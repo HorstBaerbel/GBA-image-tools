@@ -42,7 +42,7 @@ namespace Media
                 uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
             case Image::ProcessingType::CompressDXTV:
-                Dxtv::UnCompWrite16bit<240>(currentSrc, currentDst, (const uint32_t *)VRAM, info.video.width, info.video.height);
+                Dxtv::UnCompWrite16bit(currentSrc, currentDst, (const uint32_t *)VRAM, 480, info.video.width, info.video.height);
                 uncompressedSize = Dxtv::UnCompGetSize(currentSrc);
                 break;
             default:

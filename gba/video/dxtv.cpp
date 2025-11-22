@@ -1,10 +1,10 @@
 #include "dxtv.h"
 
 #include "dxtv_asm.h"
-#include "image/dxt.h"
 #include "if/dxt_tables.h"
 #include "if/dxtv_constants.h"
 #include "if/dxtv_structs.h"
+#include "image/dxt.h"
 #include "memory/memory.h"
 #include "print/output.h"
 
@@ -209,13 +209,12 @@ namespace Dxtv
         return dataPtr16;
     }
 
-    template <>
-    IWRAM_FUNC void UnCompWrite16bit<240>(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, uint32_t width, uint32_t height)
+    IWRAM_FUNC void UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, const uint32_t prevSrcLineStride, uint32_t width, uint32_t height)
     {
-        constexpr uint32_t LineStride16 = 240;                    // stride to next line in dst in half words / pixels
-        constexpr uint32_t LineStride32 = LineStride16 / 2;       // stride to next line in dst in words / 2 pixels
+        const uint32_t LineStride16 = prevSrcLineStride / 2;      // stride to next line in dst in half words / pixels
+        const uint32_t LineStride32 = LineStride16 / 2;           // stride to next line in dst in words / 2 pixels
+        const uint32_t Block4VStride32 = 4 * LineStride32;        // vertical stride to next 4x4 block in dst in words / 2 pixels
         constexpr uint32_t Block4HStride32 = 2;                   // horizontal stride to next 4x4 block in dst in words / 2 pixels
-        constexpr uint32_t Block4VStride32 = 4 * LineStride32;    // vertical stride to next 4x4 block in dst in words / 2 pixels
         constexpr uint32_t Block8HStride32 = 2 * Block4HStride32; // horizontal stride to next 8x8 block in dst in words / 2 pixels
         // copy frame header and skip to data
         const Video::DxtvFrameHeader frameHeader = Video::DxtvFrameHeader::read(data);
