@@ -245,7 +245,7 @@ namespace Media
             for (uint32_t y = 0; y < m_mediaInfo.video.height; ++y)
             {
                 Memory::memcpy32(vramPtr8, videoPtr32, videoLineStride32);
-                videoPtr32 += m_vramStride / 4; // videoLineStride32;
+                videoPtr32 += videoLineStride32;
                 vramPtr8 += m_vramStride;
             }
         }
