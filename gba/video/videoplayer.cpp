@@ -38,21 +38,23 @@ namespace Media
     IWRAM_DATA volatile int16_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
     IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing
     IWRAM_DATA uint32_t *m_audioBackBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently decoding
-    IWRAM_DATA uint16_t m_audioBufferSize = 0;              // Size of one audio buffer
-    IWRAM_DATA uint16_t m_audioPlayBufferChannelSize = 0;   // Size of data stored per channel == number of samples per channel of buffer currently playing
-    IWRAM_DATA uint16_t m_audioBackBufferChannelSize = 0;   // Size of data stored per channel == number of samples per channel of buffer currently decoding
+    IWRAM_DATA uint16_t m_audioBufferSize8 = 0;             // Size of one audio buffer
+    IWRAM_DATA uint16_t m_audioPlayBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently playing
+    IWRAM_DATA uint16_t m_audioBackBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently decoding
 
     // video
     IWRAM_DATA uint32_t *m_videoScratchPad = nullptr;
-    IWRAM_DATA uint32_t m_videoScratchPadSize = 0;
-    IWRAM_DATA uint16_t m_vramStride = 0;
-    IWRAM_DATA uint16_t m_clearColor = 0;
+    IWRAM_DATA uint32_t m_videoScratchPadSize8 = 0;
+    IWRAM_DATA uint16_t m_vramLineStride8 = 0;
+    IWRAM_DATA uint16_t m_vramPixelStride8 = 0;
+    IWRAM_DATA uint16_t m_vramClearColor = 0;
+    IWRAM_DATA uint32_t m_vramOffset8 = 0;
     IWRAM_DATA IO::Vid2h::Frame m_queuedColorMapFrame{};
     IWRAM_DATA IO::Vid2h::Frame m_queuedVideoFrame{};
     IWRAM_DATA volatile int16_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
     IWRAM_DATA volatile int16_t m_videoFramesRequested = 0;   // Number of video frames requested by VideoFrameRequest()
     IWRAM_DATA const uint32_t *m_videoDecodedFrame = nullptr; // Pointer to decoded video frame
-    IWRAM_DATA uint32_t m_videoDecodedFrameSize = 0;          // Size of decoded video frame
+    IWRAM_DATA uint32_t m_videoDecodedFrameSize8 = 0;         // Size of decoded video frame
 
 #ifdef DEBUG_PLAYER
     struct FrameStatistics
@@ -85,7 +87,7 @@ namespace Media
             {
                 // swap sample buffers
                 std::swap(m_audioPlayBuffer, m_audioBackBuffer);
-                std::swap(m_audioPlayBufferChannelSize, m_audioBackBufferChannelSize);
+                std::swap(m_audioPlayBufferChannelSize8, m_audioBackBufferChannelSize8);
                 // calculate buffer start
                 const auto sampleBuffer0 = reinterpret_cast<uint32_t>(m_audioPlayBuffer);
                 // set DMA channels to read from new buffer and restart DMA
@@ -94,12 +96,12 @@ namespace Media
                 if (m_mediaInfo.audio.channels == 2)
                 {
                     // align output buffer to next word boundary
-                    const auto sampleBuffer1 = (sampleBuffer0 + m_audioPlayBufferChannelSize + 3) & 0xFFFFFFFC;
+                    const auto sampleBuffer1 = (sampleBuffer0 + m_audioPlayBufferChannelSize8 + 3) & 0xFFFFFFFC;
                     REG_DMA2SAD = sampleBuffer1;
                     REG_DMA2CNT |= DMA_ENABLE;
                 }
                 // set timer 1 count to number of words in new buffer
-                REG_TM1CNT_L = 65536U - m_audioPlayBufferChannelSize;
+                REG_TM1CNT_L = 65536U - m_audioPlayBufferChannelSize8;
                 // start both timers
                 REG_TM0CNT_H |= TIMER_START;
                 REG_TM1CNT_H |= TIMER_START;
@@ -140,7 +142,7 @@ namespace Media
         }
     }
 
-    auto Init(const uint32_t *mediaSrc, uint32_t *videoScratchPad, uint32_t videoScratchPadSize, uint32_t vramStride, uint32_t *audioScratchPad, uint32_t audioScratchPadSize) -> void
+    auto Init(const uint32_t *mediaSrc, uint32_t *videoScratchPad, const uint32_t videoScratchPadSize, const uint32_t vramLineStride8, const uint32_t vramPixelStride8, uint32_t *audioScratchPad, const uint32_t audioScratchPadSize) -> void
     {
         // read file header
         m_mediaInfo = IO::Vid2h::GetInfo(mediaSrc);
@@ -148,21 +150,27 @@ namespace Media
         {
             // set up video buffers
             m_videoScratchPad = videoScratchPad;
-            m_videoScratchPadSize = videoScratchPadSize;
-            m_vramStride = vramStride;
+            m_videoScratchPadSize8 = videoScratchPadSize;
+            m_vramLineStride8 = vramLineStride8;
+            m_vramPixelStride8 = vramPixelStride8;
         }
         if (m_mediaInfo.contentType & IO::FileType::Audio)
         {
             // set up audio buffers
             m_audioPlayBuffer = audioScratchPad;
             m_audioBackBuffer = audioScratchPad + audioScratchPadSize / (2 * 4);
-            m_audioBufferSize = audioScratchPadSize / 2;
+            m_audioBufferSize8 = audioScratchPadSize / 2;
         }
     }
 
     auto SetClearColor(uint16_t color) -> void
     {
-        m_clearColor = color;
+        m_vramClearColor = color;
+    }
+
+    auto SetPosition(uint16_t x, uint16_t y) -> void
+    {
+        m_vramOffset8 = y * m_vramLineStride8 + x * m_vramPixelStride8;
     }
 
     auto GetInfo() -> const IO::Vid2h::Info &
@@ -195,8 +203,8 @@ namespace Media
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
 #endif
-        auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackBuffer, m_audioBufferSize, m_mediaInfo, m_queuedAudioFrame);
-        m_audioBackBufferChannelSize = audioDecodedFrameSize / m_mediaInfo.audio.channels;
+        auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackBuffer, m_audioBufferSize8, m_mediaInfo, m_queuedAudioFrame);
+        m_audioBackBufferChannelSize8 = audioDecodedFrameSize / m_mediaInfo.audio.channels;
         m_queuedAudioFrame.data = nullptr;
         ++m_audioFramesDecoded;
 #ifdef DEBUG_PLAYER
@@ -212,9 +220,10 @@ namespace Media
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
 #endif
-        auto [videoDecodedFrame, videoDecodedFramesize] = DecodeVideo(m_videoScratchPad, m_videoScratchPadSize, m_mediaInfo, m_queuedVideoFrame);
+        auto vramPtr8 = (uint8_t *)VRAM + m_vramOffset8;
+        auto [videoDecodedFrame, videoDecodedFramesize] = DecodeVideo(m_videoScratchPad, m_videoScratchPadSize8, vramPtr8, m_vramLineStride8, m_mediaInfo, m_queuedVideoFrame);
         m_videoDecodedFrame = videoDecodedFrame;
-        m_videoDecodedFrameSize = videoDecodedFramesize;
+        m_videoDecodedFrameSize8 = videoDecodedFramesize;
         m_queuedVideoFrame.data = nullptr;
         ++m_videoFramesDecoded;
 #ifdef DEBUG_PLAYER
@@ -231,22 +240,23 @@ namespace Media
         auto startTime = Time::now();
 #endif
         const uint32_t videoLineStride8 = ((m_mediaInfo.video.bitsPerPixel + 7) / 8) * m_mediaInfo.video.width;
-        if (videoLineStride8 == m_vramStride)
+        if (videoLineStride8 == m_vramLineStride8)
         {
-            // video fiulls screen completely. simply copy the data over
-            Memory::memcpy32((void *)VRAM, m_videoDecodedFrame, m_videoDecodedFrameSize / 4);
+            // video fills screen completely. simply copy the data over
+            auto vramPtr8 = (uint8_t *)VRAM + m_vramOffset8;
+            Memory::memcpy32(vramPtr8, m_videoDecodedFrame, m_videoDecodedFrameSize8 / 4);
         }
         else
         {
             // video does not fill screen. copy line by line
             const uint32_t videoLineStride32 = videoLineStride8 / 4;
             auto videoPtr32 = m_videoDecodedFrame;
-            auto vramPtr8 = (uint8_t *)VRAM;
+            auto vramPtr8 = (uint8_t *)VRAM + m_vramOffset8;
             for (uint32_t y = 0; y < m_mediaInfo.video.height; ++y)
             {
                 Memory::memcpy32(vramPtr8, videoPtr32, videoLineStride32);
                 videoPtr32 += videoLineStride32;
-                vramPtr8 += m_vramStride;
+                vramPtr8 += m_vramLineStride8;
             }
         }
 #ifdef DEBUG_PLAYER
@@ -281,7 +291,7 @@ namespace Media
                 // disable all sounds for now
                 REG_SOUNDCNT_X = 0;
                 // fill audio buffers with silence
-                Memory::memset32(m_audioBackBuffer, 0, m_audioBufferSize / 4);
+                Memory::memset32(m_audioBackBuffer, 0, m_audioBufferSize8 / 4);
                 // enable DMA 1 to copy words to sound FIFO A
                 REG_DMA1DAD = reinterpret_cast<uint32_t>(&REG_FIFO_A);                        // write to sound FIFO A
                 REG_DMA1CNT = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
@@ -318,9 +328,9 @@ namespace Media
             if (m_mediaInfo.contentType & IO::FileType::Video)
             {
                 // fill background and scratch pad to clear color
-                const uint32_t clearColor = static_cast<uint32_t>(m_clearColor) << 16 | m_clearColor;
+                const uint32_t clearColor = static_cast<uint32_t>(m_vramClearColor) << 16 | m_vramClearColor;
                 Memory::memset32((void *)VRAM, clearColor, m_mediaInfo.video.width * m_mediaInfo.video.height / 2);
-                Memory::memset32(m_videoScratchPad, clearColor, m_videoScratchPadSize / 4);
+                Memory::memset32(m_videoScratchPad, clearColor, m_videoScratchPadSize8 / 4);
                 // set up timer 2 to increase with video frame interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
                 // set timer 2 divider to 2 == 1/256 -> 16*1024*1024 cycles/s / 256 = 65536/s
                 irqSet(irqMASKS::IRQ_TIMER2, VideoFrameRequest);

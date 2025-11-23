@@ -25,26 +25,28 @@ int main()
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
 	// set up video system, clear color and read file header
-	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VideoScratchPad, sizeof(VideoScratchPad), 480, AudioSampleBuffer, sizeof(AudioSampleBuffer));
+	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VideoScratchPad, sizeof(VideoScratchPad), 480, 2, AudioSampleBuffer, sizeof(AudioSampleBuffer));
 	Media::SetClearColor(0);
 	// print video info
-	const auto &videoInfo = Media::GetInfo();
+	const auto &mediaInfo = Media::GetInfo();
 	TUI::printf(0, 0, "Video decompression demo");
-	TUI::printf(0, 2, "Frames: %d, Fps: %f", videoInfo.video.nrOfFrames, videoInfo.video.frameRateHz);
+	TUI::printf(0, 2, "Frames: %d, Fps: %f", mediaInfo.video.nrOfFrames, mediaInfo.video.frameRateHz);
 	TUI::printf(0, 3, "Size: %d kB", VIDEO_DATA_SIZE / 1024);
-	TUI::printf(0, 4, "Resolution: %dx%d", videoInfo.video.width, videoInfo.video.height);
-	TUI::printf(0, 5, "Bits / pixel: %d", videoInfo.video.bitsPerPixel);
-	TUI::printf(0, 6, "Colors in colormap: %d", videoInfo.video.colorMapEntries);
-	TUI::printf(0, 7, "Bits / color: %d", videoInfo.video.bitsPerColor);
-	TUI::printf(0, 8, "Color map frames: %d", videoInfo.video.nrOfColorMapFrames);
-	TUI::printf(0, 9, "Red-Blue swapped: %b", videoInfo.video.swappedRedBlue);
-	TUI::printf(0, 10, "Video mem needed: %d Byte", videoInfo.video.memoryNeeded);
-	TUI::printf(0, 12, "Audio samples: %d", videoInfo.audio.nrOfSamples);
-	TUI::printf(0, 13, "Audio sample rate: %d Hz", videoInfo.audio.sampleRateHz);
-	TUI::printf(0, 14, "Audio sample depth: %d-bit", videoInfo.audio.sampleBits);
-	TUI::printf(0, 15, "Audio channels: %d", videoInfo.audio.channels);
-	TUI::printf(0, 16, "Audio mem needed: %d Byte", videoInfo.audio.memoryNeeded);
+	TUI::printf(0, 4, "Resolution: %dx%d", mediaInfo.video.width, mediaInfo.video.height);
+	TUI::printf(0, 5, "Bits / pixel: %d", mediaInfo.video.bitsPerPixel);
+	TUI::printf(0, 6, "Colors in colormap: %d", mediaInfo.video.colorMapEntries);
+	TUI::printf(0, 7, "Bits / color: %d", mediaInfo.video.bitsPerColor);
+	TUI::printf(0, 8, "Color map frames: %d", mediaInfo.video.nrOfColorMapFrames);
+	TUI::printf(0, 9, "Red-Blue swapped: %b", mediaInfo.video.swappedRedBlue);
+	TUI::printf(0, 10, "Video mem needed: %d Byte", mediaInfo.video.memoryNeeded);
+	TUI::printf(0, 12, "Audio samples: %d", mediaInfo.audio.nrOfSamples);
+	TUI::printf(0, 13, "Audio sample rate: %d Hz", mediaInfo.audio.sampleRateHz);
+	TUI::printf(0, 14, "Audio sample depth: %d-bit", mediaInfo.audio.sampleBits);
+	TUI::printf(0, 15, "Audio channels: %d", mediaInfo.audio.channels);
+	TUI::printf(0, 16, "Audio mem needed: %d Byte", mediaInfo.audio.memoryNeeded);
 	TUI::printf(0, 19, "       Press A to play");
+	// center video on screen
+	Media::SetPosition((240 - mediaInfo.video.width) / 2, (160 - mediaInfo.video.height) / 2);
 	// wait for keypress
 	do
 	{

@@ -12,7 +12,7 @@
 namespace Media
 {
 
-    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
+    IWRAM_FUNC auto DecodeVideo(uint32_t *scratchPad8, const uint32_t scratchPadSize8, uint8_t *vramPtr8, const uint32_t vramLineStride8, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
     {
         auto currentSrc = frame.data;
         uint32_t uncompressedSize = frame.dataSize; // if the frame data is initially uncompressed its size will be == frame data size
@@ -24,7 +24,7 @@ namespace Media
             const auto processingType = info.video.processing[pi] == Image::ProcessingType::Invalid ? Image::ProcessingType::Uncompressed : info.video.processing[pi];
             const auto isFinal = (pi >= 3) || (processingType == Image::ProcessingType::Uncompressed) || (info.video.processing[pi + 1] == Image::ProcessingType::Invalid);
             // if we're reading from start of scratchpad, write to the end and vice versa
-            currentDst = currentSrc == scratchPad ? scratchPad + scratchPadSize / 8 : scratchPad;
+            currentDst = currentSrc == scratchPad8 ? scratchPad8 + scratchPadSize8 / 8 : scratchPad8;
             // check wether destination is in VRAM (no 8-bit writes possible)
             const bool dstInVRAM = (((uint32_t)currentDst) >= 0x05000000) && (((uint32_t)currentDst) < 0x08000000);
             // reverse processing operation used in this stage
@@ -42,7 +42,7 @@ namespace Media
                 uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
             case Image::ProcessingType::CompressDXTV:
-                Dxtv::UnCompWrite16bit(currentSrc, currentDst, (const uint32_t *)VRAM, 480, info.video.width, info.video.height);
+                Dxtv::UnCompWrite16bit(currentSrc, currentDst, (const uint32_t *)vramPtr8, vramLineStride8, info.video.width, info.video.height);
                 uncompressedSize = Dxtv::UnCompGetSize(currentSrc);
                 break;
             default:
@@ -59,7 +59,7 @@ namespace Media
         return {currentDst, uncompressedSize};
     }
 
-    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
+    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad, const uint32_t scratchPadSize, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
     {
         auto currentSrc = frame.data;
         uint32_t uncompressedSize = frame.dataSize; // if the frame data is initially uncompressed its size will be == frame data size
