@@ -19,10 +19,10 @@ namespace IO::Vid2h
         uint16_t height = 0;                  // Height in pixels
         uint8_t bitsPerPixel = 0;             // Image data bits per pixel (1, 2, 4, 8, 15, 16, 24)
         uint8_t bitsPerColor = 0;             // Color table bits per color (0 - no color table, 15, 16, 24)
-        uint8_t colorMapEntries;              // Number of color table entries
-        uint8_t swappedRedBlue;               // If != 0 red and blue color channels are swapped
-        uint16_t nrOfColorMapFrames;          // Number of colormap frames (must not be the same as video frames)
-        uint32_t memoryNeeded;                // Max. intermediate memory needed to decompress an image frame. 0 if data can be directly written to destination (single compression stage)
+        uint8_t colorMapEntries = 0;          // Number of color table entries
+        uint8_t swappedRedBlue = 0;           // If != 0 red and blue color channels are swapped
+        uint16_t nrOfColorMapFrames = 0;      // Number of colormap frames (must not be the same as video frames)
+        uint32_t memoryNeeded = 0;            // Max. intermediate memory needed to decompress an image frame. 0 if data can be directly written to destination (single compression stage)
         Image::ProcessingType processing[4] = // Video processing steps. See image/processingtypes.h
             {Image::ProcessingType::Invalid, Image::ProcessingType::Invalid, Image::ProcessingType::Invalid, Image::ProcessingType::Invalid};
     } __attribute__((packed));
