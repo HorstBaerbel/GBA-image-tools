@@ -33,6 +33,7 @@ public:
     };
 
     // Image options
+    static Option video;
     static OptionT<double> blackWhite;
     static OptionT<uint32_t> paletted;
     static OptionT<uint32_t> commonPalette;
@@ -59,6 +60,7 @@ public:
     static Option interleavePixels;
 
     // Audio options
+    static Option audio;
     static OptionT<uint32_t> sampleRateHz;
     static OptionT<Audio::ChannelFormat> channelFormat;
     static OptionT<Audio::SampleFormat> sampleFormat;

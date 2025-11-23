@@ -14,11 +14,13 @@ namespace Media
         : SDLWindow(width, height, title)
     {
         SDL_InitSubSystem(SDL_INIT_AUDIO);
+        SDL_InitSubSystem(SDL_INIT_VIDEO);
     }
 
     Window::~Window()
     {
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
     }
 
     auto Window::getPlayState() const -> Window::PlayState
@@ -36,9 +38,9 @@ namespace Media
             m_videoFrameIndex = 0;
             m_mediaReader = mediaReader;
             m_mediaInfo = m_mediaReader->getInfo();
-            const bool hasAudio = m_mediaInfo.fileType & IO::FileType::Audio != 0;
+            const bool hasAudio = m_mediaInfo.fileType & IO::FileType::Audio;
             REQUIRE(!hasAudio || m_mediaInfo.audioNrOfFrames > 0, std::runtime_error, "Audio file, but no audio frames");
-            const bool hasVideo = m_mediaInfo.fileType & IO::FileType::Video != 0;
+            const bool hasVideo = m_mediaInfo.fileType & IO::FileType::Video;
             REQUIRE(!hasVideo || m_mediaInfo.videoNrOfFrames > 0, std::runtime_error, "Video file, but no video frames");
             // open audio device in paused state
             if (hasAudio)
@@ -53,8 +55,17 @@ namespace Media
             // read first audio and video frames
             readFrames();
             // start frame timer
-            const auto interval = 1000.0 / m_mediaInfo.videoFrameRateHz;
-            m_frameTimer.start(interval, [this]()
+            double frameIntervalMs = 0;
+            if (hasVideo)
+            {
+                frameIntervalMs = 1000.0 / m_mediaInfo.videoFrameRateHz;
+            }
+            else if (hasAudio)
+            {
+                const auto audioFrameRateHz = m_mediaInfo.audioNrOfFrames / m_mediaInfo.audioDurationS;
+                frameIntervalMs = 1000.0 / audioFrameRateHz;
+            }
+            m_frameTimer.start(frameIntervalMs, [this]()
                                { displayEvent(nullptr); });
         }
         unlockEventMutex();
@@ -68,7 +79,10 @@ namespace Media
             if (m_playState == PlayState::Playing)
             {
                 m_playState == PlayState::Paused;
-                SDL_PauseAudioStreamDevice(m_sdlAudioStream);
+                if (m_mediaInfo.fileType & IO::FileType::Audio)
+                {
+                    SDL_PauseAudioStreamDevice(m_sdlAudioStream);
+                }
             }
         }
         else
@@ -76,7 +90,10 @@ namespace Media
             if (m_playState == PlayState::Paused)
             {
                 m_playState == PlayState::Playing;
-                SDL_ResumeAudioStreamDevice(m_sdlAudioStream);
+                if (m_mediaInfo.fileType & IO::FileType::Audio)
+                {
+                    SDL_ResumeAudioStreamDevice(m_sdlAudioStream);
+                }
             }
         }
         unlockEventMutex();
@@ -88,8 +105,11 @@ namespace Media
         if (m_playState != PlayState::Stopped)
         {
             m_playState = PlayState::Stopped;
-            SDL_PauseAudioStreamDevice(m_sdlAudioStream);
-            SDL_ClearAudioStream(m_sdlAudioStream);
+            if (m_mediaInfo.fileType & IO::FileType::Audio)
+            {
+                SDL_PauseAudioStreamDevice(m_sdlAudioStream);
+                SDL_ClearAudioStream(m_sdlAudioStream);
+            }
             m_frameTimer.stop();
         }
         if (m_sdlAudioStream != nullptr)
@@ -211,8 +231,8 @@ namespace Media
 
     auto Window::readFrames() -> void
     {
-        int32_t requestedAudioFrames = m_mediaInfo.fileType & IO::FileType::Audio != 0 && m_mediaInfo.audioNrOfFrames > m_audioFrameIndex ? 1 : 0;
-        int32_t requestedVideoFrames = m_mediaInfo.fileType & IO::FileType::Video != 0 && m_mediaInfo.videoNrOfFrames > m_videoFrameIndex ? 1 : 0;
+        int32_t requestedAudioFrames = (m_mediaInfo.fileType & IO::FileType::Audio) && m_mediaInfo.audioNrOfFrames > m_audioFrameIndex ? 1 : 0;
+        int32_t requestedVideoFrames = (m_mediaInfo.fileType & IO::FileType::Video) && m_mediaInfo.videoNrOfFrames > m_videoFrameIndex ? 1 : 0;
         while (requestedAudioFrames > 0 || requestedVideoFrames > 0)
         {
             auto frame = m_mediaReader->readFrame();

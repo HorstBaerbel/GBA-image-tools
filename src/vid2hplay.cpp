@@ -119,16 +119,24 @@ int main(int argc, const char *argv[])
         // fire up video reader and open video file
         auto mediaReader = std::make_shared<Media::Vid2hReader>();
         Media::Reader::MediaInfo mediaInfo;
+        const bool hasVideo = mediaInfo.fileType & IO::FileType::Video;
+        const bool hasAudio = mediaInfo.fileType & IO::FileType::Audio;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
             mediaReader->open(m_inFile);
             mediaInfo = mediaReader->getInfo();
-            std::cout << "Video stream: " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
-            std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
-            std::cout << "Audio stream: " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
-            std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
-            std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
+            if (hasVideo)
+            {
+                std::cout << "Video stream: " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
+                std::cout << ", duration " << mediaInfo.videoDurationS << "s, " << mediaInfo.videoNrOfFrames << " frames" << std::endl;
+            }
+            if (hasAudio)
+            {
+                std::cout << "Audio stream: " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
+                std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
+                std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfFrames << " frames, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
+            }
         }
         catch (const std::runtime_error &e)
         {
@@ -138,7 +146,7 @@ int main(int argc, const char *argv[])
         // check if we want to dump video or audio
         if (options.dumpAudio)
         {
-            if (mediaInfo.fileType & IO::FileType::Audio == 0)
+            if (!hasAudio)
             {
                 std::cout << "Can't dump audio. No audio in file." << std::endl;
                 return 1;

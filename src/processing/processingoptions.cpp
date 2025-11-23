@@ -12,6 +12,10 @@ std::string ProcessingOptions::Option::helpString() const
     return cxxOption.opts_ + ": " + cxxOption.desc_;
 }
 
+ProcessingOptions::Option ProcessingOptions::video{
+    true,
+    {"video", "Add video to output (default=true).", cxxopts::value(video.isSet)}};
+
 ProcessingOptions::OptionT<double> ProcessingOptions::blackWhite{
     false,
     {"blackwhite", "Convert images to b/w image with intensity threshold at N. N must be in [0.0, 1.0].", cxxopts::value(blackWhite.value)},
@@ -312,6 +316,10 @@ ProcessingOptions::OptionT<double> ProcessingOptions::dxtv{
 /*ProcessingOptions::Option ProcessingOptions::gvid{
     false,
     {"gvid", "Use GVID video compression.", cxxopts::value(gvid.isSet)}};*/
+
+ProcessingOptions::Option ProcessingOptions::audio{
+    true,
+    {"audio", "Add audio to putput (default=true).", cxxopts::value(audio.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::interleavePixels{
     false,
