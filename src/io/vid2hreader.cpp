@@ -22,7 +22,7 @@ namespace Media
         REQUIRE(m_fileHeader.contentType != IO::FileType::Unknown, std::runtime_error, "Bad file content type");
         m_info.fileType = m_fileHeader.contentType;
         // generate video info
-        if ((m_fileHeader.contentType & IO::FileType::Video) != 0)
+        if (m_fileHeader.contentType & IO::FileType::Video)
         {
             REQUIRE(m_fileHeader.video.nrOfFrames != 0, std::runtime_error, "Number of frames can not be 0");
             REQUIRE(m_fileHeader.video.frameRateHz != 0, std::runtime_error, "Frame rate can not be 0");
@@ -56,7 +56,7 @@ namespace Media
             m_info.videoColorMapFormat = Color::findFormat(m_fileHeader.video.bitsPerColor, false, m_fileHeader.video.swappedRedBlue);
         }
         // generate audio info
-        if ((m_fileHeader.contentType & IO::FileType::Audio) != 0)
+        if (m_fileHeader.contentType & IO::FileType::Audio)
         {
             m_info.audioNrOfFrames = m_fileHeader.audio.nrOfFrames;
             m_info.audioNrOfSamples = m_fileHeader.audio.nrOfSamples;

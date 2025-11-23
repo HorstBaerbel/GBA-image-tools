@@ -119,13 +119,15 @@ int main(int argc, const char *argv[])
         // fire up video reader and open video file
         auto mediaReader = std::make_shared<Media::Vid2hReader>();
         Media::Reader::MediaInfo mediaInfo;
-        const bool hasVideo = mediaInfo.fileType & IO::FileType::Video;
-        const bool hasAudio = mediaInfo.fileType & IO::FileType::Audio;
+        bool hasVideo = false;
+        bool hasAudio = false;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
             mediaReader->open(m_inFile);
             mediaInfo = mediaReader->getInfo();
+            hasVideo = mediaInfo.fileType & IO::FileType::Video;
+            hasAudio = mediaInfo.fileType & IO::FileType::Audio;
             if (hasVideo)
             {
                 std::cout << "Video stream: " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;

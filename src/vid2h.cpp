@@ -396,13 +396,15 @@ int main(int argc, const char *argv[])
         // fire up video reader and open video file
         Media::FFmpegReader mediaReader;
         Media::Reader::MediaInfo mediaInfo;
-        const bool sourceHasVideo = mediaInfo.fileType & IO::FileType::Video;
-        const bool sourceHasAudio = mediaInfo.fileType & IO::FileType::Audio;
+        bool sourceHasVideo = false;
+        bool sourceHasAudio = false;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
             mediaReader.open(m_inFile);
             mediaInfo = mediaReader.getInfo();
+            sourceHasVideo = mediaInfo.fileType & IO::FileType::Video;
+            sourceHasAudio = mediaInfo.fileType & IO::FileType::Audio;
             if (sourceHasVideo)
             {
                 std::cout << "Video stream #" << mediaInfo.videoStreamIndex << ": " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
