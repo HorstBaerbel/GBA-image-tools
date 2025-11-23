@@ -29,21 +29,21 @@ int main()
 	Media::SetClearColor(0);
 	// print video info
 	const auto &mediaInfo = Media::GetInfo();
-	TUI::printf(0, 0, "Video decompression demo");
-	TUI::printf(0, 2, "Frames: %d, Fps: %f", mediaInfo.video.nrOfFrames, mediaInfo.video.frameRateHz);
-	TUI::printf(0, 3, "Size: %d kB", VIDEO_DATA_SIZE / 1024);
-	TUI::printf(0, 4, "Resolution: %dx%d", mediaInfo.video.width, mediaInfo.video.height);
-	TUI::printf(0, 5, "Bits / pixel: %d", mediaInfo.video.bitsPerPixel);
-	TUI::printf(0, 6, "Colors in colormap: %d", mediaInfo.video.colorMapEntries);
-	TUI::printf(0, 7, "Bits / color: %d", mediaInfo.video.bitsPerColor);
-	TUI::printf(0, 8, "Color map frames: %d", mediaInfo.video.nrOfColorMapFrames);
-	TUI::printf(0, 9, "Red-Blue swapped: %b", mediaInfo.video.swappedRedBlue);
-	TUI::printf(0, 10, "Video mem needed: %d Byte", mediaInfo.video.memoryNeeded);
-	TUI::printf(0, 12, "Audio samples: %d", mediaInfo.audio.nrOfSamples);
-	TUI::printf(0, 13, "Audio sample rate: %d Hz", mediaInfo.audio.sampleRateHz);
-	TUI::printf(0, 14, "Audio sample depth: %d-bit", mediaInfo.audio.sampleBits);
-	TUI::printf(0, 15, "Audio channels: %d", mediaInfo.audio.channels);
-	TUI::printf(0, 16, "Audio mem needed: %d Byte", mediaInfo.audio.memoryNeeded);
+	TUI::printf(0, 0, "Media decompression demo");
+	TUI::printf(0, 2, "File size: %d kB", VIDEO_DATA_SIZE / 1024);
+	TUI::printf(0, 4, "Video:");
+	TUI::printf(0, 5, "Resolution: %dx%d @ %d bpp", mediaInfo.video.width, mediaInfo.video.height, mediaInfo.video.bitsPerPixel);
+	TUI::printf(0, 6, "Frames: %d, Fps: %f", mediaInfo.video.nrOfFrames, mediaInfo.video.frameRateHz);
+	TUI::printf(0, 7, "Duration: %f s", int32_t((uint64_t(mediaInfo.video.nrOfFrames) << 32) / mediaInfo.video.frameRateHz));
+	TUI::printf(0, 8, "Colormap size: %d @ %d bpp", mediaInfo.video.colorMapEntries, mediaInfo.video.bitsPerColor);
+	TUI::printf(0, 9, "Color map frames: %d", mediaInfo.video.nrOfColorMapFrames);
+	TUI::printf(0, 10, "Red-Blue swapped: %b", mediaInfo.video.swappedRedBlue);
+	TUI::printf(0, 11, "Memory needed: %d Byte", mediaInfo.video.memoryNeeded);
+	TUI::printf(0, 13, "Audio:");
+	TUI::printf(0, 14, "Channels: %d, Samples: %d", mediaInfo.audio.channels, mediaInfo.audio.nrOfSamples);
+	TUI::printf(0, 15, "Rate: %d Hz, Depth: %d bit", mediaInfo.audio.sampleRateHz, mediaInfo.audio.sampleBits);
+	TUI::printf(0, 16, "Duration: %f s", int32_t((uint64_t(mediaInfo.audio.nrOfSamples) << 16) / mediaInfo.audio.sampleRateHz));
+	TUI::printf(0, 17, "Memory needed: %d Byte", mediaInfo.audio.memoryNeeded);
 	TUI::printf(0, 19, "       Press A to play");
 	// center video on screen
 	Media::SetPosition((240 - mediaInfo.video.width) / 2, (160 - mediaInfo.video.height) / 2);
