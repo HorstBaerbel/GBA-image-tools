@@ -21,6 +21,6 @@ namespace IO
         Pixels = 1,   // Pixel data
         Colormap = 2, // Color map data
         Audio = 3,    // Audio data
+        Meta = 4      // Meta data
     };
-
 }

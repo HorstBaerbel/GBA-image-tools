@@ -10,22 +10,27 @@ namespace IO::Vid2h
     /// @brief Video file / data information
     struct Info : public FileHeader
     {
-        const uint32_t *fileData = nullptr; // Pointer to file header data
-        uint32_t nrOfFrames = 0;            // Number of all frames in file combined
-        uint32_t imageSize = 0;             // Size of image data in bytes
-        uint32_t colorMapSize = 0;          // Size of color map data in bytes
+        const uint32_t *data = nullptr;      // Pointer to start of file data
+        const uint32_t *frameData = nullptr; // Pointer to start of frame data
+        const uint8_t *metaData = nullptr;   // Pointer to start of meta data
+        uint32_t nrOfFrames = 0;             // Number of all frames in file combined
+        uint32_t imageSize = 0;              // Size of image data in bytes
+        uint32_t colorMapSize = 0;           // Size of color map data in bytes
+        AudioHeader audio;                   // Audio header
+        VideoHeader video;                   // Video header
     } __attribute__((aligned(4), packed));
 
     /// @brief Frame header describing frame data
     struct Frame : public FrameHeader
     {
-        int32_t index = -1;               // Frame index in video
-        const uint32_t *data = nullptr;   // Pointer to frame data
+        int32_t index = -1;             // Frame index in video or audio
+        const uint32_t *data = nullptr; // Pointer to frame data
     } __attribute__((aligned(4), packed));
 
     /// @brief Get static file information from video data
     /// @param data Pointer to start of file data
-    auto GetInfo(const uint32_t *data) -> Info;
+    /// @param size Size of file data
+    auto GetInfo(const uint32_t *data, const uint32_t size) -> Info;
 
     /// @brief Check if the file has more frames
     /// @param info File data information. Read with GetInfo()

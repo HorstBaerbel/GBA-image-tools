@@ -28,7 +28,7 @@ namespace Adpcm
         for (uint32_t channel = 0; channel < frameHeader.nrOfChannels; ++channel)
         {
             // align output buffer to next word boundary
-            // dst8 = reinterpret_cast<uint8_t *>((reinterpret_cast<uint32_t>(dst8) + 3) & 0xFFFFFFFC);
+            dst8 = reinterpret_cast<uint8_t *>((reinterpret_cast<uint32_t>(dst8) + 3) & 0xFFFFFFFC);
             // first sample is stored verbatim in header
             int32_t pcmData = *reinterpret_cast<const int16_t *>(data8);
 #ifdef ADPCM_DITHER

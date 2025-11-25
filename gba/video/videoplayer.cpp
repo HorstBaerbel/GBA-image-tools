@@ -144,10 +144,10 @@ namespace Media
         }
     }
 
-    auto Init(const uint32_t *mediaSrc, uint32_t *videoScratchPad, const uint32_t videoScratchPadSize, const uint32_t vramLineStride8, const uint32_t vramPixelStride8, uint32_t *audioScratchPad, const uint32_t audioScratchPadSize) -> void
+    auto Init(const uint32_t *media, const uint32_t mediaSize, uint32_t *videoScratchPad, const uint32_t videoScratchPadSize, const uint32_t vramLineStride8, const uint32_t vramPixelStride8, uint32_t *audioScratchPad, const uint32_t audioScratchPadSize) -> void
     {
         // read file header
-        m_mediaInfo = IO::Vid2h::GetInfo(mediaSrc);
+        m_mediaInfo = IO::Vid2h::GetInfo(media, mediaSize);
         if (m_mediaInfo.contentType & IO::FileType::Video)
         {
             // set up video buffers

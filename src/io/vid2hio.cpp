@@ -5,65 +5,35 @@
 namespace IO::Vid2h
 {
 
-    auto writeFrame(std::ostream &os, const Image::Frame &frame) -> std::ostream &
-    {
-        static_assert(sizeof(FrameHeader) % 4 == 0);
-        auto &imageData = frame.data;
-        REQUIRE((imageData.pixels().rawSize() % 4) == 0, std::runtime_error, "Pixel data size is not a multiple of 4");
-        REQUIRE((imageData.colorMap().rawSize() % 4) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
-        // convert pixel and color map data to raw format
-        auto pixelData = imageData.pixels().convertDataToRaw();
-        std::vector<uint8_t> colorMapData;
-        if (imageData.pixels().isIndexed())
-        {
-            colorMapData = imageData.colorMap().convertDataToRaw();
-        }
-        // write color map data first
-        FrameHeader frameHeader;
-        if (!colorMapData.empty())
-        {
-            frameHeader.dataType = FrameType::Colormap;
-            frameHeader.dataSize = colorMapData.size();
-            os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
-            REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map frame header for frame #" << frame.index << " to stream");
-            os.write(reinterpret_cast<const char *>(colorMapData.data()), colorMapData.size());
-            REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map data for frame #" << frame.index << " to stream");
-        }
-        // write pixel data after that
-        frameHeader.dataType = FrameType::Pixels;
-        frameHeader.dataSize = pixelData.size();
-        os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data frame header for frame #" << frame.index << " to stream");
-        os.write(reinterpret_cast<const char *>(pixelData.data()), pixelData.size());
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");
-        return os;
-    }
-
-    auto writeFrame(std::ostream &os, const Audio::Frame &frame) -> std::ostream &
-    {
-        static_assert(sizeof(FrameHeader) % 4 == 0);
-        auto sampleData = AudioHelpers::toRawData(frame.data, frame.info.channelFormat);
-        REQUIRE((sampleData.size() % 4) == 0, std::runtime_error, "Audio data size is not a multiple of 4");
-        // write audio data frame header
-        FrameHeader frameHeader;
-        frameHeader.dataType = FrameType::Audio;
-        frameHeader.dataSize = sampleData.size();
-        os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data frame header for frame #" << frame.index << " to stream");
-        // write audio sample data
-        os.write(reinterpret_cast<const char *>(sampleData.data()), sampleData.size());
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data for frame #" << frame.index << " to stream");
-        return os;
-    }
-
-    auto writeDummyFileHeader(std::ostream &os) -> std::ostream &
+    auto writeFileHeader(std::ostream &os, const FileType contentType) -> FileDataInfo
     {
         static_assert(sizeof(FileHeader) % 4 == 0);
-        // generate dummy file header and store it
+        static_assert(sizeof(AudioHeader) % 4 == 0);
+        static_assert(sizeof(VideoHeader) % 4 == 0);
+        // generate file header and store it
+        REQUIRE(contentType != IO::FileType::Unknown, std::runtime_error, "File content type can not be unknown");
         FileHeader fileHeader;
+        fileHeader.magic = IO::Vid2h::Magic;
+        fileHeader.contentType = contentType;
         os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write dummy file header to stream");
-        return os;
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write initial file header to stream");
+        // depending on the file type, make space for audio and video info
+        FileDataInfo fileDataInfo;
+        fileDataInfo.contentType = contentType;
+        if (contentType & IO::FileType::Audio)
+        {
+            fileDataInfo.audioHeaderOffset = os.tellp();
+            AudioHeader audioHeader;
+            os.write(reinterpret_cast<const char *>(&audioHeader), sizeof(AudioHeader));
+        }
+        if (contentType & IO::FileType::Video)
+        {
+            fileDataInfo.videoHeaderOffset = os.tellp();
+            VideoHeader videoHeader;
+            os.write(reinterpret_cast<const char *>(&videoHeader), sizeof(VideoHeader));
+        }
+        fileDataInfo.frameDataOffset = os.tellp();
+        return fileDataInfo;
     }
 
     auto createVideoHeader(const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, uint32_t videoNrOfColorMapFrames, const std::vector<Image::ProcessingType> &decodingSteps) -> VideoHeader
@@ -112,59 +82,174 @@ namespace IO::Vid2h
         return outHeader;
     }
 
-    auto writeMediaFileHeader(std::ostream &os, const VideoHeader &videoHeader, const AudioHeader &audioHeader) -> std::ostream &
+    auto writeVideoHeader(std::ostream &os, const FileDataInfo &fileDataInfo, const VideoHeader &videoHeader) -> void
     {
-        static_assert(sizeof(FileHeader) % 4 == 0);
-        // generate file header
-        FileHeader fileHeader;
-        fileHeader.magic = IO::Vid2h::Magic;
-        fileHeader.contentType = IO::FileType::AudioVideo;
-        fileHeader.audio = audioHeader;
-        fileHeader.video = videoHeader;
-        // store to file
-        os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write media file header to stream");
-        return os;
+        REQUIRE(fileDataInfo.contentType & IO::FileType::Video, std::runtime_error, "Can't write video header to a file created without video content type");
+        REQUIRE(fileDataInfo.videoHeaderOffset >= sizeof(FileHeader), std::runtime_error, "Bad video header offset");
+        // seek to video header position
+        os.seekp(fileDataInfo.videoHeaderOffset, std::ios_base::beg);
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to seek to video header position in stream");
+        // store to stream
+        os.write(reinterpret_cast<const char *>(&videoHeader), sizeof(VideoHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write video header to stream");
     }
 
-    auto writeVideoFileHeader(std::ostream &os, const VideoHeader &videoHeader) -> std::ostream &
+    auto writeAudioHeader(std::ostream &os, const FileDataInfo &fileDataInfo, const AudioHeader &audioHeader) -> void
     {
-        static_assert(sizeof(FileHeader) % 4 == 0);
-        // generate file header
-        FileHeader fileHeader;
-        fileHeader.magic = IO::Vid2h::Magic;
-        fileHeader.contentType = IO::FileType::Video;
-        fileHeader.video = videoHeader;
+        REQUIRE(fileDataInfo.contentType & IO::FileType::Audio, std::runtime_error, "Can't write audio header to a file created without audio content type");
+        REQUIRE(fileDataInfo.audioHeaderOffset >= sizeof(FileHeader), std::runtime_error, "Bad audio header offset");
+        // seek to audio header position
+        os.seekp(fileDataInfo.audioHeaderOffset, std::ios_base::beg);
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to seek to audio header position in stream");
         // store to file
-        os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write video file header to stream");
-        return os;
+        os.write(reinterpret_cast<const char *>(&audioHeader), sizeof(AudioHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio header to stream");
     }
 
-    auto writeAudioFileHeader(std::ostream &os, const AudioHeader &audioHeader) -> std::ostream &
+    auto writeFrame(std::ostream &os, const Image::Frame &frame) -> void
     {
-        static_assert(sizeof(FileHeader) % 4 == 0);
-        // generate file header
-        FileHeader fileHeader;
-        fileHeader.magic = IO::Vid2h::Magic;
-        fileHeader.contentType = IO::FileType::Audio;
-        fileHeader.audio = audioHeader;
-        // store to file
-        os.write(reinterpret_cast<const char *>(&fileHeader), sizeof(FileHeader));
-        REQUIRE(!os.fail(), std::runtime_error, "Failed to write media file header to stream");
-        return os;
+        static_assert(sizeof(FrameHeader) % 4 == 0);
+        auto &imageData = frame.data;
+        REQUIRE((imageData.pixels().rawSize() % 4) == 0, std::runtime_error, "Pixel data size is not a multiple of 4");
+        REQUIRE((imageData.colorMap().rawSize() % 4) == 0, std::runtime_error, "Frame color map data size is not a multiple of 4");
+        // convert pixel and color map data to raw format
+        auto pixelData = imageData.pixels().convertDataToRaw();
+        std::vector<uint8_t> colorMapData;
+        if (imageData.pixels().isIndexed())
+        {
+            colorMapData = imageData.colorMap().convertDataToRaw();
+        }
+        // write color map data first
+        FrameHeader frameHeader;
+        if (!colorMapData.empty())
+        {
+            frameHeader.dataType = FrameType::Colormap;
+            frameHeader.dataSize = colorMapData.size();
+            os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
+            REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map frame header for frame #" << frame.index << " to stream");
+            os.write(reinterpret_cast<const char *>(colorMapData.data()), colorMapData.size());
+            REQUIRE(!os.fail(), std::runtime_error, "Failed to write color map data for frame #" << frame.index << " to stream");
+        }
+        // write pixel data after that
+        frameHeader.dataType = FrameType::Pixels;
+        frameHeader.dataSize = pixelData.size();
+        os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data frame header for frame #" << frame.index << " to stream");
+        os.write(reinterpret_cast<const char *>(pixelData.data()), pixelData.size());
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write pixel data for frame #" << frame.index << " to stream");
     }
 
-    auto readFileHeader(std::istream &is) -> FileHeader
+    auto writeFrame(std::ostream &os, const Audio::Frame &frame) -> void
     {
+        static_assert(sizeof(FrameHeader) % 4 == 0);
+        auto sampleData = AudioHelpers::toRawData(frame.data, frame.info.channelFormat);
+        REQUIRE((sampleData.size() % 4) == 0, std::runtime_error, "Audio data size is not a multiple of 4");
+        // write audio data frame header
+        FrameHeader frameHeader;
+        frameHeader.dataType = FrameType::Audio;
+        frameHeader.dataSize = sampleData.size();
+        os.write(reinterpret_cast<const char *>(&frameHeader), sizeof(FrameHeader));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data frame header for frame #" << frame.index << " to stream");
+        // write audio sample data
+        os.write(reinterpret_cast<const char *>(sampleData.data()), sampleData.size());
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data for frame #" << frame.index << " to stream");
+    }
+
+    auto writeMetaData(std::ostream &os, const FileDataInfo &fileDataInfo, const std::string &metaString) -> void
+    {
+        std::vector<uint8_t> metaData(metaString.size());
+        std::copy(metaString.cbegin(), metaString.cend(), metaData.begin());
+        writeMetaData(os, fileDataInfo, metaData);
+    }
+
+    auto writeMetaData(std::ostream &os, const FileDataInfo &fileDataInfo, const std::vector<uint8_t> &metaData) -> void
+    {
+        REQUIRE(!metaData.empty(), std::runtime_error, "Meta data can not be empty");
+        REQUIRE(metaData.size() < 65536, std::runtime_error, "Meta data size must be < 65536 Bytes");
+        // write meta data size to header
+        os.seekp(0 + offsetof(FileHeader, metaDataSize), std::ios_base::beg);
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to seek to meta data size in stream");
+        const uint16_t metaDataSize = metaData.size();
+        os.write(reinterpret_cast<const char *>(&metaDataSize), sizeof(metaDataSize));
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write meta data size to stream");
+        // write meta data to end of file
+        os.seekp(0, std::ios_base::end);
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to seek to end of stream");
+        os.write(reinterpret_cast<const char *>(metaData.data()), metaData.size());
+        REQUIRE(!os.fail(), std::runtime_error, "Failed to write meta data to end of stream");
+    }
+
+    // --------------------------------------------------------------------------------------------------------
+
+    auto readFileHeader(std::istream &is) -> FileDataInfo
+    {
+        static_assert(sizeof(FileHeader) % 4 == 0);
+        static_assert(sizeof(AudioHeader) % 4 == 0);
+        static_assert(sizeof(VideoHeader) % 4 == 0);
+        // seek to start of file
+        is.seekg(0, std::ios_base::beg);
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to seek to file header position in stream");
+        // read file header
         FileHeader fileHeader;
         is.read(reinterpret_cast<char *>(&fileHeader), sizeof(FileHeader));
         REQUIRE(!is.fail(), std::runtime_error, "Failed to read file header from stream");
         REQUIRE(fileHeader.magic == IO::Vid2h::Magic, std::runtime_error, "Bad file magic 0x" << std::hex << fileHeader.magic << " (expected 0x" << IO::Vid2h::Magic << ")");
-        return fileHeader;
+        REQUIRE(fileHeader.contentType == IO::FileType::Audio || fileHeader.contentType == IO::FileType::Video || fileHeader.contentType == IO::FileType::AudioVideo, std::runtime_error, "Bad file content type");
+        FileDataInfo fileDataInfo;
+        fileDataInfo.contentType = fileHeader.contentType;
+        if (fileHeader.contentType & IO::FileType::Audio)
+        {
+            fileDataInfo.audioHeaderOffset = is.tellg();
+            is.seekg(sizeof(AudioHeader), std::ios_base::cur);
+            REQUIRE(!is.fail(), std::runtime_error, "Failed to seek past audio header in stream");
+        }
+        if (fileHeader.contentType & IO::FileType::Video)
+        {
+            fileDataInfo.videoHeaderOffset = is.tellg();
+            is.seekg(sizeof(VideoHeader), std::ios_base::cur);
+            REQUIRE(!is.fail(), std::runtime_error, "Failed to seek past video header in stream");
+        }
+        fileDataInfo.frameDataOffset = is.tellg();
+        // if stream has meta data, get its position
+        if (fileHeader.metaDataSize > 0)
+        {
+            // seek to meta data position
+            is.seekg(-fileHeader.metaDataSize, std::ios_base::end);
+            REQUIRE(!is.fail(), std::runtime_error, "Failed to seek to meta data position in stream");
+            fileDataInfo.metaDataOffset = is.tellg();
+        }
+        return fileDataInfo;
     }
 
-    auto readFrame(std::istream &is, const FileHeader &fileHeader) -> std::pair<IO::FrameType, std::vector<uint8_t>>
+    auto readVideoHeader(std::istream &is, const FileDataInfo &fileDataInfo) -> VideoHeader
+    {
+        REQUIRE(fileDataInfo.contentType & IO::FileType::Video, std::runtime_error, "Can't read video header from a file without video content type");
+        REQUIRE(fileDataInfo.videoHeaderOffset >= sizeof(FileHeader), std::runtime_error, "Bad video header offset");
+        // seek to video header position
+        is.seekg(fileDataInfo.videoHeaderOffset, std::ios_base::beg);
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to seek to video header position in stream");
+        // read header
+        VideoHeader videoHeader;
+        is.read(reinterpret_cast<char *>(&videoHeader), sizeof(VideoHeader));
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to read video header from stream");
+        return videoHeader;
+    }
+
+    auto readAudioHeader(std::istream &is, const FileDataInfo &fileDataInfo) -> AudioHeader
+    {
+        REQUIRE(fileDataInfo.contentType & IO::FileType::Audio, std::runtime_error, "Can't read audio header from a file without audio content type");
+        REQUIRE(fileDataInfo.audioHeaderOffset >= sizeof(FileHeader), std::runtime_error, "Bad audio header offset");
+        // seek to audio header position
+        is.seekg(fileDataInfo.audioHeaderOffset, std::ios_base::beg);
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to seek to audio header position in stream");
+        // read header
+        AudioHeader audioHeader;
+        is.read(reinterpret_cast<char *>(&audioHeader), sizeof(AudioHeader));
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to read audio header from stream");
+        return audioHeader;
+    }
+
+    auto readFrame(std::istream &is) -> std::pair<IO::FrameType, std::vector<uint8_t>>
     {
         // check if we're at the end of the file
         if (is.eof() || is.peek() == std::istream::traits_type::eof())
@@ -172,6 +257,7 @@ namespace IO::Vid2h
             return {IO::FrameType::Unknown, {}};
         }
         // read frame header
+        static_assert(sizeof(FrameHeader) % 4 == 0);
         FrameHeader frameHeader;
         is.read(reinterpret_cast<char *>(&frameHeader), sizeof(FrameHeader));
         REQUIRE(!is.fail(), std::runtime_error, "Failed to read frame header from stream");
@@ -195,5 +281,28 @@ namespace IO::Vid2h
             }
         }
         return {IO::FrameType(frameHeader.dataType), frameData};
+    }
+
+    auto readMetaData(std::istream &is, const FileDataInfo &fileDataInfo) -> std::vector<uint8_t>
+    {
+        REQUIRE(fileDataInfo.metaDataOffset >= sizeof(FileHeader), std::runtime_error, "Bad meta data offset");
+        // read meta data size from header
+        is.seekg(0 + offsetof(FileHeader, metaDataSize), std::ios_base::beg);
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to seek to meta data size in stream");
+        uint16_t metaDataSize = 0;
+        is.read(reinterpret_cast<char *>(&metaDataSize), sizeof(metaDataSize));
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to read meta data size from stream");
+        if (metaDataSize == 0)
+        {
+            return std::vector<uint8_t>();
+        }
+        // seek to meta data position
+        is.seekg(fileDataInfo.metaDataOffset, std::ios_base::beg);
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to seek to meta data position in stream");
+        // read meta data
+        std::vector<uint8_t> metaData(metaDataSize, 0);
+        is.read(reinterpret_cast<char *>(metaData.data()), metaData.size());
+        REQUIRE(!is.fail(), std::runtime_error, "Failed to read meta data from stream");
+        return metaData;
     }
 }

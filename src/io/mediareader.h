@@ -66,6 +66,9 @@ namespace Media
         /// @brief Get information about opened media file
         virtual auto getInfo() const -> MediaInfo = 0;
 
+        /// @brief Get unstructured meta data from opened video file
+        virtual auto getMetaData() const -> std::vector<uint8_t>;
+
         /// @brief Read next video or audio frame. Will return FrameType::Unknown and empty data if EOF
         virtual auto readFrame() -> FrameData = 0;
 

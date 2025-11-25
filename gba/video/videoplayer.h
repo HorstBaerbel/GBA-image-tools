@@ -8,7 +8,8 @@ namespace Media
 {
 
     /// @brief Initialize player for media stream. Call before using any of the other functions
-    /// @param mediaSrc Media source data
+    /// @param media Media source data
+    /// @param mediaSize Media source size in bytes
     /// @param videoScratchPad Intermediate memory for decoding. Can be nullptr if you only have one compression stage. Must be aligned to 4 bytes!
     /// @param videoScratchPadSize Size of intermediate memory for decoding. Must be a multiple of 4 bytes!
     /// @param vramLineStride Stride of one line of VRAM pixels, e.g. 480 for mode 3
@@ -16,7 +17,7 @@ namespace Media
     /// @param audioScratchPad Memory for storing audio sample data. Must be in IWRAM. Must be aligned to 4 bytes!
     /// @param audioScratchPadSize Size of memory for storing audio sample data. Must be a multiple of 4 bytes!
     /// @note Will use Timer 0, 1, 2, IRQ 1, 2 and DMA 1 (mono) or DMA 1 + 2 (stereo). Also modifies sound registers, especially REG_SOUNDCNT_X
-    auto Init(const uint32_t *mediaSrc, uint32_t *videoScratchPad, const uint32_t videoScratchPadSize, const uint32_t vramLineStride8, const uint32_t vramPixelStride, uint32_t *audioScratchPad, const uint32_t audioScratchPadSize) -> void;
+    auto Init(const uint32_t *media, const uint32_t mediaSize, uint32_t *videoScratchPad, const uint32_t videoScratchPadSize, const uint32_t vramLineStride8, const uint32_t vramPixelStride, uint32_t *audioScratchPad, const uint32_t audioScratchPadSize) -> void;
 
     /// @brief Set color that screen and scratchpad will be set to when starting playback
     /// @param color

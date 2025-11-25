@@ -460,6 +460,9 @@ int main(int argc, const char *argv[])
             std::cout << "Ignoring audio. Won't add audio to output" << std::endl;
         }
         // check if we want to write output files
+        const bool outputHasVideo = (mediaInfo.fileType & IO::FileType::Video) && options.video;
+        const bool outputHasAudio = (mediaInfo.fileType & IO::FileType::Audio) && options.audio;
+        IO::Vid2h::FileDataInfo fileDataInfo;
         std::ofstream binFile;
         if (!options.dryRun)
         {
@@ -470,7 +473,8 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    IO::Vid2h::writeDummyFileHeader(binFile);
+                    const auto contentType = static_cast<IO::FileType>((outputHasVideo ? IO::FileType::Video : IO::FileType::Unknown) | (outputHasAudio ? IO::FileType::Audio : IO::FileType::Unknown));
+                    fileDataInfo = IO::Vid2h::writeFileHeader(binFile, contentType);
                 }
                 catch (const std::runtime_error &e)
                 {
@@ -492,13 +496,11 @@ int main(int argc, const char *argv[])
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
         // Video info
-        const bool outputHasVideo = (mediaInfo.fileType & IO::FileType::Video) && options.video;
         uint32_t videoFrameIndex = 0;         // Index of last frame processed
         uint64_t videoOutCompressedSize = 0;  // Combined size of compressed video data
         uint32_t videoOutMaxMemoryNeeded = 0; // Maximum memory needed for decoding video frames
         Image::FrameInfo videoOutInfo;        // Information about video from media decoder
         // Audio info
-        const bool outputHasAudio = (mediaInfo.fileType & IO::FileType::Audio) && options.audio;
         uint64_t audioOutCompressedSize = 0; // Combined size of compressed audio data
         int32_t audioFirstFrameOffset = 0;   // Offset of first audio frame in samples
         while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioProcessing.nrOfInputFrames() < mediaInfo.audioNrOfFrames)
@@ -575,31 +577,19 @@ int main(int argc, const char *argv[])
         // write final file header to start of stream
         if (!options.dryRun && binFile.is_open())
         {
-            binFile.seekp(0);
-            // build headers
-            IO::Vid2h::AudioHeader audioHeader;
-            IO::Vid2h::VideoHeader videoHeader;
+            // write headers
             if (outputHasAudio)
             {
-                audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), audioProcessing.getDecodingSteps());
+                IO::Vid2h::AudioHeader audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), audioProcessing.getDecodingSteps());
+                IO::Vid2h::writeAudioHeader(binFile, fileDataInfo, audioHeader);
             }
             if (outputHasVideo)
             {
-                videoHeader = IO::Vid2h::createVideoHeader(videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, videoProcessing.getDecodingSteps());
+                IO::Vid2h::VideoHeader videoHeader = IO::Vid2h::createVideoHeader(videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, videoProcessing.getDecodingSteps());
+                IO::Vid2h::writeVideoHeader(binFile, fileDataInfo, videoHeader);
             }
-            // check which headers to add
-            if (outputHasAudio && outputHasVideo)
-            {
-                IO::Vid2h::writeMediaFileHeader(binFile, videoHeader, audioHeader);
-            }
-            else if (outputHasAudio)
-            {
-                IO::Vid2h::writeAudioFileHeader(binFile, audioHeader);
-            }
-            else if (outputHasVideo)
-            {
-                IO::Vid2h::writeVideoFileHeader(binFile, videoHeader);
-            }
+            // write meta data
+            IO::Vid2h::writeMetaData(binFile, fileDataInfo, m_outFile);
             binFile.close();
         }
         // output some info about data

@@ -29,6 +29,9 @@ namespace Media
         /// @brief Get information about opened video file
         virtual auto getInfo() const -> MediaInfo override;
 
+        /// @brief Get unstructured meta data from opened video file
+        virtual auto getMetaData() const -> std::vector<uint8_t> override;
+
         /// @brief Read next video or audio frame. Will return FrameType::Unknown and empty data if EOF
         virtual auto readFrame() -> FrameData override;
 
@@ -36,8 +39,11 @@ namespace Media
         virtual auto close() -> void override;
 
     private:
-        IO::Vid2h::FileHeader m_fileHeader;
         MediaInfo m_info;
+        IO::Vid2h::FileDataInfo m_fileDataInfo;
+        IO::Vid2h::AudioHeader m_audioHeader;
+        IO::Vid2h::VideoHeader m_videoHeader;
+        std::vector<uint8_t> m_metaData;
         std::vector<uint8_t> m_previousAudio;
         std::vector<Color::XRGB8888> m_previousPixels;
         std::vector<Color::XRGB8888> m_previousColorMap;

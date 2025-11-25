@@ -140,6 +140,11 @@ namespace TUI
                     auto f = va_arg(args, int32_t);
                     currentX += printFloat(f, currentX, y, backColor, textColor);
                 }
+                else if (*fmt == 's')
+                {
+                    const char *s = va_arg(args, const char *);
+                    currentX += printString(s, currentX, y, backColor, textColor);
+                }
                 else if (*fmt == 'x')
                 {
                     auto i = va_arg(args, int32_t);
