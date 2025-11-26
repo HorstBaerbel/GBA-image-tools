@@ -43,6 +43,9 @@
             "args": [
                 //"--dryrun",
                 //"--dumpaudio",
+                //"--dumpimage",
+                //"--audio=false",
+                //"--video=false",
                 "--truecolor=rgb888",
                 "--outformat=bgr555",
                 "--dxtv=95",
@@ -104,7 +107,7 @@
             "args": [
                 //"--dumpaudio",
                 //"--dumpmeta",
-                "video_240x160_adpcm.bin"
+                "video.bin"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
