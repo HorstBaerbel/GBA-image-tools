@@ -90,6 +90,7 @@ namespace Media
         if (m_fileDataInfo.metaDataOffset > 0)
         {
             m_metaData = IO::Vid2h::readMetaData(m_is, m_fileDataInfo);
+            m_info.metaDataSize = m_metaData.size();
         }
         m_is.seekg(m_fileDataInfo.frameDataOffset);
     }

@@ -373,6 +373,35 @@ ProcessingOptions::Option ProcessingOptions::adpcm{
     false,
     {"adpcm", "Compress audio using 4-bit APDCM.", cxxopts::value(adpcm.isSet)}};
 
+ProcessingOptions::OptionT<std::string> ProcessingOptions::metaFile{
+    false,
+    {"metafile", "Set file to append to output as meta data.", cxxopts::value(metaFile.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(metaFile.cxxOption.opts_))
+        {
+            REQUIRE(!metaFile.value.empty(), std::runtime_error, "Meta data file path can not be empty if option specified");
+            metaFile.isSet = true;
+        }
+    }};
+
+ProcessingOptions::OptionT<std::string> ProcessingOptions::metaString{
+    false,
+    {"metastring", "Set string to append to output as meta data.", cxxopts::value(metaString.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(metaString.cxxOption.opts_))
+        {
+            REQUIRE(!metaString.value.empty(), std::runtime_error, "Meta data string can not be empty if option specified");
+            REQUIRE(metaString.value.size() < 65536, std::runtime_error, "Meta data string length must be < 65536 characters");
+            metaString.isSet = true;
+        }
+    }};
+
 ProcessingOptions::Option ProcessingOptions::printStats{
     false,
     {"statistics", "Print statistics about the processing steps.", cxxopts::value(printStats.isSet)}};
@@ -387,7 +416,11 @@ ProcessingOptions::Option ProcessingOptions::dumpImage{
 
 ProcessingOptions::Option ProcessingOptions::dumpAudio{
     false,
-    {"dumpaudio", "Dump audio conversion result before output (to \"result.wav\").", cxxopts::value(dumpAudio.isSet)}};
+    {"dumpaudio", "Dump audio conversion result before output (to \"<INFILE>_audio.wav\").", cxxopts::value(dumpAudio.isSet)}};
+
+ProcessingOptions::Option ProcessingOptions::dumpMeta{
+    false,
+    {"dumpmeta", "Dump meta data (to \"<INFILE>_meta.bin\").", cxxopts::value(dumpMeta.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::binary{
     false,

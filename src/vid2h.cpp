@@ -50,8 +50,6 @@ bool readArguments(int argc, const char *argv[])
     {
         cxxopts::Options opts("vid2h", "Convert and compress a video file to .h / .c files or a binary file");
         opts.add_option("", {"h,help", "Print help"});
-        opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
-        opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
         opts.add_option("", options.audio.cxxOption);
         opts.add_option("", options.video.cxxOption);
         opts.add_option("", options.blackWhite.cxxOption);
@@ -77,10 +75,14 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.sampleFormat.cxxOption);
         opts.add_option("", options.sampleRateHz.cxxOption);
         opts.add_option("", options.adpcm.cxxOption);
+        opts.add_option("", options.metaFile.cxxOption);
+        opts.add_option("", options.metaString.cxxOption);
         opts.add_option("", options.printStats.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.add_option("", options.dumpImage.cxxOption);
         opts.add_option("", options.dumpAudio.cxxOption);
+        opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
+        opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
@@ -124,6 +126,13 @@ bool readArguments(int argc, const char *argv[])
         if (!options.audio && !options.video)
         {
             std::cerr << "Can only exclude audio OR video from output" << std::endl;
+            return false;
+        }
+        options.metaFile.parse(result);
+        options.metaString.parse(result);
+        if (options.metaFile && options.metaString)
+        {
+            std::cerr << "Can only add a file OR string meta data to output" << std::endl;
             return false;
         }
         options.blackWhite.parse(result);
@@ -204,6 +213,9 @@ void printUsage()
     std::cout << options.sampleRateHz.helpString() << std::endl;
     std::cout << "Audio compression options (all optional):" << std::endl;
     std::cout << options.adpcm.helpString() << std::endl;
+    std::cout << "Meta data options (mutually exclusive):" << std::endl;
+    std::cout << options.metaFile.helpString() << std::endl;
+    std::cout << options.metaString.helpString() << std::endl;
     std::cout << "INFILE: Input video file to convert, e.g. \"foo.avi\"" << std::endl;
     std::cout << "OUTNAME: is determined from the first non-existant file path. It can be an " << std::endl;
     std::cout << "absolute or relative file path or a file base name. Two files OUTNAME.h and " << std::endl;
@@ -369,6 +381,39 @@ auto buildAudioProcessing(const ProcessingOptions &opts, const Media::Reader::Me
     return audioProcessing;
 }
 
+auto buildMetaData(const ProcessingOptions &opts) -> std::vector<uint8_t>
+{
+    std::vector<uint8_t> metaData;
+    if (options.metaFile)
+    {
+        // open input file and read content
+        const auto metaDataFileName = options.metaFile.value;
+        auto metaDataStream = std::ifstream(metaDataFileName, std::ios::in | std::ios::binary);
+        REQUIRE(metaDataStream.is_open(), std::runtime_error, "Failed to open meta data file " << metaDataFileName << " for reading");
+        std::cout << "Reading meta data from " << metaDataFileName << std::endl;
+        metaDataStream.seekg(0, std::ios_base::end);
+        REQUIRE(!metaDataStream.fail(), std::runtime_error, "Failed to seek to end of meta data file");
+        const auto fileSize = metaDataStream.tellg();
+        REQUIRE(fileSize > 0, std::runtime_error, "Meta data file size must be > 0");
+        REQUIRE(fileSize < 65536, std::runtime_error, "Meta data file size must be < 65536");
+        metaDataStream.seekg(0, std::ios_base::beg);
+        REQUIRE(!metaDataStream.fail(), std::runtime_error, "Failed to seek to start of meta data file");
+        metaData.resize(fileSize);
+        metaDataStream.read(reinterpret_cast<char *>(metaData.data()), fileSize);
+        REQUIRE(!metaDataStream.fail(), std::runtime_error, "Failed to read from meta data file");
+        metaDataStream.close();
+    }
+    else if (options.metaString)
+    {
+        // convert string to binary
+        REQUIRE(options.metaString.value.size() > 0, std::runtime_error, "Meta data string size must be > 0");
+        REQUIRE(options.metaString.value.size() < 65536, std::runtime_error, "Meta data string size must be < 65536");
+        metaData.resize(options.metaString.value.size());
+        std::copy(options.metaString.value.cbegin(), options.metaString.value.cend(), metaData.begin());
+    }
+    return metaData;
+}
+
 int main(int argc, const char *argv[])
 {
     try
@@ -458,6 +503,12 @@ int main(int argc, const char *argv[])
         else
         {
             std::cout << "Ignoring audio. Won't add audio to output" << std::endl;
+        }
+        // ----- get meta data -----
+        const auto metaData = buildMetaData(options);
+        if ((options.metaFile || options.metaString) && !metaData.empty())
+        {
+            std::cout << "Adding " << metaData.size() << " Bytes of meta data to output" << std::endl;
         }
         // check if we want to write output files
         const bool outputHasVideo = (mediaInfo.fileType & IO::FileType::Video) && options.video;
@@ -589,7 +640,10 @@ int main(int argc, const char *argv[])
                 IO::Vid2h::writeVideoHeader(binFile, fileDataInfo, videoHeader);
             }
             // write meta data
-            IO::Vid2h::writeMetaData(binFile, fileDataInfo, m_outFile);
+            if ((options.metaFile || options.metaString) && !metaData.empty())
+            {
+                IO::Vid2h::writeMetaData(binFile, fileDataInfo, metaData);
+            }
             binFile.close();
         }
         // output some info about data

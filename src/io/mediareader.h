@@ -44,6 +44,8 @@ namespace Media
             Audio::ChannelFormat audioChannelFormat = Audio::ChannelFormat::Unknown; // Only mono = 1 or stereo = 2 supported
             Audio::SampleFormat audioSampleFormat = Audio::SampleFormat::Unknown;    // Description of bits and signed / unsigned in sample format
             double audioOffsetS = 0;                                                 // Offset of audio relative to video in s
+            // ----- meta data -----
+            uint32_t metaDataSize = 0;
         };
 
         /// @brief Raw frame data returned when reading a media stream

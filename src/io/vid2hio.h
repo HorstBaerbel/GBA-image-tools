@@ -58,10 +58,6 @@ namespace IO::Vid2h
 
     /// @brief Write meta data at the end of the output stream and adjust the file header value metaDataSize accordingly
     /// @note Use this AFTER writing all data frames using writeFrame()! This advances the os stream position past the new meta data
-    auto writeMetaData(std::ostream &os, const FileDataInfo &fileHeaderInfo, const std::string &metaString) -> void;
-
-    /// @brief Write meta data at the end of the output stream and adjust the file header value metaDataSize accordingly
-    /// @note Use this AFTER writing all data frames using writeFrame()! This advances the os stream position past the new meta data
     auto writeMetaData(std::ostream &os, const FileDataInfo &fileHeaderInfo, const std::vector<uint8_t> &metaData) -> void;
 
     // --------------------------------------------------------------------------------------------------------

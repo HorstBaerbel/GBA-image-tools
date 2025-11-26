@@ -66,10 +66,15 @@ public:
     static OptionT<Audio::SampleFormat> sampleFormat;
     static Option adpcm;
 
+    // Meta data options
+    static OptionT<std::string> metaFile;
+    static OptionT<std::string> metaString;
+
     // General options
     static Option printStats;
     static Option dryRun;
     static Option dumpImage;
     static Option dumpAudio;
+    static Option dumpMeta;
     static Option binary;
 };

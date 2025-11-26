@@ -46,9 +46,10 @@ bool readArguments(int argc, const char *argv[])
     {
         cxxopts::Options opts("vid2hplay", "Play vid2h video file");
         opts.add_option("", {"h,help", "Print help"});
-        opts.add_option("", {"infile", "Input video file, e.g. \"foo.bin\"", cxxopts::value<std::string>()});
         // opts.add_option("", options.dumpImage.cxxOption);
         opts.add_option("", options.dumpAudio.cxxOption);
+        opts.add_option("", options.dumpMeta.cxxOption);
+        opts.add_option("", {"infile", "Input video file, e.g. \"foo.bin\"", cxxopts::value<std::string>()});
         opts.parse_positional({"infile"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
@@ -95,6 +96,7 @@ void printUsage()
     std::cout << "Usage: vid2hplay INFILE" << std::endl;
     // std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << options.dumpAudio.helpString() << std::endl;
+    std::cout << options.dumpMeta.helpString() << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -121,6 +123,7 @@ int main(int argc, const char *argv[])
         Media::Reader::MediaInfo mediaInfo;
         bool hasVideo = false;
         bool hasAudio = false;
+        bool hasMetaData = false;
         try
         {
             std::cout << "Opening " << m_inFile << "..." << std::endl;
@@ -128,6 +131,7 @@ int main(int argc, const char *argv[])
             mediaInfo = mediaReader->getInfo();
             hasVideo = mediaInfo.fileType & IO::FileType::Video;
             hasAudio = mediaInfo.fileType & IO::FileType::Audio;
+            hasMetaData = mediaInfo.metaDataSize > 0;
             if (hasVideo)
             {
                 std::cout << "Video stream: " << mediaInfo.videoCodecName << ", " << mediaInfo.videoWidth << "x" << mediaInfo.videoHeight << "@" << mediaInfo.videoFrameRateHz;
@@ -139,12 +143,23 @@ int main(int argc, const char *argv[])
                 std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
                 std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfFrames << " frames, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
             }
+            if (hasMetaData)
+            {
+                // get first 20 bytes of meta data
+                const auto metaData = mediaReader->getMetaData();
+                const auto stringSize = metaData.size() > 20 ? 20 : metaData.size();
+                std::string metaString(stringSize, '\0');
+                std::copy(metaData.cbegin(), std::next(metaData.cbegin(), stringSize), metaString.begin());
+                std::cout << "Meta data: " << mediaInfo.metaDataSize << " Bytes, first 20 bytes: \"" << metaString << "\"" << std::endl;
+            }
         }
         catch (const std::runtime_error &e)
         {
             std::cerr << "Failed to open video file: " << e.what() << std::endl;
             return 1;
         }
+        // get base name from input file
+        const auto inFileBaseName = std::filesystem::path(m_inFile).stem();
         // check if we want to dump video or audio
         if (options.dumpAudio)
         {
@@ -157,8 +172,9 @@ int main(int argc, const char *argv[])
             {
                 // set up WAV writer
                 IO::WavWriter wavWriter;
-                wavWriter.open("result.wav");
-                std::cout << "Dumping result audio to result.wav" << std::endl;
+                const auto wavFileName = inFileBaseName.string() + "_audio.wav";
+                wavWriter.open(wavFileName);
+                std::cout << "Dumping audio to " << wavFileName << std::endl;
                 Media::Reader::FrameData inFrame;
                 do
                 {
@@ -177,8 +193,26 @@ int main(int argc, const char *argv[])
                 return 1;
             }
         }
+        // check if we want to dump meta data
+        if (options.dumpMeta)
+        {
+            if (!hasMetaData)
+            {
+                std::cout << "Can't dump meta data. No meta data in file." << std::endl;
+                return 1;
+            }
+            // open meta data file and dump data
+            const auto metaDataFileName = inFileBaseName.string() + "_meta.bin";
+            auto metaDataStream = std::ofstream(metaDataFileName, std::ios::out | std::ios::binary);
+            REQUIRE(metaDataStream.is_open(), std::runtime_error, "Failed to open meta data file " << metaDataFileName << " for writing");
+            std::cout << "Dumping meta data to " << metaDataFileName << std::endl;
+            const auto metaData = mediaReader->getMetaData();
+            metaDataStream.write(reinterpret_cast<const char *>(metaData.data()), metaData.size());
+            REQUIRE(!metaDataStream.fail(), std::runtime_error, "Failed to write to meta data file");
+            metaDataStream.close();
+        }
         // create player window if we're not dumping
-        if (!options.dumpAudio)
+        if (!options.dumpAudio && !options.dumpMeta)
         {
             Media::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
             window.play(mediaReader);

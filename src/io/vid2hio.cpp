@@ -155,13 +155,6 @@ namespace IO::Vid2h
         REQUIRE(!os.fail(), std::runtime_error, "Failed to write audio data for frame #" << frame.index << " to stream");
     }
 
-    auto writeMetaData(std::ostream &os, const FileDataInfo &fileDataInfo, const std::string &metaString) -> void
-    {
-        std::vector<uint8_t> metaData(metaString.size());
-        std::copy(metaString.cbegin(), metaString.cend(), metaData.begin());
-        writeMetaData(os, fileDataInfo, metaData);
-    }
-
     auto writeMetaData(std::ostream &os, const FileDataInfo &fileDataInfo, const std::vector<uint8_t> &metaData) -> void
     {
         REQUIRE(!metaData.empty(), std::runtime_error, "Meta data can not be empty");
