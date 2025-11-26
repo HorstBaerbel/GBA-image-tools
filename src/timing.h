@@ -22,10 +22,10 @@ class Timer
 public:
     Timer() = default;
 
-    template <class callable, class... arguments>
-    auto start(double intervalMs, callable &&f, arguments &&...args) -> void
+    template <class Callable, class... Arguments>
+    auto start(double intervalMs, Callable &&f, Arguments &&...args) -> void
     {
-        std::function<typename std::result_of<callable(arguments...)>::type()> func(std::bind(std::forward<callable>(f), std::forward<arguments>(args)...));
+        auto func(std::bind(std::forward<Callable>(f), std::forward<Arguments>(args)...));
         m_thread = std::thread([intervalMs, this, func]()
                                {
             // store next interval
