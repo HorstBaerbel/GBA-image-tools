@@ -34,10 +34,15 @@ Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DA
   * ```sampleformat=F``` - Audio sample format F ["s8p" (signed 8-bit), "u8p" (unsigned 8-bit), "s16p" (signed 16-bit), "u16p" (unsigned 16-bit), "f32p" (32-bit floating-point)]. All sample formats are planar (non-interleaved).
   * ```samplerate=R``` - Audio sample rate R [4000, 48000] in Hz.
   Note that all input audio is currently converted to signed 16-bit data and multiple channels are reduced to stereo.
+* ```AUDIO COMPRESSION``` is optional:
+  * ```--adpcm``` - Use 4-bit ADPCM compression on audio.
+* ```META DATA``` is optional:
+  * ```--metafile=F``` - Append meta data from file F to output.
+  * ```--metastring=S``` - Append meta data from string S to output.
 * ```OPTIONS``` are optional:
   * ```--dryrun``` - Process data, but do not write output files.
-  * ```--dumpimage``` - Process video data and dump results to *result\*.png* files.
-  * ```--dumpaudio``` - Process audio data and dump result to *result.wav* file.
+  * ```--dumpimage``` - Process video data and dump results to *<INFILE>\*.png* files.
+  * ```--dumpaudio``` - Process audio data and dump result to *<INFILE>.wav* file.
 * ```INFILE``` specifies the input video file. Must be readable with FFmpeg.
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_". Binary output will be written as "abc.bin".
 
@@ -58,9 +63,10 @@ vid2h will store binary file header fields and frame header fields (see [vid2hst
 | Magic bytes "v2h0"                    | 4 bytes | To identify the file type and version (currently "0")                                                                                |
 | File content type                     | 1 byte  | Bitfield: Audio 0x01, Video 0x02, Audio+Video 0x03                                                                                   |
 | ---                                   | 1 byte  |
+| Meta data size                        | 2 bytes | Size of meta data appended to end of file (size must be < 65536)                                                                     |
 | **Audio header**                      |
 | Number of audio frames in file        | 2 bytes |
-| Number of audio samples per channel   | 2 bytes |
+| Number of audio samples per channel   | 4 bytes |
 | Audio sample rate                     | 2 bytes | Audio data sample rate in Hz                                                                                                         |
 | Number of audio channels              | 1 byte  | Currently only 1 or 2 allowed                                                                                                        |
 | Audio sample bit depth                | 1 byte  | Audio data bit depth                                                                                                                 |
@@ -77,7 +83,7 @@ vid2h will store binary file header fields and frame header fields (see [vid2hst
 | Color map entries M                   | 1 byte  | Color map stored if M > 0                                                                                                            |
 | Red-blue channel swap flag            | 1 byte  | If != 0 red and blue channel are swapped                                                                                             |
 | Number of color map frames in file    | 2 byte  |
-| Max. intermediate video memory needed | 3 bytes | Max. intermediate memory needed to decompress a video frame. If 0 size should be determined by video frame size                      |
+| Max. intermediate video memory needed | 4 bytes | Max. intermediate memory needed to decompress a video frame. If 0 size should be determined by video frame size                      |
 | Image processing types                | 4 bytes | Max. of 4 image processings or Image::ProcessingType::Invalid, see [processingtypes.h](src/image/processingtype.h). In reverse order |
 |                                       |         |
 | **Frame header #0**                   |
@@ -87,6 +93,9 @@ vid2h will store binary file header fields and frame header fields (see [vid2hst
 |                                       |         |
 | **Frame header #1**                   |
 | ...                                   |
+|                                       |         |
+| **Meta data**                         |
+| Meta data                             | N bytes | Unstructured meta data at end of file (if meta data size > 0)                                                                        |
 
 Note that (if the file header is aligned to 4 bytes) every *Frame* and every *Data chunk* in the file will be aligned to 4 bytes. If you use aligned memory as a scratchpad when decoding, again, every *Chunk data* will be aligned too.
 
