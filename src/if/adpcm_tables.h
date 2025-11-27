@@ -3,7 +3,7 @@
 #include <cstdint>
 
 /// @brief ADPCM IWRAM dither state (last, current) dither value
-extern "C" uint32_t ADPCM_DitherState[2];
+extern "C" int32_t ADPCM_DitherState[2];
 
 /// @brief ADPCM step table
 extern "C" const uint16_t ADPCM_StepTable[89];

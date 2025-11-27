@@ -5,9 +5,9 @@
 #endif
 
 #ifdef __arm__
-IWRAM_DATA ALIGN(4) uint32_t ADPCM_DitherState[2] = {
+IWRAM_DATA ALIGN(4) int32_t ADPCM_DitherState[2] = {
 #else
-uint32_t ADPCM_DitherState[2] = {
+int32_t ADPCM_DitherState[2] = {
 #endif
     0,         // last dither value
     0x159A55A0 // current dither value

@@ -19,7 +19,7 @@
 // Video avg. decode: 23.28 ms (max. 35.16 ms) C++
 // Video avg. decode: 17.67 ms (max. 26.37 ms) ASM
 // Audio avg. decode: 11.38 ms (max. 11.72 ms) C++
-// Audio avg. decode: 6.92 ms (max. 7.81 ms) ASM
+// Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
 
 // AF
 // Video avg. decode: 26.61 ms (max. 34.18 ms) C++
