@@ -6,6 +6,7 @@
 
  #define ADPCM_DITHER
  #define ADPCM_DITHER_SHIFT 24
+ //#define ADPCM_ROUNDING
  #define ADPCM_CLAMP
 
  .arm
@@ -65,7 +66,12 @@ UnCompWrite32bit_8bit:
     cmp r3, r7, asr #16 @ shift back and sign-extend r7 and compare with r3. check if r3 fits into signed 16-bit
     eorne r7, r3, r8, asr #31 @ extract sign bit of r3. xor with r8 and apply to saturate
 #endif
-    mov r7, r3, lsr #8 @ r7 = pcmData >> 8
+#ifdef ADPCM_ROUNDING
+    add r7, r3, #128 @ r7 = pcmData + 128
+    mov r7, r7, asr #8 @ r7 = (pcmData + 128) >> 8
+#else
+    mov r7, r3, asr #8 @ r7 = pcmData >> 8
+#endif
     strb r7, [r2], #1 @ store first 8-bit PCM sample
     ldrsh r4, [r0], #2 @ load first index into r4
     sub r14, r1, #4 @ r14 stores ADPCM byte count per channel for loop (-4 as we have already read 4 bytes)
@@ -102,7 +108,12 @@ UnCompWrite32bit_8bit:
     cmp r3, r7, asr #16 @ shift back and sign-extend r7 and compare with r3. check if r3 fits into signed 16-bit
     eorne r7, r3, r8, asr #31 @ extract sign bit of r3. xor with r8 and apply to saturate
 #endif
-    mov r7, r3, lsr #8 @ r7 = pcmData >> 8
+#ifdef ADPCM_ROUNDING
+    add r7, r3, #128 @ r7 = pcmData + 128
+    mov r7, r7, asr #8 @ r7 = (pcmData + 128) >> 8
+#else
+    mov r7, r3, asr #8 @ r7 = pcmData >> 8
+#endif
     strb r7, [r2], #1 @ store first nibble / 8-bit PCM sample
 
     @ if not last sample
@@ -139,7 +150,12 @@ UnCompWrite32bit_8bit:
     cmp r3, r7, asr #16 @ shift back and sign-extend r7 and compare with r3. check if r3 fits into signed 16-bit
     eorne r7, r3, r8, asr #31 @ extract sign bit of r3. xor with r8 and apply to saturate
 #endif
+#ifdef ADPCM_ROUNDING
+    add r7, r3, #128 @ r7 = pcmData + 128
+    mov r7, r7, asr #8 @ r7 = (pcmData + 128) >> 8
+#else
     mov r7, r3, asr #8 @ r7 = pcmData >> 8
+#endif
     strb r7, [r2], #1 @ store second nibble / 8-bit PCM sample
 
     @ decrease number of ADPCM bytes left. if not last byte, loop again

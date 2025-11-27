@@ -8,6 +8,7 @@
 
 #define ADPCM_DITHER
 #define ADPCM_DITHER_SHIFT 24
+// #define ADPCM_ROUNDING
 
 namespace Adpcm
 {
@@ -38,7 +39,11 @@ namespace Adpcm
             pcmData = pcmData < -32768 ? -32768 : pcmData;
             pcmData = pcmData > 32767 ? 32767 : pcmData;
 #endif
+#ifdef ADPCM_ROUNDING
+            *dst8++ = (pcmData + 128) >> 8;
+#else
             *dst8++ = pcmData >> 8;
+#endif
             int32_t index = *reinterpret_cast<const int16_t *>(data8 + 2);
             data8 += 4;
             uint32_t bytesLeft = adpcmChannelBlockSize - 4;
@@ -62,7 +67,11 @@ namespace Adpcm
 #endif
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
                 pcmData = pcmData > 32767 ? 32767 : pcmData;
+#ifdef ADPCM_ROUNDING
+                *dst8++ = (pcmData + 128) >> 8;
+#else
                 *dst8++ = pcmData >> 8;
+#endif
                 // decode second nibble only if not last sample
                 if (bytesLeft > 0)
                 {
@@ -81,7 +90,11 @@ namespace Adpcm
 #endif
                     pcmData = pcmData < -32768 ? -32768 : pcmData;
                     pcmData = pcmData > 32767 ? 32767 : pcmData;
+#ifdef ADPCM_ROUNDING
+                    *dst8++ = (pcmData + 128) >> 8;
+#else
                     *dst8++ = pcmData >> 8;
+#endif
                 }
                 // advance input data
                 data8++;
