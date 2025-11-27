@@ -76,5 +76,6 @@ public:
     static Option dumpImage;
     static Option dumpAudio;
     static Option dumpMeta;
+    static Option outputStats;
     static Option binary;
 };

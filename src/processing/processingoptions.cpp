@@ -422,6 +422,10 @@ ProcessingOptions::Option ProcessingOptions::dumpMeta{
     false,
     {"dumpmeta", "Dump meta data (to \"<INFILE>_meta.bin\").", cxxopts::value(dumpMeta.isSet)}};
 
+ProcessingOptions::Option ProcessingOptions::outputStats{
+    false,
+    {"outputstats", "Output statistics for compressed output data (to \"<OUTFILE>_histo_audio/_video.csv\").", cxxopts::value(outputStats.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::binary{
     false,
     {"binary", "Output data as binary blob .bin file instead of .h / .c files.", cxxopts::value(binary.isSet)}};
