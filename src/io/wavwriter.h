@@ -21,7 +21,7 @@ namespace IO
         virtual ~WavWriter();
 
         /// @brief Open RIFF / WAVE file for writing
-        /// @param filePathOptional Path to output file
+        /// @param filePath Path to output file
         /// @throws std::runtime_error when failing to open the file for writing
         /// @note Will overwrite the file
         auto open(const std::string &filePath) -> void;
