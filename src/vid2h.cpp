@@ -12,6 +12,7 @@
 #include "io/textio.h"
 #include "io/vid2hio.h"
 #include "io/wavwriter.h"
+#include "io/statisticswriter.h"
 #include "processing/datahelpers.h"
 #include "processing/processingoptions.h"
 #include "statistics/statisticswindow.h"
@@ -81,6 +82,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.dryRun.cxxOption);
         opts.add_option("", options.dumpImage.cxxOption);
         opts.add_option("", options.dumpAudio.cxxOption);
+        opts.add_option("", options.outputStats.cxxOption);
         opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
         opts.parse_positional({"infile", "outname"});
@@ -226,6 +228,7 @@ void printUsage()
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << options.dumpAudio.helpString() << std::endl;
+    std::cout << options.outputStats.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
     std::cout << "Image order: input, color conversion, addcolor0, movecolor0, shift, sprites, " << std::endl;
     std::cout << "tiles, deltaimage, dxtg / dtxv, delta8 / delta16, rle, lz10, output" << std::endl;
@@ -540,6 +543,21 @@ int main(int argc, const char *argv[])
                 return 1;
             }
         }
+        // create statistics writer
+        IO::StatisticsWriter statisticsWriter;
+        if (options.outputStats)
+        {
+            std::vector<std::string> types;
+            if (outputHasAudio)
+            {
+                types.push_back("audio");
+            }
+            if (outputHasVideo)
+            {
+                types.push_back("video");
+            }
+            statisticsWriter.open(m_outFile, types);
+        }
         // create statistics window
         Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2h");
         auto statistics = window.getStatisticsContainer();
@@ -582,6 +600,12 @@ int main(int argc, const char *argv[])
                     IO::Vid2h::writeFrame(binFile, outFrame);
                 }
                 ++videoFrameIndex;
+                // write output statistics
+                if (options.outputStats)
+                {
+                    auto compressed = outFrame.data.pixels().convertDataToRaw();
+                    statisticsWriter.writeFrame("video", compressed);
+                }
             }
             else if (inFrame.frameType == IO::FrameType::Audio && outputHasAudio)
             {
@@ -596,6 +620,12 @@ int main(int argc, const char *argv[])
                     if (!options.dryRun && binFile.is_open())
                     {
                         IO::Vid2h::writeFrame(binFile, outFrame);
+                    }
+                    // write output statistics
+                    if (options.outputStats)
+                    {
+                        auto compressed = AudioHelpers::toRawData(outFrame.data, outFrame.info.channelFormat);
+                        statisticsWriter.writeFrame("audio", compressed);
                     }
                 }
             }

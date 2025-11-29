@@ -424,7 +424,7 @@ ProcessingOptions::Option ProcessingOptions::dumpMeta{
 
 ProcessingOptions::Option ProcessingOptions::outputStats{
     false,
-    {"outputstats", "Output statistics for compressed output data (to \"<OUTFILE>_histo_audio/_video.csv\").", cxxopts::value(outputStats.isSet)}};
+    {"outputstats", "Output statistics for compressed output data (to \"<OUTFILE>_stats_audio/_video.csv\").", cxxopts::value(outputStats.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::binary{
     false,

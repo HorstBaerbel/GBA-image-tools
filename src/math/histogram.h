@@ -5,6 +5,7 @@
 #include <map>
 #include <numeric>
 #include <vector>
+#include <limits>
 
 namespace Histogram
 {
@@ -13,6 +14,19 @@ namespace Histogram
     auto buildHistogram(const std::vector<T> &data) -> std::map<T, uint64_t>
     {
         std::map<T, uint64_t> histogram;
+        std::for_each(data.cbegin(), data.cend(), [&histogram](auto value)
+                      { histogram[value]++; });
+        return histogram;
+    }
+
+    template <typename T>
+    auto buildHistogramKeepEmpty(const std::vector<T> &data) -> std::map<T, uint64_t>
+    {
+        std::map<T, uint64_t> histogram;
+        for (std::size_t i = 0; i <= std::numeric_limits<T>::max(); ++i)
+        {
+            histogram[i] = 0;
+        }
         std::for_each(data.cbegin(), data.cend(), [&histogram](auto value)
                       { histogram[value]++; });
         return histogram;
