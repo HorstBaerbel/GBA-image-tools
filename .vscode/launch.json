@@ -44,6 +44,7 @@
                 //"--dryrun",
                 //"--dumpaudio",
                 //"--dumpimage",
+                //"--outputstats",
                 //"--audio=false",
                 //"--video=false",
                 "--truecolor=rgb888",
