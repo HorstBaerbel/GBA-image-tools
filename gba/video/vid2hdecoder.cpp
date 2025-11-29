@@ -9,6 +9,9 @@
 
 #include "image/processingtype.h"
 
+#define USE_ADPCM_ASM
+#define USE_DXTV_ASM
+
 namespace Media
 {
 
@@ -42,8 +45,13 @@ namespace Media
                 uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
             case Image::ProcessingType::CompressDXTV:
+#ifdef USE_DXTV_ASM
+                Dxtv_UnCompWrite16bit(currentSrc, currentDst, (const uint32_t *)vramPtr8, vramLineStride8, info.video.width, info.video.height);
+                uncompressedSize = Dxtv_UnCompGetSize(currentSrc);
+#else
                 Dxtv::UnCompWrite16bit(currentSrc, currentDst, (const uint32_t *)vramPtr8, vramLineStride8, info.video.width, info.video.height);
                 uncompressedSize = Dxtv::UnCompGetSize(currentSrc);
+#endif
                 break;
             default:
                 return {currentDst, uncompressedSize};
@@ -87,8 +95,13 @@ namespace Media
                 uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;
             case Audio::ProcessingType::CompressADPCM:
-                Adpcm::UnCompWrite32bit<8>(currentSrc, uncompressedSize, currentDst);
-                uncompressedSize = Adpcm::UnCompGetSize<8>(currentSrc);
+#ifdef USE_ADPCM_ASM
+                Adpcm_UnCompWrite32bit_8bit(currentSrc, uncompressedSize, currentDst);
+                uncompressedSize = Adpcm_UnCompGetSize_8bit(currentSrc);
+#else
+                Adpcm::UnCompWrite32bit_8bit(currentSrc, uncompressedSize, currentDst);
+                uncompressedSize = Adpcm::UnCompGetSize_8bit(currentSrc);
+#endif
                 break;
             default:
                 return {currentDst, uncompressedSize};

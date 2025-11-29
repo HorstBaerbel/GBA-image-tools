@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include <cstdint>
 
 namespace Video
@@ -14,3 +15,8 @@ namespace Video
         static auto read(const uint32_t *src) -> DxtvFrameHeader;
     } __attribute__((aligned(4), packed));
 }
+#else
+
+#define DXTV_FRAMEHEADER_SIZE 4
+
+#endif

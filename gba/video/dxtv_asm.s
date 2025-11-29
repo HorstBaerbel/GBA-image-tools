@@ -20,7 +20,8 @@ DecodeBlock4x4:
     @ r2: line stride in bytes of destination buffer (remains unchanged)
     @ r3: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
     @ r4 (on stack): line stride in bytes of previous buffer (remains unchanged)
-    stmfd sp!, {r4 - r8}
+    @ r5, r6, r7, r8: scratch registers
+    push {r5 - r8, r12, lr}
     ldrh r5, [r0], #2 @ load block type / color 0
     ands r6, r5, #DXTV_CONSTANTS_BLOCK_IS_REF @ check if block is a motion compensated or DXT block
     beq .db4x4_dxt
@@ -207,7 +208,7 @@ DecodeBlock4x4:
     orr r7, r7, r8, lsl #16
     stmia r1, {r6, r7}
 .db4x4_end:
-    ldmfd sp!, {r4 - r8}
+    pop {r4 - r8}
     bx lr
 
 .arm
@@ -226,7 +227,8 @@ DecodeBlock8x8:
     @ r2: line stride in bytes of destination buffer (remains unchanged)
     @ r3: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
     @ r4 (on stack): line stride in bytes of previous buffer (remains unchanged)
-    stmfd sp!, {r4 - r11}
+    @ r5, r6, r7, r8, r9, r10, r11: scratch registers
+    push {r4 - r11}
     ldrh r5, [r0], #2 @ load block type / color 0
     ands r6, r5, #DXTV_CONSTANTS_BLOCK_IS_REF @ check if block is a motion compensated or DXT block
     beq .db8x8_dxt
@@ -364,5 +366,158 @@ DecodeBlock8x8:
     subs r12, r12, #1 @ decrement line counter
     bne .dxt8x8_line @ repeat for the next line
 .db8x8_end:
-    ldmfd sp!, {r4 - r11}
+    pop {r4 - r11}
     bx lr
+
+.arm
+ .align
+ .global Dxtv_UnCompWrite16bit
+ .type Dxtv_UnCompWrite16bit,function
+#ifdef __NDS__
+ .section .itcm, "ax", %progbits
+#else
+ .section .iwram, "ax", %progbits
+#endif
+Dxtv_UnCompWrite16bit:
+    @ Decode an image frame in DXTV format
+    @ Input:
+    @ r0: pointer to DXTV source data, must be 2-byte-aligned (trashed)
+    @ r1: pointer to the destination pixel buffer, must be 4-byte-aligned (trashed)
+    @ r2: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
+    @ r3: line stride in bytes of previous pixel buffer (2-byte pixels) (trashed)
+    @ on stack: width of image frame in pixels
+    @ on stack: height of image frame in pixels
+    @ ------------------------------------------
+    @ In function:
+    @ r4: line stride in bytes of destination buffer * 2 (2-byte pixels)
+    @ r5, r6, r7, r8, r9, r10: scratch registers
+    @ r11: block flags
+    @ r12: y-loop counter
+    @ r14: x-loop counter
+    push {r4 - r12, r14}
+
+    @ read frame header and early-out if this is a repeated frame
+    ldr r6, [r0], #DXTV_FRAMEHEADER_SIZE
+    ands r6, r6, #DXTV_CONSTANTS_FRAME_KEEP
+    beq .ucw16_end
+
+    @ r4: line stride in bytes of destination buffer * 2 (2-byte pixels)
+    ldr r4, [sp, #40] @ load width from stack
+    mov r4, r4, #lsl 1 @ r4 *= 2
+    @ r12: block-y counter max
+    ldr r12, [sp, #44] @ load height from stack
+    mov r12, r12, #lsr DXTV_CONSTANTS_BLOCK_MAX_SHIFT @ r12 = height >> DXTV_CONSTANTS_BLOCK_MAX_SHIFT
+
+.ucw16_block_y_loop:
+    @ r11: block flags
+    mov r11, r11, #0
+    @ r14: block-x counter max
+    ldr r14, [sp, #40] @ load width from stack
+    mov r14, r14, #lsr DXTV_CONSTANTS_BLOCK_MAX_SHIFT @ r14 = width >> DXTV_CONSTANTS_BLOCK_MAX_SHIFT
+    @ save destination and previous source pointer
+    push {r1, r3}
+
+.ucw16_block_x_loop:
+    @ load some new flags if we've run out
+    tst r11, #65536 @ as long as bit 16 is 1 we have some flags in the lower 16 bits
+    bne .ucw16_check_flags
+    ldr r11, #0xFFFF0000 @ set upper 16 bits in r11
+    ldrh r11, [r0], #2 @ load 16 bits worth of flags from DXTV data
+.ucw16_check_flags:
+    tst r11, #1 @ check if block split flag is set
+    mov r11, r11, #lsr 1 @ move next flag into position
+    beq .ucw16_block_8x8
+.ucw16_block_4x4:
+    @ block is split. decode four 4x4 blocks
+    @ decode block A - upper-left
+    push {r1, r3}
+    bl DecodeBlock4x4
+    pop {r1, r3}
+    @ decode block B - upper-left
+    push {r1, r3}
+    add r1, r1, #8 @ move destination pointer 4 pixels right
+    add r3, r3, #8 @ move revious source pointer 4 pixels right
+    bl DecodeBlock4x4
+    pop {r1, r3}
+    @ decode block C - upper-left
+    push {r1, r3}
+    add r1, r1, r4, #lsl DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move destination pointer 4 lines down
+    add r2, r2, r3, #lsl DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move previous source pointer 4 lines down
+    bl DecodeBlock4x4
+    pop {r1, r3}
+    @ decode block D - upper-left
+    push {r1, r3}
+    add r1, r1, r4, #lsl DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move destination pointer 4 lines down
+    add r1, r1, #8 @ move destination pointer 4 pixels right
+    add r2, r2, r3, #lsl DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move previous source pointer 4 lines down
+    add r3, r3, #8 @ move revious source pointer 4 pixels right
+    bl DecodeBlock4x4
+    pop {r1, r3}
+    b .ucw16_block_x_end
+.ucw16_block_8x8:
+    @ block is not split. decode 8x8 block
+    push {r1, r3}
+    bl DecodeBlock4x4
+    pop {r1, r3}
+.ucw16_block_x_end:
+    add r1, r1, #16 @ move destination pointer 8 pixels right
+    add r2, r2, #16 @ move previous source pointer 8 pixels right
+    @ check if there are blocks remaining horizontally
+    subs r14, r14, #1
+    bne .ucw16_block_x_loop
+    @ check if there are blocks remaining vertically
+    subs r12, r12, #1
+    bne .ucw16_block_y_loop
+
+    pop {r1, r3}
+
+.ucw16_block_y_end:
+    
+
+.ucw16_end:
+    pop {r4 - r12, r14}
+    bx lr
+
+    // ----- copy motion compensated block -----
+    IWRAM_FUNC void UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, const uint32_t prevSrcLineStride, uint32_t width, uint32_t height)
+    {
+        // set up some variables
+        for (uint32_t by = 0; by < height >> DXTV_CONSTANTS_BLOCK_MAX_SHIFT; ++by)
+        {
+            uint32_t flags = 0;
+            uint32_t flagsAvailable = 0;
+            auto currPtr8 = dst + by * (width * 2) << DXTV_CONSTANTS_BLOCK_MAX_SHIFT;
+            auto prevPtr8 = prevSrc == nullptr ? nullptr : prevSrc + by * prevSrcLineStride << DXTV_CONSTANTS_BLOCK_MAX_SHIFT;
+            for (uint32_t bx = 0; bx < width >> DXTV_CONSTANTS_BLOCK_MAX_SHIFT; ++bx)
+            {
+                // read flags if we need to
+                if (flagsAvailable < 1)
+                {
+                    flags = *dataPtr16++;
+                    flagsAvailable = 16;
+                }
+                // check if block is split
+                if (flags & 1)
+                {
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr8, width * 2, prevPtr8, prevSrcLineStride);                                                   // A - upper-left
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr8 + 8, width * 2, prevPtr8 + 8, prevSrcLineStride);                                         // B - upper-right
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr8 + width * 2 * 4, width * 2, prevPtr8 + prevSrcLineStride * 4, prevSrcLineStride);           // C - lower-left
+                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr8 + width * 2 * 4 + 8, width * 2, prevPtr8 + prevSrcLineStride * 4 + 8, prevSrcLineStride); // D - lower-right
+                }
+                else
+                {
+                    dataPtr16 = DecodeBlock8x8(dataPtr16, currPtr8, width * 2, prevPtr8, prevSrcLineStride);
+                }
+                currPtr8 += 16;
+                prevPtr8 += 16;
+                flags >>= 1;
+                --flagsAvailable;
+            }
+        }
+    }
+
+    uint32_t UnCompGetSize(const uint32_t *data)
+    {
+        const Video::DxtvFrameHeader frameHeader = Video::DxtvFrameHeader::read(data);
+        return frameHeader.uncompressedSize;
+    }

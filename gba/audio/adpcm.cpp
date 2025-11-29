@@ -1,10 +1,7 @@
 #include "adpcm.h"
 
-#include "adpcm_asm.h"
 #include "if/adpcm_structs.h"
 #include "if/adpcm_tables.h"
-
-#define USE_ASM
 
 #define ADPCM_DITHER
 #define ADPCM_DITHER_SHIFT 24
@@ -12,13 +9,8 @@
 
 namespace Adpcm
 {
-
-    template <>
-    void IWRAM_FUNC UnCompWrite32bit<8>(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
+    void IWRAM_FUNC UnCompWrite32bit_8bit(const uint32_t *data, uint32_t dataSize, uint32_t *dst)
     {
-#ifdef USE_ASM
-        UnCompWrite32bit_8bit(data, dataSize, dst);
-#else
         //  copy frame header and skip to data
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         auto data8 = reinterpret_cast<const uint8_t *>(data + sizeof(Audio::AdpcmFrameHeader) / 4);
@@ -100,18 +92,12 @@ namespace Adpcm
                 data8++;
             }
         }
-#endif
     }
 
-    template <>
-    uint32_t IWRAM_FUNC UnCompGetSize<8>(const uint32_t *data)
+    uint32_t IWRAM_FUNC UnCompGetSize_8bit(const uint32_t *data)
     {
-#ifdef USE_ASM
-        return UnCompGetSize_8bit(data);
-#else
         const Audio::AdpcmFrameHeader frameHeader = Audio::AdpcmFrameHeader::read(data);
         // if we're down-converting the PCM sample depth during decompression, adjust the uncompressed data size too
         return (static_cast<uint32_t>(frameHeader.uncompressedSize) * 8 + 7) / frameHeader.pcmBitsPerSample; // + frameHeader.nrOfChannels;
-#endif
     }
 }

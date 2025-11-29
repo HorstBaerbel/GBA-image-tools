@@ -46,6 +46,7 @@
 namespace Video::DxtvConstants
 {
     static constexpr uint8_t FRAME_KEEP = 0x40;                                           // 1 for frames that are considered a direct copy of the previous frame and can be kept
+    static constexpr uint32_t BLOCK_MIN_DIM = 4;                                          // Minimum block size is 4x4 pixels
     static constexpr uint32_t BLOCK_MAX_DIM = 8;                                          // Maximum block size is 8x8 pixels
     static constexpr bool BLOCK_NO_SPLIT = false;                                         // The block is a full block
     static constexpr bool BLOCK_IS_SPLIT = true;                                          // The block is split into smaller sub-blocks
@@ -62,7 +63,10 @@ namespace Video::DxtvConstants
 #else
 // DXTV frame format constants for including in assembly files
 #define DXTV_CONSTANTS_FRAME_KEEP 0x40                                                    // 1 for frames that are considered a direct copy of the previous frame and can be kept
-#define DXTV_CONSTANTS_BLOCK_MAX_DIM 8                                                    // Maximum block size is 8x8 pixels
+#define DXTV_CONSTANTS_BLOCK_MIN_SHIFT 4                                                  // Minumum block size is 4x4 pixels
+#define DXTV_CONSTANTS_BLOCK_MIN_DIM (1 << DXTV_CONSTANTS_BLOCK_MIN_SHIFT)                // Maximum block size is 8x8 pixels
+#define DXTV_CONSTANTS_BLOCK_MAX_SHIFT 8                                                  // Maximum block size is 8x8 pixels
+#define DXTV_CONSTANTS_BLOCK_MAX_DIM (1 << DXTV_CONSTANTS_BLOCK_MAX_SHIFT)                // Maximum block size is 8x8 pixels
 #define DXTV_CONSTANTS_BLOCK_IS_REF (1 << 15)                                             // The block is a motion-compensated block from the current or previous frame
 #define DXTV_CONSTANTS_BLOCK_FROM_PREV (1 << 14)                                          // The reference block is from from the previous frame
 #define DXTV_CONSTANTS_BLOCK_MOTION_BITS 5                                                // Bits available for pixel motion

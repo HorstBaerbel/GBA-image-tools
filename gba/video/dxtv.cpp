@@ -1,14 +1,11 @@
 #include "dxtv.h"
 
-#include "dxtv_asm.h"
 #include "if/dxt_tables.h"
 #include "if/dxtv_constants.h"
 #include "if/dxtv_structs.h"
 #include "image/dxt.h"
 #include "memory/memory.h"
 #include "print/output.h"
-
-#define USE_ASM
 
 namespace Dxtv
 {
@@ -247,25 +244,14 @@ namespace Dxtv
                 // check if block is split
                 if (flags & 1)
                 {
-#ifdef USE_ASM
-                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32, currLineStride16 * 2, prevPtr32, prevLineStride16 * 2);                                                                                 // A - upper-left
-                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + Block4HStride32, currLineStride16 * 2, prevPtr32 + Block4HStride32, prevLineStride16 * 2);                                             // B - upper-right
-                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + currBlock4VStride32, currLineStride16 * 2, prevPtr32 + prevBlock4VStride32, prevLineStride16 * 2);                                     // C - lower-left
-                    dataPtr16 = DecodeBlock4x4(dataPtr16, currPtr32 + currBlock4VStride32 + Block4HStride32, currLineStride16 * 2, prevPtr32 + prevBlock4VStride32 + Block4HStride32, prevLineStride16 * 2); // D - lower-right
-#else
                     dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32, currLineStride16, prevPtr32, prevLineStride16);                                                                                 // A - upper-left
                     dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + Block4HStride32, currLineStride16, prevPtr32 + Block4HStride32, prevLineStride16);                                             // B - upper-right
                     dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + currBlock4VStride32, currLineStride16, prevPtr32 + prevBlock4VStride32, prevLineStride16);                                     // C - lower-left
                     dataPtr16 = decodeBlock<4>(dataPtr16, currPtr32 + currBlock4VStride32 + Block4HStride32, currLineStride16, prevPtr32 + prevBlock4VStride32 + Block4HStride32, prevLineStride16); // D - lower-right
-#endif
                 }
                 else
                 {
-#ifdef USE_ASM
-                    dataPtr16 = DecodeBlock8x8(dataPtr16, currPtr32, currLineStride16 * 2, prevPtr32, prevLineStride16 * 2);
-#else
                     dataPtr16 = decodeBlock<8>(dataPtr16, currPtr32, currLineStride16, prevPtr32, prevLineStride16);
-#endif
                 }
                 currPtr32 += Block8HStride32;
                 prevPtr32 += Block8HStride32;
