@@ -400,7 +400,7 @@ Dxtv_UnCompWrite16bit:
     @ read frame header and early-out if this is a repeated frame
     ldr r5, [r0], #DXTV_FRAMEHEADER_SIZE
     ands r5, r5, #DXTV_CONSTANTS_FRAME_KEEP
-    beq .ucw16_end
+    bne .ucw16_end
 
     @ r4: line stride in bytes of destination buffer * 2 (2-byte pixels)
     ldr r4, [sp, #40] @ load width from stack
@@ -422,8 +422,9 @@ Dxtv_UnCompWrite16bit:
     @ load some new flags if we've run out
     tst r11, #65536 @ as long as bit 16 is 1 we have some flags in the lower 16 bits
     bne .ucw16_check_flags
-    ldr r11, =#0xFFFF0000 @ set upper 16 bits in r11
+    ldr r5, =#0xFFFF0000 @ set upper 16 bits in r11
     ldrh r11, [r0], #2 @ load 16 bits worth of flags from DXTV data
+    orr r11, r11, r5
 .ucw16_check_flags:
     tst r11, #1 @ check if block split flag is set
     mov r11, r11, lsr #1 @ move next flag into position
