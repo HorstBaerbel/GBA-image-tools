@@ -11,11 +11,11 @@
 /// @param prevSrcLineStride Line stride in bytes for previous source image (e.g. 480 for VRAM mode 3)
 /// @param width Image width
 /// @param height Image height
-void Dxtv_UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, const uint32_t prevSrcLineStride, uint32_t width, uint32_t height);
+extern "C" auto Dxtv_UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, const uint32_t prevSrcLineStride, uint32_t width, uint32_t height) -> void;
 
 /// @brief Get stored uncompressed size of image data after decoding. Written in ARMv4 assembler
 /// @param data Pointer to DXTV data
-uint32_t Dxtv_UnCompGetSize(const uint32_t *data);
+extern "C" auto Dxtv_UnCompGetSize(const uint32_t *data) -> uint32_t;
 
 namespace Dxtv
 {
@@ -26,9 +26,9 @@ namespace Dxtv
     /// @param prevSrcLineStride Line stride in bytes for previous source image (e.g. 480 for VRAM mode 3)
     /// @param width Image width
     /// @param height Image height
-    void UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, const uint32_t prevSrcLineStride, uint32_t width, uint32_t height);
+    auto UnCompWrite16bit(const uint32_t *data, uint32_t *dst, const uint32_t *prevSrc, const uint32_t prevSrcLineStride, uint32_t width, uint32_t height) -> void;
 
     /// @brief Get stored uncompressed size of image data after decoding
     /// @param data Pointer to DXTV data
-    uint32_t UnCompGetSize(const uint32_t *data);
+    auto UnCompGetSize(const uint32_t *data) -> uint32_t;
 }
