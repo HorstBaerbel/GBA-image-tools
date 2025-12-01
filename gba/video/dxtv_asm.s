@@ -22,7 +22,6 @@ DecodeBlock4x4:
     @ r3: line stride in bytes of destination buffer (remains unchanged)
     @ r4: line stride in bytes of previous buffer (remains unchanged)
     @ r5, r6, r7, r8, r9: scratch registers (trashed)
-    push {r4}
     ldrh r5, [r0], #2 @ load block type / color 0
     ands r6, r5, #DXTV_CONSTANTS_BLOCK_IS_REF @ check if block is a motion compensated or DXT block
     beq .db4x4_dxt
@@ -30,7 +29,8 @@ DecodeBlock4x4:
     // ----- copy motion compensated block -----
     ands r6, r5, #DXTV_CONSTANTS_BLOCK_FROM_PREV @ check if block is from the previous frame
     moveq r2, r1 @ r2 = same frame (r1) or previous frame (r2)
-    moveq r4, r3 @ r4 = same frame (r3) or previous frame (r4)
+    mov r9, r4 @ r9 = r4
+    moveq r9, r3 @ r9 = same frame (r3) or previous frame (r4)
     // get x-offset of the source block
     and r6, r5, #DXTV_CONSTANTS_BLOCK_MOTION_MASK
     subs r6, r6, #DXTV_CONSTANTS_BLOCK_HALF_RANGE
@@ -40,7 +40,7 @@ DecodeBlock4x4:
     and r5, r5, #DXTV_CONSTANTS_BLOCK_MOTION_MASK
     subs r5, r5, #DXTV_CONSTANTS_BLOCK_HALF_RANGE
     // calculate offset to source block
-    mlas r7, r5, r4, r6 @ multiply y-offset by line stride and add x-offset
+    mlas r7, r5, r9, r6 @ multiply y-offset by line stride and add x-offset
     adds r2, r2, r7 @ calculate source address
     // check if block is word-aligned
     ands r5, r2, #0x03 @ check if source pointer is aligned to 4 bytes / 2 pixels
@@ -57,7 +57,7 @@ DecodeBlock4x4:
     ldrh r5, [r2, #6]
     strh r5, [r1, #6]
     // line 1
-    ldrh r5, [r2, r4]!
+    ldrh r5, [r2, r9]!
     strh r5, [r1, r3]!
     ldrh r5, [r2, #2]
     strh r5, [r1, #2]
@@ -66,7 +66,7 @@ DecodeBlock4x4:
     ldrh r5, [r2, #6]
     strh r5, [r1, #6]
     // line 2
-    ldrh r5, [r2, r4]!
+    ldrh r5, [r2, r9]!
     strh r5, [r1, r3]!
     ldrh r5, [r2, #2]
     strh r5, [r1, #2]
@@ -75,7 +75,7 @@ DecodeBlock4x4:
     ldrh r5, [r2, #6]
     strh r5, [r1, #6]
     // line 3
-    ldrh r5, [r2, r4]!
+    ldrh r5, [r2, r9]!
     strh r5, [r1, r3]!
     ldrh r5, [r2, #2]
     strh r5, [r1, #2]
@@ -89,17 +89,17 @@ DecodeBlock4x4:
     // line 0
     ldmia r2, {r5, r6}
     stmia r1, {r5, r6}
-    add r2, r2, r4
+    add r2, r2, r9
     add r1, r1, r3
     // line 1
     ldmia r2, {r5, r6}
     stmia r1, {r5, r6}
-    add r2, r2, r4
+    add r2, r2, r9
     add r1, r1, r3
     // line 2
     ldmia r2, {r5, r6}
     stmia r1, {r5, r6}
-    add r2, r2, r4
+    add r2, r2, r9
     add r1, r1, r3
     // line 3
     ldmia r2, {r5, r6}
@@ -208,7 +208,6 @@ DecodeBlock4x4:
     orr r7, r7, r8, lsl #16
     stmia r1, {r6, r7}
 .db4x4_end:
-    pop {r4}
     bx lr
 
 .arm
@@ -226,15 +225,15 @@ DecodeBlock8x8:
     @ r1: pointer to the destination pixel buffer, must be 4-byte-aligned (trashed)
     @ r2: pointer to the previous pixel buffer, must be 4-byte-aligned (trashed)
     @ r3: line stride in bytes of destination buffer (remains unchanged)
-    @ r4: line stride in bytes of previous buffer (remains unchanged)
-    @ r5, r6, r7, r8, r9, r10: scratch registers for copy loops (trashed, but only r10 needed by caller)
-    @ r5, r6, r7, r8, r9, r10, r11, r12: scratch registers for DXT loop (trashed, but only r10 - r12 needed by caller)
-    push {r4, r10}
+    @ r4: line stride in bytes of previous buffer (saved/restored)
+    @ r5, r6, r7, r8, r9, r10: scratch registers for copy loops (trashed, r10 saved/restored)
+    @ r5, r6, r7, r8, r9, r10, r11, r12: scratch registers for DXT loop (trashed, r10 - r12 saved/restored)
     ldrh r5, [r0], #2 @ load block type / color 0
     ands r6, r5, #DXTV_CONSTANTS_BLOCK_IS_REF @ check if block is a motion compensated or DXT block
     beq .db8x8_dxt
 .db8x8_mc:
     // ----- copy motion compensated block -----
+    push {r4, r10}
     ands r6, r5, #DXTV_CONSTANTS_BLOCK_FROM_PREV @ check if block is from the previous frame
     moveq r2, r1 @ r2 = same frame (r1) or previous frame (r3)
     moveq r4, r3 @ r4 = same frame (r3) or previous frame (r4)
@@ -273,6 +272,7 @@ DecodeBlock8x8:
     add r1, r1, r3 @ increment destination pointer by line stride
     subs r10, r10, #1 @ decrement line counter
     bne .mc8x8_unaligned_loop @ repeat for the next line
+    pop {r4, r10}
     b .db8x8_end
 .mc8x8_aligned:
     // aligned block copy
@@ -286,10 +286,11 @@ DecodeBlock8x8:
     bne .mc8x8_aligned_loop @ repeat for the next line
     ldmia r2, {r5 - r8}
     stmia r1, {r5 - r8}
+    pop {r4, r10}
     b .db8x8_end
 .db8x8_dxt:
     // ----- uncompress DXT block -----
-    push {r11 - r12}
+    push {r10 - r12}
     ldrh r6, [r0], #2 @ load c1 to r6
     // get blue components of c0 and c1 to r7
     and r2, r5, #0x7c00
@@ -366,9 +367,8 @@ DecodeBlock8x8:
     add r1, r1, r3 @ increment destination pointer by line stride
     subs r12, r12, #1 @ decrement line counter
     bne .dxt8x8_line @ repeat for the next line
-    pop {r11 - r12}
+    pop {r10 - r12}
 .db8x8_end:
-    pop {r4, r10}
     bx lr
 
 .arm
@@ -434,35 +434,35 @@ Dxtv_UnCompWrite16bit:
 .ucw16_block_4x4:
     @ block is split. decode four 4x4 blocks
     @ decode block A - upper-left
-    push {r1 - r3}
+    push {r1, r2}
     bl DecodeBlock4x4
-    pop {r1 - r3}
+    pop {r1, r2}
     @ decode block B - upper-left
-    push {r1 - r3}
+    push {r1, r2}
     add r1, r1, #8 @ move destination pointer 4 pixels right
     add r2, r2, #8 @ move previous source pointer 4 pixels right
     bl DecodeBlock4x4
-    pop {r1 - r3}
+    pop {r1, r2}
     @ decode block C - upper-left
-    push {r1 - r3}
+    push {r1, r2}
     add r1, r1, r4, lsl #DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move destination pointer 4 lines down
     add r2, r2, r3, lsl #DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move previous source pointer 4 lines down
     bl DecodeBlock4x4
-    pop {r1 - r3}
+    pop {r1, r2}
     @ decode block D - upper-left
-    push {r1 - r3}
+    push {r1, r2}
     add r1, r1, r4, lsl #DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move destination pointer 4 lines down
     add r1, r1, #8 @ move destination pointer 4 pixels right
     add r2, r2, r3, lsl #DXTV_CONSTANTS_BLOCK_MIN_SHIFT @ move previous source pointer 4 lines down
     add r2, r2, #8 @ move previous source pointer 4 pixels right
     bl DecodeBlock4x4
-    pop {r1 - r3}
+    pop {r1, r2}
     b .ucw16_block_x_end
 .ucw16_block_8x8:
     @ block is not split. decode 8x8 block
-    push {r1 - r3}
+    push {r1, r2}
     bl DecodeBlock8x8
-    pop {r1 - r3}
+    pop {r1, r2}
 .ucw16_block_x_end:
     @ move to next 8x8 block horizontally
     add r1, r1, #16 @ move destination pointer 8 pixels right
