@@ -29,6 +29,7 @@ namespace IO
             {
                 csvFile << "f" << std::to_string(i) << ",";
             }
+            csvFile << "alphabetsize,";
             csvFile << "entropy,";
             csvFile << "ratio" << std::endl;
             REQUIRE(!csvFile.fail(), std::runtime_error, "Writing headers to " << filePath << " failed");
@@ -45,23 +46,26 @@ namespace IO
         REQUIRE(osIt != m_oss.end(), std::runtime_error, "Unknown type tag " << type);
         // calculate histogram
         auto histogram = Histogram::normalizeHistogram(Histogram::buildHistogramKeepEmpty(data));
-        std::cout << "Histogram size: " << histogram.size() << std::endl;
-        //  calculate normalized entropy of data
+        // std::cout << "Histogram size: " << histogram.size() << std::endl;
+        // calculate normalized entropy of data
+        uint32_t alphabetSize = 0;
         float entropy = 0.0F;
         for (const auto &entry : histogram)
         {
             if (entry.second > 0.0F)
             {
+                alphabetSize++;
                 entropy -= entry.second * std::log2(entry.second);
             }
         }
         // std::cout << "Entropy (bits): " << entropy << std::endl;
-        //  write data to file
+        // write data to file
         osIt->second << std::to_string(m_frameIndex[type]++) << ",";
         for (const auto &entry : histogram)
         {
             osIt->second << std::to_string(entry.second) << ",";
         }
+        osIt->second << std::to_string(alphabetSize) << ",";
         osIt->second << std::to_string(entropy) << ",";
         osIt->second << std::to_string(compressionRatio) << std::endl;
     }
