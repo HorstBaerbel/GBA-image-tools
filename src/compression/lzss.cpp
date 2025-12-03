@@ -2,8 +2,6 @@
 
 #include "exception.h"
 
-#include <filesystem>
-#include <fstream>
 #include <map>
 
 namespace Compression
@@ -180,7 +178,7 @@ namespace Compression
     {
         REQUIRE(src.size() > 4, std::runtime_error, "Data too small");
         uint32_t header = *reinterpret_cast<const uint32_t *>(src.data());
-        REQUIRE((header & 0xFF) == 0x10, std::runtime_error, "Data not variant 10h");
+        REQUIRE((header & 0xFF) == 0x10, std::runtime_error, "Compression type not LZSS (10h)");
         const uint32_t uncompressedSize = (header >> 8);
         REQUIRE(uncompressedSize > 0, std::runtime_error, "Bad uncompressed size");
         std::vector<uint8_t> dst;
