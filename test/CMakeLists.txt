@@ -48,6 +48,7 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/color/xrgb8888.cpp
     ${PROJECT_SOURCE_DIR}/src/color/ycgcorf.cpp
     ${PROJECT_SOURCE_DIR}/src/compression/lzss.cpp
+    ${PROJECT_SOURCE_DIR}/src/compression/rans.cpp
     ${PROJECT_SOURCE_DIR}/src/io/imageio.cpp
     ${PROJECT_SOURCE_DIR}/src/image/datatype.cpp
     ${PROJECT_SOURCE_DIR}/src/image/imagehelpers.cpp

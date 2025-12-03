@@ -282,6 +282,10 @@ ProcessingOptions::Option ProcessingOptions::delta16{
     false,
     {"delta16", "16-bit delta encoding.", cxxopts::value(delta16.isSet)}};
 
+ProcessingOptions::Option ProcessingOptions::rans{
+    false,
+    {"rans", "Use rANS compression.", cxxopts::value(rans.isSet)}};
+
 ProcessingOptions::Option ProcessingOptions::lz10{
     false,
     {"lz10", "Use LZ compression variant 10.", cxxopts::value(lz10.isSet)}};

@@ -51,6 +51,7 @@ public:
     static Option deltaImage;
     static Option delta8;
     static Option delta16;
+    static Option rans;
     static Option lz10;
     // static Option rle;
     static Option vram;

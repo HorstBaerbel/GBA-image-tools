@@ -133,7 +133,9 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": [],
+            "args": [
+                "RANS*"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/test",
             "environment": [],
