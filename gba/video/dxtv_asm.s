@@ -411,11 +411,12 @@ Dxtv_UnCompWrite16bit:
     ldr r5, [sp, #40] @ load width from stack
     mov r5, r5, lsr #DXTV_CONSTANTS_BLOCK_MAX_SHIFT @ r5 = width >> DXTV_CONSTANTS_BLOCK_MAX_SHIFT
     @ save y-counter, destination and previous source pointer
-    push {r6, r1, r2}
+    push {r1, r2, r6}
 
 .ucw16_block_x_loop:
     @ save x-counter, destination and previous source pointer
-    push {r5, r1, r2}
+    push {r5}
+    push {r1, r2}
     @ load some new flags if we've run out
     tst r12, #65536 @ as long as bit 16 is 1 we have some flags in the lower 16 bits
     bne .ucw16_check_flags
@@ -453,14 +454,15 @@ Dxtv_UnCompWrite16bit:
     bl DecodeBlock8x8
 .ucw16_block_x_end:
     @ move to next 8x8 block horizontally
-    pop {r5, r1, r2}
+    pop {r1, r2}
     add r1, r1, #16 @ move destination pointer 8 pixels right
     add r2, r2, #16 @ move previous source pointer 8 pixels right
     @ check if there are blocks remaining horizontally
+    pop {r5}
     subs r5, r5, #1
     bne .ucw16_block_x_loop
     @ move to next 8x8 block line vertically
-    pop {r6, r1, r2}
+    pop {r1, r2, r6}
     add r1, r1, r4, lsl #DXTV_CONSTANTS_BLOCK_MAX_SHIFT @ move destination pointer 8 lines down
     add r2, r2, r3, lsl #DXTV_CONSTANTS_BLOCK_MAX_SHIFT @ move previous source pointer 8 lines down
     @ check if there are blocks remaining vertically
