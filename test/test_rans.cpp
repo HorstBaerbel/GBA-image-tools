@@ -17,12 +17,12 @@ struct RansTestFile
 };
 
 static const std::vector<RansTestFile> RansTestFiles = {
-    {"lorem_ipsum_2k.txt", 852},
-    {"artificial_240x160.raw", 63860},
-    {"BigBuckBunny_40_240x160.raw", 20564},
-    {"black_240x160.raw", 13616},
-    {"mask6.raw", 516},
-    {"squish_240x160.raw", 72488}};
+    {"lorem_ipsum_2k.txt", 1340},           // LZSS: 852
+    {"artificial_240x160.raw", 99044},      // LZSS: 63860
+    {"BigBuckBunny_40_240x160.raw", 97604}, // LZSS: 20564
+    {"black_240x160.raw", 6},               // LZSS: 13616
+    {"mask6.raw", 768},                     // LZSS: 516
+    {"squish_240x160.raw", 115468}};        // LZSS: 72488
 
 const std::string DataPathTest = "../../data/data/";
 
