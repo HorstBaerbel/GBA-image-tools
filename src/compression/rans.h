@@ -7,9 +7,9 @@
 namespace Compression
 {
 
-    static constexpr uint32_t RANS_M_BITS = 8;
+#define RANS_M_BITS 14
     static constexpr uint32_t RANS_M = 1 << RANS_M_BITS; // Total sum of frequencies. Must be power-of-two
-    static constexpr uint32_t RANS_L_BITS = 23;
+#define RANS_L_BITS 23
     static constexpr uint32_t RANS_L = 1 << RANS_L_BITS; // Lower bound of our normalization interval
     static constexpr uint32_t RANS_ALPHABET_SIZE = 256;
 

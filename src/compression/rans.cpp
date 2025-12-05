@@ -27,7 +27,7 @@ namespace Compression
         auto total = std::accumulate(histogram.cbegin(), histogram.cend(), uint32_t(0));
         REQUIRE(total >= 1, std::runtime_error, "Empty input for scaling");
         // build counts and fractions table
-        std::vector<std::pair<uint8_t, double>> fractions; // stores (symbol, fraction above 8-bit count)
+        std::vector<std::pair<uint8_t, double>> fractions; // stores (symbol, fraction above integer count)
         fractions.reserve(RANS_ALPHABET_SIZE);
         uint32_t totalM = 0;
         std::vector<CountType> counts(RANS_ALPHABET_SIZE, 0);
@@ -51,6 +51,7 @@ namespace Compression
             fractions.push_back({i, fraction});
         }
         // check if we need to correct the total count due to rounding
+        REQUIRE(totalM == std::accumulate(counts.cbegin(), counts.cend(), uint32_t(0)), std::runtime_error, "Counts difference");
         int32_t differenceM = static_cast<int32_t>(RANS_M) - static_cast<int32_t>(totalM);
         if (differenceM > 0)
         {
@@ -88,7 +89,7 @@ namespace Compression
                 fractionIndex = (fractionIndex + 1) % fractions.size();
             }
         }
-        const uint32_t finalTotalM = std::accumulate(counts.begin(), counts.end(), uint32_t(0));
+        const uint32_t finalTotalM = std::accumulate(counts.cbegin(), counts.cend(), uint32_t(0));
         REQUIRE(finalTotalM == RANS_M, std::runtime_error, "Counts failed to sum to RANS_M");
         return counts;
     }
