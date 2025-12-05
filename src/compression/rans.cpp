@@ -16,21 +16,21 @@ namespace Compression
     //    Symbol index stored
     // 1: 256 counts for all symbols
     //    Complete count table stored
-    // All other encodings have 6 bits of minimum symbol count (subtracted from all counts)
     // 2: RLE with literal blocks
     //    Use the most significant bit (MSB) of the control byte as a flag:
-    //    Flag 0 (Literal block): 0 + 6-bit count. The following count + 1 bytes are literal data (raw copies)
+    //    Flag 0 (Literal block): 0 + 6-bit count. The following count bytes are literal data (raw copies)
     //    Flag 1 (Run block): 1 + 3-bit count, 4-bit value. The value is repeated count + 1 times. if value == 15 an extra value byte follows
 
-    static std::vector<uint8_t> calculateCounts(const std::vector<uint32_t> &histogram)
+    template <typename CountType>
+    static std::vector<CountType> calculateCounts(const std::vector<uint32_t> &histogram)
     {
         auto total = std::accumulate(histogram.cbegin(), histogram.cend(), uint32_t(0));
         REQUIRE(total >= 1, std::runtime_error, "Empty input for scaling");
         // build counts and fractions table
         std::vector<std::pair<uint8_t, double>> fractions; // stores (symbol, fraction above 8-bit count)
         fractions.reserve(RANS_ALPHABET_SIZE);
-        uint32_t total8 = 0;
-        std::vector<uint8_t> counts(RANS_ALPHABET_SIZE, 0);
+        uint32_t totalM = 0;
+        std::vector<CountType> counts(RANS_ALPHABET_SIZE, 0);
         for (size_t i = 0; i < RANS_ALPHABET_SIZE; ++i)
         {
             // ignore synbols that do not occur in the data
@@ -39,64 +39,64 @@ namespace Compression
                 continue;
             }
             // calculate floating-point count in [0, RANS_M]
-            double countM = (histogram[i] * double(RANS_M)) / static_cast<double>(total);
+            double countF = (histogram[i] * double(RANS_M)) / static_cast<double>(total);
             // calculate 8-bit count and clamp to [0, RANS_M - 1]
-            uint32_t count8 = static_cast<uint32_t>(std::floor(countM + 0.5));
-            count8 = count8 == 0 ? 1 : count8;
-            count8 = count8 > (RANS_M - 1) ? (RANS_M - 1) : count8;
-            counts[i] = static_cast<uint8_t>(count8);
-            total8 += count8;
+            uint32_t countM = static_cast<uint32_t>(std::floor(countF + 0.5));
+            countM = countM == 0 ? 1 : countM;
+            countM = countM > (RANS_M - 1) ? (RANS_M - 1) : countM;
+            counts[i] = countM;
+            totalM += countM;
             // calculate excess fraction of count over integer value
-            double fraction = countM - std::floor(countM);
+            double fraction = countF - std::floor(countF);
             fractions.push_back({i, fraction});
         }
         // check if we need to correct the total count due to rounding
-        int32_t difference8 = static_cast<int32_t>(RANS_M) - static_cast<int32_t>(total8);
-        if (difference8 > 0)
+        int32_t differenceM = static_cast<int32_t>(RANS_M) - static_cast<int32_t>(totalM);
+        if (differenceM > 0)
         {
             // sort symbol count fractions in descending order
             std::sort(fractions.begin(), fractions.end(), [](const auto &a, const auto &b)
                       { return a.second > b.second; });
-            // add difference8 to highest-fraction symbols first
+            // add differenceM to highest-fraction symbols first
             uint32_t fractionIndex = 0;
-            while (difference8 > 0)
+            while (differenceM > 0)
             {
                 auto symbol = fractions[fractionIndex].first;
                 if (counts[symbol] < (RANS_M - 1))
                 {
                     counts[symbol]++;
-                    difference8--;
+                    differenceM--;
                 }
                 fractionIndex = (fractionIndex + 1) % fractions.size();
             }
         }
-        else if (difference8 < 0)
+        else if (differenceM < 0)
         {
             // sort fractions in ascending order
             std::sort(fractions.begin(), fractions.end(), [](const auto &a, const auto &b)
                       { return a.second < b.second; });
-            // subtract difference8 to highest-fraction symbols first
+            // subtract differenceM to highest-fraction symbols first
             uint32_t fractionIndex = 0;
-            while (difference8 < 0)
+            while (differenceM < 0)
             {
                 auto symbol = fractions[fractionIndex].first;
                 if (counts[symbol] > 1)
                 {
                     counts[symbol]--;
-                    difference8++;
+                    differenceM++;
                 }
                 fractionIndex = (fractionIndex + 1) % fractions.size();
             }
         }
-        const uint32_t finalTotal8 = std::accumulate(counts.begin(), counts.end(), uint32_t(0));
-        REQUIRE(finalTotal8 == RANS_M, std::runtime_error, "Counts failed to sum to RANS_M");
+        const uint32_t finalTotalM = std::accumulate(counts.begin(), counts.end(), uint32_t(0));
+        REQUIRE(finalTotalM == RANS_M, std::runtime_error, "Counts failed to sum to RANS_M");
         return counts;
     }
 
     auto encodeRANS(const std::vector<uint8_t> &src) -> std::vector<uint8_t>
     {
         REQUIRE(!src.empty(), std::runtime_error, "Data too small");
-        REQUIRE(src.size() < 2 ^ 24, std::runtime_error, "Data too big");
+        REQUIRE(src.size() < (1 << 24), std::runtime_error, "Data too big");
         const auto srcSize = src.size();
         // store uncompressed size and rANS type flag at start of destination
         std::vector<uint8_t> dst(4, 0);
@@ -126,11 +126,17 @@ namespace Compression
             return dst;
         }
         // else calculate counts
-        auto counts = calculateCounts(histogram);
+#if RANS_M_BITS <= 8
+        auto counts = calculateCounts<uint8_t>(histogram);
+#else
+        auto counts = calculateCounts<uint16_t>(histogram);
+#endif
         // store marker for 256-count header mode
         dst.push_back(RANS_HEADER_MODE_256);
         // store frequency table in header
-        std::copy(counts.cbegin(), counts.cend(), std::back_inserter(dst));
+        const auto countsSize8 = counts.size() * sizeof(decltype(counts.front()));
+        dst.resize(dst.size() + countsSize8);
+        std::memcpy(dst.data() + dst.size() - countsSize8, reinterpret_cast<const uint8_t *>(counts.data()), countsSize8);
         // calculate symbol starts
         std::vector<uint32_t> starts(RANS_ALPHABET_SIZE, 0);
         uint32_t currentStart = 0;
@@ -145,21 +151,22 @@ namespace Compression
         temp.reserve(src.size() + 16);
         // encode backwards
         uint32_t x = RANS_L;
-        for (auto it = src.crbegin(); it != src.crend(); ++it)
+        for (auto srcIt = src.crbegin(); srcIt != src.crend(); ++srcIt)
         {
-            uint8_t sym = *it;
-            uint32_t c = counts[sym];
-            uint32_t start = starts[sym];
-            REQUIRE(c > 0, std::runtime_error, "Zero-count symbol in encoder");
-            // Renormalize: emit bytes while x >= c * RANS_L
-            while (x >= (c << RANS_L_BITS))
+            uint8_t symbol = *srcIt;
+            uint32_t count = counts[symbol];
+            uint32_t start = starts[symbol];
+            REQUIRE(count > 0, std::runtime_error, "Zero-count symbol in encoder");
+            // renormalize: emit bytes while x >= x_max
+            const uint32_t x_max = ((RANS_L >> RANS_M_BITS) << 8) * count;
+            while (x >= x_max)
             {
-                temp.push_back(static_cast<uint8_t>(x & 0xFF));
+                temp.push_back(static_cast<uint8_t>(x));
                 x >>= 8;
             }
             // Encode update
-            uint32_t q = x / c;
-            uint32_t r = x % c;
+            uint32_t q = x / count;
+            uint32_t r = x % count;
             x = (q << RANS_M_BITS) + r + start;
         }
         // check how many bytes are needed for final state
@@ -209,13 +216,18 @@ namespace Compression
         // make sure header mode is 256-count mode
         REQUIRE((mode & RANS_HEADER_MODE_MASK) == RANS_HEADER_MODE_256, std::runtime_error, "Bad header mode");
         // read count table
+#if RANS_M_BITS <= 8
         std::vector<uint8_t> counts(RANS_ALPHABET_SIZE, 0);
-        std::copy(srcIt, std::next(srcIt, 256), counts.begin());
+#else
+        std::vector<uint16_t> counts(RANS_ALPHABET_SIZE, 0);
+#endif
+        const auto countsSize8 = counts.size() * sizeof(decltype(counts.front()));
+        std::memcpy(counts.data(), &*srcIt, countsSize8);
         // skip header and frequency table in source data
-        srcIt = std::next(srcIt, 256);
+        srcIt = std::next(srcIt, countsSize8);
         // build starts table
-        std::vector<uint32_t> starts(RANS_ALPHABET_SIZE, 0);
-        uint32_t currentStart = 0;
+        std::vector<uint16_t> starts(RANS_ALPHABET_SIZE, 0);
+        uint16_t currentStart = 0;
         for (size_t i = 0; i < RANS_ALPHABET_SIZE; ++i)
         {
             starts[i] = currentStart;
@@ -224,14 +236,14 @@ namespace Compression
         REQUIRE(currentStart == RANS_M, std::runtime_error, "Counts must sum up to RANS_M");
         // build symbol table
         std::vector<uint8_t> symbols(RANS_M);
-        uint32_t index = 0;
-        for (uint32_t s = 0; s < RANS_ALPHABET_SIZE; ++s)
+        uint16_t index = 0;
+        for (uint32_t symbol = 0; symbol < RANS_ALPHABET_SIZE; ++symbol)
         {
-            uint32_t c = counts[s];
-            for (uint32_t j = 0; j < c; ++j)
+            auto count = counts[symbol];
+            for (uint32_t j = 0; j < count; ++j)
             {
                 REQUIRE(index < RANS_M, std::runtime_error, "Symbol index overflow");
-                symbols[index++] = static_cast<uint8_t>(s);
+                symbols[index++] = static_cast<uint8_t>(symbol);
             }
         }
         REQUIRE(index == RANS_M, std::runtime_error, "Max. symbol index must be == RANS_M");
@@ -252,9 +264,9 @@ namespace Compression
             uint32_t x_tilde = x & (RANS_M - 1);
             uint8_t symbol = symbols[x_tilde];
             dst.push_back(symbol);
-            uint32_t count = counts[symbol];
+            auto count = counts[symbol];
             REQUIRE(count > 0, std::runtime_error, "Zero-count symbol in decoder");
-            uint32_t start = starts[symbol];
+            auto start = starts[symbol];
             x = count * (x >> RANS_M_BITS) + (x_tilde - start);
             while (x < RANS_L)
             {
