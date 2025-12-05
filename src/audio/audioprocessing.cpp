@@ -2,6 +2,7 @@
 
 #include "audiohelpers.h"
 #include "compression/lzss.h"
+#include "compression/rans.h"
 #include "exception.h"
 #include "processing/datahelpers.h"
 #include "processing/varianthelpers.h"
@@ -17,6 +18,7 @@ namespace Audio
             {ProcessingType::Resample, {"resample", OperationType::Convert, FunctionType(resample)}},
             {ProcessingType::Repackage, {"repackage", OperationType::Convert, FunctionType(repackage)}},
             {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
+            {ProcessingType::CompressRANS40, {"compress RANS40", OperationType::Convert, FunctionType(compressRANS40)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressADPCM, {"ADPCM compression", OperationType::Convert, FunctionType(compressADPCM)}},
             {ProcessingType::ConvertSamplesToRaw, {"data to raw", OperationType::Convert, FunctionType(convertSamplesToRaw)}},
@@ -104,6 +106,21 @@ namespace Audio
         {
             const auto ratioPercent = static_cast<double>(AudioHelpers::rawDataSize(result.data) * 100.0 / static_cast<double>(AudioHelpers::rawDataSize(frame.data)));
             std::cout << "LZ10 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+        }
+        return result;
+    }
+
+    std::optional<Frame> Processing::compressRANS40(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
+    {
+        // compress data
+        auto result = frame;
+        result.data = Compression::encodeRANS(AudioHelpers::toRawData(result.data, result.info.channelFormat));
+        result.info.compressed = true;
+        // print statistics
+        if (statistics != nullptr)
+        {
+            const auto ratioPercent = static_cast<double>(AudioHelpers::rawDataSize(result.data) * 100.0 / static_cast<double>(AudioHelpers::rawDataSize(frame.data)));
+            std::cout << "RANS40 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
         }
         return result;
     }

@@ -10,7 +10,8 @@ namespace Audio
         Uncompressed = 0,         // Verbatim data copy
         Resample = 10,            // Change audio channel format, sample format or sample rate
         Repackage = 20,           // Buffer audio and re-package for frame size
-        CompressLZ10 = 60,        // Compress audio data using LZ77 variant 10
+        CompressLZ10 = 60,        // Compress audio data using LZ77 variant 10h
+        CompressRANS40 = 61,      // Compress audio data using rANS variant 40h
         CompressRLE = 65,         // Compress audio data using run-length-encoding
         CompressADPCM = 70,       // Compress audio data as ADPCM samples
         ConvertSamplesToRaw = 80, // Convert audio data to raw data

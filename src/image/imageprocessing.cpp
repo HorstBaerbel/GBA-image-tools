@@ -6,16 +6,17 @@
 #include "color/xrgb1555.h"
 #include "color/xrgb8888.h"
 #include "compression/lzss.h"
+#include "compression/rans.h"
 #include "exception.h"
 #include "image_codec/dxt.h"
-#include "video_codec/dxtv.h"
-#include "video_codec/gvid.h"
 #include "imagehelpers.h"
 #include "math/colorfit.h"
 #include "processing/datahelpers.h"
 #include "processing/varianthelpers.h"
 #include "quantization.h"
 #include "spritehelpers.h"
+#include "video_codec/dxtv.h"
+#include "video_codec/gvid.h"
 
 #include <iomanip>
 #include <iostream>
@@ -43,6 +44,7 @@ namespace Image
             {ProcessingType::ConvertDelta16, {"delta-16", OperationType::Convert, FunctionType(toDelta16)}},
             {ProcessingType::DeltaImage, {"pixel diff", OperationType::ConvertState, FunctionType(pixelDiff)}},
             {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
+            {ProcessingType::CompressRANS40, {"compress RANS40", OperationType::Convert, FunctionType(compressRANS40)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXT, {"compress DXT", OperationType::Convert, FunctionType(compressDXT)}},
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
@@ -365,6 +367,21 @@ namespace Image
         {
             const auto ratioPercent = static_cast<double>(result.data.pixels().rawSize() * 100.0 / static_cast<double>(data.data.pixels().rawSize()));
             std::cout << "LZ10 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+        }
+        return result;
+    }
+
+    Frame Processing::compressRANS40(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
+    {
+        // compress data
+        auto result = data;
+        result.data.pixels() = PixelData(Compression::encodeRANS(result.data.pixels().convertDataToRaw()), Color::Format::Unknown);
+        result.type.setCompressed();
+        // print statistics
+        if (statistics != nullptr)
+        {
+            const auto ratioPercent = static_cast<double>(result.data.pixels().rawSize() * 100.0 / static_cast<double>(data.data.pixels().rawSize()));
+            std::cout << "RANS40 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
         }
         return result;
     }

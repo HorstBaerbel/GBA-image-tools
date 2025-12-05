@@ -354,6 +354,10 @@ auto buildImageProcessing(const ProcessingOptions &opts) -> Image::Processing
     {
         videoProcessing.addStep(Image::ProcessingType::CompressLZ10, {opts.vram.isSet}, true, opts.printStats);
     }
+    if (opts.rans)
+    {
+        videoProcessing.addStep(Image::ProcessingType::CompressRANS40, {}, true, opts.printStats);
+    }
     videoProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
     return videoProcessing;
 }

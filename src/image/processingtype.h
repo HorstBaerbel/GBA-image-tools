@@ -23,7 +23,8 @@ namespace Image
         ConvertDelta8 = 50,                // Convert image data to 8-bit deltas
         ConvertDelta16 = 51,               // Convert image data to 16-bit deltas
         DeltaImage = 55,                   // Calculate signed pixel difference between successive images
-        CompressLZ10 = 60,                 // Compress image data using LZ77 variant 10
+        CompressLZ10 = 60,                 // Compress image data using LZ77 variant 10h
+        CompressRANS40 = 61,               // Compress image data using rANS variant 40h
         CompressRLE = 65,                  // Compress image data using run-length-encoding
         CompressDXT = 70,                  // Compress image data using DXT
         CompressDXTV = 71,                 // Compress image data using DXTV
