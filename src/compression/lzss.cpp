@@ -7,10 +7,6 @@
 namespace Compression
 {
 
-    constexpr uint32_t MIN_MATCH_LENGTH = 3;
-    constexpr uint32_t MAX_MATCH_LENGTH = 18;      // We have max. 4 bits to encode match length [3,18]
-    constexpr uint32_t MAX_MATCH_DISTANCE = 0xFFF; // We have max. 12 bits to encode match distance
-
     struct MatchInfo
     {
         int32_t distance = 0;
@@ -34,7 +30,7 @@ namespace Compression
             {
                 // calculate match distance and make sure it stays below the max. allowed distance
                 int32_t distance = startPosition - matchPosition;
-                if ((distance - 1) > MAX_MATCH_DISTANCE)
+                if ((distance - 1) > LZSS_MAX_MATCH_DISTANCE)
                 {
                     break;
                 }
@@ -69,14 +65,14 @@ namespace Compression
         const auto srcSize = src.size();
         // store uncompressed size and LZ10 marker flag at start of destination
         std::vector<uint8_t> dst(4, 0);
-        *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | 0x10;
+        *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | LZSS_TYPE_MARKER;
         // build match information for every byte
         std::map<uint32_t, MatchInfo> matches;
 #pragma omp parallel for
         for (int srcPosition = 0; srcPosition < static_cast<int>(src.size()); ++srcPosition)
         {
-            auto match = findBestMatch<MIN_MATCH_LENGTH, MAX_MATCH_LENGTH>(src, srcPosition, vramCompatible);
-            if (match.length >= MIN_MATCH_LENGTH)
+            auto match = findBestMatch<LZSS_MIN_MATCH_LENGTH, LZSS_MAX_MATCH_LENGTH>(src, srcPosition, vramCompatible);
+            if (match.length >= LZSS_MIN_MATCH_LENGTH)
 #pragma omp critical
             {
                 matches[srcPosition] = match;
@@ -98,7 +94,7 @@ namespace Compression
                     auto bestCost = 2 + currentCost;
                     auto bestLength = matchIt->second.length;
                     auto currMatchLength = bestLength;
-                    while (currMatchLength >= MIN_MATCH_LENGTH)
+                    while (currMatchLength >= LZSS_MIN_MATCH_LENGTH)
                     {
                         // cost of this match is the cost of the match plus the cost of the rest of the new encoding
                         // which is stored at cost[match_position + match_length]
@@ -148,10 +144,10 @@ namespace Compression
             if (auto matchIt = matches.find(srcPosition); matchIt != matches.cend())
             {
                 // yes. compress the match
-                auto storedMatchLength = matchIt->second.length - MIN_MATCH_LENGTH;
+                auto storedMatchLength = matchIt->second.length - LZSS_MIN_MATCH_LENGTH;
                 REQUIRE(storedMatchLength >= 0 && storedMatchLength < 16, std::runtime_error, "Stored match length out of range [0,15]");
                 auto storedDistance = matchIt->second.distance - 1;
-                REQUIRE(storedDistance >= 0 && storedDistance <= MAX_MATCH_DISTANCE, std::runtime_error, "Stored match distance out of range [0,0xFFF]");
+                REQUIRE(storedDistance >= 0 && storedDistance <= LZSS_MAX_MATCH_DISTANCE, std::runtime_error, "Stored match distance out of range [0,0xFFF]");
                 // store 4 bits of match length and 12 bits of match distance
                 dst.push_back((storedMatchLength << 4) | (storedDistance >> 8));
                 dst.push_back(storedDistance & 0xFF);
@@ -178,7 +174,7 @@ namespace Compression
     {
         REQUIRE(src.size() > 4, std::runtime_error, "Data too small");
         uint32_t header = *reinterpret_cast<const uint32_t *>(src.data());
-        REQUIRE((header & 0xFF) == 0x10, std::runtime_error, "Compression type not LZSS (10h)");
+        REQUIRE((header & 0xFF) == LZSS_TYPE_MARKER, std::runtime_error, "Compression type not LZSS (" << uint32_t(LZSS_TYPE_MARKER) << ")");
         const uint32_t uncompressedSize = (header >> 8);
         REQUIRE(uncompressedSize > 0, std::runtime_error, "Bad uncompressed size");
         std::vector<uint8_t> dst;
@@ -196,7 +192,7 @@ namespace Compression
                 if ((flags & (0x80 >> flagBitIndex)) != 0)
                 {
                     // copy data for match from decoded buffer
-                    uint32_t matchLenght = (*srcIt >> 4) + MIN_MATCH_LENGTH;
+                    uint32_t matchLenght = (*srcIt >> 4) + LZSS_MIN_MATCH_LENGTH;
                     uint32_t matchDistance = (*srcIt++ & 0xF) << 8;
                     matchDistance |= *srcIt++;
                     auto copyStartIt = std::prev(dst.cend(), matchDistance + 1);
