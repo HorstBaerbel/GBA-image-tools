@@ -50,6 +50,7 @@
                 "--truecolor=rgb888",
                 "--outformat=bgr555",
                 "--dxtv=95",
+                "--lz4",
                 //"--lz10",
                 //"--rans",
                 "--samplerate=21024",

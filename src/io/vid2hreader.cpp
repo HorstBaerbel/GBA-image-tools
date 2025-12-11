@@ -4,6 +4,7 @@
 #include "audio/processingtype.h"
 #include "audio_codec/adpcm.h"
 #include "color/colorhelpers.h"
+#include "compression/lz4.h"
 #include "compression/lzss.h"
 #include "image/processingtype.h"
 #include "video_codec/dxtv.h"
@@ -123,6 +124,9 @@ namespace Media
                 // reverse processing operation used in this stage
                 switch (processingType)
                 {
+                case Image::ProcessingType::CompressLZ4_40:
+                    inData = Compression::decodeLZ4_40(inData);
+                    break;
                 case Image::ProcessingType::CompressLZSS_10:
                     inData = Compression::decodeLZSS_10(inData);
                     break;
