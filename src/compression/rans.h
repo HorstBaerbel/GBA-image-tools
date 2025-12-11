@@ -7,6 +7,7 @@
 namespace Compression
 {
 
+    constexpr uint8_t RANS_TYPE_MARKER = 0x50; // Used to detect rANS compression in data
 #define RANS_M_BITS 14
     static constexpr uint32_t RANS_M = 1 << RANS_M_BITS; // Total sum of frequencies. Must be power-of-two
 #define RANS_L_BITS 23

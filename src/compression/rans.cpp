@@ -101,7 +101,7 @@ namespace Compression
         const auto srcSize = src.size();
         // store uncompressed size and rANS type flag at start of destination
         std::vector<uint8_t> dst(4, 0);
-        *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | 0x40;
+        *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | RANS_TYPE_MARKER;
         // build and sum histogram
         std::vector<uint32_t> histogram(RANS_ALPHABET_SIZE, 0);
         for (auto c : src)
@@ -199,7 +199,7 @@ namespace Compression
     {
         REQUIRE(src.size() >= (4 + 1 + 1), std::runtime_error, "Data too small");
         const uint32_t header = *reinterpret_cast<const uint32_t *>(src.data());
-        REQUIRE((header & 0xFF) == 0x40, std::runtime_error, "Compression type not rANS (40h)");
+        REQUIRE((header & 0xFF) == RANS_TYPE_MARKER, std::runtime_error, "Compression type not rANS (" << uint32_t(RANS_TYPE_MARKER) << ")");
         const uint32_t uncompressedSize = (header >> 8);
         REQUIRE(uncompressedSize > 0, std::runtime_error, "Bad uncompressed size");
         std::vector<uint8_t> dst;
