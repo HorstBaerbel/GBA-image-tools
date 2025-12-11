@@ -127,7 +127,7 @@ namespace Compression
             if (storedLiteralLength < 15)
             {
                 // store literal length only in token byte
-                tokenByte |= (storedLiteralLength << 4) & 0xF0;
+                tokenByte |= (storedLiteralLength << Lz4Constants::LITERAL_LENGTH_SHIFT) & Lz4Constants::LENGTH_MASK;
             }
             else
             {
@@ -159,7 +159,7 @@ namespace Compression
             if (storedMatchLength < 15)
             {
                 // store match length only in token byte
-                tokenByte |= storedMatchLength & 0x0F;
+                tokenByte |= storedMatchLength & Lz4Constants::LENGTH_MASK;
             }
             else
             {
@@ -314,8 +314,8 @@ namespace Compression
         {
             // read token
             uint8_t token = *srcIt++;
-            uint32_t literalLength = (token & Lz4Constants::LITERAL_LENGTH_MASK) >> 4;
-            uint32_t matchLength = token & Lz4Constants::MATCH_LENGTH_MASK;
+            uint32_t literalLength = (token >> Lz4Constants::LITERAL_LENGTH_SHIFT) & Lz4Constants::LENGTH_MASK;
+            uint32_t matchLength = token & Lz4Constants::LENGTH_MASK;
             if (literalLength > 0)
             {
                 // read extra literal length
