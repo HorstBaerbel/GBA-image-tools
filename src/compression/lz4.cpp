@@ -1,6 +1,7 @@
 #include "lz4.h"
 
 #include "exception.h"
+#include "if/lz4_constants.h"
 
 #include <map>
 
@@ -30,7 +31,7 @@ namespace Compression
             return bestMatch;
         }
         // now find actual matches
-        const int32_t MaxMatchLength = srcPosition + LZ4_MAX_MATCH_LENGTH >= src.size() ? src.size() - srcPosition - 1 : LZ4_MAX_MATCH_LENGTH;
+        const int32_t MaxMatchLength = srcPosition + Lz4Constants::MAX_MATCH_LENGTH >= src.size() ? src.size() - srcPosition - 1 : Lz4Constants::MAX_MATCH_LENGTH;
         auto possibleMatchIt = possibleMatches.first;
         while (possibleMatchIt != possibleMatches.second)
         {
@@ -43,15 +44,15 @@ namespace Compression
             {
                 continue;
             }
-            if (matchStartPosition < srcPosition && distance <= LZ4_MAX_MATCH_DISTANCE)
+            if (matchStartPosition < srcPosition && distance <= Lz4Constants::MAX_MATCH_DISTANCE)
             {
                 // if we currently have no best match, store this one
                 if (bestMatch.distance == 0 && bestMatch.length == 0)
                 {
-                    bestMatch = {distance, LZ4_MIN_MATCH_LENGTH};
+                    bestMatch = {distance, Lz4Constants::MIN_MATCH_LENGTH};
                 }
-                // we already know the match length is >= LZ4_MIN_MATCH_LENGTH, so start with LZ4_MIN_MATCH_LENGTH + 1
-                for (int32_t matchLength = (LZ4_MIN_MATCH_LENGTH + 1); matchLength <= MaxMatchLength; ++matchLength)
+                // we already know the match length is >= Lz4Constants::MIN_MATCH_LENGTH, so start with Lz4Constants::MIN_MATCH_LENGTH + 1
+                for (int32_t matchLength = (Lz4Constants::MIN_MATCH_LENGTH + 1); matchLength <= MaxMatchLength; ++matchLength)
                 {
                     // make sure we have enough bytes for a match of matchLength
                     if ((matchStartPosition + matchLength) >= src.size())
@@ -70,7 +71,7 @@ namespace Compression
                         bestMatch.distance = distance;
                         bestMatch.length = matchLength;
                         // check if we could improve or can return now
-                        if (matchLength >= LZ4_MAX_MATCH_LENGTH)
+                        if (matchLength >= Lz4Constants::MAX_MATCH_LENGTH)
                         {
                             return bestMatch;
                         }
@@ -149,12 +150,12 @@ namespace Compression
             std::cout << "M(" << token.matchOffset << "," << token.matchLength << ")" << std::endl;
 #endif
             // store match offset
-            REQUIRE(token.matchOffset > 0 && token.matchOffset <= LZ4_MAX_MATCH_DISTANCE, std::runtime_error, "Match offset out of range [1,65535]");
+            REQUIRE(token.matchOffset > 0 && token.matchOffset <= Lz4Constants::MAX_MATCH_DISTANCE, std::runtime_error, "Match offset out of range [1,65535]");
             dst.push_back((token.matchOffset >> 8) & 0xFF);
             dst.push_back(token.matchOffset & 0xFF);
             // store literal length
-            REQUIRE(token.matchLength >= LZ4_MIN_MATCH_LENGTH, std::runtime_error, "Match length too small");
-            int32_t storedMatchLength = token.matchLength - (LZ4_MIN_MATCH_LENGTH - 1);
+            REQUIRE(token.matchLength >= Lz4Constants::MIN_MATCH_LENGTH, std::runtime_error, "Match length too small");
+            int32_t storedMatchLength = token.matchLength - (Lz4Constants::MIN_MATCH_LENGTH - 1);
             if (storedMatchLength < 15)
             {
                 // store match length only in token byte
@@ -182,10 +183,10 @@ namespace Compression
         const auto srcSize = src.size();
         // store uncompressed size and LZ4 marker flag at start of destination
         std::vector<uint8_t> dst(4, 0);
-        *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | LZ4_TYPE_MARKER;
-        // build minmatch hash table for input data. it maps a hash (first LZ4_MIN_MATCH_LENGTH bytes of data) to its position(s)
+        *reinterpret_cast<uint32_t *>(dst.data()) = (src.size() << 8) | Lz4Constants::TYPE_MARKER;
+        // build minmatch hash table for input data. it maps a hash (first Lz4Constants::MIN_MATCH_LENGTH bytes of data) to its position(s)
         std::multimap<uint32_t, int32_t> hashPositions;
-        for (int32_t srcPosition = 0; srcPosition < static_cast<int32_t>(src.size() - LZ4_MIN_MATCH_LENGTH); ++srcPosition)
+        for (int32_t srcPosition = 0; srcPosition < static_cast<int32_t>(src.size() - Lz4Constants::MIN_MATCH_LENGTH); ++srcPosition)
         {
             const uint32_t hash = *reinterpret_cast<const uint32_t *>(src.data() + srcPosition);
             hashPositions.insert({hash, srcPosition});
@@ -193,10 +194,10 @@ namespace Compression
         // build match information for every byte except the last 4
         std::map<uint32_t, MatchInfo> matches;
 #pragma omp parallel for
-        for (int srcPosition = 0; srcPosition < static_cast<int>(src.size() - LZ4_MIN_MATCH_LENGTH); ++srcPosition)
+        for (int srcPosition = 0; srcPosition < static_cast<int>(src.size() - Lz4Constants::MIN_MATCH_LENGTH); ++srcPosition)
         {
             auto match = findBestMatch(src, hashPositions, srcPosition, vramCompatible);
-            if (match.length >= LZ4_MIN_MATCH_LENGTH)
+            if (match.length >= Lz4Constants::MIN_MATCH_LENGTH)
 #pragma omp critical
             {
                 matches[srcPosition] = match;
@@ -219,12 +220,12 @@ namespace Compression
                     // a match stores as one byte, plus two bytes offset, plus one byte for match length > 15, two over 270, ...
                     auto bestLength = matchIt->second.length;
                     auto currMatchLength = bestLength;
-                    auto bestCost = 3 + extraLengthBytesNeeded(currMatchLength - LZ4_MIN_MATCH_LENGTH) + currentCost;
-                    while (currMatchLength >= LZ4_MIN_MATCH_LENGTH)
+                    auto bestCost = 3 + extraLengthBytesNeeded(currMatchLength - Lz4Constants::MIN_MATCH_LENGTH) + currentCost;
+                    while (currMatchLength >= Lz4Constants::MIN_MATCH_LENGTH)
                     {
                         // cost of this match is the cost of the match plus the cost of the rest of the new encoding
                         // which is stored at cost[match_position + match_length]
-                        const auto matchCost = 3 + extraLengthBytesNeeded(currMatchLength - LZ4_MIN_MATCH_LENGTH) + cost[srcPosition + currMatchLength];
+                        const auto matchCost = 3 + extraLengthBytesNeeded(currMatchLength - Lz4Constants::MIN_MATCH_LENGTH) + cost[srcPosition + currMatchLength];
                         if (bestCost > matchCost)
                         {
                             bestCost = matchCost;
@@ -301,7 +302,7 @@ namespace Compression
     {
         REQUIRE(src.size() > 4, std::runtime_error, "Data too small");
         uint32_t header = *reinterpret_cast<const uint32_t *>(src.data());
-        REQUIRE((header & 0xFF) == LZ4_TYPE_MARKER, std::runtime_error, "Compression type not LZ4 (" << uint32_t(LZ4_TYPE_MARKER) << ")");
+        REQUIRE((header & 0xFF) == Lz4Constants::TYPE_MARKER, std::runtime_error, "Compression type not LZ4 (" << uint32_t(Lz4Constants::TYPE_MARKER) << ")");
         const uint32_t uncompressedSize = (header >> 8);
         REQUIRE(uncompressedSize > 0, std::runtime_error, "Bad uncompressed size");
         std::vector<uint8_t> dst;
@@ -313,8 +314,8 @@ namespace Compression
         {
             // read token
             uint8_t token = *srcIt++;
-            uint32_t literalLength = (token & LZ4_LITERAL_LENGTH_MASK) >> 4;
-            uint32_t matchLength = token & LZ4_MATCH_LENGTH_MASK;
+            uint32_t literalLength = (token & Lz4Constants::LITERAL_LENGTH_MASK) >> 4;
+            uint32_t matchLength = token & Lz4Constants::MATCH_LENGTH_MASK;
             if (literalLength > 0)
             {
                 // read extra literal length
@@ -360,7 +361,7 @@ namespace Compression
                         matchLength += extraLength;
                     } while (extraLength == 255);
                 }
-                matchLength += (LZ4_MIN_MATCH_LENGTH - 1);
+                matchLength += (Lz4Constants::MIN_MATCH_LENGTH - 1);
 #ifdef DEBUG_TOKENS
                 std::cout << "M(" << matchOffset << "," << matchLength << ")" << std::endl;
 #endif
