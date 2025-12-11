@@ -1,13 +1,15 @@
 #include "vid2hdecoder.h"
 
 #include "audio/adpcm.h"
+#include "compression/lz4.h"
 #include "compression/lz77.h"
 #include "memory/memory.h"
 #include "sys/base.h"
 #include "sys/decompress.h"
 #include "video/dxtv.h"
 
-#include "image/processingtype.h"
+#include "audio_processingtype.h"
+#include "image_processingtype.h"
 
 #define USE_ADPCM_ASM
 #define USE_DXTV_ASM
@@ -36,13 +38,17 @@ namespace Media
             case Image::ProcessingType::Uncompressed:
                 Memory::memcpy32(currentDst, currentSrc, uncompressedSize / 4);
                 break;
+            case Image::ProcessingType::CompressLZ4_40:
+                Compression::LZ4UnCompWrite8bit(currentSrc, currentDst);
+                uncompressedSize = Compression::BIOSUnCompGetSize(currentSrc);
+                break;
             case Image::ProcessingType::CompressLZSS_10:
-                dstInVRAM ? Decompress::LZ77UnCompWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
-                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
+                dstInVRAM ? Compression::LZ77UnCompWrite16bit(currentSrc, currentDst) : Compression::LZ77UnCompWrite8bit(currentSrc, currentDst);
+                uncompressedSize = Compression::BIOSUnCompGetSize(currentSrc);
                 break;
             case Image::ProcessingType::CompressRLE:
                 dstInVRAM ? BIOS::RLUnCompReadNormalWrite16bit(currentSrc, currentDst) : BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
-                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
+                uncompressedSize = Compression::BIOSUnCompGetSize(currentSrc);
                 break;
             case Image::ProcessingType::CompressDXTV:
 #ifdef USE_DXTV_ASM
@@ -86,13 +92,13 @@ namespace Media
             case Audio::ProcessingType::Uncompressed:
                 Memory::memcpy32(currentDst, currentSrc, uncompressedSize / 4);
                 break;
-            case Audio::ProcessingType::CompressLZ10:
-                Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
-                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
+            case Audio::ProcessingType::CompressLZSS_10:
+                Compression::LZ77UnCompWrite8bit(currentSrc, currentDst);
+                uncompressedSize = Compression::BIOSUnCompGetSize(currentSrc);
                 break;
             case Audio::ProcessingType::CompressRLE:
                 BIOS::RLUnCompReadNormalWrite8bit(currentSrc, currentDst);
-                uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
+                uncompressedSize = Compression::BIOSUnCompGetSize(currentSrc);
                 break;
             case Audio::ProcessingType::CompressADPCM:
 #ifdef USE_ADPCM_ASM

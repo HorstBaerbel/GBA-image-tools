@@ -1,8 +1,8 @@
 #include "dxtv.h"
 
-#include "if/dxt_tables.h"
-#include "if/dxtv_constants.h"
-#include "if/dxtv_structs.h"
+#include "dxt_tables.h"
+#include "dxtv_constants.h"
+#include "dxtv_structs.h"
 #include "image/dxt.h"
 #include "memory/memory.h"
 #include "print/output.h"

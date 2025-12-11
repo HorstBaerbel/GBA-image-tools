@@ -43,6 +43,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	print/itoa.cpp
 	print/output.cpp
 	sys/decompress.cpp
+	compression/lz4.cpp
 	compression/lz77.s
 	../src/if/adpcm_structs.cpp
 	../src/if/adpcm_tables.cpp
@@ -70,6 +71,7 @@ LIST(APPEND IMAGE_SOURCE_FILES
 	print/itoa.cpp
 	print/output.cpp
 	sys/decompress.cpp
+	compression/lz4.cpp
 	compression/lz77.s
 	image/dxt.cpp
 	../src/if/dxt_tables.cpp
@@ -83,7 +85,7 @@ target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\
 LIST(APPEND INCLUDE_DIRS
 	${DEVKITPRO}/libgba/include
 	${DEVKITARM}/arm-none-eabi/include
-	${CMAKE_CURRENT_SOURCE_DIR}/../src # Include directory for common code from the GBA image tools
+	${CMAKE_CURRENT_SOURCE_DIR}/../src/if # Include directory for common code from the GBA image tools
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/data
 	${CMAKE_CURRENT_SOURCE_DIR}/memory

@@ -3,10 +3,10 @@
 #include "color/colorformat.h"
 #include "color/xrgb8888.h"
 #include "exception.h"
+#include "if/image_processingtype.h"
 #include "imagedatahelpers.h"
 #include "imagestructs.h"
 #include "processing/datahelpers.h"
-#include "processingtype.h"
 #include "quantizationmethod.h"
 #include "statistics/statistics.h"
 

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "if/dxt_tables.h"
+#include "dxt_tables.h"
 #include "sys/base.h"
 
 namespace DXT

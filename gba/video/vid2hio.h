@@ -1,6 +1,6 @@
 #pragma once
 
-#include "io/vid2hstructs.h"
+#include "vid2h_structs.h"
 
 #include <cstdint>
 

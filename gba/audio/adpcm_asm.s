@@ -1,4 +1,4 @@
-#include "if/adpcm_structs.h"
+#include "adpcm_structs.h"
 
  .global ADPCM_DeltaTable_4bit
  .global ADPCM_IndexTable_4bit

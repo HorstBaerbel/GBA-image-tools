@@ -2,7 +2,7 @@
 
 #include "audio/audioformat.h"
 #include "color/xrgb8888.h"
-#include "mediatypes.h"
+#include "if/mediatypes.h"
 
 #include <cstdint>
 #include <memory>

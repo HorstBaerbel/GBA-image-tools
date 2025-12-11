@@ -2,7 +2,7 @@
 
 #include "audio_codec/adpcm.h"
 #include "audiostructs.h"
-#include "processingtype.h"
+#include "if/audio_processingtype.h"
 #include "resampler.h"
 #include "samplebuffer.h"
 #include "statistics/statistics.h"

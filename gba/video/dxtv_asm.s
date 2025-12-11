@@ -1,5 +1,5 @@
-#include "if/dxtv_constants.h"
-#include "if/dxtv_structs.h"
+#include "dxtv_constants.h"
+#include "dxtv_structs.h"
 
  .global DXT_C2_ModeHalf_5bit
  .global DXT_C2C3_ModeThird_5bit

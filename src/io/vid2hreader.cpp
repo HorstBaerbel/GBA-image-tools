@@ -1,12 +1,12 @@
 #include "vid2hreader.h"
 
 #include "audio/audiohelpers.h"
-#include "audio/processingtype.h"
 #include "audio_codec/adpcm.h"
 #include "color/colorhelpers.h"
 #include "compression/lz4.h"
 #include "compression/lzss.h"
-#include "image/processingtype.h"
+#include "if/audio_processingtype.h"
+#include "if/image_processingtype.h"
 #include "video_codec/dxtv.h"
 
 namespace Media

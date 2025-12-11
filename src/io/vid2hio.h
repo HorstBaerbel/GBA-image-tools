@@ -1,11 +1,11 @@
 #pragma once
 
 #include "audio/audiostructs.h"
-#include "audio/processingtype.h"
 #include "exception.h"
+#include "if/audio_processingtype.h"
+#include "if/image_processingtype.h"
+#include "if/vid2h_structs.h"
 #include "image/imagestructs.h"
-#include "image/processingtype.h"
-#include "vid2hstructs.h"
 
 #include <array>
 #include <cstdint>

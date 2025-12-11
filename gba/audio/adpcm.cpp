@@ -1,7 +1,7 @@
 #include "adpcm.h"
 
-#include "if/adpcm_structs.h"
-#include "if/adpcm_tables.h"
+#include "adpcm_structs.h"
+#include "adpcm_tables.h"
 
 #define ADPCM_DITHER
 #define ADPCM_DITHER_SHIFT 24
