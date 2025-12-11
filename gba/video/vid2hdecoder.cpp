@@ -13,6 +13,7 @@
 
 #define USE_ADPCM_ASM
 #define USE_DXTV_ASM
+#define USE_LZ4_ASM
 
 namespace Media
 {
@@ -39,8 +40,13 @@ namespace Media
                 Memory::memcpy32(currentDst, currentSrc, uncompressedSize / 4);
                 break;
             case Image::ProcessingType::CompressLZ4_40:
+#ifdef USE_LZ4_ASM
+                LZ4_UnCompWrite8bit(currentSrc, currentDst);
+                uncompressedSize = LZ4_UnCompGetSize(currentSrc);
+#else
                 Compression::LZ4UnCompWrite8bit(currentSrc, currentDst);
-                uncompressedSize = Compression::BIOSUnCompGetSize(currentSrc);
+                uncompressedSize = Compression::LZ4UnCompGetSize(currentSrc);
+#endif
                 break;
             case Image::ProcessingType::CompressLZSS_10:
                 dstInVRAM ? Compression::LZ77UnCompWrite16bit(currentSrc, currentDst) : Compression::LZ77UnCompWrite8bit(currentSrc, currentDst);

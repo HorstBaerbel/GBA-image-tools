@@ -44,7 +44,8 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	print/output.cpp
 	sys/decompress.cpp
 	compression/lz4.cpp
-	compression/lz77.s
+	compression/lz4_asm.s
+	compression/lz77_asm.s
 	../src/if/adpcm_structs.cpp
 	../src/if/adpcm_tables.cpp
 	audio/adpcm.cpp
@@ -72,7 +73,8 @@ LIST(APPEND IMAGE_SOURCE_FILES
 	print/output.cpp
 	sys/decompress.cpp
 	compression/lz4.cpp
-	compression/lz77.s
+	compression/lz4_asm.s
+	compression/lz77_asm.s
 	image/dxt.cpp
 	../src/if/dxt_tables.cpp
 	data/font_8x8.c

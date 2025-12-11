@@ -5,7 +5,7 @@ namespace Compression
 {
     IWRAM_FUNC void LZ4UnCompWrite8bit(const uint32_t *data, uint32_t *dst)
     {
-        // read data header and skipt to data
+        // read data header and skip to data
         const uint32_t header = *data++;
         if ((header & 0xFF) != Lz4Constants::TYPE_MARKER)
         {
@@ -24,7 +24,7 @@ namespace Compression
             // read token
             uint8_t token = *data8++;
             // copy literal if any
-            uint32_t literalLength = (token & Lz4Constants::LITERAL_LENGTH_MASK) >> 4;
+            uint32_t literalLength = (token >> Lz4Constants::LITERAL_LENGTH_SHIFT) & Lz4Constants::LENGTH_MASK;
             if (literalLength > 0)
             {
                 // read extra literal length
@@ -47,7 +47,7 @@ namespace Compression
                 uncompressedSize -= literalLength;
             }
             // copy match if any
-            uint32_t matchLength = token & Lz4Constants::MATCH_LENGTH_MASK;
+            uint32_t matchLength = token & Lz4Constants::LENGTH_MASK;
             if (matchLength > 0)
             {
                 // read match offset
@@ -75,5 +75,17 @@ namespace Compression
                 uncompressedSize -= matchLength;
             }
         }
+    }
+
+    auto LZ4UnCompGetSize(const uint32_t *data) -> uint32_t
+    {
+        // read data header and skip to data
+        const uint32_t header = *data;
+        if ((header & 0xFF) != Lz4Constants::TYPE_MARKER)
+        {
+            return 0;
+        }
+        const uint32_t uncompressedSize = (header >> 8);
+        return uncompressedSize;
     }
 }
