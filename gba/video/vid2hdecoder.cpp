@@ -1,11 +1,11 @@
 #include "vid2hdecoder.h"
 
-#include "compression/lz77.h"
-#include "video/dxtv.h"
 #include "audio/adpcm.h"
+#include "compression/lz77.h"
 #include "memory/memory.h"
 #include "sys/base.h"
 #include "sys/decompress.h"
+#include "video/dxtv.h"
 
 #include "image/processingtype.h"
 
@@ -36,7 +36,7 @@ namespace Media
             case Image::ProcessingType::Uncompressed:
                 Memory::memcpy32(currentDst, currentSrc, uncompressedSize / 4);
                 break;
-            case Image::ProcessingType::CompressLZ10:
+            case Image::ProcessingType::CompressLZSS_10:
                 dstInVRAM ? Decompress::LZ77UnCompWrite16bit(currentSrc, currentDst) : Decompress::LZ77UnCompWrite8bit(currentSrc, currentDst);
                 uncompressedSize = Decompress::BIOSUnCompGetSize(currentSrc);
                 break;

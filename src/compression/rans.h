@@ -29,8 +29,8 @@ namespace Compression
     ///     5+C: 1 byte initial rANS state size S
     ///   5+C+1: 0-4 byte initial rANS state
     /// 5+C+1+S: N compressed data
-    auto encodeRANS(const std::vector<uint8_t> &data) -> std::vector<uint8_t>;
+    auto encodeRANS_50(const std::vector<uint8_t> &data) -> std::vector<uint8_t>;
 
     /// @brief Decompress input data using rANS with a 256-byte alphabet and RANS_M = 256
-    auto decodeRANS(const std::vector<uint8_t> &data) -> std::vector<uint8_t>;
+    auto decodeRANS_50(const std::vector<uint8_t> &data) -> std::vector<uint8_t>;
 }

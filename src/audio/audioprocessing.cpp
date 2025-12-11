@@ -17,8 +17,8 @@ namespace Audio
         Processing::ProcessingFunctions = {
             {ProcessingType::Resample, {"resample", OperationType::Convert, FunctionType(resample)}},
             {ProcessingType::Repackage, {"repackage", OperationType::Convert, FunctionType(repackage)}},
-            {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
-            {ProcessingType::CompressRANS40, {"compress RANS40", OperationType::Convert, FunctionType(compressRANS40)}},
+            {ProcessingType::CompressLZSS_10, {"compress LZSS 10h", OperationType::Convert, FunctionType(compressLZSS_10)}},
+            {ProcessingType::CompressRANS_50, {"compress rANS 50h", OperationType::Convert, FunctionType(compressRANS_50)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressADPCM, {"ADPCM compression", OperationType::Convert, FunctionType(compressADPCM)}},
             {ProcessingType::ConvertSamplesToRaw, {"data to raw", OperationType::Convert, FunctionType(convertSamplesToRaw)}},
@@ -92,35 +92,35 @@ namespace Audio
 
     // ----------------------------------------------------------------------------
 
-    std::optional<Frame> Processing::compressLZ10(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
+    std::optional<Frame> Processing::compressLZSS_10(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ10 expects a bool VRAMcompatible parameter");
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZSS_10 expects a bool VRAMcompatible parameter");
         const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
         // compress data
         auto result = frame;
-        result.data = Compression::encodeLZ10(AudioHelpers::toRawData(result.data, result.info.channelFormat), vramCompatible);
+        result.data = Compression::encodeLZSS_10(AudioHelpers::toRawData(result.data, result.info.channelFormat), vramCompatible);
         result.info.compressed = true;
         // print statistics
         if (statistics != nullptr)
         {
             const auto ratioPercent = static_cast<double>(AudioHelpers::rawDataSize(result.data) * 100.0 / static_cast<double>(AudioHelpers::rawDataSize(frame.data)));
-            std::cout << "LZ10 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+            std::cout << "LZSS 10h compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
         }
         return result;
     }
 
-    std::optional<Frame> Processing::compressRANS40(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
+    std::optional<Frame> Processing::compressRANS_50(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
     {
         // compress data
         auto result = frame;
-        result.data = Compression::encodeRANS(AudioHelpers::toRawData(result.data, result.info.channelFormat));
+        result.data = Compression::encodeRANS_50(AudioHelpers::toRawData(result.data, result.info.channelFormat));
         result.info.compressed = true;
         // print statistics
         if (statistics != nullptr)
         {
             const auto ratioPercent = static_cast<double>(AudioHelpers::rawDataSize(result.data) * 100.0 / static_cast<double>(AudioHelpers::rawDataSize(frame.data)));
-            std::cout << "RANS40 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+            std::cout << "rANS 50h compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
         }
         return result;
     }

@@ -391,7 +391,7 @@ int main(int argc, const char *argv[])
         }*/
         if (options.lz10)
         {
-            processing.addStep(Image::ProcessingType::CompressLZ10, {options.vram.isSet});
+            processing.addStep(Image::ProcessingType::CompressLZSS_10, {options.vram.isSet});
         }
         processing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)}, {});
         // apply image processing pipeline

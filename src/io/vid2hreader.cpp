@@ -123,8 +123,8 @@ namespace Media
                 // reverse processing operation used in this stage
                 switch (processingType)
                 {
-                case Image::ProcessingType::CompressLZ10:
-                    inData = Compression::decodeLZ10(inData);
+                case Image::ProcessingType::CompressLZSS_10:
+                    inData = Compression::decodeLZSS_10(inData);
                     break;
                 case Image::ProcessingType::CompressDXTV:
                     outData = Video::Dxtv::decode(inData, m_previousPixels, m_videoHeader.width, m_videoHeader.height, m_videoHeader.swappedRedBlue);
@@ -173,8 +173,8 @@ namespace Media
                 case Audio::ProcessingType::Uncompressed:
                     outData = AudioHelpers::toSigned16(inData, m_info.audioSampleFormat);
                     break;
-                case Audio::ProcessingType::CompressLZ10:
-                    inData = Compression::decodeLZ10(inData);
+                case Audio::ProcessingType::CompressLZSS_10:
+                    inData = Compression::decodeLZSS_10(inData);
                     break;
                 case Audio::ProcessingType::CompressADPCM:
                     outData = std::get<std::vector<int16_t>>(Audio::Adpcm::decode(inData));

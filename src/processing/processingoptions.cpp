@@ -284,11 +284,15 @@ ProcessingOptions::Option ProcessingOptions::delta16{
 
 ProcessingOptions::Option ProcessingOptions::rans{
     false,
-    {"rans", "Use rANS compression.", cxxopts::value(rans.isSet)}};
+    {"rans", "Use rANS compression 50h.", cxxopts::value(rans.isSet)}};
+
+ProcessingOptions::Option ProcessingOptions::lz4{
+    false,
+    {"lz4", "Use LZ4 compression variant 40h.", cxxopts::value(lz4.isSet)}};
 
 ProcessingOptions::Option ProcessingOptions::lz10{
     false,
-    {"lz10", "Use LZ compression variant 10.", cxxopts::value(lz10.isSet)}};
+    {"lz10", "Use LZSS compression variant 10h.", cxxopts::value(lz10.isSet)}};
 
 /*ProcessingOptions::Option ProcessingOptions::rle{
     false,

@@ -94,7 +94,7 @@ namespace Compression
         return counts;
     }
 
-    auto encodeRANS(const std::vector<uint8_t> &src) -> std::vector<uint8_t>
+    auto encodeRANS_50(const std::vector<uint8_t> &src) -> std::vector<uint8_t>
     {
         REQUIRE(!src.empty(), std::runtime_error, "Data too small");
         REQUIRE(src.size() < (1 << 24), std::runtime_error, "Data too big");
@@ -195,7 +195,7 @@ namespace Compression
         return dst;
     }
 
-    auto decodeRANS(const std::vector<uint8_t> &src) -> std::vector<uint8_t>
+    auto decodeRANS_50(const std::vector<uint8_t> &src) -> std::vector<uint8_t>
     {
         REQUIRE(src.size() >= (4 + 1 + 1), std::runtime_error, "Data too small");
         const uint32_t header = *reinterpret_cast<const uint32_t *>(src.data());

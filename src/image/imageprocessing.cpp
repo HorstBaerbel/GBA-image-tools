@@ -5,6 +5,7 @@
 #include "color/rgb565.h"
 #include "color/xrgb1555.h"
 #include "color/xrgb8888.h"
+#include "compression/lz4.h"
 #include "compression/lzss.h"
 #include "compression/rans.h"
 #include "exception.h"
@@ -43,8 +44,9 @@ namespace Image
             {ProcessingType::ConvertDelta8, {"delta-8", OperationType::Convert, FunctionType(toDelta8)}},
             {ProcessingType::ConvertDelta16, {"delta-16", OperationType::Convert, FunctionType(toDelta16)}},
             {ProcessingType::DeltaImage, {"pixel diff", OperationType::ConvertState, FunctionType(pixelDiff)}},
-            {ProcessingType::CompressLZ10, {"compress LZ10", OperationType::Convert, FunctionType(compressLZ10)}},
-            {ProcessingType::CompressRANS40, {"compress RANS40", OperationType::Convert, FunctionType(compressRANS40)}},
+            {ProcessingType::CompressLZ4_40, {"compress LZ4 40h", OperationType::Convert, FunctionType(compressLZ4_40)}},
+            {ProcessingType::CompressLZSS_10, {"compress LZSS 10h", OperationType::Convert, FunctionType(compressLZSS_10)}},
+            {ProcessingType::CompressRANS_50, {"compress rANS 50h", OperationType::Convert, FunctionType(compressRANS_50)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
             {ProcessingType::CompressDXT, {"compress DXT", OperationType::Convert, FunctionType(compressDXT)}},
             {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
@@ -353,35 +355,53 @@ namespace Image
 
     // ----------------------------------------------------------------------------
 
-    Frame Processing::compressLZ10(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
+    Frame Processing::compressLZ4_40(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
     {
         // get parameter(s)
-        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ10 expects a bool VRAMcompatible parameter");
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ4_40 expects a bool VRAMcompatible parameter");
         const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
         // compress data
         auto result = data;
-        result.data.pixels() = PixelData(Compression::encodeLZ10(result.data.pixels().convertDataToRaw(), vramCompatible), Color::Format::Unknown);
+        result.data.pixels() = PixelData(Compression::encodeLZ4_40(result.data.pixels().convertDataToRaw(), vramCompatible), Color::Format::Unknown);
         result.type.setCompressed();
         // print statistics
         if (statistics != nullptr)
         {
             const auto ratioPercent = static_cast<double>(result.data.pixels().rawSize() * 100.0 / static_cast<double>(data.data.pixels().rawSize()));
-            std::cout << "LZ10 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+            std::cout << "LZ4 40h compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
         }
         return result;
     }
 
-    Frame Processing::compressRANS40(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
+    Frame Processing::compressLZSS_10(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
     {
+        // get parameter(s)
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZSS_10 expects a bool VRAMcompatible parameter");
+        const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
         // compress data
         auto result = data;
-        result.data.pixels() = PixelData(Compression::encodeRANS(result.data.pixels().convertDataToRaw()), Color::Format::Unknown);
+        result.data.pixels() = PixelData(Compression::encodeLZSS_10(result.data.pixels().convertDataToRaw(), vramCompatible), Color::Format::Unknown);
         result.type.setCompressed();
         // print statistics
         if (statistics != nullptr)
         {
             const auto ratioPercent = static_cast<double>(result.data.pixels().rawSize() * 100.0 / static_cast<double>(data.data.pixels().rawSize()));
-            std::cout << "RANS40 compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+            std::cout << "LZSS 10h compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+        }
+        return result;
+    }
+
+    Frame Processing::compressRANS_50(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
+    {
+        // compress data
+        auto result = data;
+        result.data.pixels() = PixelData(Compression::encodeRANS_50(result.data.pixels().convertDataToRaw()), Color::Format::Unknown);
+        result.type.setCompressed();
+        // print statistics
+        if (statistics != nullptr)
+        {
+            const auto ratioPercent = static_cast<double>(result.data.pixels().rawSize() * 100.0 / static_cast<double>(data.data.pixels().rawSize()));
+            std::cout << "rANS 50h compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
         }
         return result;
     }

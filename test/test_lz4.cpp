@@ -106,15 +106,15 @@ auto toVector8(const T *in, std::size_t inSize) -> std::vector<uint8_t>
 TEST_CASE("LZ4 roundtrip")
 {
     // Run tests
-    CATCH_REQUIRE_THROWS(encodeLZ4(TO_VECTOR8(v0)));
-    CATCH_REQUIRE(TO_VECTOR8(v1) == decodeLZ4(encodeLZ4(TO_VECTOR8(v1))));
-    CATCH_REQUIRE(TO_VECTOR8(v2) == decodeLZ4(encodeLZ4(TO_VECTOR8(v2))));
-    CATCH_REQUIRE(TO_VECTOR8(v3) == decodeLZ4(encodeLZ4(TO_VECTOR8(v3))));
-    CATCH_REQUIRE(TO_VECTOR8(v4) == decodeLZ4(encodeLZ4(TO_VECTOR8(v4))));
-    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeLZ4(encodeLZ4(TO_VECTOR8(v5))));
-    CATCH_REQUIRE(TO_VECTOR8(v6) == decodeLZ4(encodeLZ4(TO_VECTOR8(v6))));
-    CATCH_REQUIRE(TO_VECTOR8(v7) == decodeLZ4(encodeLZ4(TO_VECTOR8(v7))));
-    CATCH_REQUIRE(TO_VECTOR8(v8) == decodeLZ4(encodeLZ4(TO_VECTOR8(v8))));
+    CATCH_REQUIRE_THROWS(encodeLZ4_40(TO_VECTOR8(v0)));
+    CATCH_REQUIRE(TO_VECTOR8(v1) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v1))));
+    CATCH_REQUIRE(TO_VECTOR8(v2) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v2))));
+    CATCH_REQUIRE(TO_VECTOR8(v3) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v3))));
+    CATCH_REQUIRE(TO_VECTOR8(v4) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v4))));
+    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v5))));
+    CATCH_REQUIRE(TO_VECTOR8(v6) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v6))));
+    CATCH_REQUIRE(TO_VECTOR8(v7) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v7))));
+    CATCH_REQUIRE(TO_VECTOR8(v8) == decodeLZ4_40(encodeLZ4_40(TO_VECTOR8(v8))));
 }
 
 TEST_CASE("LZ4 ratio")
@@ -127,9 +127,9 @@ TEST_CASE("LZ4 ratio")
         // read all of the file data
         std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(fs)), (std::istreambuf_iterator<char>()));
         // compress and decompress file data
-        auto compressedData = encodeLZ4(fileData);
+        auto compressedData = encodeLZ4_40(fileData);
         std::cout << testFile.fileName << " compressed from " << fileData.size() << " to " << compressedData.size() << " bytes (" << static_cast<double>(compressedData.size()) / static_cast<double>(fileData.size()) * 100.0 << "%)" << std::endl;
-        CATCH_REQUIRE(fileData == decodeLZ4(compressedData));
+        CATCH_REQUIRE(fileData == decodeLZ4_40(compressedData));
         CATCH_REQUIRE(compressedData.size() <= testFile.maxSize);
     }
 }

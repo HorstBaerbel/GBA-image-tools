@@ -101,20 +101,20 @@ namespace Audio
 
         // --- compression functions -------------------------------------------------------------
 
-        /// @brief Compress audio data using LZ77 variant 10h
+        /// @brief Compress audio data using LZSS variant 10h
         /// @param parameters:
         /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
         /// @param flushBuffers Pass true to dump queued data from internal buffers to the output frame
         /// @param statistics Statistics container to write statistics to
         /// @return Compressed frame
-        static std::optional<Frame> compressLZ10(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics);
+        static std::optional<Frame> compressLZSS_10(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics);
 
-        /// @brief Compress audio data using rANS variant 40h
+        /// @brief Compress audio data using rANS variant 50h
         /// @param parameters: none
         /// @param flushBuffers Pass true to dump queued data from internal buffers to the output frame
         /// @param statistics Statistics container to write statistics to
         /// @return Compressed frame
-        static std::optional<Frame> compressRANS40(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics);
+        static std::optional<Frame> compressRANS_50(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics);
 
         /// @brief Compress audio data using RLE
         /// @param parameters:

@@ -175,7 +175,7 @@ namespace Compression
         dst[tokenOffset] = tokenByte;
     }
 
-    auto encodeLZ4(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
+    auto encodeLZ4_40(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
     {
         REQUIRE(!src.empty(), std::runtime_error, "Data too small");
         REQUIRE(src.size() < 2 ^ 24, std::runtime_error, "Data too big");
@@ -297,7 +297,7 @@ namespace Compression
         return dst;
     }
 
-    auto decodeLZ4(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
+    auto decodeLZ4_40(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
     {
         REQUIRE(src.size() > 4, std::runtime_error, "Data too small");
         uint32_t header = *reinterpret_cast<const uint32_t *>(src.data());

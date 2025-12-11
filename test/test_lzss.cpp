@@ -159,18 +159,18 @@ auto toVector8(const T *in, std::size_t inSize) -> std::vector<uint8_t>
 TEST_CASE("LZ10 roundtrip")
 {
     // Run tests
-    CATCH_REQUIRE_THROWS(encodeLZ10(TO_VECTOR8(v0)));
-    CATCH_REQUIRE(TO_VECTOR8(v1) == decodeLZ10(encodeLZ10(TO_VECTOR8(v1))));
-    CATCH_REQUIRE(TO_VECTOR8(v2) == decodeLZ10(encodeLZ10(TO_VECTOR8(v2))));
-    CATCH_REQUIRE(TO_VECTOR8(v3) == decodeLZ10(encodeLZ10(TO_VECTOR8(v3))));
-    CATCH_REQUIRE(TO_VECTOR8(v4) == decodeLZ10(encodeLZ10(TO_VECTOR8(v4))));
-    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeLZ10(encodeLZ10(TO_VECTOR8(v5))));
-    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeLZ10(TO_VECTOR8(v5_gbalzss)));
-    // findDiff(v5_gbalzss, encodeLZ10(v5));
-    // CATCH_REQUIRE(v5_gbalzss == encodeLZ10(v5));
-    CATCH_REQUIRE(TO_VECTOR8(v6) == decodeLZ10(encodeLZ10(TO_VECTOR8(v6))));
-    CATCH_REQUIRE(TO_VECTOR8(v7) == decodeLZ10(encodeLZ10(TO_VECTOR8(v7))));
-    CATCH_REQUIRE(TO_VECTOR8(v8) == decodeLZ10(encodeLZ10(TO_VECTOR8(v8))));
+    CATCH_REQUIRE_THROWS(encodeLZSS_10(TO_VECTOR8(v0)));
+    CATCH_REQUIRE(TO_VECTOR8(v1) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v1))));
+    CATCH_REQUIRE(TO_VECTOR8(v2) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v2))));
+    CATCH_REQUIRE(TO_VECTOR8(v3) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v3))));
+    CATCH_REQUIRE(TO_VECTOR8(v4) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v4))));
+    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v5))));
+    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeLZSS_10(TO_VECTOR8(v5_gbalzss)));
+    // findDiff(v5_gbalzss, encodeLZSS_10(v5));
+    // CATCH_REQUIRE(v5_gbalzss == encodeLZSS_10(v5));
+    CATCH_REQUIRE(TO_VECTOR8(v6) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v6))));
+    CATCH_REQUIRE(TO_VECTOR8(v7) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v7))));
+    CATCH_REQUIRE(TO_VECTOR8(v8) == decodeLZSS_10(encodeLZSS_10(TO_VECTOR8(v8))));
 }
 
 TEST_CASE("LZ10 ratio")
@@ -183,9 +183,9 @@ TEST_CASE("LZ10 ratio")
         // read all of the file data
         std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(fs)), (std::istreambuf_iterator<char>()));
         // compress and decompress file data
-        auto compressedData = encodeLZ10(fileData);
+        auto compressedData = encodeLZSS_10(fileData);
         std::cout << testFile.fileName << " compressed from " << fileData.size() << " to " << compressedData.size() << " bytes (" << static_cast<double>(compressedData.size()) / static_cast<double>(fileData.size()) * 100.0 << "%)" << std::endl;
-        CATCH_REQUIRE(fileData == decodeLZ10(compressedData));
+        CATCH_REQUIRE(fileData == decodeLZSS_10(compressedData));
         CATCH_REQUIRE(compressedData.size() <= testFile.maxSize);
     }
 }

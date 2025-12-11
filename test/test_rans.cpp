@@ -106,15 +106,15 @@ auto toVector8(const T *in, std::size_t inSize) -> std::vector<uint8_t>
 TEST_CASE("RANS roundtrip")
 {
     // Run tests
-    CATCH_REQUIRE_THROWS(encodeRANS(TO_VECTOR8(v0)));
-    CATCH_REQUIRE(TO_VECTOR8(v1) == decodeRANS(encodeRANS(TO_VECTOR8(v1))));
-    CATCH_REQUIRE(TO_VECTOR8(v2) == decodeRANS(encodeRANS(TO_VECTOR8(v2))));
-    CATCH_REQUIRE(TO_VECTOR8(v3) == decodeRANS(encodeRANS(TO_VECTOR8(v3))));
-    CATCH_REQUIRE(TO_VECTOR8(v4) == decodeRANS(encodeRANS(TO_VECTOR8(v4))));
-    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeRANS(encodeRANS(TO_VECTOR8(v5))));
-    CATCH_REQUIRE(TO_VECTOR8(v6) == decodeRANS(encodeRANS(TO_VECTOR8(v6))));
-    CATCH_REQUIRE(TO_VECTOR8(v7) == decodeRANS(encodeRANS(TO_VECTOR8(v7))));
-    CATCH_REQUIRE(TO_VECTOR8(v8) == decodeRANS(encodeRANS(TO_VECTOR8(v8))));
+    CATCH_REQUIRE_THROWS(encodeRANS_50(TO_VECTOR8(v0)));
+    CATCH_REQUIRE(TO_VECTOR8(v1) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v1))));
+    CATCH_REQUIRE(TO_VECTOR8(v2) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v2))));
+    CATCH_REQUIRE(TO_VECTOR8(v3) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v3))));
+    CATCH_REQUIRE(TO_VECTOR8(v4) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v4))));
+    CATCH_REQUIRE(TO_VECTOR8(v5) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v5))));
+    CATCH_REQUIRE(TO_VECTOR8(v6) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v6))));
+    CATCH_REQUIRE(TO_VECTOR8(v7) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v7))));
+    CATCH_REQUIRE(TO_VECTOR8(v8) == decodeRANS_50(encodeRANS_50(TO_VECTOR8(v8))));
 }
 
 TEST_CASE("RANS ratio")
@@ -127,9 +127,9 @@ TEST_CASE("RANS ratio")
         // read all of the file data
         std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(fs)), (std::istreambuf_iterator<char>()));
         // compress and decompress file data
-        auto compressedData = encodeRANS(fileData);
+        auto compressedData = encodeRANS_50(fileData);
         std::cout << testFile.fileName << " compressed from " << fileData.size() << " to " << compressedData.size() << " bytes (" << static_cast<double>(compressedData.size()) / static_cast<double>(fileData.size()) * 100.0 << "%)" << std::endl;
-        CATCH_REQUIRE(fileData == decodeRANS(compressedData));
+        CATCH_REQUIRE(fileData == decodeRANS_50(compressedData));
         CATCH_REQUIRE(compressedData.size() <= testFile.maxSize);
     }
 }

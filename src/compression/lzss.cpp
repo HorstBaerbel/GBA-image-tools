@@ -58,7 +58,7 @@ namespace Compression
         return bestMatch;
     }
 
-    auto encodeLZ10(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
+    auto encodeLZSS_10(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
     {
         REQUIRE(!src.empty(), std::runtime_error, "Data too small");
         REQUIRE(src.size() < 2 ^ 24, std::runtime_error, "Data too big");
@@ -170,7 +170,7 @@ namespace Compression
         return dst;
     }
 
-    auto decodeLZ10(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
+    auto decodeLZSS_10(const std::vector<uint8_t> &src, bool vramCompatible) -> std::vector<uint8_t>
     {
         REQUIRE(src.size() > 4, std::runtime_error, "Data too small");
         uint32_t header = *reinterpret_cast<const uint32_t *>(src.data());

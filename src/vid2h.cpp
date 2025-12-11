@@ -70,6 +70,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.dxtv.cxxOption);
         // opts.add_option("", options.gvid.cxxOption);
         // opts.add_option("", options.rle.cxxOption);
+        opts.add_option("", options.lz4.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.channelFormat.cxxOption);
@@ -206,6 +207,7 @@ void printUsage()
     // std::cout << options.gvid.helpString() << std::endl;
     std::cout << "Compression options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
+    std::cout << options.lz4.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << "Compression modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
@@ -231,7 +233,7 @@ void printUsage()
     std::cout << options.outputStats.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
     std::cout << "Image order: input, color conversion, addcolor0, movecolor0, shift, sprites, " << std::endl;
-    std::cout << "tiles, deltaimage, dxtg / dtxv, delta8 / delta16, rle, lz10, output" << std::endl;
+    std::cout << "tiles, deltaimage, dxtg / dtxv, delta8 / delta16, lz4 / lz10, output" << std::endl;
     std::cout << "Note: Multi-channel audio will be converted to stereo and sample bit depth will " << std::endl;
     std::cout << "be converted to 16 bit" << std::endl;
 }
@@ -350,13 +352,17 @@ auto buildImageProcessing(const ProcessingOptions &opts) -> Image::Processing
     {
         processing.addStep(Image::ProcessingType::CompressRLE, {options.vram.isSet}, true);
     }*/
+    if (opts.lz4)
+    {
+        videoProcessing.addStep(Image::ProcessingType::CompressLZ4_40, {opts.vram.isSet}, true, opts.printStats);
+    }
     if (opts.lz10)
     {
-        videoProcessing.addStep(Image::ProcessingType::CompressLZ10, {opts.vram.isSet}, true, opts.printStats);
+        videoProcessing.addStep(Image::ProcessingType::CompressLZSS_10, {opts.vram.isSet}, true, opts.printStats);
     }
     if (opts.rans)
     {
-        videoProcessing.addStep(Image::ProcessingType::CompressRANS40, {}, true, opts.printStats);
+        videoProcessing.addStep(Image::ProcessingType::CompressRANS_50, {}, true, opts.printStats);
     }
     videoProcessing.addStep(Image::ProcessingType::PadPixelData, {uint32_t(4)});
     return videoProcessing;

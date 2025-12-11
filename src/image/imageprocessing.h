@@ -136,14 +136,19 @@ namespace Image
 
         // --- compression functions -------------------------------------------------------------
 
-        /// @brief Compress image data using LZ77 variant 10h
+        /// @brief Compress image data using LZ4 variant 40h
         /// @param parameters:
         /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
-        static Frame compressLZ10(const Frame &image, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
+        static Frame compressLZ4_40(const Frame &image, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
 
-        /// @brief Compress image data using rANS variant 40h
+        /// @brief Compress image data using LZSS variant 10h
+        /// @param parameters:
+        /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
+        static Frame compressLZSS_10(const Frame &image, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
+
+        /// @brief Compress image data using rANS variant 50h
         /// @param parameters: none
-        static Frame compressRANS40(const Frame &image, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
+        static Frame compressRANS_50(const Frame &image, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
 
         /// @brief Compress image data using RLE
         /// @param parameters:
