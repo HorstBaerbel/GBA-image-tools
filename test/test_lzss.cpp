@@ -22,7 +22,8 @@ static const std::vector<LzssTestFile> LzssTestFiles = {
     {"BigBuckBunny_40_240x160.raw", 20564},
     {"black_240x160.raw", 13616},
     {"mask6.raw", 516},
-    {"squish_240x160.raw", 72488}};
+    {"squish_240x160.raw", 72488},
+    {"bbb_adpcm_22050.wav", 316932}};
 
 const std::string DataPathTest = "../../data/data/";
 

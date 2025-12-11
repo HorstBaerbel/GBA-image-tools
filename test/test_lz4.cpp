@@ -22,7 +22,8 @@ static const std::vector<Lz4TestFile> Lz4TestFiles = {
     {"BigBuckBunny_40_240x160.raw", 10928},
     {"black_240x160.raw", 1320},
     {"mask6.raw", 84},
-    {"squish_240x160.raw", 61412}};
+    {"squish_240x160.raw", 61412},
+    {"bbb_adpcm_22050.wav", 285560}};
 
 const std::string DataPathTest = "../../data/data/";
 

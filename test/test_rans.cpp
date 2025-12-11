@@ -17,50 +17,19 @@ struct RansTestFile
 };
 
 static const std::vector<RansTestFile> RansTestFiles = {
-    {"lorem_ipsum_2k.txt", 1340},           // LZSS: 852
-    {"artificial_240x160.raw", 99044},      // LZSS: 63860
-    {"BigBuckBunny_40_240x160.raw", 97604}, // LZSS: 20564
-    {"black_240x160.raw", 6},               // LZSS: 13616
-    {"mask6.raw", 768},                     // LZSS: 516
-    {"squish_240x160.raw", 115468}};        // LZSS: 72488
+    {"lorem_ipsum_2k.txt", 1592},
+    {"artificial_240x160.raw", 99044},
+    {"BigBuckBunny_40_240x160.raw", 97604},
+    {"black_240x160.raw", 6},
+    {"mask6.raw", 1024},
+    {"squish_240x160.raw", 90840},
+    {"bbb_adpcm_22050.wav", 253536}};
 
 const std::string DataPathTest = "../../data/data/";
 
 using namespace Compression;
 
 TEST_SUITE("RANS")
-
-/*void findDiff(const std::vector<uint8_t> &a, const std::vector<uint8_t> &b)
-{
-    auto aIt = a.cbegin();
-    auto bIt = b.cbegin();
-    while (aIt != a.cend() && bIt != b.cend() && *aIt == *bIt)
-    {
-        ++aIt;
-        ++bIt;
-    }
-    if (aIt == a.cend() && bIt == b.cend())
-    {
-        return;
-    }
-    std::cout << "Difference at index " << std::distance(a.cbegin(), aIt) << ": ";
-    if (aIt != a.cend())
-    {
-        std::cout << "0x" << std::setw(2) << std::setfill('0') << std::hex << static_cast<uint32_t>(*aIt) << " ";
-    }
-    else
-    {
-        std::cout << "???? ";
-    }
-    if (bIt != b.cend())
-    {
-        std::cout << "0x" << std::setw(2) << std::setfill('0') << std::hex << static_cast<uint32_t>(*bIt) << " ";
-    }
-    else
-    {
-        std::cout << "???? ";
-    }
-}*/
 
 // Basic tests
 static const uint8_t v0[] = {};

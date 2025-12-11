@@ -135,7 +135,7 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "RANS*"
+                //"RANS*"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/test",
