@@ -23,7 +23,7 @@
 
 // BBB LZ4 compression
 // Video avg. decode: 26.91 ms (max. 48.83 ms) C++
-// Video avg. decode: 18.66 ms (max. 35.16 ms) ASM
+// Video avg. decode: 18.26 ms (max. 33.20 ms) ASM
 // Audio avg. decode: 11.38 ms (max. 11.72 ms) C++
 // Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
 
