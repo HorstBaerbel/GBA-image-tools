@@ -1,5 +1,7 @@
  #include "lz4_constants.h"
 
+#define LZ4_OVERRUN_PROTECTION // If turned off can overrun the buffer max. 3 bytes. Very minor performance impact.
+
  .arm
  .align
  .global LZ4_MemCopy
@@ -19,17 +21,10 @@ LZ4_MemCopy:
     @ ------------------------------
     @ In function:
     @ r5-r6 trashed
-
+    
     @ if we're copying less than 8 bytes, just do a byte copy
     cmp r4, #8
-    bhs .lz4_mc_aligned_copy
-.lz4_mc_byte_loop:
-    ldrb r5, [r0], #1
-    strb r5, [r1], #1
-    subs r4, r4, #1
-    bne .lz4_mc_byte_loop
-    bx lr
-.lz4_mc_aligned_copy:
+    blo .lz4_mc_byte_loop
     @ check if both pointers have the same alignment offset for word copies
     and r5, r0, #3
     and r6, r1, #3
@@ -39,8 +34,19 @@ LZ4_MemCopy:
     and r5, r0, #1
     and r6, r1, #1
     cmp r5, r6
-    bne .lz4_mc_byte_loop @ if alignment is too different, do byte copy
+    beq .lz4_mc_halfword_aligned @ if offset is the same, do a halfword-aligned copy
+.lz4_mc_byte_loop:
+    ldrb r5, [r0], #1
+    strb r5, [r1], #1
+    subs r4, r4, #1
+    bne .lz4_mc_byte_loop
+    bx lr
 .lz4_mc_halfword_aligned:
+    @ check for an overlapping copy with a distance smaller than 2
+    subs r5, r1, r0 @ r5 = r1 - r0
+    rsbmi r5, r5, #0 @ r5 = (r1 - r0) < 0 ? 0-r5 : r5
+    cmp r5, #2
+    blt .lz4_mc_byte_loop @ if |r1 -r0| < 2, do byte copy
     @ check how many bytes we must pre-copy for halfword alignment
     @ offset == 1: pre-copy 1 byte
     cmp r6, #1
@@ -50,14 +56,26 @@ LZ4_MemCopy:
 .lz4_mc_halfword_loop: @ here we have halfword alignment
     ldrh r5, [r0], #2
     strh r5, [r1], #2
+#ifdef LZ4_OVERRUN_PROTECTION
     sub r4, r4, #2
     cmp r4, #2
     bhs .lz4_mc_halfword_loop
     tst r4, #1 @ check for byte tail
-    ldrneb r5, [r0], #1
+    ldrneb r5, [r0], #1 @ bytes left > 0, do byte post-copy
     strneb r5, [r1], #1
+#else
+    subs r4, #2
+    bgt .lz4_mc_halfword_loop
+    adds r0, r4
+    adds r1, r4
+#endif
     bx lr
 .lz4_mc_word_aligned:
+    @ check for an overlapping copy with a distance smaller than 4
+    subs r5, r1, r0 @ r5 = r1 - r0
+    rsbmi r5, r5, #0 @ r5 = (r1 - r0) < 0 ? 0-r5 : r5
+    cmp r5, #4
+    blt .lz4_mc_byte_loop @ if |r1 -r0| < 4, do byte copy
     @ check how many bytes we must pre-copy for word alignment
     @ offset == 1: pre-copy 1 byte + 1 halfword
     @ offset == 2: pre-copy 1 halfword
@@ -71,18 +89,26 @@ LZ4_MemCopy:
     ldrlsh r5, [r0], #2 @ offset from word <= 2, do halfword pre-copy
     strlsh r5, [r1], #2
     subls r4, r4, #2 @ offset from word <= 2, copy length -= 2
-.lz4_mc_word_loop: @ here we have word alignment
+.lz4_mc_word_loop:
     ldr r5, [r0], #4
     str r5, [r1], #4
+#ifdef LZ4_OVERRUN_PROTECTION
     sub r4, r4, #4
     cmp r4, #4
     bhs .lz4_mc_word_loop
+.lz4_mc_word_tail:
     tst r4, #2 @ check for halfword tail
-    ldrneh r5, [r0], #2 @ bytes left >= 2, do halfword post-copy
+    ldrneh r5, [r0], #2 @ bytes left >= 2, do halfword tail copy
     strneh r5, [r1], #2
     tst r4, #1 @ check for byte tail
-    ldrneb r5, [r0], #1 @ bytes left > 0, do byte post-copy
+    ldrneb r5, [r0], #1 @ bytes left > 0, do byte tail copy
     strneb r5, [r1], #1
+#else
+    subs r4, #4
+    bgt .lz4_mc_word_loop
+    adds r0, r4
+    adds r1, r4
+#endif
     bx lr
 
 
@@ -105,7 +131,7 @@ LZ4_UnCompWrite8bit:
     @ In function:
     @ r2: size of uncompressed data (trashed)
     @ r3 trashed, r4-r6 used and saved / restored
-    push {r4 - r8, lr}
+    push {r4 - r6, lr}
 
     @ read header word:
     @ Bit 0-7: Compressed type (40h for LZ4)
@@ -175,7 +201,7 @@ LZ4_UnCompWrite8bit:
     cmp r2, #0 @ still data left to decompress?
     bne .lz4_ucw8_decode_loop
 .lz4_ucw8_end:
-    pop {r4 - r8, lr}
+    pop {r4 - r6, lr}
     bx lr
 
 .arm
