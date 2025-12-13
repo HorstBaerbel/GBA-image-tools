@@ -16,16 +16,12 @@
 #endif
 
 // BBB no entropy coder
-// Video avg. decode: 23.28 ms (max. 35.16 ms) C++
 // Video avg. decode: 16.19 ms (max. 24.41 ms) ASM
-// Audio avg. decode: 11.38 ms (max. 11.72 ms) C++
 // Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
 
 // BBB LZ4 compression
-// Video avg. decode: 26.91 ms (max. 48.83 ms) C++
-// Video avg. decode: 18.26 ms (max. 33.20 ms) ASM
-// Audio avg. decode: 11.38 ms (max. 11.72 ms) C++
-// Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
+// Video avg. decode: 20.04 ms (max. 35.16 ms) ASM
+// Audio avg. decode: 5.99 ms (max. 6.84 ms) ASM
 
 // AF 96% LZ4 compression
 // Video avg. decode: 19.01 ms (max. 31.25 ms) ASM
@@ -35,7 +31,7 @@
 // Video avg. decode: 18.26 ms (max. 29.30 ms) ASM
 // Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
 
-// Video avg. blit: 10.26 ms (max. 10.74 ms) C++
+// Video avg. blit: 10.26 ms (max. 10.74 ms)
 
 namespace Media
 {
