@@ -391,6 +391,10 @@ auto buildAudioProcessing(const ProcessingOptions &opts, const Media::Reader::Me
     {
         audioProcessing.addStep(Audio::ProcessingType::CompressADPCM, {}, true);
     }
+    if (opts.lz4)
+    {
+        audioProcessing.addStep(Audio::ProcessingType::CompressLZ4_40, {opts.vram.isSet}, true, opts.printStats);
+    }
     return audioProcessing;
 }
 

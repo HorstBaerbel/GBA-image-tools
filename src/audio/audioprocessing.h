@@ -101,6 +101,14 @@ namespace Audio
 
         // --- compression functions -------------------------------------------------------------
 
+        /// @brief Compress audio data using LZ4 variant 40h
+        /// @param parameters:
+        /// - Flag for VRAM-compatible compression as bool. Pass true to turn on
+        /// @param flushBuffers Pass true to dump queued data from internal buffers to the output frame
+        /// @param statistics Statistics container to write statistics to
+        /// @return Compressed frame
+        static std::optional<Frame> compressLZ4_40(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics);
+
         /// @brief Compress audio data using LZSS variant 10h
         /// @param parameters:
         /// - Flag for VRAM-compatible compression as bool. Pass true to turn on

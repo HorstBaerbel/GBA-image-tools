@@ -21,6 +21,12 @@ namespace IO::Vid2h
         {
             Memory::memcpy32(&info.audio, data, sizeof(AudioHeader) / 4);
             data += sizeof(AudioHeader) / 4;
+            // count processing stages
+            info.nrOfAudioProcessings = 0;
+            while (info.audio.processing[info.nrOfAudioProcessings] != Audio::ProcessingType::Invalid)
+            {
+                ++info.nrOfAudioProcessings;
+            }
         }
         if (info.contentType & IO::FileType::Video)
         {
@@ -65,6 +71,12 @@ namespace IO::Vid2h
             default:
                 // TODO: What?
                 break;
+            }
+            // count processing stages
+            info.nrOfVideoProcessings = 0;
+            while (info.video.processing[info.nrOfVideoProcessings] != Image::ProcessingType::Invalid)
+            {
+                ++info.nrOfVideoProcessings;
             }
         }
         info.nrOfFrames = info.video.nrOfFrames + info.video.nrOfColorMapFrames + info.audio.nrOfFrames;

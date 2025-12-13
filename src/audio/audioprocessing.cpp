@@ -1,6 +1,7 @@
 #include "audioprocessing.h"
 
 #include "audiohelpers.h"
+#include "compression/lz4.h"
 #include "compression/lzss.h"
 #include "compression/rans.h"
 #include "exception.h"
@@ -17,6 +18,7 @@ namespace Audio
         Processing::ProcessingFunctions = {
             {ProcessingType::Resample, {"resample", OperationType::Convert, FunctionType(resample)}},
             {ProcessingType::Repackage, {"repackage", OperationType::Convert, FunctionType(repackage)}},
+            {ProcessingType::CompressLZ4_40, {"compress LZ4 40h", OperationType::Convert, FunctionType(compressLZ4_40)}},
             {ProcessingType::CompressLZSS_10, {"compress LZSS 10h", OperationType::Convert, FunctionType(compressLZSS_10)}},
             {ProcessingType::CompressRANS_50, {"compress rANS 50h", OperationType::Convert, FunctionType(compressRANS_50)}},
             //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
@@ -91,6 +93,24 @@ namespace Audio
     }
 
     // ----------------------------------------------------------------------------
+
+    std::optional<Frame> Processing::compressLZ4_40(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
+    {
+        // get parameter(s)
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ4_40 expects a bool VRAMcompatible parameter");
+        const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
+        // compress data
+        auto result = frame;
+        result.data = Compression::encodeLZ4_40(AudioHelpers::toRawData(result.data, result.info.channelFormat), vramCompatible);
+        result.info.compressed = true;
+        // print statistics
+        if (statistics != nullptr)
+        {
+            const auto ratioPercent = static_cast<double>(AudioHelpers::rawDataSize(result.data) * 100.0 / static_cast<double>(AudioHelpers::rawDataSize(frame.data)));
+            std::cout << "LZ4 40h compression ratio: " << std::fixed << std::setprecision(1) << ratioPercent << "%" << std::endl;
+        }
+        return result;
+    }
 
     std::optional<Frame> Processing::compressLZSS_10(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
     {

@@ -27,9 +27,13 @@
 // Audio avg. decode: 11.38 ms (max. 11.72 ms) C++
 // Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
 
-// AF
-// Video avg. decode: 26.61 ms (max. 34.18 ms) C++
-// Video avg. decode: 19.67 ms (max. 26.37 ms) ASM
+// AF 96% LZ4 compression
+// Video avg. decode: 19.01 ms (max. 31.25 ms) ASM
+// Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
+
+// AF 95% LZ4 compression
+// Video avg. decode: 18.26 ms (max. 29.30 ms) ASM
+// Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
 
 // Video avg. blit: 10.26 ms (max. 10.74 ms) C++
 
@@ -67,12 +71,12 @@ namespace Media
 #ifdef DEBUG_PLAYER
     struct FrameStatistics
     {
-        int32_t m_accDecodedMs = 0; // Accumulated time decoding frames
-        int32_t m_maxDecodedMs = 0; // Max. time decoding frames
-        int32_t m_nrDecoded = 0;    // Number of frames decoded so far
-        int32_t m_accCopiedMs = 0;  // Accumulated time displaying / copying frames
-        int32_t m_maxCopiedMs = 0;  // Max. time displaying / copying  frames
-        int32_t m_nrCopied = 0;     // Number of frames displayed / copied so far
+        int64_t m_accDecodedMs = 0; // Accumulated time decoding frames
+        int64_t m_maxDecodedMs = 0; // Max. time decoding frames
+        int64_t m_nrDecoded = 0;    // Number of frames decoded so far
+        int64_t m_accCopiedMs = 0;  // Accumulated time displaying / copying frames
+        int64_t m_maxCopiedMs = 0;  // Max. time displaying / copying  frames
+        int64_t m_nrCopied = 0;     // Number of frames displayed / copied so far
     };
     IWRAM_DATA FrameStatistics m_videoStats;
     IWRAM_DATA FrameStatistics m_audioStats;
@@ -433,9 +437,9 @@ namespace Media
             REG_TM2CNT_H = 0;
             irqDisable(irqMASKS::IRQ_TIMER2);
 #ifdef DEBUG_PLAYER
-            Debug::printf("Audio avg. decode: %f ms (max. %f ms)", m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded, m_audioStats.m_maxDecodedMs);
-            Debug::printf("Video avg. decode: %f ms (max. %f ms)", m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded, m_videoStats.m_maxDecodedMs);
-            Debug::printf("Video avg. blit: %f ms (max. %f ms)", m_videoStats.m_accCopiedMs / m_videoStats.m_nrCopied, m_videoStats.m_maxCopiedMs);
+            Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);
+            Debug::printf("Video avg. decode: %f ms (max. %f ms)", int32_t(m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded), m_videoStats.m_maxDecodedMs);
+            Debug::printf("Video avg. blit: %f ms (max. %f ms)", int32_t(m_videoStats.m_accCopiedMs / m_videoStats.m_nrCopied), m_videoStats.m_maxCopiedMs);
             Time::stop();
 #endif
         }

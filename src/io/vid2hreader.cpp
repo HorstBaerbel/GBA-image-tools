@@ -177,6 +177,9 @@ namespace Media
                 case Audio::ProcessingType::Uncompressed:
                     outData = AudioHelpers::toSigned16(inData, m_info.audioSampleFormat);
                     break;
+                case Audio::ProcessingType::CompressLZ4_40:
+                    inData = Compression::decodeLZ4_40(inData);
+                    break;
                 case Audio::ProcessingType::CompressLZSS_10:
                     inData = Compression::decodeLZSS_10(inData);
                     break;

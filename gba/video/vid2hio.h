@@ -16,6 +16,8 @@ namespace IO::Vid2h
         uint32_t nrOfFrames = 0;             // Number of all frames in file combined
         uint32_t imageSize = 0;              // Size of image data in bytes
         uint32_t colorMapSize = 0;           // Size of color map data in bytes
+        uint16_t nrOfAudioProcessings = 0;   // How many audio processing stages are used
+        uint16_t nrOfVideoProcessings = 0;   // How many video processing stages are used
         AudioHeader audio;                   // Audio header
         VideoHeader video;                   // Video header
     } __attribute__((aligned(4), packed));
