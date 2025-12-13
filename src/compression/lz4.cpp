@@ -10,6 +10,8 @@
 #include <iostream>
 #endif
 
+// #define TEST_ROUNDTRIP
+
 namespace Compression
 {
 
@@ -127,7 +129,7 @@ namespace Compression
             if (storedLiteralLength < 15)
             {
                 // store literal length only in token byte
-                tokenByte |= (storedLiteralLength << Lz4Constants::LITERAL_LENGTH_SHIFT) & Lz4Constants::LENGTH_MASK;
+                tokenByte |= storedLiteralLength << Lz4Constants::LITERAL_LENGTH_SHIFT;
             }
             else
             {
@@ -159,7 +161,7 @@ namespace Compression
             if (storedMatchLength < 15)
             {
                 // store match length only in token byte
-                tokenByte |= storedMatchLength & Lz4Constants::LENGTH_MASK;
+                tokenByte |= storedMatchLength;
             }
             else
             {
@@ -295,6 +297,10 @@ namespace Compression
         {
             dst.push_back(0);
         }
+#ifdef TEST_ROUNDTRIP
+        const auto result = decodeLZ4_40(dst, vramCompatible);
+        REQUIRE(src == result, std::runtime_error, "Compression roundtrip failed");
+#endif
         return dst;
     }
 
@@ -348,7 +354,8 @@ namespace Compression
             if (matchLength > 0)
             {
                 // read match offset
-                const int32_t matchOffset = (uint32_t(*srcIt++) << 8) | uint32_t(*srcIt++);
+                int32_t matchOffset = (uint32_t(*srcIt++) << 8);
+                matchOffset |= uint32_t(*srcIt++);
                 REQUIRE(matchOffset > 0, std::runtime_error, "Zero match offset");
                 REQUIRE(matchOffset <= dst.size(), std::runtime_error, "Match offset past end of data");
                 // read extra match length
