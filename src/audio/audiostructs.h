@@ -8,6 +8,9 @@
 namespace Audio
 {
 
+    /// @brief Audio data returned from media reader
+    using RawData = std::vector<int16_t>;
+
     /// @brief Information about current / final audio data before compression / conversion to raw
     struct FrameInfo
     {

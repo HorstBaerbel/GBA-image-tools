@@ -10,7 +10,7 @@ namespace IO::Vid2h
 {
     constexpr uint32_t Magic = 0x76326830; // Expected magic bytes at the start of the file: "v2h" plus a version number, atm "v2h0"
 
-    /// @brief Header for a vid2h binary video stream
+    /// @brief Header for a vid2h stream containing video
     struct VideoHeader
     {
         uint16_t nrOfFrames = 0;              // Number of video frames (must not be the same as audio frames)
@@ -27,7 +27,7 @@ namespace IO::Vid2h
             {Image::ProcessingType::Invalid, Image::ProcessingType::Invalid, Image::ProcessingType::Invalid, Image::ProcessingType::Invalid};
     } __attribute__((packed));
 
-    /// @brief Header for a vid2h binary audio stream
+    /// @brief Header for a vid2h stream containing audio
     struct AudioHeader
     {
         uint16_t nrOfFrames = 0;              // Number of audio frames (must not be the same as video frames)
@@ -40,6 +40,13 @@ namespace IO::Vid2h
         uint16_t dummy = 0;                   // Padding so size is multiple of 4
         Audio::ProcessingType processing[4] = // Audio processing steps. See audio/processingtypes.h
             {Audio::ProcessingType::Invalid, Audio::ProcessingType::Invalid, Audio::ProcessingType::Invalid, Audio::ProcessingType::Invalid};
+    } __attribute__((packed));
+
+    /// @brief Header for a vid2h stream containing subtitles
+    struct SubtitlesHeader
+    {
+        uint16_t nrOfFrames = 0; // Number of subtitle frames (must not be the same as video frames)
+        uint16_t dummy = 0;      // Padding so size is multiple of 4
     } __attribute__((packed));
 
     /// @brief Header for a vid2h binary video stream

@@ -26,6 +26,7 @@ namespace Media
         if (m_fileDataInfo.contentType & IO::FileType::Audio)
         {
             m_audioHeader = IO::Vid2h::readAudioHeader(m_is, m_fileDataInfo);
+            REQUIRE(m_audioHeader.nrOfFrames != 0, std::runtime_error, "Number of audio frames can not be 0");
             m_info.audioNrOfFrames = m_audioHeader.nrOfFrames;
             m_info.audioNrOfSamples = m_audioHeader.nrOfSamples;
             m_info.audioDurationS = static_cast<double>(m_audioHeader.nrOfSamples) / static_cast<double>(m_audioHeader.sampleRateHz);
@@ -56,7 +57,7 @@ namespace Media
         if (m_fileDataInfo.contentType & IO::FileType::Video)
         {
             m_videoHeader = IO::Vid2h::readVideoHeader(m_is, m_fileDataInfo);
-            REQUIRE(m_videoHeader.nrOfFrames != 0, std::runtime_error, "Number of frames can not be 0");
+            REQUIRE(m_videoHeader.nrOfFrames != 0, std::runtime_error, "Number of video frames can not be 0");
             REQUIRE(m_videoHeader.frameRateHz != 0, std::runtime_error, "Frame rate can not be 0");
             REQUIRE(m_videoHeader.width != 0 && m_videoHeader.height != 0, std::runtime_error, "Width or height can not be 0");
             REQUIRE(m_videoHeader.bitsPerPixel == 1 || m_videoHeader.bitsPerPixel == 2 || m_videoHeader.bitsPerPixel == 4 || m_videoHeader.bitsPerPixel == 8 || m_videoHeader.bitsPerPixel == 15 || m_videoHeader.bitsPerPixel == 16 || m_videoHeader.bitsPerPixel == 24, std::runtime_error, "Unsupported pixel bit depth: " << m_videoHeader.bitsPerPixel);
@@ -86,6 +87,11 @@ namespace Media
             m_info.videoHeight = m_videoHeader.height;
             m_info.videoPixelFormat = Color::findFormat(m_videoHeader.bitsPerPixel, m_videoHeader.colorMapEntries != 0, m_videoHeader.swappedRedBlue);
             m_info.videoColorMapFormat = Color::findFormat(m_videoHeader.bitsPerColor, false, m_videoHeader.swappedRedBlue);
+        }
+        if (m_fileDataInfo.contentType & IO::FileType::Subtitles)
+        {
+            m_subtitlesHeader = IO::Vid2h::readSubtitlesHeader(m_is, m_fileDataInfo);
+            REQUIRE(m_subtitlesHeader.nrOfFrames != 0, std::runtime_error, "Number of subtitles frames can not be 0");
         }
         // read meta data if any
         if (m_fileDataInfo.metaDataOffset > 0)
@@ -196,6 +202,19 @@ namespace Media
                 }
             }
             return {IO::FrameType::Audio, outData};
+        }
+        else if (frame.first == IO::FrameType::Subtitles)
+        {
+            auto inData = frame.second;
+            REQUIRE(inData.size() >= 4, std::runtime_error, "Subtitles frame data too small");
+            REQUIRE(inData.size() <= (2 + 1 + Subtitles::MaxSubTitleLength), std::runtime_error, "Subtitles frame data too big");
+            Subtitles::RawData outData;
+            outData.durationFrames = inData[0] << 8;
+            outData.durationFrames |= inData[1];
+            const uint8_t length = inData[2];
+            REQUIRE(length > 0 && length <= (inData.size() - 3) && length <= Subtitles::MaxSubTitleLength, std::runtime_error, "Bad subtitles string size");
+            std::copy(std::next(inData.cbegin(), 3), std::next(inData.cbegin(), 3 + length), std::back_inserter(outData.text));
+            return {IO::FrameType::Subtitles, outData};
         }
         return {IO::FrameType::Unknown, {}};
     }

@@ -36,12 +36,15 @@ namespace Media
             m_playState = PlayState::Playing;
             m_audioFrameIndex = 0;
             m_videoFrameIndex = 0;
+            m_subtitlesFrameIndex = 0;
             m_mediaReader = mediaReader;
             m_mediaInfo = m_mediaReader->getInfo();
             const bool hasAudio = m_mediaInfo.fileType & IO::FileType::Audio;
             REQUIRE(!hasAudio || m_mediaInfo.audioNrOfFrames > 0, std::runtime_error, "Audio file, but no audio frames");
             const bool hasVideo = m_mediaInfo.fileType & IO::FileType::Video;
             REQUIRE(!hasVideo || m_mediaInfo.videoNrOfFrames > 0, std::runtime_error, "Video file, but no video frames");
+            const bool hasSubtitles = m_mediaInfo.fileType & IO::FileType::Subtitles;
+            REQUIRE(!hasSubtitles || m_mediaInfo.subtitlesNrOfFrames > 0, std::runtime_error, "Subtitles file, but no subtitles frames");
             // open audio device in paused state
             if (hasAudio)
             {
@@ -124,10 +127,10 @@ namespace Media
     {
         lockEventMutex();
         stop();
-        if (m_sdlTexture != nullptr)
+        if (m_sdlVideoTexture != nullptr)
         {
-            SDL_DestroyTexture(m_sdlTexture);
-            m_sdlTexture = nullptr;
+            SDL_DestroyTexture(m_sdlVideoTexture);
+            m_sdlVideoTexture = nullptr;
         }
         unlockEventMutex();
         return true;
@@ -145,7 +148,7 @@ namespace Media
         // check if if we want to display a frame
         if (event.user.code == EVENT_DISPLAY_FRAME)
         {
-            // check if we have video / audio data pending
+            // check if we have audio data pending
             if (!m_audioData.empty())
             {
                 // we have audio data, get it, remove from the queue
@@ -155,49 +158,79 @@ namespace Media
                 SDL_PutAudioStreamData(m_sdlAudioStream, samples.data(), samples.size());
                 SDL_ResumeAudioStreamDevice(m_sdlAudioStream);
             }
+            // check if we have video data pending#
+            bool mustPresent = false;
             if (!m_videoData.empty())
             {
                 // we have video data, get it, remove from the queue
                 auto image = m_videoData.front();
                 m_videoData.pop_front();
                 // check if we need to allocate a texture
-                if (m_sdlTexture == nullptr)
+                if (m_sdlVideoTexture == nullptr)
                 {
-                    m_sdlTexture = SDL_CreateTexture(getRenderer(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, m_mediaInfo.videoWidth, m_mediaInfo.videoHeight);
-                    if (m_sdlTexture == nullptr)
+                    m_sdlVideoTexture = SDL_CreateTexture(getRenderer(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING, m_mediaInfo.videoWidth, m_mediaInfo.videoHeight);
+                    if (m_sdlVideoTexture == nullptr)
                     {
-                        std::cerr << "Failed to create SDL texture: " << SDL_GetError() << std::endl;
+                        std::cerr << "Failed to create SDL video texture: " << SDL_GetError() << std::endl;
                         unlockEventMutex();
                         return -1;
                     }
-                    if (!SDL_SetTextureScaleMode(m_sdlTexture, SDL_SCALEMODE_NEAREST))
+                    if (!SDL_SetTextureScaleMode(m_sdlVideoTexture, SDL_SCALEMODE_NEAREST))
                     {
-                        std::cerr << "Failed to set SDL texture scale mode: " << SDL_GetError() << std::endl;
+                        std::cerr << "Failed to set SDL video texture scale mode: " << SDL_GetError() << std::endl;
                     }
                 }
                 // copy data to texture and render
-                if (m_sdlTexture != nullptr && image.size() == m_mediaInfo.videoWidth * m_mediaInfo.videoHeight)
+                if (m_sdlVideoTexture != nullptr && image.size() == m_mediaInfo.videoWidth * m_mediaInfo.videoHeight)
                 {
                     void *pixels = nullptr;
                     int pitch = 0;
-                    auto lockResult = SDL_LockTexture(m_sdlTexture, nullptr, &pixels, &pitch);
+                    auto lockResult = SDL_LockTexture(m_sdlVideoTexture, nullptr, &pixels, &pitch);
                     if (lockResult && pixels != nullptr && pitch != 0)
                     {
                         std::memcpy(pixels, image.data(), image.size() * sizeof(Color::XRGB8888));
-                        SDL_UnlockTexture(m_sdlTexture);
+                        SDL_UnlockTexture(m_sdlVideoTexture);
                     }
-                    if (!SDL_RenderTexture(getRenderer(), m_sdlTexture, nullptr, nullptr))
+                    mustPresent = true;
+                }
+            }
+            // check if we have subtitles data pending
+            if (!m_subtitlesData.empty())
+            {
+                // we have subtitles data, get it, remove from the queue
+                auto subtitles = m_subtitlesData.front();
+                m_subtitlesData.pop_front();
+                // render subtitles
+                const float textScale = 2.0F;
+                SDL_SetRenderScale(getRenderer(), textScale, textScale);
+                SDL_SetRenderDrawColor(getRenderer(), 255, 255, 255, 0.6F * 255); // white, 60% alpha
+                const auto length = subtitles.text.size();
+                const auto x = (m_mediaInfo.videoWidth - length * textScale * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2;
+                const auto y = m_mediaInfo.videoHeight - 8 - textScale * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+                SDL_RenderDebugText(getRenderer(), x, y, subtitles.text.data());
+                SDL_SetRenderScale(getRenderer(), 1.0f, 1.0f);
+                mustPresent = true;
+            }
+            // check if we should preset via SDL renderer
+            if (mustPresent)
+            {
+                mustPresent = false;
+                // render video texture
+                if (m_sdlVideoTexture)
+                {
+                    if (!SDL_RenderTexture(getRenderer(), m_sdlVideoTexture, nullptr, nullptr))
                     {
-                        std::cerr << "Failed to render SDL texture: " << SDL_GetError() << std::endl;
+                        std::cerr << "Failed to render SDL video texture: " << SDL_GetError() << std::endl;
                         unlockEventMutex();
                         return -1;
                     }
-                    if (!SDL_RenderPresent(getRenderer()))
-                    {
-                        std::cerr << "Failed to present SDL render: " << SDL_GetError() << std::endl;
-                        unlockEventMutex();
-                        return -1;
-                    }
+                }
+                // now present to display
+                if (!SDL_RenderPresent(getRenderer()))
+                {
+                    std::cerr << "Failed to present SDL render: " << SDL_GetError() << std::endl;
+                    unlockEventMutex();
+                    return -1;
                 }
             }
             // else: we're skipping frames...
@@ -214,7 +247,7 @@ namespace Media
             // push event to display frame
             pushUserEvent(EVENT_DISPLAY_FRAME);
             // check if we have already reached the end of the media file
-            if (m_mediaInfo.audioNrOfFrames <= m_audioFrameIndex && m_mediaInfo.videoNrOfFrames <= m_videoFrameIndex)
+            if (m_mediaInfo.audioNrOfFrames <= m_audioFrameIndex && m_mediaInfo.videoNrOfFrames <= m_videoFrameIndex && m_mediaInfo.subtitlesNrOfFrames <= m_subtitlesFrameIndex)
             {
                 // push event to stop playback
                 pushUserEvent(EVENT_STOP);
@@ -233,21 +266,28 @@ namespace Media
     {
         int32_t requestedAudioFrames = (m_mediaInfo.fileType & IO::FileType::Audio) && m_mediaInfo.audioNrOfFrames > m_audioFrameIndex ? 1 : 0;
         int32_t requestedVideoFrames = (m_mediaInfo.fileType & IO::FileType::Video) && m_mediaInfo.videoNrOfFrames > m_videoFrameIndex ? 1 : 0;
-        while (requestedAudioFrames > 0 || requestedVideoFrames > 0)
+        int32_t requestedSubtitlesFrames = (m_mediaInfo.fileType & IO::FileType::Subtitles) && m_mediaInfo.subtitlesNrOfFrames > m_subtitlesFrameIndex ? 1 : 0;
+        while (requestedAudioFrames > 0 || requestedVideoFrames > 0 || requestedSubtitlesFrames > 0)
         {
             auto frame = m_mediaReader->readFrame();
             if (frame.frameType == IO::FrameType::Audio)
             {
                 ++m_audioFrameIndex;
                 --requestedAudioFrames;
-                const auto &planarSamples = std::get<std::vector<int16_t>>(frame.data);
+                const auto &planarSamples = std::get<Audio::RawData>(frame.data);
                 m_audioData.push_back(AudioHelpers::toRawInterleavedData(planarSamples, m_mediaInfo.audioChannelFormat));
             }
             else if (frame.frameType == IO::FrameType::Pixels)
             {
                 ++m_videoFrameIndex;
                 --requestedVideoFrames;
-                m_videoData.push_back(std::get<std::vector<Color::XRGB8888>>(frame.data));
+                m_videoData.push_back(std::get<Image::RawData>(frame.data));
+            }
+            else if (frame.frameType == IO::FrameType::Subtitles)
+            {
+                ++m_subtitlesFrameIndex;
+                --requestedSubtitlesFrames;
+                m_subtitlesData.push_back(std::get<Subtitles::RawData>(frame.data));
             }
         }
     }

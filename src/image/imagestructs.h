@@ -13,7 +13,11 @@
 namespace Image
 {
 
-    using MapData = std::vector<uint16_t>; // Screen / map data that specifies which tile index is displayed at a screen position
+    /// @brief Image data returned from media reader
+    using RawData = std::vector<Color::XRGB8888>;
+
+    /// @brief Screen / map data that specifies which tile index is displayed at a screen position
+    using MapData = std::vector<uint16_t>;
 
     /// @brief Information about tile map
     struct MapInfo

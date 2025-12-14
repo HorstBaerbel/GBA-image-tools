@@ -6,6 +6,7 @@
 #include "if/image_processingtype.h"
 #include "if/vid2h_structs.h"
 #include "image/imagestructs.h"
+#include "subtitles/subtitlesstructs.h"
 
 #include <array>
 #include <cstdint>
@@ -21,6 +22,7 @@ namespace IO::Vid2h
         FileType contentType = IO::FileType::Unknown; // File content type
         int32_t audioHeaderOffset = -1;               // Offset to audio header data in bytes
         int32_t videoHeaderOffset = -1;               // Offset to video header data in bytes
+        int32_t subtitlesHeaderOffset = -1;           // Offset to subtitle header data in bytes
         int32_t frameDataOffset = -1;                 // Offset to frame data in bytes
         int32_t metaDataOffset = -1;                  // Offset to meta data in bytes
     };
@@ -40,6 +42,9 @@ namespace IO::Vid2h
     /// @brief Create audio header
     auto createAudioHeader(const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded, const std::vector<Audio::ProcessingType> &decodingSteps) -> AudioHeader;
 
+    /// @brief Create subtitles header
+    auto createSubtitlesHeader(uint32_t subtitlesNrOfFrames) -> SubtitlesHeader;
+
     /// @brief Write video file header to output stream
     /// @note This moves the os stream position past the video header
     auto writeVideoHeader(std::ostream &os, const FileDataInfo &fileHeaderInfo, const VideoHeader &videoHeader) -> void;
@@ -48,6 +53,10 @@ namespace IO::Vid2h
     /// @note This moves the os stream position past the audio header
     auto writeAudioHeader(std::ostream &os, const FileDataInfo &fileHeaderInfo, const AudioHeader &audioHeader) -> void;
 
+    /// @brief Write subtitles file header to output stream
+    /// @note This moves the os stream position past the subtitles header
+    auto writeAudioHeader(std::ostream &os, const FileDataInfo &fileHeaderInfo, const SubtitlesHeader &subtitlesHeader) -> void;
+
     /// @brief Write video frame data to output stream, adding compressed size as 4 byte value at the front
     /// @note This advances the os stream position past the new frame data
     auto writeFrame(std::ostream &os, const Image::Frame &frame) -> void;
@@ -55,6 +64,10 @@ namespace IO::Vid2h
     /// @brief Write audio frame data to output stream, adding compressed size as 4 byte value at the front
     /// @note This advances the os stream position past the new frame data
     auto writeFrame(std::ostream &os, const Audio::Frame &frame) -> void;
+
+    /// @brief Write subtitles frame data to output stream, adding size as 4 byte value at the front
+    /// @note This advances the os stream position past the new frame data
+    auto writeFrame(std::ostream &os, const Subtitles::Frame &frame) -> void;
 
     /// @brief Write meta data at the end of the output stream and adjust the file header value metaDataSize accordingly
     /// @note Use this AFTER writing all data frames using writeFrame()! This advances the os stream position past the new meta data
@@ -70,6 +83,9 @@ namespace IO::Vid2h
 
     /// @brief Read audio header from stream
     auto readAudioHeader(std::istream &is, const FileDataInfo &fileHeaderInfo) -> AudioHeader;
+
+    /// @brief Read subtitles header from stream
+    auto readSubtitlesHeader(std::istream &is, const FileDataInfo &fileDataInfo) -> SubtitlesHeader;
 
     /// @brief Read frame data from input stream
     auto readFrame(std::istream &is) -> std::pair<IO::FrameType, std::vector<uint8_t>>;

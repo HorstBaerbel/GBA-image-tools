@@ -28,9 +28,6 @@ namespace Media
         Window(uint32_t width, uint32_t height, const std::string &title);
         ~Window();
 
-        auto queueVideoFrame(const std::vector<Color::XRGB8888> &image) -> void;
-        auto queueAudioFrame(const std::vector<int16_t> &samples) -> void;
-
         auto getPlayState() const -> PlayState;
 
         auto play(std::shared_ptr<Reader> mediaReader) -> void;
@@ -44,13 +41,15 @@ namespace Media
 
         auto readFrames() -> void;
 
-        std::deque<std::vector<Color::XRGB8888>> m_videoData;
-        uint32_t m_videoFrameIndex = 0;
         std::deque<std::vector<uint8_t>> m_audioData;
         uint32_t m_audioFrameIndex = 0;
+        std::deque<Image::RawData> m_videoData;
+        uint32_t m_videoFrameIndex = 0;
+        std::deque<Subtitles::RawData> m_subtitlesData;
+        uint32_t m_subtitlesFrameIndex = 0;
 
-        SDL_Texture *m_sdlTexture = nullptr;
         SDL_AudioStream *m_sdlAudioStream = nullptr;
+        SDL_Texture *m_sdlVideoTexture = nullptr;
 
         std::shared_ptr<Reader> m_mediaReader;
         Reader::MediaInfo m_mediaInfo;

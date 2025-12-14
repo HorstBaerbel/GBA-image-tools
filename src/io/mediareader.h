@@ -1,8 +1,10 @@
 #pragma once
 
-#include "audio/audioformat.h"
+#include "audio/audiostructs.h"
 #include "color/xrgb8888.h"
 #include "if/mediatypes.h"
+#include "image/imagestructs.h"
+#include "subtitles/subtitlesstructs.h"
 
 #include <cstdint>
 #include <memory>
@@ -44,6 +46,8 @@ namespace Media
             Audio::ChannelFormat audioChannelFormat = Audio::ChannelFormat::Unknown; // Only mono = 1 or stereo = 2 supported
             Audio::SampleFormat audioSampleFormat = Audio::SampleFormat::Unknown;    // Description of bits and signed / unsigned in sample format
             double audioOffsetS = 0;                                                 // Offset of audio relative to video in s
+            // ----- subtitles -----
+            uint32_t subtitlesNrOfFrames = 0; // Number of all subtitles frames (must not be the same as video/audio frames)
             // ----- meta data -----
             uint32_t metaDataSize = 0;
         };
@@ -52,7 +56,7 @@ namespace Media
         struct FrameData
         {
             IO::FrameType frameType = IO::FrameType::Unknown;                      // Data type
-            std::variant<std::vector<Color::XRGB8888>, std::vector<int16_t>> data; // Raw, uncompressed pixel or (planar) audio data
+            std::variant<Image::RawData, Audio::RawData, Subtitles::RawData> data; // Raw pixel or (planar) audio or subtitles data
         };
 
         /// @brief Default constructor.

@@ -43,6 +43,7 @@ namespace Media
         IO::Vid2h::FileDataInfo m_fileDataInfo;
         IO::Vid2h::AudioHeader m_audioHeader;
         IO::Vid2h::VideoHeader m_videoHeader;
+        IO::Vid2h::SubtitlesHeader m_subtitlesHeader;
         std::vector<uint8_t> m_metaData;
         std::vector<uint8_t> m_previousAudio;
         std::vector<Color::XRGB8888> m_previousPixels;

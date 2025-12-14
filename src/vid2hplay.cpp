@@ -123,6 +123,7 @@ int main(int argc, const char *argv[])
         Media::Reader::MediaInfo mediaInfo;
         bool hasVideo = false;
         bool hasAudio = false;
+        bool hasSubtitles = false;
         bool hasMetaData = false;
         try
         {
@@ -131,6 +132,7 @@ int main(int argc, const char *argv[])
             mediaInfo = mediaReader->getInfo();
             hasVideo = mediaInfo.fileType & IO::FileType::Video;
             hasAudio = mediaInfo.fileType & IO::FileType::Audio;
+            hasSubtitles = mediaInfo.fileType & IO::FileType::Subtitles;
             hasMetaData = mediaInfo.metaDataSize > 0;
             if (hasVideo)
             {
@@ -142,6 +144,10 @@ int main(int argc, const char *argv[])
                 std::cout << "Audio stream: " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
                 std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
                 std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfFrames << " frames, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
+            }
+            if (hasSubtitles)
+            {
+                std::cout << "Subtitles stream: " << mediaInfo.subtitlesNrOfFrames << " frames" << std::endl;
             }
             if (hasMetaData)
             {
