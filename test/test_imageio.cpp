@@ -1,6 +1,6 @@
 #include "testmacros.h"
 
-#include "io/imageio.h"
+#include "image/imageio.h"
 
 #include <algorithm>
 #include <filesystem>

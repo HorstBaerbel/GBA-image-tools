@@ -3,7 +3,7 @@
 
 #include "color/colorhelpers.h"
 #include "color/lchf.h"
-#include "io/imageio.h"
+#include "image/imageio.h"
 
 int main(int argc, char *argv[])
 {

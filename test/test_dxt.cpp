@@ -2,8 +2,8 @@
 
 #include "color/psnr.h"
 #include "color/rgb888.h"
+#include "image/imageio.h"
 #include "image_codec/dxt.h"
-#include "io/imageio.h"
 
 #include <algorithm>
 #include <iostream>

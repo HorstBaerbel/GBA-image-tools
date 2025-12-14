@@ -206,14 +206,14 @@ namespace Media
         else if (frame.first == IO::FrameType::Subtitles)
         {
             auto inData = frame.second;
-            REQUIRE(inData.size() >= 4, std::runtime_error, "Subtitles frame data too small");
-            REQUIRE(inData.size() <= (2 + 1 + Subtitles::MaxSubTitleLength), std::runtime_error, "Subtitles frame data too big");
+            REQUIRE(inData.size() > (4 + 4 + 1), std::runtime_error, "Subtitles frame data too small");
+            REQUIRE(inData.size() <= (4 + 4 + 1 + Subtitles::MaxSubTitleLength), std::runtime_error, "Subtitles frame data too big");
             Subtitles::RawData outData;
-            outData.durationFrames = inData[0] << 8;
-            outData.durationFrames |= inData[1];
-            const uint8_t length = inData[2];
-            REQUIRE(length > 0 && length <= (inData.size() - 3) && length <= Subtitles::MaxSubTitleLength, std::runtime_error, "Bad subtitles string size");
-            std::copy(std::next(inData.cbegin(), 3), std::next(inData.cbegin(), 3 + length), std::back_inserter(outData.text));
+            outData.startTimeInS = static_cast<float>(*reinterpret_cast<int32_t *>(inData.data() + 0)) / 65536.0F;
+            outData.endTimeInS = static_cast<float>(*reinterpret_cast<int32_t *>(inData.data() + 4)) / 65536.0F;
+            const uint8_t length = inData[8];
+            REQUIRE(length > 0 && length <= (inData.size() - 9) && length <= Subtitles::MaxSubTitleLength, std::runtime_error, "Bad subtitles string size");
+            std::copy(std::next(inData.cbegin(), 9), std::next(inData.cbegin(), 9 + length), std::back_inserter(outData.text));
             return {IO::FrameType::Subtitles, outData};
         }
         return {IO::FrameType::Unknown, {}};

@@ -186,14 +186,13 @@ namespace IO::Vid2h
     auto writeFrame(std::ostream &os, const Subtitles::Frame &frame) -> void
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
-        REQUIRE(frame.durationFrames < 65536, std::runtime_error, "Max. subtitle frame duration is 65535");
         REQUIRE(frame.text.size() <= Subtitles::MaxSubTitleLength, std::runtime_error, "Max. subtitles length is " << Subtitles::MaxSubTitleLength);
-        // convert subtitle to raw data (duration, length, test)
-        std::vector<uint8_t> subtitleData;
-        subtitleData.reserve(2 + 1 + frame.text.size());
-        // store duration
-        subtitleData.push_back(static_cast<uint8_t>((frame.durationFrames >> 8) && 0xFF));
-        subtitleData.push_back(static_cast<uint8_t>(frame.durationFrames && 0xFF));
+        // convert subtitle to raw data (start, end, length, test)
+        std::vector<uint8_t> subtitleData(4 + 4);
+        subtitleData.reserve(4 + 4 + 1 + frame.text.size());
+        // store times as 16:16 fixed-point
+        *reinterpret_cast<int32_t *>(subtitleData.data() + 0) = static_cast<int32_t>(std::round(frame.startTimeInS * 65536.0F));
+        *reinterpret_cast<int32_t *>(subtitleData.data() + 4) = static_cast<int32_t>(std::round(frame.endTimeInS * 65536.0F));
         // store string size
         subtitleData.push_back(static_cast<uint8_t>(frame.text.size()));
         // store string

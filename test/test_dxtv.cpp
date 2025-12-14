@@ -2,10 +2,10 @@
 
 #include "color/psnr.h"
 #include "color/rgb888.h"
+#include "image/imageio.h"
 #include "video_codec/blockview.h"
 #include "video_codec/codebook.h"
 #include "video_codec/dxtv.h"
-#include "io/imageio.h"
 
 #include <algorithm>
 #include <iostream>

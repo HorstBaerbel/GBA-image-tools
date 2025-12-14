@@ -5,22 +5,22 @@
 
 namespace Subtitles
 {
-
     /// @brief Subtitles data returned from media reader
     struct RawData
     {
-        uint16_t durationFrames = 0; // Duration of the subtitle in frames
+        float startTimeInS = 0; // Start time in seconds
+        float endTimeInS = 0;   // End time in seconds
         std::string text;
     };
 
     constexpr uint32_t MaxSubTitleLength = 64;
 
-    /// @brief Stores data for a subtitles frame
+    /// @brief One subtitle from a SRT file
     struct Frame
     {
-        uint32_t index = 0;          // Input subtitle index counter
-        uint32_t durationFrames = 0; // Duration of the subtitle in video frames
-        std::string text;
+        uint32_t index = 0;     // Index in file
+        float startTimeInS = 0; // Start time in seconds
+        float endTimeInS = 0;   // End time in seconds
+        std::string text;       // Subtitle text
     };
-
 }

@@ -2,7 +2,7 @@
 
 #include "boundingbox.h"
 #include "exception.h"
-#include "io/csvio.h"
+#include "statistics/csvio.h"
 
 #include <Eigen/Core>
 

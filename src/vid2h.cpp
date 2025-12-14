@@ -2,6 +2,7 @@
 #include "audio/audioprocessing.h"
 #include "audio/resampler.h"
 #include "audio/samplebuffer.h"
+#include "audio/wavwriter.h"
 #include "color/colorhelpers.h"
 #include "color/conversions.h"
 #include "compression/lzss.h"
@@ -11,11 +12,10 @@
 #include "io/ffmpegreader.h"
 #include "io/textio.h"
 #include "io/vid2hio.h"
-#include "io/wavwriter.h"
-#include "io/statisticswriter.h"
 #include "processing/datahelpers.h"
 #include "processing/processingoptions.h"
 #include "statistics/statisticswindow.h"
+#include "statistics/statisticswriter.h"
 
 #include <cstdlib>
 #include <cstring>

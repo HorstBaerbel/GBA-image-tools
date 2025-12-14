@@ -51,7 +51,7 @@ list(APPEND GENCOLORMAPS_SRC
     color/xrgb8888.cpp
     color/ycgcorf.cpp
     color/conversions.cpp
-    io/imageio.cpp
+    image/imageio.cpp
     ${LIBPLUM_INCLUDE_DIR}/libplum.c
 )
 
