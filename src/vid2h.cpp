@@ -12,6 +12,7 @@
 #include "io/ffmpegreader.h"
 #include "io/textio.h"
 #include "io/vid2hio.h"
+#include "subtitles/srtio.h"
 #include "processing/datahelpers.h"
 #include "processing/processingoptions.h"
 #include "statistics/statisticswindow.h"
@@ -499,6 +500,15 @@ int main(int argc, const char *argv[])
             std::cerr << "Chose not to output audio, but source has no video. Output would be empty. Exiting..." << std::endl;
             return 1;
         }
+        // ----- read subtitle file -----
+        bool outputHasSubtitles = false;
+        std::vector<Subtitles::Frame> subtitles;
+        if (options.subtitlesFile)
+        {
+            std::cout << "Reading subtitles from: " << options.subtitlesFile.value << std::endl;
+            subtitles = IO::SRT::readSRT(options.subtitlesFile.value);
+            outputHasSubtitles = true;
+        }
         // ----- build image processing pipeline - input -----
         Image::Processing videoProcessing;
         if (options.video)
@@ -545,7 +555,7 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    const auto contentType = static_cast<IO::FileType>((outputHasVideo ? IO::FileType::Video : IO::FileType::Unknown) | (outputHasAudio ? IO::FileType::Audio : IO::FileType::Unknown));
+                    const auto contentType = static_cast<IO::FileType>((outputHasVideo ? IO::FileType::Video : IO::FileType::Unknown) | (outputHasAudio ? IO::FileType::Audio : IO::FileType::Unknown) | (outputHasSubtitles ? IO::FileType::Subtitles : IO::FileType::Unknown));
                     fileDataInfo = IO::Vid2h::writeFileHeader(binFile, contentType);
                 }
                 catch (const std::runtime_error &e)
@@ -590,6 +600,8 @@ int main(int argc, const char *argv[])
         // Audio info
         uint64_t audioOutCompressedSize = 0; // Combined size of compressed audio data
         int32_t audioFirstFrameOffset = 0;   // Offset of first audio frame in samples
+        // Subtitles info
+        float currentTime = 0;
         while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioProcessing.nrOfInputFrames() < mediaInfo.audioNrOfFrames)
         {
             const auto inFrame = mediaReader.readFrame();
