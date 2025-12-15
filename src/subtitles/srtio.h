@@ -2,8 +2,6 @@
 
 #include "subtitlesstructs.h"
 
-#include <cstdint>
-#include <fstream>
 #include <string>
 #include <vector>
 

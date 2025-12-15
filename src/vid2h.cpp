@@ -77,6 +77,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.sampleFormat.cxxOption);
         opts.add_option("", options.sampleRateHz.cxxOption);
         opts.add_option("", options.adpcm.cxxOption);
+        opts.add_option("", options.subtitlesFile.cxxOption);
         opts.add_option("", options.metaFile.cxxOption);
         opts.add_option("", options.metaString.cxxOption);
         opts.add_option("", options.printStats.cxxOption);
@@ -131,6 +132,7 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Can only exclude audio OR video from output" << std::endl;
             return false;
         }
+        options.subtitlesFile.parse(result);
         options.metaFile.parse(result);
         options.metaString.parse(result);
         if (options.metaFile && options.metaString)
@@ -217,6 +219,8 @@ void printUsage()
     std::cout << options.sampleRateHz.helpString() << std::endl;
     std::cout << "Audio compression options (all optional):" << std::endl;
     std::cout << options.adpcm.helpString() << std::endl;
+    std::cout << "Subtitles options:" << std::endl;
+    std::cout << options.subtitlesFile.helpString() << std::endl;
     std::cout << "Meta data options (mutually exclusive):" << std::endl;
     std::cout << options.metaFile.helpString() << std::endl;
     std::cout << options.metaString.helpString() << std::endl;

@@ -410,6 +410,20 @@ ProcessingOptions::OptionT<std::string> ProcessingOptions::metaString{
         }
     }};
 
+ProcessingOptions::OptionT<std::string> ProcessingOptions::subtitlesFile{
+    false,
+    {"subtitlesfile", "Read subtitles from .srt file and add to output.", cxxopts::value(subtitlesFile.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(subtitlesFile.cxxOption.opts_))
+        {
+            REQUIRE(!subtitlesFile.value.empty(), std::runtime_error, "Meta data file path can not be empty if option specified");
+            subtitlesFile.isSet = true;
+        }
+    }};
+
 ProcessingOptions::Option ProcessingOptions::printStats{
     false,
     {"statistics", "Print statistics about the processing steps.", cxxopts::value(printStats.isSet)}};

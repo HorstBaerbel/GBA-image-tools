@@ -72,6 +72,9 @@ public:
     static OptionT<std::string> metaFile;
     static OptionT<std::string> metaString;
 
+    // Subtitles
+    static OptionT<std::string> subtitlesFile;
+
     // General options
     static Option printStats;
     static Option dryRun;
