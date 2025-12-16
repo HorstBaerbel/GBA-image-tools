@@ -237,23 +237,39 @@ namespace Media
                 // render subtitles
                 if (!m_currentSubtitles.empty())
                 {
-                    const float textScale = 1.5F;
+                    const float textScale = 2.0F;
                     SDL_SetRenderScale(getRenderer(), textScale, textScale);
-                    SDL_SetRenderDrawColor(getRenderer(), 255, 255, 255, 255);
-                    int renderWidth = 0;
-                    int renderHeight = 0;
-                    SDL_GetCurrentRenderOutputSize(getRenderer(), &renderWidth, &renderHeight);
+                    SDL_SetRenderDrawColor(getRenderer(), 255, 255, 255, SDL_ALPHA_OPAQUE);
+                    std::pair<int, int> renderSize = {0, 0};
+                    SDL_GetCurrentRenderOutputSize(getRenderer(), &renderSize.first, &renderSize.second);
+                    // collect all text lines we need to render
+                    std::vector<std::string> lines;
                     for (std::size_t si = 0; si < m_currentSubtitles.size(); ++si)
                     {
                         const auto &subtitle = m_currentSubtitles[si];
-                        // is it time to display the subtitle?
+                        // is it time to render the subtitle?
                         if (m_playTimeS >= subtitle.startTimeS && m_playTimeS < subtitle.endTimeS)
                         {
-                            const auto length = subtitle.text.size();
-                            const auto x = (renderWidth - (textScale * length * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE)) / 2;
-                            const auto y = renderHeight - (si + 1) * textScale * (SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE + SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE / 2);
-                            SDL_RenderDebugText(getRenderer(), x / textScale, y / textScale, subtitle.text.data());
+                            // if the subtitle has multiple lines, split it
+                            std::size_t lastPos = 0;
+                            std::size_t nextPos = 0;
+                            while ((nextPos = subtitle.text.find('\n', lastPos)) != std::string::npos)
+                            {
+                                lines.push_back(subtitle.text.substr(lastPos, nextPos - lastPos));
+                                lastPos = nextPos + 1;
+                            }
+                            lines.push_back(subtitle.text.substr(lastPos));
                         }
+                    }
+                    // now render all lines
+                    float y = renderSize.second - (lines.size() * textScale * (SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE + SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE / 2));
+                    for (std::size_t li = 0; li < lines.size(); ++li)
+                    {
+                        const auto &text = lines.at(li);
+                        const auto textLength = text.size();
+                        const auto x = (renderSize.first - (textScale * textLength * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE)) / 2;
+                        SDL_RenderDebugText(getRenderer(), x / textScale, y / textScale, text.data());
+                        y += textScale * (SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE + SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE / 2);
                     }
                     SDL_SetRenderScale(getRenderer(), 1.0f, 1.0f);
                 }
