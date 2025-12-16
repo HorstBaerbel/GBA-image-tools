@@ -1,11 +1,11 @@
 #include "vid2hdecoder.h"
 
-#include "audio/adpcm.h"
+#include "compression/adpcm.h"
+#include "compression/bios.h"
 #include "compression/lz4.h"
 #include "compression/lz77.h"
 #include "memory/memory.h"
 #include "sys/base.h"
-#include "sys/decompress.h"
 #include "video/dxtv.h"
 
 #include "audio_processingtype.h"
@@ -81,7 +81,7 @@ namespace Media
                 Memory::memcpy32(currentDst32, currentSrc32, uncompressedSize8 / 4);
                 break;
             case Image::ProcessingType::CompressRLE:
-                dstInVRAM ? BIOS::RLUnCompReadNormalWrite16bit(currentSrc32, currentDst32) : BIOS::RLUnCompReadNormalWrite8bit(currentSrc32, currentDst32);
+                dstInVRAM ? Compression::RLUnCompReadNormalWrite16bit(currentSrc32, currentDst32) : Compression::RLUnCompReadNormalWrite8bit(currentSrc32, currentDst32);
                 break;
             case Image::ProcessingType::CompressLZSS_10:
                 dstInVRAM ? Compression::LZ77UnCompWrite16bit(currentSrc32, currentDst32) : Compression::LZ77UnCompWrite8bit(currentSrc32, currentDst32);
@@ -158,7 +158,7 @@ namespace Media
                 Memory::memcpy32(currentDst32, currentSrc32, uncompressedSize8 / 4);
                 break;
             case Audio::ProcessingType::CompressRLE:
-                BIOS::RLUnCompReadNormalWrite8bit(currentSrc32, currentDst32);
+                Compression::RLUnCompReadNormalWrite8bit(currentSrc32, currentDst32);
                 break;
             case Audio::ProcessingType::CompressLZSS_10:
                 Compression::LZ77UnCompWrite8bit(currentSrc32, currentDst32);

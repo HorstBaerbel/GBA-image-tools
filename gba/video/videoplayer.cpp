@@ -3,11 +3,10 @@
 #include "memory/memory.h"
 #include "sys/base.h"
 #include "vid2hdecoder.h"
-
-#include <gba_dma.h>
-#include <gba_interrupt.h>
-#include <gba_sound.h>
-#include <gba_timers.h>
+#include <memory/dma.h>
+#include <sys/interrupts.h>
+#include <sys/sound.h>
+#include <sys/timers.h>
 
 #define DEBUG_PLAYER
 #ifdef DEBUG_PLAYER
@@ -86,10 +85,10 @@ namespace Media
             REG_TM0CNT_H &= ~TIMER_START;
             REG_TM1CNT_H &= ~TIMER_START;
             // stop DMA channels
-            REG_DMA1CNT &= ~DMA_ENABLE;
+            REG_DMA[1].control &= ~DMA_ENABLE;
             if (m_mediaInfo.audio.channels == 2)
             {
-                REG_DMA2CNT &= ~DMA_ENABLE;
+                REG_DMA[2].control &= ~DMA_ENABLE;
             }
             if (m_audioFramesDecoded > 0)
             {
@@ -99,14 +98,14 @@ namespace Media
                 // calculate buffer start
                 const auto sampleBuffer0 = reinterpret_cast<uint32_t>(m_audioPlayBuffer);
                 // set DMA channels to read from new buffer and restart DMA
-                REG_DMA1SAD = sampleBuffer0;
-                REG_DMA1CNT |= DMA_ENABLE;
+                REG_DMA[1].source = (uint32_t)sampleBuffer0;
+                REG_DMA[1].control |= DMA_ENABLE;
                 if (m_mediaInfo.audio.channels == 2)
                 {
                     // align output buffer to next word boundary
                     const auto sampleBuffer1 = (sampleBuffer0 + m_audioPlayBufferChannelSize8 + 3) & 0xFFFFFFFC;
-                    REG_DMA2SAD = sampleBuffer1;
-                    REG_DMA2CNT |= DMA_ENABLE;
+                    REG_DMA[2].source = (uint32_t)sampleBuffer1;
+                    REG_DMA[2].control |= DMA_ENABLE;
                 }
                 // set timer 1 count to number of words in new buffer
                 REG_TM1CNT_L = 65536U - m_audioPlayBufferChannelSize8;
@@ -127,10 +126,10 @@ namespace Media
             REG_TM0CNT_H = 0;
             REG_TM1CNT_H = 0;
             // stop DMA channels
-            REG_DMA1CNT = 0;
+            REG_DMA[1].control = 0;
             if (m_mediaInfo.audio.channels == 2)
             {
-                REG_DMA2CNT = 0;
+                REG_DMA[2].control = 0;
             }
             m_audioFramesRequested = 0;
         }
@@ -301,8 +300,8 @@ namespace Media
                 // fill audio buffers with silence
                 Memory::memset32(m_audioBackBuffer, 0, m_audioBufferSize8 / 4);
                 // enable DMA 1 to copy words to sound FIFO A
-                REG_DMA1DAD = reinterpret_cast<uint32_t>(&REG_FIFO_A);                        // write to sound FIFO A
-                REG_DMA1CNT = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
+                REG_DMA[1].destination = (uint32_t)&REG_FIFO_A;                                      // write to sound FIFO A
+                REG_DMA[1].control = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
                 if (m_mediaInfo.audio.channels == 1)
                 {
                     // set DMA channel A to output to left and right at 100% and reset FIFO. by default timer 0 is used for both channels
@@ -311,8 +310,8 @@ namespace Media
                 else if (m_mediaInfo.audio.channels == 2)
                 {
                     // enable DMA 2 to copy words to sound FIFO B
-                    REG_DMA2DAD = reinterpret_cast<uint32_t>(&REG_FIFO_B);                        // write to sound FIFO B
-                    REG_DMA2CNT = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
+                    REG_DMA[2].destination = (uint32_t)&REG_FIFO_B;                                      // write to sound FIFO B
+                    REG_DMA[2].control = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
                     // set DMA channel A to output to left at 100% and reset FIFO
                     // set DMA channel B to output to right at 100% and reset FIFO
                     REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_RESET_FIFO | SNDB_VOL_100 | SNDB_R_ENABLE | SNDB_RESET_FIFO;
@@ -321,8 +320,8 @@ namespace Media
                 REG_TM0CNT_L = 65536U - (uint64_t(16777216) / m_mediaInfo.audio.sampleRateHz);
                 REG_TM0CNT_H = 0; // start timer later
                 // set timer 1 to cascade from timer 0, issue IRQ to swap sample buffers and set divider to 0 == 1/1
-                irqSet(irqMASKS::IRQ_TIMER1, AudioBufferRequest);
-                irqEnable(irqMASKS::IRQ_TIMER1);
+                irqSet(IRQMask::IRQ_TIMER1, AudioBufferRequest);
+                irqEnable(IRQMask::IRQ_TIMER1);
                 REG_TM1CNT_L = 0;                           // set up number of samples in buffer later
                 REG_TM1CNT_H = TIMER_COUNT | TIMER_IRQ | 0; // start timer later
                 // read the first video frame from media data
@@ -341,8 +340,8 @@ namespace Media
                 Memory::memset32(m_videoScratchPad, clearColor, m_videoScratchPadSize8 / 4);
                 // set up timer 2 to increase with video frame interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
                 // set timer 2 divider to 2 == 1/256 -> 16*1024*1024 cycles/s / 256 = 65536/s
-                irqSet(irqMASKS::IRQ_TIMER2, VideoFrameRequest);
-                irqEnable(irqMASKS::IRQ_TIMER2);
+                irqSet(IRQMask::IRQ_TIMER2, VideoFrameRequest);
+                irqEnable(IRQMask::IRQ_TIMER2);
                 REG_TM2CNT_L = 65536U - ((uint64_t(65536U) << 16) / m_mediaInfo.video.frameRateHz);
                 REG_TM2CNT_H = TIMER_IRQ | 2; // start timer later
                 // read the first video frame from media data
@@ -422,16 +421,16 @@ namespace Media
             // disable audio timers
             REG_TM0CNT_H = 0;
             REG_TM1CNT_H = 0;
-            irqDisable(irqMASKS::IRQ_TIMER1);
+            irqDisable(IRQMask::IRQ_TIMER1);
             // disable audio DMAs
-            REG_DMA1CNT = 0;
+            REG_DMA[1].control = 0;
             if (m_mediaInfo.audio.channels == 2)
             {
-                REG_DMA2CNT = 0;
+                REG_DMA[2].control = 0;
             }
             // disable video timer
             REG_TM2CNT_H = 0;
-            irqDisable(irqMASKS::IRQ_TIMER2);
+            irqDisable(IRQMask::IRQ_TIMER2);
 #ifdef DEBUG_PLAYER
             Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);
             Debug::printf("Video avg. decode: %f ms (max. %f ms)", int32_t(m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded), m_videoStats.m_maxDecodedMs);

@@ -1,15 +1,12 @@
-#include <gba_base.h>
-#include <gba_input.h>
-#include <gba_interrupt.h>
-#include <gba_systemcalls.h>
-#include <gba_timers.h>
-#include <gba_video.h>
-
-#include "base.h"
 #include "compression/lz77.h"
 #include "image/dxt.h"
-#include "memory.h"
-#include "output.h"
+#include "memory/memory.h"
+#include "print/output.h"
+#include "sys/base.h"
+#include "sys/input.h"
+#include "sys/interrupts.h"
+#include "sys/timers.h"
+#include "sys/video.h"
 #include "tui.h"
 
 #include "data/images_dxt.h"

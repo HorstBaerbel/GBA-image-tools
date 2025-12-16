@@ -34,22 +34,24 @@ endmacro()
 
 # Video example sources --------------------------------------------
 LIST(APPEND VIDEO_SOURCE_FILES
-	time.cpp
-	tui.cpp
-	video.cpp
-	memory/dma.cpp
-	memory/memcpy.s
-	memory/memset.s
-	print/itoa.cpp
-	print/output.cpp
-	sys/decompress.cpp
-	compression/lz4.cpp
-	compression/lz4_asm.s
-	compression/lz77_asm.s
+	GBA-demo-framework/src/time.cpp
+	GBA-demo-framework/src/tui.cpp
+	GBA-demo-framework/src/memory/dma.cpp
+	GBA-demo-framework/src/memory/memcpy.s
+	GBA-demo-framework/src/memory/memset.s
+	GBA-demo-framework/src/print/itoa.cpp
+	GBA-demo-framework/src/print/output.cpp
+	GBA-demo-framework/src/sys/interrupts.cpp
+	GBA-demo-framework/src/sys/intdispatcher.s
+	GBA-demo-framework/src/sys/input.cpp
+	GBA-demo-framework/src/compression/bios.cpp
+	GBA-demo-framework/src/compression/lz4.cpp
+	GBA-demo-framework/src/compression/lz4_asm.s
+	GBA-demo-framework/src/compression/lz77_asm.s
+	GBA-demo-framework/src/compression/adpcm.cpp
+	GBA-demo-framework/src/compression/adpcm_asm.s
 	../src/if/adpcm_structs.cpp
 	../src/if/adpcm_tables.cpp
-	audio/adpcm.cpp
-	audio/adpcm_asm.s
 	../src/if/dxt_tables.cpp
 	../src/if/dxtv_structs.cpp
 	video/dxtv.cpp
@@ -57,6 +59,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	video/vid2hdecoder.cpp
 	video/vid2hio.cpp
 	video/videoplayer.cpp
+	video.cpp
 	data/font_8x8.c
 	data/video.s
 )
@@ -64,44 +67,42 @@ set_source_files_properties(data/video.s OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/data
 
 # Image example sources --------------------------------------------
 LIST(APPEND IMAGE_SOURCE_FILES
-	tui.cpp
-	image.cpp
-	memory/dma.cpp
-	memory/memcpy.s
-	memory/memset.s
-	print/itoa.cpp
-	print/output.cpp
-	sys/decompress.cpp
-	compression/lz4.cpp
-	compression/lz4_asm.s
-	compression/lz77_asm.s
-	image/dxt.cpp
+	GBA-demo-framework/src/tui.cpp
+	GBA-demo-framework/src/memory/dma.cpp
+	GBA-demo-framework/src/memory/memcpy.s
+	GBA-demo-framework/src/memory/memset.s
+	GBA-demo-framework/src/print/itoa.cpp
+	GBA-demo-framework/src/print/output.cpp
+	GBA-demo-framework/src/sys/interrupts.cpp
+	GBA-demo-framework/src/sys/intdispatcher.s
+	GBA-demo-framework/src/sys/input.cpp
+	GBA-demo-framework/src/compression/bios.cpp
+	GBA-demo-framework/src/compression/lz4.cpp
+	GBA-demo-framework/src/compression/lz4_asm.s
+	GBA-demo-framework/src/compression/lz77_asm.s
 	../src/if/dxt_tables.cpp
+	image/dxt.cpp
+	image.cpp
 	data/font_8x8.c
 )
 
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
 # These files will be added to IMAGE_DATA_FILES
-target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true")
+target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz4 --vram=true")
 
 LIST(APPEND INCLUDE_DIRS
-	${DEVKITPRO}/libgba/include
 	${DEVKITARM}/arm-none-eabi/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../src/if # Include directory for common code from the GBA image tools
+	${CMAKE_CURRENT_SOURCE_DIR}/GBA-demo-framework/src
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/data
-	${CMAKE_CURRENT_SOURCE_DIR}/memory
 	${CMAKE_CURRENT_SOURCE_DIR}/video
-	${CMAKE_CURRENT_SOURCE_DIR}/print
-	${CMAKE_CURRENT_SOURCE_DIR}/sys
 )
 
 LIST(APPEND LIB_DIRS
-	${DEVKITPRO}/libgba/lib
 )
 
 LIST(APPEND LIBS
-	gba
 )
 
 # Video example

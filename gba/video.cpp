@@ -1,11 +1,9 @@
-#include <gba_base.h>
-#include <gba_input.h>
-#include <gba_interrupt.h>
-#include <gba_video.h>
-
-#include "base.h"
-#include "memory.h"
-#include "output.h"
+#include "sys/video.h"
+#include "memory/memory.h"
+#include "print/output.h"
+#include "sys/base.h"
+#include "sys/input.h"
+#include "sys/interrupts.h"
 #include "tui.h"
 #include "videoplayer.h"
 

@@ -1,15 +1,11 @@
 #pragma once
 
-#include <gba_base.h>
+#include <base.h>
 
-#include <cstdarg>
 #include <cstdint>
 
-#include "./data/font_8x8.h"
-
-namespace TUI
+namespace Subtitles
 {
-
     /// @brief CGA colors. See: https://en.wikipedia.org/wiki/Color_Graphics_Adapter
     enum class Color : uint16_t
     {
@@ -31,18 +27,8 @@ namespace TUI
         White = 15
     };
 
-    static constexpr uint32_t Width = 32;
-    static constexpr uint32_t Height = 20;
-
-    /// @brief Set up TUI mode: Mode0, BG0 + BG1 on
-    /// Provides you with a noice 32x20 screen CGA color palette console text UI \o/
+    /// @brief Set up Subtitles mode: Don't change display mode, but enable sprites
     void setup();
-
-    /// @brief Fill whole background with color
-    void fillBackground(Color color);
-
-    /// @brief Fill background rect with color
-    void fillBackgroundRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, Color color = Color::Black);
 
     /// @brief Set background and foreground colors
     void setColor(Color backColor = Color::Black, Color textColor = Color::White);
@@ -50,10 +36,4 @@ namespace TUI
     void printChar(char c, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White);
     uint16_t printChars(char c, uint16_t n, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White);
     uint16_t printString(const char *s, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White);
-    uint16_t printInt(int32_t value, uint32_t base, uint16_t x, uint16_t y, Color backColor, Color textColor);
-    uint16_t printFloat(int32_t value, uint16_t x, uint16_t y, Color backColor, Color textColor);
-
-    /// @brief Print at position with currently set colors
-    void printf(uint16_t x, uint16_t y, const char *fmt...);
-
 }
