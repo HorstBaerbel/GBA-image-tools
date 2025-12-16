@@ -256,6 +256,7 @@ namespace Media
     {
         bool isVideoFrame = false;
         bool isAudioFrame = false;
+        double presentTimeInS = 0;
         while (true)
         {
             const auto readResult = av_read_frame(m_state->formatContext, m_state->packet);
@@ -322,6 +323,16 @@ namespace Media
             // here the frame has been successfully decoded
             isVideoFrame = m_state->packet->stream_index == m_state->videoStreamIndex;
             isAudioFrame = m_state->packet->stream_index == m_state->audioStreamIndex;
+            // calculate presentation time of frame
+            if (isVideoFrame)
+            {
+                presentTimeInS = static_cast<double>(m_state->packet->pts) * static_cast<double>(m_state->videoTimeBase.num) / static_cast<double>(m_state->videoTimeBase.den);
+            }
+            if (isAudioFrame)
+            {
+                presentTimeInS = static_cast<double>(m_state->packet->pts) * static_cast<double>(m_state->audioTimeBase.num) / static_cast<double>(m_state->audioTimeBase.den);
+            }
+
             av_packet_unref(m_state->packet);
             break;
         }
@@ -345,7 +356,7 @@ namespace Media
             sws_scale(m_state->videoSwsContext, m_state->frame->data, m_state->frame->linesize, 0, m_state->frame->height, dst, dstStride);
             // release FFmpeg frame
             av_frame_unref(m_state->frame);
-            return {IO::FrameType::Pixels, frameData};
+            return {IO::FrameType::Pixels, presentTimeInS, frameData};
         }
         else if (isAudioFrame)
         {
@@ -394,7 +405,7 @@ namespace Media
             }
             // release FFmpeg frame
             av_frame_unref(m_state->frame);
-            return {IO::FrameType::Audio, frameData};
+            return {IO::FrameType::Audio, presentTimeInS, frameData};
         }
         THROW(std::runtime_error, "Unexpected frame type");
     }

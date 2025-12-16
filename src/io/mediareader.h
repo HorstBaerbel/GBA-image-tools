@@ -56,6 +56,7 @@ namespace Media
         struct FrameData
         {
             IO::FrameType frameType = IO::FrameType::Unknown;                      // Data type
+            double presentTimeInS = 0;                                             // Presentation timestamp in seconds
             std::variant<Image::RawData, Audio::RawData, Subtitles::RawData> data; // Raw pixel or (planar) audio or subtitles data
         };
 

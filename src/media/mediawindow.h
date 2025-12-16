@@ -47,13 +47,16 @@ namespace Media
         uint32_t m_videoFrameIndex = 0;
         std::deque<Subtitles::RawData> m_subtitlesData;
         uint32_t m_subtitlesFrameIndex = 0;
+        std::vector<Subtitles::RawData> m_currentSubtitles;
 
         SDL_AudioStream *m_sdlAudioStream = nullptr;
         SDL_Texture *m_sdlVideoTexture = nullptr;
 
         std::shared_ptr<Reader> m_mediaReader;
         Reader::MediaInfo m_mediaInfo;
+        double m_frameIntervalMs = 0;
         Timer m_frameTimer;
+        double m_playTimeS = 0;
         PlayState m_playState = PlayState::Stopped;
 
         static constexpr const int32_t EVENT_DISPLAY_FRAME = 1;

@@ -55,7 +55,7 @@ namespace IO::Vid2h
 
     /// @brief Write subtitles file header to output stream
     /// @note This moves the os stream position past the subtitles header
-    auto writeAudioHeader(std::ostream &os, const FileDataInfo &fileHeaderInfo, const SubtitlesHeader &subtitlesHeader) -> void;
+    auto writeSubtitlesHeader(std::ostream &os, const FileDataInfo &fileHeaderInfo, const SubtitlesHeader &subtitlesHeader) -> void;
 
     /// @brief Write video frame data to output stream, adding compressed size as 4 byte value at the front
     /// @note This advances the os stream position past the new frame data

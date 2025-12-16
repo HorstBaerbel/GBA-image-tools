@@ -500,15 +500,6 @@ int main(int argc, const char *argv[])
             std::cerr << "Chose not to output audio, but source has no video. Output would be empty. Exiting..." << std::endl;
             return 1;
         }
-        // ----- read subtitle file -----
-        bool outputHasSubtitles = false;
-        std::vector<Subtitles::Frame> subtitles;
-        if (options.subtitlesFile)
-        {
-            std::cout << "Reading subtitles from: " << options.subtitlesFile.value << std::endl;
-            subtitles = IO::SRT::readSRT(options.subtitlesFile.value);
-            outputHasSubtitles = true;
-        }
         // ----- build image processing pipeline - input -----
         Image::Processing videoProcessing;
         if (options.video)
@@ -534,6 +525,16 @@ int main(int argc, const char *argv[])
         else
         {
             std::cout << "Ignoring audio. Won't add audio to output" << std::endl;
+        }
+        // ----- read subtitles -----
+        bool outputHasSubtitles = false;
+        std::vector<Subtitles::Frame> subtitles;
+        if (options.subtitlesFile)
+        {
+            std::cout << "Reading subtitles from: " << options.subtitlesFile.value << std::endl;
+            subtitles = IO::SRT::readSRT(options.subtitlesFile.value);
+            std::cout << "Found " << subtitles.size() << " subtitle entries" << std::endl;
+            outputHasSubtitles = true;
         }
         // ----- get meta data -----
         const auto metaData = buildMetaData(options);
@@ -601,7 +602,7 @@ int main(int argc, const char *argv[])
         uint64_t audioOutCompressedSize = 0; // Combined size of compressed audio data
         int32_t audioFirstFrameOffset = 0;   // Offset of first audio frame in samples
         // Subtitles info
-        float currentTime = 0;
+        uint32_t subtitleFrameIndex = 0; // Index of last processed subtitle
         while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioProcessing.nrOfInputFrames() < mediaInfo.audioNrOfFrames)
         {
             const auto inFrame = mediaReader.readFrame();
@@ -611,6 +612,21 @@ int main(int argc, const char *argv[])
                 REQUIRE(!outputHasVideo || videoFrameIndex == (mediaInfo.videoNrOfFrames - 1), std::runtime_error, "Expected " << mediaInfo.videoNrOfFrames << " video frames, but got " << videoFrameIndex);
                 REQUIRE(!outputHasAudio || audioProcessing.nrOfInputFrames() == (mediaInfo.audioNrOfFrames - 1), std::runtime_error, "Expected " << mediaInfo.audioNrOfFrames << " audio frames, but got " << audioProcessing.nrOfInputFrames());
                 break;
+            }
+            // check if we need to store a subtitle frame
+            // we do this before adding the actual frame, because it's present time might already be higher
+            if (outputHasSubtitles && subtitleFrameIndex < (subtitles.size() - 1))
+            {
+                const auto &subtitle = subtitles[subtitleFrameIndex];
+                if (inFrame.presentTimeInS >= subtitle.startTimeS)
+                {
+                    // write subtitle to file
+                    if (!options.dryRun && binFile.is_open())
+                    {
+                        IO::Vid2h::writeFrame(binFile, subtitle);
+                    }
+                    ++subtitleFrameIndex;
+                }
             }
             // check if image frame
             if (inFrame.frameType == IO::FrameType::Pixels && outputHasVideo)
@@ -637,6 +653,7 @@ int main(int argc, const char *argv[])
                     statisticsWriter.writeFrame("video", compressed);
                 }
             }
+            // check if audio frame
             else if (inFrame.frameType == IO::FrameType::Audio && outputHasAudio)
             {
                 // build audio frame from sample data
@@ -691,13 +708,18 @@ int main(int argc, const char *argv[])
             // write headers
             if (outputHasAudio)
             {
-                IO::Vid2h::AudioHeader audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), audioProcessing.getDecodingSteps());
+                auto audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), audioProcessing.getDecodingSteps());
                 IO::Vid2h::writeAudioHeader(binFile, fileDataInfo, audioHeader);
             }
             if (outputHasVideo)
             {
-                IO::Vid2h::VideoHeader videoHeader = IO::Vid2h::createVideoHeader(videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, videoProcessing.getDecodingSteps());
+                auto videoHeader = IO::Vid2h::createVideoHeader(videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, videoProcessing.getDecodingSteps());
                 IO::Vid2h::writeVideoHeader(binFile, fileDataInfo, videoHeader);
+            }
+            if (outputHasSubtitles)
+            {
+                auto subtitlesHeader = IO::Vid2h::createSubtitlesHeader(subtitleFrameIndex);
+                IO::Vid2h::writeSubtitlesHeader(binFile, fileDataInfo, subtitlesHeader);
             }
             // write meta data
             if ((options.metaFile || options.metaString) && !metaData.empty())
@@ -723,6 +745,11 @@ int main(int argc, const char *argv[])
             std::cout << "  Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(audioOutCompressedSize) / (1024 * 1024) << " MB" << std::endl;
             std::cout << "  Avg. frame size: " << audioOutCompressedSize / audioProcessing.nrOfOutputFrames() << " Byte" << std::endl;
             std::cout << "  Max. intermediate memory for decompression: " << audioProcessing.outputMaxMemoryNeeded() << " Byte" << std::endl;
+        }
+        if (outputHasSubtitles)
+        {
+            std::cout << "Subtitles:" << std::endl;
+            std::cout << "  Wrote " << subtitleFrameIndex << " subtitle frames to output" << std::endl;
         }
     }
     catch (const std::runtime_error &e)

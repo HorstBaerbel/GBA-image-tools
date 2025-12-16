@@ -13,14 +13,14 @@ namespace IO
     static const char *SrtWhiteSpace = " \t\n\r\f\v";
     static const std::regex SrtTimeRegEx("(\\d\\d):(\\d\\d):(\\d\\d),(\\d\\d\\d)\\s-->\\s(\\d\\d):(\\d\\d):(\\d\\d),(\\d\\d\\d)");
 
-    auto toTimeInS(const std::string &line, const std::string &sH, const std::string &sM, const std::string &sS, const std::string &sMs) -> float
+    auto toTimeInS(const std::string &line, const std::string &sH, const std::string &sM, const std::string &sS, const std::string &sMs) -> double
     {
         REQUIRE(!sH.empty() && !sM.empty() && !sS.empty() && !sMs.empty(), std::runtime_error, "Bad time format in: " << line);
         const auto hours = std::stoi(sH);
         const auto minutes = std::stoi(sM);
         const auto seconds = std::stoi(sS);
         const auto miliseconds = std::stoi(sMs);
-        return hours * 3600.0F + minutes * 60.0F + seconds + miliseconds / 1000.0F;
+        return hours * 3600.0 + minutes * 60.0 + seconds + miliseconds / 1000.0;
     }
 
     auto SRT::readSRT(const std::string &filePath) -> std::vector<Subtitles::Frame>
@@ -59,7 +59,7 @@ namespace IO
             REQUIRE(time_match.size() == 9, std::runtime_error, "Failed to find start / end time in: " << *linesIt);
             const auto startTime = toTimeInS(*linesIt, time_match[1].str(), time_match[2].str(), time_match[3].str(), time_match[4].str());
             const auto endTime = toTimeInS(*linesIt, time_match[5].str(), time_match[6].str(), time_match[7].str(), time_match[8].str());
-            REQUIRE(endTime > startTime, std::runtime_error, "Start time must be > end time: " << *linesIt);
+            REQUIRE(endTime > startTime, std::runtime_error, "Subtitle start time must be < end time: " << *linesIt);
             ++linesIt;
             REQUIRE(linesIt != lines.cend(), std::runtime_error, "Unexpected end of subtitles file");
             std::string text;

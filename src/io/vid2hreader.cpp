@@ -92,6 +92,7 @@ namespace Media
         {
             m_subtitlesHeader = IO::Vid2h::readSubtitlesHeader(m_is, m_fileDataInfo);
             REQUIRE(m_subtitlesHeader.nrOfFrames != 0, std::runtime_error, "Number of subtitles frames can not be 0");
+            m_info.subtitlesNrOfFrames = m_subtitlesHeader.nrOfFrames;
         }
         // read meta data if any
         if (m_fileDataInfo.metaDataOffset > 0)
@@ -154,7 +155,7 @@ namespace Media
                 outData = ColorHelpers::toXRGB8888(inData, m_info.videoPixelFormat, m_previousColorMap);
             }
             m_previousPixels = outData;
-            return {IO::FrameType::Pixels, outData};
+            return {IO::FrameType::Pixels, 0.0, outData};
         }
         else if (frame.first == IO::FrameType::Colormap)
         {
@@ -164,7 +165,7 @@ namespace Media
             std::vector<Color::XRGB8888> outColorMap;
             outColorMap = ColorHelpers::toXRGB8888(frame.second, m_info.videoColorMapFormat);
             m_previousColorMap = outColorMap;
-            return {IO::FrameType::Colormap, outColorMap};
+            return {IO::FrameType::Colormap, 0.0, outColorMap};
         }
         else if (frame.first == IO::FrameType::Audio)
         {
@@ -201,7 +202,7 @@ namespace Media
                     break;
                 }
             }
-            return {IO::FrameType::Audio, outData};
+            return {IO::FrameType::Audio, 0.0, outData};
         }
         else if (frame.first == IO::FrameType::Subtitles)
         {
@@ -209,14 +210,14 @@ namespace Media
             REQUIRE(inData.size() > (4 + 4 + 1), std::runtime_error, "Subtitles frame data too small");
             REQUIRE(inData.size() <= (4 + 4 + 1 + Subtitles::MaxSubTitleLength), std::runtime_error, "Subtitles frame data too big");
             Subtitles::RawData outData;
-            outData.startTimeInS = static_cast<float>(*reinterpret_cast<int32_t *>(inData.data() + 0)) / 65536.0F;
-            outData.endTimeInS = static_cast<float>(*reinterpret_cast<int32_t *>(inData.data() + 4)) / 65536.0F;
+            outData.startTimeS = static_cast<double>(*reinterpret_cast<int32_t *>(inData.data() + 0)) / 65536.0;
+            outData.endTimeS = static_cast<double>(*reinterpret_cast<int32_t *>(inData.data() + 4)) / 65536.0;
             const uint8_t length = inData[8];
             REQUIRE(length > 0 && length <= (inData.size() - 9) && length <= Subtitles::MaxSubTitleLength, std::runtime_error, "Bad subtitles string size");
             std::copy(std::next(inData.cbegin(), 9), std::next(inData.cbegin(), 9 + length), std::back_inserter(outData.text));
-            return {IO::FrameType::Subtitles, outData};
+            return {IO::FrameType::Subtitles, outData.startTimeS, outData};
         }
-        return {IO::FrameType::Unknown, {}};
+        return {IO::FrameType::Unknown, 0.0, {}};
     }
 
     auto Vid2hReader::close() -> void

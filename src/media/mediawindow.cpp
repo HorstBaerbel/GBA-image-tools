@@ -33,7 +33,9 @@ namespace Media
         lockEventMutex();
         if (m_playState == PlayState::Stopped)
         {
+            m_playTimeS = 0;
             m_playState = PlayState::Playing;
+            m_frameIntervalMs = 0;
             m_audioFrameIndex = 0;
             m_videoFrameIndex = 0;
             m_subtitlesFrameIndex = 0;
@@ -58,17 +60,16 @@ namespace Media
             // read first audio and video frames
             readFrames();
             // start frame timer
-            double frameIntervalMs = 0;
             if (hasVideo)
             {
-                frameIntervalMs = 1000.0 / m_mediaInfo.videoFrameRateHz;
+                m_frameIntervalMs = 1000.0 / m_mediaInfo.videoFrameRateHz;
             }
             else if (hasAudio)
             {
                 const auto audioFrameRateHz = m_mediaInfo.audioNrOfFrames / m_mediaInfo.audioDurationS;
-                frameIntervalMs = 1000.0 / audioFrameRateHz;
+                m_frameIntervalMs = 1000.0 / audioFrameRateHz;
             }
-            m_frameTimer.start(frameIntervalMs, [this]()
+            m_frameTimer.start(m_frameIntervalMs, [this]()
                                { displayEvent(nullptr); });
         }
         unlockEventMutex();
@@ -86,6 +87,7 @@ namespace Media
                 {
                     SDL_PauseAudioStreamDevice(m_sdlAudioStream);
                 }
+                m_frameTimer.stop();
             }
         }
         else
@@ -97,6 +99,8 @@ namespace Media
                 {
                     SDL_ResumeAudioStreamDevice(m_sdlAudioStream);
                 }
+                m_frameTimer.start(m_frameIntervalMs, [this]()
+                                   { displayEvent(nullptr); });
             }
         }
         unlockEventMutex();
@@ -198,17 +202,22 @@ namespace Media
             if (!m_subtitlesData.empty())
             {
                 // we have subtitles data, get it, remove from the queue
-                auto subtitles = m_subtitlesData.front();
+                auto subtitle = m_subtitlesData.front();
                 m_subtitlesData.pop_front();
-                // render subtitles
-                const float textScale = 2.0F;
-                SDL_SetRenderScale(getRenderer(), textScale, textScale);
-                SDL_SetRenderDrawColor(getRenderer(), 255, 255, 255, 0.6F * 255); // white, 60% alpha
-                const auto length = subtitles.text.size();
-                const auto x = (m_mediaInfo.videoWidth - length * textScale * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2;
-                const auto y = m_mediaInfo.videoHeight - 8 - textScale * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
-                SDL_RenderDebugText(getRenderer(), x, y, subtitles.text.data());
-                SDL_SetRenderScale(getRenderer(), 1.0f, 1.0f);
+                // std::cout << "Subtitle: " << subtitle.startTimeInS << "s -> " << subtitle.endTimeS << "s \"" << subtitle.text << "\"" << std::endl;
+                // check if old subtitles have ended and erase them
+                for (auto stIt = m_currentSubtitles.begin(); stIt != m_currentSubtitles.end();)
+                {
+                    if (m_playTimeS >= stIt->endTimeS)
+                    {
+                        stIt = m_currentSubtitles.erase(stIt);
+                    }
+                    else
+                    {
+                        ++stIt;
+                    }
+                }
+                m_currentSubtitles.push_back(subtitle);
                 mustPresent = true;
             }
             // check if we should preset via SDL renderer
@@ -224,6 +233,29 @@ namespace Media
                         unlockEventMutex();
                         return -1;
                     }
+                }
+                // render subtitles
+                if (!m_currentSubtitles.empty())
+                {
+                    const float textScale = 1.5F;
+                    SDL_SetRenderScale(getRenderer(), textScale, textScale);
+                    SDL_SetRenderDrawColor(getRenderer(), 255, 255, 255, 255);
+                    int renderWidth = 0;
+                    int renderHeight = 0;
+                    SDL_GetCurrentRenderOutputSize(getRenderer(), &renderWidth, &renderHeight);
+                    for (std::size_t si = 0; si < m_currentSubtitles.size(); ++si)
+                    {
+                        const auto &subtitle = m_currentSubtitles[si];
+                        // is it time to display the subtitle?
+                        if (m_playTimeS >= subtitle.startTimeS && m_playTimeS < subtitle.endTimeS)
+                        {
+                            const auto length = subtitle.text.size();
+                            const auto x = (renderWidth - (textScale * length * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE)) / 2;
+                            const auto y = renderHeight - (si + 1) * textScale * (SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE + SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE / 2);
+                            SDL_RenderDebugText(getRenderer(), x / textScale, y / textScale, subtitle.text.data());
+                        }
+                    }
+                    SDL_SetRenderScale(getRenderer(), 1.0f, 1.0f);
                 }
                 // now present to display
                 if (!SDL_RenderPresent(getRenderer()))
@@ -244,6 +276,7 @@ namespace Media
         lockEventMutex();
         if (m_playState == PlayState::Playing)
         {
+            m_playTimeS += m_frameIntervalMs / 1000.0;
             // push event to display frame
             pushUserEvent(EVENT_DISPLAY_FRAME);
             // check if we have already reached the end of the media file
@@ -266,8 +299,7 @@ namespace Media
     {
         int32_t requestedAudioFrames = (m_mediaInfo.fileType & IO::FileType::Audio) && m_mediaInfo.audioNrOfFrames > m_audioFrameIndex ? 1 : 0;
         int32_t requestedVideoFrames = (m_mediaInfo.fileType & IO::FileType::Video) && m_mediaInfo.videoNrOfFrames > m_videoFrameIndex ? 1 : 0;
-        int32_t requestedSubtitlesFrames = (m_mediaInfo.fileType & IO::FileType::Subtitles) && m_mediaInfo.subtitlesNrOfFrames > m_subtitlesFrameIndex ? 1 : 0;
-        while (requestedAudioFrames > 0 || requestedVideoFrames > 0 || requestedSubtitlesFrames > 0)
+        while (requestedAudioFrames > 0 || requestedVideoFrames > 0)
         {
             auto frame = m_mediaReader->readFrame();
             if (frame.frameType == IO::FrameType::Audio)
@@ -286,7 +318,6 @@ namespace Media
             else if (frame.frameType == IO::FrameType::Subtitles)
             {
                 ++m_subtitlesFrameIndex;
-                --requestedSubtitlesFrames;
                 m_subtitlesData.push_back(std::get<Subtitles::RawData>(frame.data));
             }
         }

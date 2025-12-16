@@ -191,8 +191,8 @@ namespace IO::Vid2h
         std::vector<uint8_t> subtitleData(4 + 4);
         subtitleData.reserve(4 + 4 + 1 + frame.text.size());
         // store times as 16:16 fixed-point
-        *reinterpret_cast<int32_t *>(subtitleData.data() + 0) = static_cast<int32_t>(std::round(frame.startTimeInS * 65536.0F));
-        *reinterpret_cast<int32_t *>(subtitleData.data() + 4) = static_cast<int32_t>(std::round(frame.endTimeInS * 65536.0F));
+        *reinterpret_cast<int32_t *>(subtitleData.data() + 0) = static_cast<int32_t>(std::round(frame.startTimeS * 65536.0F));
+        *reinterpret_cast<int32_t *>(subtitleData.data() + 4) = static_cast<int32_t>(std::round(frame.endTimeS * 65536.0F));
         // store string size
         subtitleData.push_back(static_cast<uint8_t>(frame.text.size()));
         // store string
@@ -246,7 +246,7 @@ namespace IO::Vid2h
         is.read(reinterpret_cast<char *>(&fileHeader), sizeof(FileHeader));
         REQUIRE(!is.fail(), std::runtime_error, "Failed to read file header from stream");
         REQUIRE(fileHeader.magic == IO::Vid2h::Magic, std::runtime_error, "Bad file magic 0x" << std::hex << fileHeader.magic << " (expected 0x" << IO::Vid2h::Magic << ")");
-        REQUIRE(fileHeader.contentType == IO::FileType::Audio || fileHeader.contentType == IO::FileType::Video || fileHeader.contentType == IO::FileType::AudioVideo, std::runtime_error, "Bad file content type");
+        REQUIRE((fileHeader.contentType & IO::FileType::Audio) || (fileHeader.contentType & IO::FileType::Video), std::runtime_error, "Bad file content type");
         FileDataInfo fileDataInfo;
         fileDataInfo.contentType = fileHeader.contentType;
         if (fileHeader.contentType & IO::FileType::Audio)
