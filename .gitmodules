@@ -19,3 +19,6 @@
 [submodule "adpcm-xq"]
 	path = adpcm-xq
 	url = https://github.com/dbry/adpcm-xq.git
+[submodule "gba/GBA-demo-framework"]
+	path = gba/GBA-demo-framework
+	url = https://github.com/HorstBaerbel/GBA-demo-framework.git
