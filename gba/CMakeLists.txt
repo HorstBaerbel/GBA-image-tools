@@ -56,6 +56,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	../src/if/dxtv_structs.cpp
 	video/dxtv.cpp
 	video/dxtv_asm.s
+	video/subtitles.cpp
 	video/vid2hdecoder.cpp
 	video/vid2hio.cpp
 	video/videoplayer.cpp

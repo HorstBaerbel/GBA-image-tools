@@ -3,7 +3,7 @@
 #include <cstdint>
 
 constexpr uint32_t FONT_SANS_NR_OF_CHARS = 95;
-const uint8_t FONT_SANS_CHARWIDTH[FONT_SANS_NR_OF_CHARS] = {
+const uint8_t FONT_SANS_CHAR_WIDTH[FONT_SANS_NR_OF_CHARS] = {
     6,
     3,
     5,

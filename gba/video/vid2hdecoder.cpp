@@ -190,4 +190,10 @@ namespace Media
         }
         return {currentDst32, uncompressedSize8};
     }
+
+    IWRAM_FUNC auto DecodeSubtitles(const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::tuple<int32_t, int32_t, uint32_t, const char *>
+    {
+        auto src32 = frame.data;
+        uint32_t uncompressedSize8 = frame.dataSize;
+    }
 }

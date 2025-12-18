@@ -2,91 +2,156 @@
 
 #include <video.h>
 
-#include "itoa.h"
 #include "memory/memory.h"
+#include "palette.h"
+#include "print/itoa.h"
+#include "sprites.h"
 #include "tiles.h"
 
 #include "./data/font_sans.h"
+#include "./data/font_sans_chars.h"
 
 namespace Subtitles
 {
-    static const uint16_t CGA_COLORS[16]{0, 0x5000, 0x280, 0x5280, 0x0014, 0x5014, 0x0154, 0x5294, 0x294a, 0x7d4a, 0x2bea, 0x7fea, 0x295f, 0x7d5f, 0x2bff, 0x7fff};
-    static Color backColor = Color::Black;
-    static Color textColor = Color::White;
-    static char PrintBuffer[64] = {0};
+    static constexpr const uint16_t CGA_COLORS[16]{0, 0x5000, 0x280, 0x5280, 0x0014, 0x5014, 0x0154, 0x5294, 0x294a, 0x7d4a, 0x2bea, 0x7fea, 0x295f, 0x7d5f, 0x2bff, 0x7fff};
+    static constexpr Color backColor = Color::Black;
+    static constexpr Color textColor = Color::White;
+    static constexpr uint32_t MaxSubtitlesChars = 64;
+    static uint32_t spritesInUse = 0;
+    static Sprites::Sprite2D *sprites = nullptr;
 
-    void setup()
+    auto setup() -> void
     {
+        // disable sprites
+        REG_DISPCNT &= ~OBJ_ON;
         // clear all sprites
-        SPR_VRAM
+        Sprites::clearOAM();
         // build sprite color palette #0
-        for (uint32_t i = 0; i < 16; i++)
+        Memory::memset16(Palette::Sprite, 0, 16);
+        Palette::Sprite[1] = CGA_COLORS[15];
+        // allocate sprites
+        spritesInUse = 0;
+        sprites = Memory::malloc_EWRAM<Sprites::Sprite2D>(MaxSubtitlesChars);
+        Sprites::create(sprites, MaxSubtitlesChars, 0, 0, Sprites::SizeCode::Size8x8, Sprites::ColorDepth::Depth16);
+        // copy data to tile map char by char
+        uint32_t charPos = 0; // horizontal position in bitmap our char is in
+        for (uint32_t ci = 0; ci < FONT_SANS_NR_OF_CHARS; ++ci)
         {
-            SPRITE_PALETTE[i] = 0;
+            auto spriteTile = Sprites::TILE_INDEX_TO_MEM<uint32_t>(ci);
+            const uint32_t charWidth = FONT_SANS_CHAR_WIDTH[ci] > 8 ? 8 : FONT_SANS_CHAR_WIDTH[ci];
+            for (uint32_t y = 0; y < FONT_SANS_HEIGHT; ++y)
+            {
+                uint32_t pixelLine = 0;
+                auto charLinePtr = &(reinterpret_cast<const uint8_t *>(FONT_SANS_DATA))[charPos];
+                for (uint32_t x = 0; x < charWidth; ++x)
+                {
+                    pixelLine = (pixelLine << 4) | (charLinePtr[x] & 0x0F);
+                }
+                pixelLine <<= 8 - charWidth;
+                spriteTile[y] = pixelLine;
+                charLinePtr += FONT_SANS_WIDTH;
+            }
+            charPos += charWidth;
         }
-        SPRITE_PALETTE[1] = CGA_COLORS[15];
         // enable sprites
         REG_DISPCNT |= OBJ_ON;
-        // copy data to tile map
-        Memory::memcpy32(Tiles::TILE_BASE_TO_MEM(Tiles::TileBase::Base_0000), FONT_SANS_DATA, FONT_SANS_DATA_SIZE);
     }
 
-    void fillBackground(Color color)
+    auto getScreenWidth(const char *s) -> uint32_t
     {
-        const uint32_t value = 0x005F005F | (static_cast<uint32_t>(color) << 28) | (static_cast<uint32_t>(color) << 12);
-        Memory::memset32(Tiles::SCREEN_BASE_TO_MEM(Tiles::ScreenBase::Base_1000), value, (Width * Height) >> 1);
-    }
-
-    void fillBackgroundRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, Color color)
-    {
-        const uint16_t value = 0x005F | (static_cast<uint32_t>(color) << 12);
-        auto background = Tiles::SCREEN_BASE_TO_MEM(Tiles::ScreenBase::Base_1000) + Width * y + x;
-        for (uint32_t yi = 0; yi < h; yi++)
-        {
-            Memory::memset16(background, value, w);
-            background += Width;
-        }
-    }
-
-    void printChar(char c, uint16_t x, uint16_t y, Color backColor, Color textColor)
-    {
-        uint16_t tileNo = static_cast<uint16_t>(c) - 32;
-        uint32_t tileIndex = ((y & 31) * 32) + (x & 31);
-        auto background = Tiles::SCREEN_BASE_TO_MEM(Tiles::ScreenBase::Base_1000);
-        background[tileIndex] = 0x5F | ((static_cast<uint16_t>(backColor) & 15) << 12);
-        auto text = Tiles::SCREEN_BASE_TO_MEM(Tiles::ScreenBase::Base_2000);
-        text[tileIndex] = tileNo | ((static_cast<uint16_t>(textColor) & 15) << 12);
-    }
-
-    uint16_t printChars(char c, uint16_t n, uint16_t x, uint16_t y, Color backColor, Color textColor)
-    {
-        uint16_t nrOfCharsPrinted = 0;
-        for (uint32_t i = 0; i < n; i++)
-        {
-            printChar(c, x++, y, backColor, textColor);
-            nrOfCharsPrinted++;
-        }
-        return nrOfCharsPrinted;
-    }
-
-    uint16_t printString(const char *s, uint16_t x, uint16_t y, Color backColor, Color textColor)
-    {
-        uint16_t nrOfCharsPrinted = 0;
         if (s != nullptr)
         {
-            while (*s != '\0')
+            return 0;
+        }
+        uint32_t screenWidth = 0;
+        while (*s != '\0')
+        {
+            auto charIndex = static_cast<int32_t>(*s) - 32;
+            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
             {
-                printChar(*s, x++, y, backColor, textColor);
-                s++;
-                nrOfCharsPrinted++;
+                screenWidth += FONT_SANS_CHAR_WIDTH[charIndex];
             }
         }
-        return nrOfCharsPrinted;
+        return screenWidth;
     }
 
-    void setColor(Color back, Color text)
+    auto getStringLength(const char *s) -> uint32_t
     {
-        backColor = back;
-        textColor = text;
+        if (s != nullptr)
+        {
+            return 0;
+        }
+        uint32_t charCount = 0;
+        while (*s != '\0')
+        {
+            auto charIndex = static_cast<int32_t>(*s) - 32;
+            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
+            {
+                ++charCount;
+            }
+        }
+        return charCount;
+    }
+
+    auto printString(const char *s, int16_t x, int16_t y, Color textColor) -> void
+    {
+        if (s != nullptr)
+        {
+            return;
+        }
+        int16_t charX = x;
+        uint32_t charCount = 0;
+        while (*s != '\0')
+        {
+            auto charIndex = static_cast<int32_t>(*s) - 32;
+            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
+            {
+                auto &sprite = sprites[spritesInUse + charCount];
+                sprite.tileIndex = charIndex;
+                sprite.x = charX;
+                sprite.y = y;
+                sprite.visible = true;
+                sprite.priority = Sprites::Priority::Prio0;
+                ++charCount;
+                charX += FONT_SANS_CHAR_WIDTH[charIndex] - 1;
+            }
+        }
+        spritesInUse += charCount;
+        setColor(textColor);
+    }
+
+    auto setColor(Color text) -> void
+    {
+        Palette::Sprite[1] = CGA_COLORS[static_cast<uint8_t>(text)];
+    }
+
+    auto display() -> void
+    {
+        for (uint32_t i = spritesInUse; i < MaxSubtitlesChars; ++i)
+        {
+            auto &sprite = sprites[i];
+            sprite.visible = false;
+            sprite.priority = Sprites::Priority::Prio3;
+        }
+        Sprites::copyToOAM(sprites, 0, MaxSubtitlesChars);
+    }
+
+    auto clear() -> void
+    {
+        for (uint32_t i = 0; i < spritesInUse; ++i)
+        {
+            auto &sprite = sprites[i];
+            sprite.visible = false;
+            sprite.priority = Sprites::Priority::Prio3;
+        }
+        spritesInUse = 0;
+    }
+
+    auto cleanup() -> void
+    {
+        REG_DISPCNT &= ~OBJ_ON;
+        spritesInUse = 0;
+        Sprites::clearOAM();
+        Memory::free(sprites);
     }
 }

@@ -1,6 +1,7 @@
 #include "videoplayer.h"
 
 #include "memory/memory.h"
+#include "subtitles.h"
 #include "sys/base.h"
 #include "vid2hdecoder.h"
 #include <memory/dma.h>
@@ -40,7 +41,7 @@ namespace Media
     IWRAM_DATA IO::Vid2h::Frame m_mediaFrame;
 
     // audio
-    IWRAM_DATA IO::Vid2h::Frame m_queuedAudioFrame{};
+    IWRAM_DATA IO::Vid2h::Frame m_queuedAudioFrame{};       // Audio frame waiting to be decoded
     IWRAM_DATA volatile int16_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
     IWRAM_DATA volatile int16_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
     IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing
@@ -56,12 +57,20 @@ namespace Media
     IWRAM_DATA uint16_t m_vramPixelStride8 = 0;
     IWRAM_DATA uint16_t m_vramClearColor = 0;
     IWRAM_DATA uint32_t m_vramOffset8 = 0;
-    IWRAM_DATA IO::Vid2h::Frame m_queuedColorMapFrame{};
-    IWRAM_DATA IO::Vid2h::Frame m_queuedVideoFrame{};
+    IWRAM_DATA IO::Vid2h::Frame m_queuedColorMapFrame{};      // Color map frame waiting to be decoded
+    IWRAM_DATA IO::Vid2h::Frame m_queuedVideoFrame{};         // Video frame waiting to be decoded
     IWRAM_DATA volatile int16_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
     IWRAM_DATA volatile int16_t m_videoFramesRequested = 0;   // Number of video frames requested by VideoFrameRequest()
     IWRAM_DATA const uint32_t *m_videoDecodedFrame = nullptr; // Pointer to decoded video frame
     IWRAM_DATA uint32_t m_videoDecodedFrameSize8 = 0;         // Size of decoded video frame
+
+    // subtitle
+    IWRAM_DATA bool m_subtitlesEnabled = true;
+    IWRAM_DATA IO::Vid2h::Frame m_queuedSubtitleFrame{}; // Subtitle frame waiting to be decoded
+    IWRAM_DATA int32_t m_subtitleStartTime = 0;          // Subtitle start time
+    IWRAM_DATA int32_t m_subtitleEndTime = 0;            // Subtitle end time
+    IWRAM_DATA uint32_t m_subtitleLength = 0;            // Subtitle text length
+    IWRAM_DATA const char *m_subtitleText = nullptr;     // Subtitle text
 
 #ifdef DEBUG_PLAYER
     struct FrameStatistics
@@ -141,6 +150,10 @@ namespace Media
         {
             // request more video frames for playback
             ++m_videoFramesRequested;
+            // update subtitles
+            if (m_queuedSubtitleFrame.data)
+            {
+            }
         }
         else
         {
@@ -168,6 +181,11 @@ namespace Media
             m_audioBackBuffer = audioScratchPad + audioScratchPadSize / (2 * 4);
             m_audioBufferSize8 = audioScratchPadSize / 2;
         }
+        if (m_mediaInfo.contentType & IO::FileType::Subtitles)
+        {
+            // set up subtitles
+            Subtitles::setup();
+        }
     }
 
     auto SetClearColor(uint16_t color) -> void
@@ -190,18 +208,19 @@ namespace Media
         m_mediaFrame = IO::Vid2h::GetNextFrame(m_mediaInfo, m_mediaFrame);
         if (m_mediaFrame.dataType == IO::FrameType::Pixels)
         {
-            // queue video frame
             m_queuedVideoFrame = m_mediaFrame;
         }
         else if (m_mediaFrame.dataType == IO::FrameType::Colormap)
         {
-            // queue color map frame
             m_queuedColorMapFrame = m_mediaFrame;
         }
         else if (m_mediaFrame.dataType == IO::FrameType::Audio)
         {
-            // queue audio frame
             m_queuedAudioFrame = m_mediaFrame;
+        }
+        else if (m_mediaFrame.dataType == IO::FrameType::Subtitles)
+        {
+            m_queuedSubtitleFrame = m_mediaFrame;
         }
     }
 
@@ -246,6 +265,7 @@ namespace Media
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
 #endif
+        // copy video data to VRAM
         const uint32_t videoLineStride8 = ((m_mediaInfo.video.bitsPerPixel + 7) / 8) * m_mediaInfo.video.width;
         if (videoLineStride8 == m_vramLineStride8)
         {
@@ -431,6 +451,8 @@ namespace Media
             // disable video timer
             REG_TM2CNT_H = 0;
             irqDisable(IRQMask::IRQ_TIMER2);
+            // clean up subtitles
+            Subtitles::cleanup();
 #ifdef DEBUG_PLAYER
             Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);
             Debug::printf("Video avg. decode: %f ms (max. %f ms)", int32_t(m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded), m_videoStats.m_maxDecodedMs);

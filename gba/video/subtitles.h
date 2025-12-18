@@ -1,13 +1,11 @@
 #pragma once
 
-#include <base.h>
-
 #include <cstdint>
 
 namespace Subtitles
 {
     /// @brief CGA colors. See: https://en.wikipedia.org/wiki/Color_Graphics_Adapter
-    enum class Color : uint16_t
+    enum class Color : uint8_t
     {
         Black = 0,
         Blue = 1,
@@ -28,12 +26,27 @@ namespace Subtitles
     };
 
     /// @brief Set up Subtitles mode: Don't change display mode, but enable sprites
-    void setup();
+    auto setup() -> void;
 
-    /// @brief Set background and foreground colors
-    void setColor(Color backColor = Color::Black, Color textColor = Color::White);
+    /// @brief Get width of text on screen in pixels
+    auto getScreenWidth(const char *s) -> uint32_t;
 
-    void printChar(char c, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White);
-    uint16_t printChars(char c, uint16_t n, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White);
-    uint16_t printString(const char *s, uint16_t x, uint16_t y, Color backColor = Color::Black, Color textColor = Color::White);
+    /// @brief Get length of text on screen in characters
+    auto getStringLength(const char *s) -> uint32_t;
+
+    /// @brief Print string to screen using sprites
+    /// Call clear() to clear all subtitles / sprites
+    auto printString(const char *s, int16_t x, int16_t y, Color textColor = Color::White) -> void;
+
+    /// @brief Set foreground color
+    auto setColor(Color textColor = Color::White) -> void;
+
+    /// @Display all subtitles on screen / copy sprites to OAM
+    auto display() -> void;
+
+    /// @brief Clear all subtitles by hiding all sprites
+    auto clear() -> void;
+
+    /// @brief Clean up Subtitles mode: Disable sprites
+    auto cleanup() -> void;
 }
