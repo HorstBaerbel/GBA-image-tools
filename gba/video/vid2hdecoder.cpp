@@ -194,6 +194,22 @@ namespace Media
     IWRAM_FUNC auto DecodeSubtitles(const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::tuple<int32_t, int32_t, uint32_t, const char *>
     {
         auto src32 = frame.data;
-        uint32_t uncompressedSize8 = frame.dataSize;
+        const uint32_t uncompressedSize8 = frame.dataSize;
+        // make sure we have enough data
+        if (uncompressedSize8 > (4 + 4 + 1))
+        {
+            // read times
+            const int32_t startTime = *src32++;
+            const int32_t endTime = *src32++;
+            // read length
+            auto src8 = reinterpret_cast<const uint8_t *>(src32);
+            const uint32_t length = *src8++;
+            // make sure length is not out of bounds
+            if (length > 0 && length == (uncompressedSize8 - (4 + 4 + 1)))
+            {
+                return {startTime, endTime, length, reinterpret_cast<const char *>(src8)};
+            }
+        }
+        return {0, 0, 0, nullptr};
     }
 }
