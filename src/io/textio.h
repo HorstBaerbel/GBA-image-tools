@@ -24,11 +24,11 @@ namespace IO
             {
                 if (asHex)
                 {
-                    outFile << "0x" << std::hex << std::noshowbase << std::setw(sizeof(T) * 2) << std::setfill('0') << current;
+                    outFile << "0x" << std::hex << std::noshowbase << std::setw(sizeof(T) * 2) << std::setfill('0') << static_cast<int64_t>(current);
                 }
                 else
                 {
-                    outFile << std::dec << current;
+                    outFile << std::dec << static_cast<int64_t>(current);
                 }
                 if (loopCount < data.size() - 1)
                 {
@@ -59,7 +59,21 @@ namespace IO
             {
                 hFile << "extern const uint32_t " << varName << "_PALETTE_START[" << varName << (asTiles ? "_NR_OF_TILES]; // index where a palette for a sprite/tile starts (in 2 byte units)" : "_NR_OF_IMAGES]; // index where a palette for an image starts (in 2 byte units)") << std::endl;
             }
-            hFile << "extern const uint16_t " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE];" << std::endl;
+            hFile << "extern const ";
+            static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4);
+            if constexpr (sizeof(T) == 1)
+            {
+                hFile << "uint8_t";
+            }
+            else if constexpr (sizeof(T) == 2)
+            {
+                hFile << "uint16_t";
+            }
+            else if constexpr (sizeof(T) == 3)
+            {
+                hFile << "uint32_t";
+            }
+            hFile << " " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE];" << std::endl;
         }
 
         /// @brief Write compression information to a .h file.
