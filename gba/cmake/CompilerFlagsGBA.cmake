@@ -17,7 +17,7 @@
 #   In theory adding -flto to both compiler and linker flags should work, but GCC reports section conflicts due to an old bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=41091
 # Removed (does not seem to be needed): -mlong-calls
 # See also: https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html
-set(ARCH "-march=armv4t -mthumb -mthumb-interwork -Wl,--print-memory-usage,--gc-sections")
+set(ARCH "-march=armv4t -mthumb -mthumb-interwork -Wl,--wrap=malloc,--wrap=free,--wrap=alloc,--wrap=calloc,--print-memory-usage,--gc-sections")
 set(COMPILERFLAGS "-save-temps -Wall -Wextra -Wpedantic -mcpu=arm7tdmi -mtune=arm7tdmi -fomit-frame-pointer -ffast-math -no-pie -fno-stack-protector -fdata-sections -ffunction-sections")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--warn -x assembler-with-cpp ${ARCH}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH} ${COMPILERFLAGS} -std=c11")
