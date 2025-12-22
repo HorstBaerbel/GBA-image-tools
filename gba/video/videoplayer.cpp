@@ -151,11 +151,11 @@ namespace Media
 
     IWRAM_FUNC auto UpdateSubtitles() -> void
     {
-#ifdef DEBUG_PLAYER
-        auto startTime = Time::now();
-#endif
         if (m_subtitleCurrent.text)
         {
+#ifdef DEBUG_PLAYER
+            auto startTime = Time::now();
+#endif
             bool mustUpdateDisplay = false;
             if (m_playTime >= m_subtitleCurrent.endTimeS)
             {
@@ -198,7 +198,7 @@ namespace Media
                 Subtitles::display();
             }
 #ifdef DEBUG_PLAYER
-            auto duration = Time::now() * 1000 - now * 1000;
+            auto duration = Time::now() * 1000 - startTime * 1000;
             m_subtitlesStats.m_accCopiedMs += duration;
             m_subtitlesStats.m_maxCopiedMs = m_subtitlesStats.m_maxCopiedMs < duration ? duration : m_subtitlesStats.m_maxCopiedMs;
             m_subtitlesStats.m_nrCopied++;
