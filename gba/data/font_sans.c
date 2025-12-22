@@ -115,5 +115,5 @@ const _Alignas(4) uint32_t FONT_SANS_DATA[FONT_SANS_DATA_SIZE] = {
 0x00000000, 0x00000000, 0x00000000, 0x00000000};
 
 const _Alignas(4) uint8_t FONT_SANS_PALETTE[FONT_SANS_PALETTE_SIZE] = { 
-0x0 , 0x0 , 0x0ÿ, 0x0};
+0x00, 0x00, 0xff, 0x7f};
 

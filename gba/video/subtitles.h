@@ -4,6 +4,17 @@
 
 namespace Subtitles
 {
+
+    constexpr unsigned FontHeight = 8;
+
+    /// @brief Subtitles data for one subtitle entry
+    struct Frame
+    {
+        int32_t startTimeS = 0;     // Subtitles start time in s
+        int32_t endTimeS = 0;       // Subtitles end time in s
+        const char *text = nullptr; // Subtitle string
+    };
+
     /// @brief CGA colors. See: https://en.wikipedia.org/wiki/Color_Graphics_Adapter
     enum class Color : uint8_t
     {

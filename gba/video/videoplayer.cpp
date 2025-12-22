@@ -9,7 +9,7 @@
 #include <sys/sound.h>
 #include <sys/timers.h>
 
-#define DEBUG_PLAYER
+// #define DEBUG_PLAYER
 #ifdef DEBUG_PLAYER
 #include "print/output.h"
 #include "time.h"
@@ -37,10 +37,12 @@ namespace Media
 {
     // general
     IWRAM_DATA bool m_playing = false;
+    IWRAM_DATA int32_t m_playTime = 0;
     IWRAM_DATA IO::Vid2h::Info m_mediaInfo;
     IWRAM_DATA IO::Vid2h::Frame m_mediaFrame;
 
     // audio
+    IWRAM_DATA int32_t m_audioFrameTime = 0;
     IWRAM_DATA IO::Vid2h::Frame m_queuedAudioFrame{};       // Audio frame waiting to be decoded
     IWRAM_DATA volatile int16_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
     IWRAM_DATA volatile int16_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
@@ -57,6 +59,9 @@ namespace Media
     IWRAM_DATA uint16_t m_vramPixelStride8 = 0;
     IWRAM_DATA uint16_t m_vramClearColor = 0;
     IWRAM_DATA uint32_t m_vramOffset8 = 0;
+    IWRAM_DATA uint16_t m_videoPositionX = 0;
+    IWRAM_DATA uint16_t m_videoPositionY = 0;
+    IWRAM_DATA int32_t m_videoFrameTime = 0;
     IWRAM_DATA IO::Vid2h::Frame m_queuedColorMapFrame{};      // Color map frame waiting to be decoded
     IWRAM_DATA IO::Vid2h::Frame m_queuedVideoFrame{};         // Video frame waiting to be decoded
     IWRAM_DATA volatile int16_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
@@ -67,10 +72,8 @@ namespace Media
     // subtitle
     IWRAM_DATA bool m_subtitlesEnabled = true;
     IWRAM_DATA IO::Vid2h::Frame m_queuedSubtitleFrame{}; // Subtitle frame waiting to be decoded
-    IWRAM_DATA int32_t m_subtitleStartTime = 0;          // Subtitle start time
-    IWRAM_DATA int32_t m_subtitleEndTime = 0;            // Subtitle end time
-    IWRAM_DATA uint32_t m_subtitleLength = 0;            // Subtitle text length
-    IWRAM_DATA const char *m_subtitleText = nullptr;     // Subtitle text
+    IWRAM_DATA Subtitles::Frame m_subtitleCurrent;       // Currently used/displayed subtitle
+    IWRAM_DATA Subtitles::Frame m_subtitleNext;          // Decoded/next subtitle
 
 #ifdef DEBUG_PLAYER
     struct FrameStatistics
@@ -84,10 +87,12 @@ namespace Media
     };
     IWRAM_DATA FrameStatistics m_videoStats;
     IWRAM_DATA FrameStatistics m_audioStats;
+    IWRAM_DATA FrameStatistics m_subtitlesStats;
 #endif
 
     IWRAM_FUNC auto AudioBufferRequest() -> void
     {
+        m_playTime += m_audioFrameTime;
         if (m_playing)
         {
             // still playing back. stop both timers
@@ -144,15 +149,59 @@ namespace Media
         }
     }
 
+    IWRAM_FUNC auto UpdateSubtitles() -> void
+    {
+#ifdef DEBUG_PLAYER
+        auto startTime = Time::now();
+#endif
+        if (m_subtitleCurrent.text)
+        {
+            bool mustUpdateDisplay = false;
+            if (m_playTime >= m_subtitleCurrent.endTimeS)
+            {
+                // remove subtitle
+                Subtitles::clear();
+                // make the next subtitle the current
+                m_subtitleCurrent = m_subtitleNext;
+                m_subtitleNext = {0, 0, nullptr};
+                mustUpdateDisplay = true;
+            }
+            if (m_playTime < m_subtitleCurrent.endTimeS && m_playTime >= m_subtitleCurrent.startTimeS)
+            {
+                // calculate subtitle length
+                const auto textLength = Subtitles::getScreenWidth(m_subtitleCurrent.text);
+                // show subtitle centered at bottom of video
+                const auto x = m_videoPositionX + (m_mediaInfo.video.width - textLength) / 2;
+                const auto y = m_videoPositionY + m_mediaInfo.video.height - Subtitles::FontHeight - Subtitles::FontHeight / 2;
+                Subtitles::printString(m_subtitleCurrent.text, x, y);
+                // clear start time so we don't display again
+                m_subtitleCurrent.startTimeS = m_subtitleCurrent.endTimeS;
+                mustUpdateDisplay = true;
+            }
+            if (mustUpdateDisplay)
+            {
+                Subtitles::display();
+            }
+#ifdef DEBUG_PLAYER
+            auto duration = Time::now() * 1000 - now * 1000;
+            m_subtitlesStats.m_accCopiedMs += duration;
+            m_subtitlesStats.m_maxCopiedMs = m_subtitlesStats.m_maxCopiedMs < duration ? duration : m_subtitlesStats.m_maxCopiedMs;
+            m_subtitlesStats.m_nrCopied++;
+#endif
+        }
+    }
+
     IWRAM_FUNC auto VideoFrameRequest() -> void
     {
+        m_playTime += m_videoFrameTime;
         if (m_playing)
         {
             // request more video frames for playback
             ++m_videoFramesRequested;
             // update subtitles
-            if (m_queuedSubtitleFrame.data)
+            if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled)
             {
+                UpdateSubtitles();
             }
         }
         else
@@ -181,11 +230,6 @@ namespace Media
             m_audioBackBuffer = audioScratchPad + audioScratchPadSize / (2 * 4);
             m_audioBufferSize8 = audioScratchPadSize / 2;
         }
-        if (m_mediaInfo.contentType & IO::FileType::Subtitles)
-        {
-            // set up subtitles
-            Subtitles::setup();
-        }
     }
 
     auto SetClearColor(uint16_t color) -> void
@@ -195,6 +239,8 @@ namespace Media
 
     auto SetPosition(uint16_t x, uint16_t y) -> void
     {
+        m_videoPositionX = x;
+        m_videoPositionY = y;
         m_vramOffset8 = y * m_vramLineStride8 + x * m_vramPixelStride8;
     }
 
@@ -260,6 +306,33 @@ namespace Media
 #endif
     }
 
+    IWRAM_FUNC auto DecodeSubtitlesFrame() -> void
+    {
+#ifdef DEBUG_PLAYER
+        auto startTime = Time::now();
+#endif
+        const auto subtitle = DecodeSubtitles(m_queuedSubtitleFrame);
+        m_queuedSubtitleFrame.data = nullptr;
+        if (m_subtitleCurrent.text == nullptr)
+        {
+            m_subtitleCurrent.startTimeS = std::get<0>(subtitle);
+            m_subtitleCurrent.endTimeS = std::get<1>(subtitle);
+            m_subtitleCurrent.text = std::get<2>(subtitle);
+        }
+        else
+        {
+            m_subtitleNext.startTimeS = std::get<0>(subtitle);
+            m_subtitleNext.endTimeS = std::get<1>(subtitle);
+            m_subtitleNext.text = std::get<2>(subtitle);
+        }
+#ifdef DEBUG_PLAYER
+        auto duration = Time::now() * 1000 - startTime * 1000;
+        m_subtitlesStats.m_accDecodedMs += duration;
+        m_subtitlesStats.m_maxDecodedMs = m_subtitlesStats.m_maxDecodedMs < duration ? duration : m_subtitlesStats.m_maxDecodedMs;
+        m_subtitlesStats.m_nrDecoded++;
+#endif
+    }
+
     IWRAM_FUNC auto BlitVideoFrame() -> void
     {
 #ifdef DEBUG_PLAYER
@@ -299,17 +372,32 @@ namespace Media
         if (!m_playing)
         {
             m_mediaFrame.data = nullptr;
-            m_queuedAudioFrame.data = nullptr;
-            m_queuedVideoFrame.data = nullptr;
-            m_queuedColorMapFrame.data = nullptr;
-            m_audioFramesRequested = 0;
-            m_audioFramesDecoded = 0;
-            m_videoFramesRequested = 0;
-            m_videoFramesDecoded = 0;
+            if (m_mediaInfo.contentType & IO::FileType::Audio)
+            {
+                m_queuedAudioFrame.data = nullptr;
+                m_audioFramesRequested = 0;
+                m_audioFramesDecoded = 0;
+            }
+            if (m_mediaInfo.contentType & IO::FileType::Video)
+            {
+                m_queuedVideoFrame.data = nullptr;
+                m_queuedColorMapFrame.data = nullptr;
+                m_videoFramesRequested = 0;
+                m_videoFramesDecoded = 0;
+            }
+            if (m_mediaInfo.contentType & IO::FileType::Subtitles)
+            {
+                Subtitles::setup();
+                m_queuedSubtitleFrame.data = nullptr;
+                m_subtitleCurrent = {0, 0, nullptr};
+                m_subtitleNext = {0, 0, nullptr};
+            }
             m_playing = true;
+            m_playTime = 0;
 #ifdef DEBUG_PLAYER
             m_videoStats = FrameStatistics{};
             m_audioStats = FrameStatistics{};
+            m_subtitlesStats = FrameStatistics{};
             Time::start();
 #endif
             // load and decode initial frame(s)
@@ -337,7 +425,8 @@ namespace Media
                     REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_RESET_FIFO | SNDB_VOL_100 | SNDB_R_ENABLE | SNDB_RESET_FIFO;
                 }
                 // set up timer 0 to increase with sample rate = 1 / sample rate (where 16777216 == 1s) and set divider to 0 == 1/1
-                REG_TM0CNT_L = 65536U - (uint64_t(16777216) / m_mediaInfo.audio.sampleRateHz);
+                const uint32_t frameTime = uint64_t(16777216) / m_mediaInfo.audio.sampleRateHz;
+                REG_TM0CNT_L = 65536U - frameTime;
                 REG_TM0CNT_H = 0; // start timer later
                 // set timer 1 to cascade from timer 0, issue IRQ to swap sample buffers and set divider to 0 == 1/1
                 irqSet(IRQMask::IRQ_TIMER1, AudioBufferRequest);
@@ -351,6 +440,7 @@ namespace Media
                 }
                 // decode the first audio frame
                 DecodeAudioFrame();
+                m_audioFrameTime = m_mediaInfo.contentType & IO::FileType::Video ? 0 : frameTime;
             }
             if (m_mediaInfo.contentType & IO::FileType::Video)
             {
@@ -362,7 +452,9 @@ namespace Media
                 // set timer 2 divider to 2 == 1/256 -> 16*1024*1024 cycles/s / 256 = 65536/s
                 irqSet(IRQMask::IRQ_TIMER2, VideoFrameRequest);
                 irqEnable(IRQMask::IRQ_TIMER2);
-                REG_TM2CNT_L = 65536U - ((uint64_t(65536U) << 16) / m_mediaInfo.video.frameRateHz);
+                const uint32_t frameTime = uint64_t(4294967296) / m_mediaInfo.video.frameRateHz;
+                m_videoFrameTime = frameTime;
+                REG_TM2CNT_L = 65536U - frameTime;
                 REG_TM2CNT_H = TIMER_IRQ | 2; // start timer later
                 // read the first video frame from media data
                 while (m_queuedVideoFrame.data == nullptr)
@@ -385,6 +477,14 @@ namespace Media
                 // start and enable sound playback
                 REG_SOUNDCNT_X = SOUND3_PLAY;
                 AudioBufferRequest();
+            }
+            if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled)
+            {
+                if (m_queuedSubtitleFrame.data != nullptr)
+                {
+                    DecodeSubtitlesFrame();
+                    UpdateSubtitles();
+                }
             }
         }
     }
@@ -426,6 +526,10 @@ namespace Media
                 --m_videoFramesRequested;
                 DecodeVideoFrame();
             }
+            if (m_queuedSubtitleFrame.data != nullptr)
+            {
+                DecodeSubtitlesFrame();
+            }
         }
     }
 
@@ -453,10 +557,13 @@ namespace Media
             irqDisable(IRQMask::IRQ_TIMER2);
             // clean up subtitles
             Subtitles::cleanup();
+            m_subtitleCurrent = {0, 0, nullptr};
+            m_subtitleNext = {0, 0, nullptr};
 #ifdef DEBUG_PLAYER
             Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);
             Debug::printf("Video avg. decode: %f ms (max. %f ms)", int32_t(m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded), m_videoStats.m_maxDecodedMs);
             Debug::printf("Video avg. blit: %f ms (max. %f ms)", int32_t(m_videoStats.m_accCopiedMs / m_videoStats.m_nrCopied), m_videoStats.m_maxCopiedMs);
+            Debug::printf("Subtitles avg. update: %f ms (max. %f ms)", int32_t(m_subtitlesStats.m_accCopiedMs / m_subtitlesStats.m_nrCopied), m_subtitlesStats.m_maxCopiedMs);
             Time::stop();
 #endif
         }

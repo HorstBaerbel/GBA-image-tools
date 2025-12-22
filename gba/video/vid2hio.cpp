@@ -10,6 +10,7 @@ namespace IO::Vid2h
         static_assert(sizeof(AudioHeader) % 4 == 0);
         static_assert(sizeof(VideoHeader) % 4 == 0);
         static_assert(sizeof(FileHeader) % 4 == 0);
+        static_assert(sizeof(SubtitlesHeader) % 4 == 0);
         Info info;
         Memory::memcpy32(&info, data, sizeof(FileHeader) / 4);
         info.data = data;
@@ -79,7 +80,12 @@ namespace IO::Vid2h
                 ++info.nrOfVideoProcessings;
             }
         }
-        info.nrOfFrames = info.video.nrOfFrames + info.video.nrOfColorMapFrames + info.audio.nrOfFrames;
+        if (info.contentType & IO::FileType::Subtitles)
+        {
+            Memory::memcpy32(&info.subtitles, data, sizeof(SubtitlesHeader) / 4);
+            data += sizeof(SubtitlesHeader) / 4;
+        }
+        info.nrOfFrames = info.video.nrOfFrames + info.video.nrOfColorMapFrames + info.audio.nrOfFrames + info.subtitles.nrOfFrames;
         // after headers follows the frame data
         info.frameData = data;
         return info;

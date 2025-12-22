@@ -212,9 +212,8 @@ namespace Media
             Subtitles::RawData outData;
             outData.startTimeS = static_cast<double>(*reinterpret_cast<int32_t *>(inData.data() + 0)) / 65536.0;
             outData.endTimeS = static_cast<double>(*reinterpret_cast<int32_t *>(inData.data() + 4)) / 65536.0;
-            const uint8_t length = inData[8];
-            REQUIRE(length > 0 && length <= (inData.size() - 9) && length <= Subtitles::MaxSubTitleLength, std::runtime_error, "Bad subtitles string size");
-            std::copy(std::next(inData.cbegin(), 9), std::next(inData.cbegin(), 9 + length), std::back_inserter(outData.text));
+            outData.text = reinterpret_cast<const char *>(inData.data() + 8);
+            REQUIRE(outData.text.size() > 0 && outData.text.size() <= (inData.size() - 8) && outData.text.size() <= Subtitles::MaxSubTitleLength, std::runtime_error, "Bad subtitles string size");
             return {IO::FrameType::Subtitles, outData.startTimeS, outData};
         }
         return {IO::FrameType::Unknown, 0.0, {}};

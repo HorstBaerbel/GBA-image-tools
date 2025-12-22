@@ -20,6 +20,7 @@ namespace IO::Vid2h
         uint16_t nrOfVideoProcessings = 0;   // How many video processing stages are used
         AudioHeader audio;                   // Audio header
         VideoHeader video;                   // Video header
+        SubtitlesHeader subtitles;           // Subtitles header
     } __attribute__((aligned(4), packed));
 
     /// @brief Frame header describing frame data

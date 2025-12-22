@@ -614,7 +614,7 @@ int main(int argc, const char *argv[])
                 break;
             }
             // check if we need to store a subtitle frame
-            // we do this before adding the actual frame, because it's present time might already be higher
+            // we do this before adding the actual frame, because its present time might already be higher
             if (outputHasSubtitles && subtitleFrameIndex < (subtitles.size() - 1))
             {
                 const auto &subtitle = subtitles[subtitleFrameIndex];

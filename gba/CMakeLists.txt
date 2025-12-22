@@ -34,10 +34,13 @@ endmacro()
 
 # Video example sources --------------------------------------------
 LIST(APPEND VIDEO_SOURCE_FILES
+	GBA-demo-framework/src/sprites.cpp
 	GBA-demo-framework/src/time.cpp
 	GBA-demo-framework/src/tui.cpp
+	GBA-demo-framework/src/tiles.cpp
 	GBA-demo-framework/src/memory/dma.cpp
 	GBA-demo-framework/src/memory/memcpy.s
+	GBA-demo-framework/src/memory/memory.cpp
 	GBA-demo-framework/src/memory/memset.s
 	GBA-demo-framework/src/print/itoa.cpp
 	GBA-demo-framework/src/print/output.cpp
@@ -66,6 +69,9 @@ LIST(APPEND VIDEO_SOURCE_FILES
 )
 set_source_files_properties(data/video.s OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/data/video.bin)
 
+# Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
+target_img2h_file(FONT_SANS_FILE "font_sans" "\"data/font_sans.png\"" "--blackwhite=0.5 --outformat=bgr555")
+
 # Image example sources --------------------------------------------
 LIST(APPEND IMAGE_SOURCE_FILES
 	GBA-demo-framework/src/tui.cpp
@@ -89,7 +95,7 @@ LIST(APPEND IMAGE_SOURCE_FILES
 
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
 # These files will be added to IMAGE_DATA_FILES
-target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz4 --vram=true")
+target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true")
 
 LIST(APPEND INCLUDE_DIRS
 	${DEVKITARM}/arm-none-eabi/include
@@ -107,7 +113,7 @@ LIST(APPEND LIBS
 )
 
 # Video example
-add_executable(video ${VIDEO_SOURCE_FILES}) # Create the elf file
+add_executable(video ${VIDEO_SOURCE_FILES} ${FONT_SANS_FILE}) # Create the elf file
 add_gba_executables(video "GBAIT_VIDEO" "GITV" "HB" 1) # Generate the .gba from the elf
 add_map_file(video)
 add_sections_file(video)

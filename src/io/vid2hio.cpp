@@ -187,21 +187,21 @@ namespace IO::Vid2h
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
         REQUIRE(frame.text.size() <= Subtitles::MaxSubTitleLength, std::runtime_error, "Max. subtitles length is " << Subtitles::MaxSubTitleLength);
-        // convert subtitle to raw data (start, end, length, test)
+        // convert subtitle to raw data (start, end, text)
         std::vector<uint8_t> subtitleData(4 + 4);
-        subtitleData.reserve(4 + 4 + 1 + frame.text.size());
+        subtitleData.reserve(4 + 4 + frame.text.size() + 1);
         // store times as 16:16 fixed-point
         *reinterpret_cast<int32_t *>(subtitleData.data() + 0) = static_cast<int32_t>(std::round(frame.startTimeS * 65536.0F));
         *reinterpret_cast<int32_t *>(subtitleData.data() + 4) = static_cast<int32_t>(std::round(frame.endTimeS * 65536.0F));
-        // store string size
-        subtitleData.push_back(static_cast<uint8_t>(frame.text.size()));
-        // store string
+        // store null-terminated string
         std::copy(frame.text.cbegin(), frame.text.cend(), std::back_inserter(subtitleData));
+        subtitleData.push_back('\0');
         // pad with zeros
         while (subtitleData.size() % 4 != 0)
         {
             subtitleData.push_back(0);
         }
+        REQUIRE(subtitleData.size() % 4 == 0, std::runtime_error, "Failed to pad subtitle data");
         // write subtitles data frame header
         FrameHeader frameHeader;
         frameHeader.dataType = FrameType::Subtitles;

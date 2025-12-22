@@ -27,8 +27,7 @@ namespace Media
     auto DecodeAudio(uint32_t *scratchPad8, const uint32_t scratchPadSize8, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>;
 
     /// @brief Decode subtitles frame
-    /// @param info Static video info
     /// @param frame Subtitles frame to decode
     /// @return Returns (start time, end time, text length, text) or (0, 0, 0, nullptr) if decoding failed
-    auto DecodeSubtitles(const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::tuple<int32_t, int32_t, uint32_t, const char *>;
+    auto DecodeSubtitles(const IO::Vid2h::Frame &frame) -> std::tuple<int32_t, int32_t, const char *>;
 }
