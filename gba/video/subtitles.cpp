@@ -57,71 +57,84 @@ namespace Subtitles
         REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     }
 
-    auto getScreenWidth(const char *s) -> uint32_t
+    auto getScreenWidth(const char *string, const char *end) -> uint32_t
     {
-        if (s == nullptr)
+        if (string == nullptr)
         {
             return 0;
         }
         uint32_t screenWidth = 0;
         uint32_t charCount = 0;
-        while (*s != '\0' && charCount < MaxSubtitlesChars)
+        while (*string != '\0' && string < end)
         {
-            auto charIndex = static_cast<int32_t>(*s) - 32;
+            auto charIndex = static_cast<int32_t>(*string) - 32;
             if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
             {
                 screenWidth += FONT_SANS_CHAR_WIDTH[charIndex] - 1;
                 ++charCount;
             }
-            ++s;
+            ++string;
         }
         return screenWidth;
     }
 
-    auto getStringLength(const char *s) -> uint32_t
+    auto getNrOfLines(const char *string) -> uint32_t
     {
-        if (s == nullptr)
+        if (string == nullptr)
+        {
+            return 0;
+        }
+        uint32_t nrOfLines = 1;
+        while (*string != '\0')
+        {
+            nrOfLines += *string == '\n' ? 1 : 0;
+            ++string;
+        }
+        return nrOfLines;
+    }
+
+    auto getStringLength(const char *string, const char *end) -> uint32_t
+    {
+        if (string == nullptr)
         {
             return 0;
         }
         uint32_t charCount = 0;
-        while (*s != '\0' && charCount < MaxSubtitlesChars)
+        while (*string != '\0' && string < end)
         {
-            auto charIndex = static_cast<int32_t>(*s) - 32;
+            auto charIndex = static_cast<int32_t>(*string) - 32;
             if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
             {
                 ++charCount;
             }
-            ++s;
+            ++string;
         }
         return charCount;
     }
 
-    auto printString(const char *s, int16_t x, int16_t y, Color textColor) -> void
+    auto printString(const char *string, const char *end, int16_t x, int16_t y, Color textColor) -> void
     {
-        if (s == nullptr)
+        if (string == nullptr)
         {
             return;
         }
         int16_t charX = x;
-        uint32_t charCount = 0;
-        while (*s != '\0' && charCount < MaxSubtitlesChars)
+        while (*string != '\0' && string < end && spritesInUse < MaxSubtitlesChars)
         {
-            auto charIndex = static_cast<int32_t>(*s) - 32;
+            auto charIndex = static_cast<int32_t>(*string) - 32;
             if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
             {
-                auto &sprite = sprites[spritesInUse + charCount];
+                auto &sprite = sprites[spritesInUse];
                 sprite.tileIndex = 512 + charIndex;
                 sprite.x = charX;
                 sprite.y = y;
                 sprite.visible = true;
                 sprite.priority = Sprites::Priority::Prio0;
                 charX += FONT_SANS_CHAR_WIDTH[charIndex] - 1;
-                ++charCount;
+                ++spritesInUse;
             }
-            ++s;
+            ++string;
         }
-        spritesInUse += charCount;
         setColor(textColor);
     }
 

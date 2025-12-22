@@ -40,14 +40,17 @@ namespace Subtitles
     auto setup() -> void;
 
     /// @brief Get width of text on screen in pixels
-    auto getScreenWidth(const char *s) -> uint32_t;
+    auto getScreenWidth(const char *string, const char *end = nullptr) -> uint32_t;
+
+    /// @brief Get number of lines of text in string
+    auto getNrOfLines(const char *string) -> uint32_t;
 
     /// @brief Get length of text on screen in characters
-    auto getStringLength(const char *s) -> uint32_t;
+    auto getStringLength(const char *string, const char *end = nullptr) -> uint32_t;
 
-    /// @brief Print string to screen using sprites
+    /// @brief Print null-terminated string or sub-string to screen using sprites
     /// Call clear() to clear all subtitles / sprites
-    auto printString(const char *s, int16_t x, int16_t y, Color textColor = Color::White) -> void;
+    auto printString(const char *string, const char *end, int16_t x, int16_t y, Color textColor = Color::White) -> void;
 
     /// @brief Set foreground color
     auto setColor(Color textColor = Color::White) -> void;

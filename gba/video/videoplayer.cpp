@@ -168,12 +168,27 @@ namespace Media
             }
             if (m_playTime < m_subtitleCurrent.endTimeS && m_playTime >= m_subtitleCurrent.startTimeS)
             {
-                // calculate subtitle length
-                const auto textLength = Subtitles::getScreenWidth(m_subtitleCurrent.text);
-                // show subtitle centered at bottom of video
-                const auto x = m_videoPositionX + (m_mediaInfo.video.width - textLength) / 2;
-                const auto y = m_videoPositionY + m_mediaInfo.video.height - Subtitles::FontHeight - Subtitles::FontHeight / 2;
-                Subtitles::printString(m_subtitleCurrent.text, x, y);
+                // count line breaks in subtitle
+                const uint32_t nrOfLines = Subtitles::getNrOfLines(m_subtitleCurrent.text);
+                auto string = m_subtitleCurrent.text;
+                auto end = string;
+                auto y = m_videoPositionY + m_mediaInfo.video.height - nrOfLines * (Subtitles::FontHeight + Subtitles::FontHeight / 2);
+                for (uint32_t i = 0; i < nrOfLines; ++i)
+                {
+                    // find end of string
+                    while (*end != '\0' && *end != '\n')
+                    {
+                        ++end;
+                    }
+                    // calculate subtitle length
+                    const auto textLength = Subtitles::getScreenWidth(string, end);
+                    // show subtitle centered at bottom of video
+                    const auto x = m_videoPositionX + (m_mediaInfo.video.width - textLength) / 2;
+                    Subtitles::printString(string, end, x, y);
+                    string = end + 1;
+                    end = string;
+                    y += Subtitles::FontHeight + Subtitles::FontHeight / 2;
+                }
                 // clear start time so we don't display again
                 m_subtitleCurrent.startTimeS = m_subtitleCurrent.endTimeS;
                 mustUpdateDisplay = true;
