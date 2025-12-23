@@ -9,9 +9,6 @@
 
 #include "data/video.h"
 
-EWRAM_DATA ALIGN(4) uint32_t VideoScratchPad[240 * 160 / 2 + 16000 / 4]; // Scratch pad memory for video decompression. Ideally we would dynamically allocate this at the start of decoding
-IWRAM_DATA ALIGN(4) uint32_t AudioSampleBuffer[2 * 6000 / 4];			 // Memory for audio sample double-buffer. Ideally we would dynamically allocate this at the start of decoding
-
 int main()
 {
 	// set waitstates for GamePak ROM and EWRAM
@@ -22,11 +19,8 @@ int main()
 	// set up text UI
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
-	// set up video system, clear color and read file header
-	Media::Init(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE, VideoScratchPad, sizeof(VideoScratchPad), 480, 2, AudioSampleBuffer, sizeof(AudioSampleBuffer));
-	Media::SetClearColor(0);
 	// get media info and check if we have meta data
-	const auto &mediaInfo = Media::GetInfo();
+	const auto mediaInfo = IO::Vid2h::GetInfo(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
 	if (mediaInfo.metaDataSize > 0 && mediaInfo.metaData != nullptr)
 	{
 		char temp[20];
@@ -95,8 +89,11 @@ int main()
 	} while (true);
 	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
+	// set up video system and clear color
+	Media::SetDisplayInfo(480, 2);
+	Media::SetClearColor(0);
 	// start main loop
-	Media::Play();
+	Media::Play(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
 	do
 	{
 		Media::DecodeAndPlay();
@@ -111,7 +108,7 @@ int main()
 					break;
 				}
 			} while (true);
-			Media::Play();
+			Media::Play(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
 		}
 	} while (true);
 	return 0;

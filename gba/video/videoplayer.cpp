@@ -46,9 +46,10 @@ namespace Media
     IWRAM_DATA IO::Vid2h::Frame m_queuedAudioFrame{};       // Audio frame waiting to be decoded
     IWRAM_DATA volatile int16_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
     IWRAM_DATA volatile int16_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
+    IWRAM_DATA uint32_t *m_audioScratchPad = nullptr;       // Pointer to audio scratch pad for decoding
+    IWRAM_DATA uint16_t m_audioBufferSize8 = 0;             // Size of one audio buffer in IWRAM and the scratch pad in EWRAM
     IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing
     IWRAM_DATA uint32_t *m_audioBackBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently decoding
-    IWRAM_DATA uint16_t m_audioBufferSize8 = 0;             // Size of one audio buffer
     IWRAM_DATA uint16_t m_audioPlayBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently playing
     IWRAM_DATA uint16_t m_audioBackBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently decoding
 
@@ -226,25 +227,10 @@ namespace Media
         }
     }
 
-    auto Init(const uint32_t *media, const uint32_t mediaSize, uint32_t *videoScratchPad, const uint32_t videoScratchPadSize, const uint32_t vramLineStride8, const uint32_t vramPixelStride8, uint32_t *audioScratchPad, const uint32_t audioScratchPadSize) -> void
+    auto SetDisplayInfo(const uint32_t vramLineStride8, const uint32_t vramPixelStride8) -> void
     {
-        // read file header
-        m_mediaInfo = IO::Vid2h::GetInfo(media, mediaSize);
-        if (m_mediaInfo.contentType & IO::FileType::Video)
-        {
-            // set up video buffers
-            m_videoScratchPad = videoScratchPad;
-            m_videoScratchPadSize8 = videoScratchPadSize;
-            m_vramLineStride8 = vramLineStride8;
-            m_vramPixelStride8 = vramPixelStride8;
-        }
-        if (m_mediaInfo.contentType & IO::FileType::Audio)
-        {
-            // set up audio buffers
-            m_audioPlayBuffer = audioScratchPad;
-            m_audioBackBuffer = audioScratchPad + audioScratchPadSize / (2 * 4);
-            m_audioBufferSize8 = audioScratchPadSize / 2;
-        }
+        m_vramLineStride8 = vramLineStride8;
+        m_vramPixelStride8 = vramPixelStride8;
     }
 
     auto SetClearColor(uint16_t color) -> void
@@ -257,11 +243,6 @@ namespace Media
         m_videoPositionX = x;
         m_videoPositionY = y;
         m_vramOffset8 = y * m_vramLineStride8 + x * m_vramPixelStride8;
-    }
-
-    auto GetInfo() -> const IO::Vid2h::Info &
-    {
-        return m_mediaInfo;
     }
 
     IWRAM_FUNC auto ReadAndQueueNextFrame() -> void
@@ -290,7 +271,7 @@ namespace Media
 #ifdef DEBUG_PLAYER
         auto startTime = Time::now();
 #endif
-        auto [audioDecodedFrame, audioDecodedFrameSize] = DecodeAudio(m_audioBackBuffer, m_audioBufferSize8, m_mediaInfo, m_queuedAudioFrame);
+        const auto audioDecodedFrameSize = DecodeAudio(m_audioBackBuffer, m_audioScratchPad, m_mediaInfo, m_queuedAudioFrame);
         m_audioBackBufferChannelSize8 = audioDecodedFrameSize / m_mediaInfo.audio.channels;
         m_queuedAudioFrame.data = nullptr;
         ++m_audioFramesDecoded;
@@ -382,10 +363,31 @@ namespace Media
 #endif
     }
 
-    auto Play() -> void
+    auto Play(const uint32_t *media, const uint32_t mediaSize) -> void
     {
         if (!m_playing)
         {
+            // read file header
+            m_mediaInfo = IO::Vid2h::GetInfo(media, mediaSize);
+            if (m_mediaInfo.contentType & IO::FileType::Video)
+            {
+                // allocate video back buffer and scratch pad
+                const uint32_t videoBuffersize = m_mediaInfo.video.width * m_mediaInfo.video.height * ((m_mediaInfo.video.bitsPerPixel + 7) / 8);
+                m_videoScratchPadSize8 = videoBuffersize + m_mediaInfo.video.memoryNeeded + 64;
+                m_videoScratchPad = reinterpret_cast<uint32_t *>(Memory::malloc_EWRAM(m_videoScratchPadSize8));
+            }
+            if (m_mediaInfo.contentType & IO::FileType::Audio)
+            {
+                // if sample depth is > 8 we can shrink the audio buffer, because we're resampling to 8 bit for output
+                constexpr uint32_t outputDepth = 8;
+                const auto sampleDepth = m_mediaInfo.audio.sampleBits;
+                // allocate audio buffers (play buffer + back buffer + scratch pad)
+                const uint32_t singleAudioBufferSize = ((m_mediaInfo.audio.memoryNeeded * outputDepth) + (outputDepth - 1)) / sampleDepth + 16;
+                m_audioBufferSize8 = singleAudioBufferSize;
+                m_audioScratchPad = reinterpret_cast<uint32_t *>(Memory::malloc_EWRAM(singleAudioBufferSize));
+                m_audioPlayBuffer = reinterpret_cast<uint32_t *>(Memory::malloc_IWRAM(2 * singleAudioBufferSize));
+                m_audioBackBuffer = m_audioPlayBuffer + m_audioBufferSize8 / 4;
+            }
             m_mediaFrame.data = nullptr;
             if (m_mediaInfo.contentType & IO::FileType::Audio)
             {
@@ -574,6 +576,23 @@ namespace Media
             Subtitles::cleanup();
             m_subtitleCurrent = {0, 0, nullptr};
             m_subtitleNext = {0, 0, nullptr};
+            // free memory
+            if (m_audioPlayBuffer)
+            {
+                Memory::free(m_audioPlayBuffer);
+                m_audioPlayBuffer = nullptr;
+                m_audioBackBuffer = nullptr;
+            }
+            if (m_audioScratchPad)
+            {
+                Memory::free(m_audioScratchPad);
+                m_audioScratchPad = nullptr;
+            }
+            if (m_videoScratchPad)
+            {
+                Memory::free(m_videoScratchPad);
+                m_videoScratchPad = nullptr;
+            }
 #ifdef DEBUG_PLAYER
             Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);
             Debug::printf("Video avg. decode: %f ms (max. %f ms)", int32_t(m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded), m_videoStats.m_maxDecodedMs);

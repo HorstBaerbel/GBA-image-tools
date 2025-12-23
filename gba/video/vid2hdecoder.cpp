@@ -17,20 +17,20 @@
 
 // Scratchpad swap strategy:
 // 1 decompression stage:
-//   - 0: decompress from frame.data to scratchpad start
+//   - 0: decompress from frame.data to output buffer
 // 2 decompression stages:
-//   - 0: decompress from frame.data to scratchpad end - uncompressed size
-//   - 1: decompress from scratchpad end - uncompressed size to scratchpad start
+//   - 0: decompress from frame.data to scratchpad
+//   - 1: decompress from scratchpad to output buffer
 // 3 decompression stages:
-//   - 0: decompress from frame.data to scratchpad start
-//   - 1: decompress from scratchpad start to scratchpad end - uncompressed size
-//   - 2: decompress from scratchpad end - uncompressed size to scratchpad start
+//   - 0: decompress from frame.data to output buffer
+//   - 1: decompress from output buffer to scratchpad
+//   - 2: decompress from scratchpad to output buffer
 // 4 decompression stages:
-//   - 0: decompress from frame.data to scratchpad end - uncompressed size
-//   - 1: decompress from scratchpad end - uncompressed size to scratchpad start
-//   - 2: decompress from scratchpad start to scratchpad end - uncompressed size
-//   - 3: decompress from scratchpad end - uncompressed size to scratchpad start
-// So in the end the data always starts at scratchpad start
+//   - 0: decompress from frame.data to scratchpad
+//   - 1: decompress from scratchpad to output buffer
+//   - 2: decompress from output buffer to scratchpad
+//   - 3: decompress from scratchpad to output buffer
+// So in the end the data always starts at output buffer
 
 namespace Media
 {
@@ -114,43 +114,17 @@ namespace Media
         return {currentDst32, uncompressedSize8};
     }
 
-    IWRAM_FUNC auto DecodeAudio(uint32_t *scratchPad32, const uint32_t scratchPadSize8, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> std::pair<const uint32_t *, uint32_t>
+    IWRAM_FUNC auto DecodeAudio(uint32_t *outputBuffer32, uint32_t *scratchPad32, const IO::Vid2h::Info &info, const IO::Vid2h::Frame &frame) -> uint32_t
     {
         auto currentSrc32 = frame.data;
         uint32_t uncompressedSize8 = frame.dataSize; // if the frame data is initially uncompressed its size will be == frame data size
-        uint32_t *currentDst32 = (info.nrOfAudioProcessings & 1) ? scratchPad32 + scratchPadSize8 / 4 - uncompressedSize8 / 4 : scratchPad32;
+        uint32_t *currentDst32 = (info.nrOfAudioProcessings & 1) ? scratchPad32 : outputBuffer32;
         // do decoding steps
         for (uint32_t pi = 0; pi < info.nrOfAudioProcessings; ++pi)
         {
             const auto isFinal = pi == (static_cast<uint32_t>(info.nrOfAudioProcessings) - 1);
-            // get uncompressed size from data
-            switch (info.audio.processing[pi])
-            {
-            case Audio::ProcessingType::CompressRLE:
-                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
-                break;
-            case Audio::ProcessingType::CompressLZSS_10:
-                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
-                break;
-            case Audio::ProcessingType::CompressLZ4_40:
-#ifdef USE_LZ4_ASM
-                uncompressedSize8 = LZ4_UnCompGetSize(currentSrc32);
-#else
-                uncompressedSize = Compression::LZ4UnCompGetSize(currentSrc);
-#endif
-                break;
-            case Audio::ProcessingType::CompressADPCM:
-#ifdef USE_ADPCM_ASM
-                uncompressedSize8 = Adpcm_UnCompGetSize_8bit(currentSrc32);
-#else
-                uncompressedSize = Adpcm::UnCompGetSize_8bit(currentSrc);
-#endif
-                break;
-            default:
-                break;
-            }
             // decode either to start or end of buffer
-            currentDst32 = currentDst32 == scratchPad32 ? scratchPad32 + scratchPadSize8 / 4 - uncompressedSize8 / 4 : scratchPad32;
+            currentDst32 = currentDst32 == scratchPad32 ? outputBuffer32 : scratchPad32;
             // reverse processing operation used in this stage
             switch (info.audio.processing[pi])
             {
@@ -159,26 +133,32 @@ namespace Media
                 break;
             case Audio::ProcessingType::CompressRLE:
                 Compression::RLUnCompReadNormalWrite8bit(currentSrc32, currentDst32);
+                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
                 break;
             case Audio::ProcessingType::CompressLZSS_10:
                 Compression::LZ77UnCompWrite8bit(currentSrc32, currentDst32);
+                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
                 break;
             case Audio::ProcessingType::CompressLZ4_40:
 #ifdef USE_LZ4_ASM
                 LZ4_UnCompWrite8bit(currentSrc32, currentDst32);
+                uncompressedSize8 = LZ4_UnCompGetSize(currentSrc32);
 #else
-                Compression::LZ4UnCompWrite8bit(currentSrc, currentDst);
+                Compression::LZ4UnCompWrite8bit(currentSrc32, currentDst32);
+                uncompressedSize8 = Compression::LZ4UnCompGetSize(currentSrc32);
 #endif
                 break;
             case Audio::ProcessingType::CompressADPCM:
 #ifdef USE_ADPCM_ASM
                 Adpcm_UnCompWrite32bit_8bit(currentSrc32, uncompressedSize8, currentDst32);
+                uncompressedSize8 = Adpcm_UnCompGetSize_8bit(currentSrc32);
 #else
-                Adpcm::UnCompWrite32bit_8bit(currentSrc, uncompressedSize, currentDst);
+                Adpcm::UnCompWrite32bit_8bit(currentSrc32, uncompressedSize8, currentDst32);
+                uncompressedSize8 = Adpcm::UnCompGetSize_8bit(currentSrc32);
 #endif
                 break;
             default:
-                return {currentDst32, uncompressedSize8};
+                return uncompressedSize8;
             }
             // break if this was the last processing operation
             if (isFinal)
@@ -188,7 +168,7 @@ namespace Media
             // our old destination is the new source
             currentSrc32 = currentDst32;
         }
-        return {currentDst32, uncompressedSize8};
+        return uncompressedSize8;
     }
 
     IWRAM_FUNC auto DecodeSubtitles(const IO::Vid2h::Frame &frame) -> std::tuple<int32_t, int32_t, const char *>
