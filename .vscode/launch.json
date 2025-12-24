@@ -10,12 +10,14 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "--blackwhite=0.7",
+                "--blackwhite=0.5",
                 "--outformat=bgr555",
-                "--tiles",
-                "--prune=1",
-                "\"${workspaceFolder}/data/images/240x160/BigBuckBunny_40_240x160.png\"",
-                "image"
+                //"--tiles",
+                //"--prune=1",
+                //"\"${workspaceFolder}/data/images/240x160/BigBuckBunny_40_240x160.png\"",
+                //"image"
+                "\"${workspaceFolder}/gba/data/font_sans.png\"",
+                "font_sans"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
