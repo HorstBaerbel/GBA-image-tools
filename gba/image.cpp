@@ -44,7 +44,7 @@ int main()
 		REG_TM3CNT_L = 0;
 		REG_TM3CNT_H = TIMER_START | 2;
 		// decode and blit new image
-		Compression::LZ77UnCompWrite16bit(&IMAGES_DXT_DATA[IMAGES_DXT_DATA_START[imageIndex]], ScratchPad);
+		Compression::LZ77UnCompWrite16bit_ASM(&IMAGES_DXT_DATA[IMAGES_DXT_DATA_START[imageIndex]], ScratchPad);
 		DXT::UnCompWrite16bit<240>((uint16_t *)VRAM, (uint16_t *)ScratchPad, 240, 160);
 		// end benchmark timer
 		REG_TM3CNT_H = 0;

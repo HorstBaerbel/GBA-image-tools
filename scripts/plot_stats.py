@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python plot_audio_surface_and_stats.py <csv_file>")
+        print("Usage: python plot_stats.py <csv_file>")
         sys.exit(1)
 
     filename = sys.argv[1]

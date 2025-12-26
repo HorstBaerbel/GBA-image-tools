@@ -48,14 +48,14 @@ namespace Media
             switch (info.video.processing[pi])
             {
             case Image::ProcessingType::CompressRLE:
-                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
+                uncompressedSize8 = Compression::BIOSUnCompGetSize_ASM(currentSrc32);
                 break;
             case Image::ProcessingType::CompressLZSS_10:
-                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
+                uncompressedSize8 = Compression::BIOSUnCompGetSize_ASM(currentSrc32);
                 break;
             case Image::ProcessingType::CompressLZ4_40:
 #ifdef USE_LZ4_ASM
-                uncompressedSize8 = LZ4_UnCompGetSize(currentSrc32);
+                uncompressedSize8 = Compression::LZ4UnCompGetSize_ASM(currentSrc32);
 #else
                 uncompressedSize = Compression::LZ4UnCompGetSize(currentSrc);
 #endif
@@ -84,11 +84,11 @@ namespace Media
                 dstInVRAM ? Compression::RLUnCompReadNormalWrite16bit(currentSrc32, currentDst32) : Compression::RLUnCompReadNormalWrite8bit(currentSrc32, currentDst32);
                 break;
             case Image::ProcessingType::CompressLZSS_10:
-                dstInVRAM ? Compression::LZ77UnCompWrite16bit(currentSrc32, currentDst32) : Compression::LZ77UnCompWrite8bit(currentSrc32, currentDst32);
+                dstInVRAM ? Compression::LZ77UnCompWrite16bit_ASM(currentSrc32, currentDst32) : Compression::LZ77UnCompWrite8bit_ASM(currentSrc32, currentDst32);
                 break;
             case Image::ProcessingType::CompressLZ4_40:
 #ifdef USE_LZ4_ASM
-                LZ4_UnCompWrite8bit(currentSrc32, currentDst32);
+                Compression::LZ4UnCompWrite8bit_ASM(currentSrc32, currentDst32);
 #else
                 Compression::LZ4UnCompWrite8bit(currentSrc, currentDst);
 #endif
@@ -133,16 +133,16 @@ namespace Media
                 break;
             case Audio::ProcessingType::CompressRLE:
                 Compression::RLUnCompReadNormalWrite8bit(currentSrc32, currentDst32);
-                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
+                uncompressedSize8 = Compression::BIOSUnCompGetSize_ASM(currentSrc32);
                 break;
             case Audio::ProcessingType::CompressLZSS_10:
-                Compression::LZ77UnCompWrite8bit(currentSrc32, currentDst32);
-                uncompressedSize8 = Compression::BIOSUnCompGetSize(currentSrc32);
+                Compression::LZ77UnCompWrite8bit_ASM(currentSrc32, currentDst32);
+                uncompressedSize8 = Compression::BIOSUnCompGetSize_ASM(currentSrc32);
                 break;
             case Audio::ProcessingType::CompressLZ4_40:
 #ifdef USE_LZ4_ASM
-                LZ4_UnCompWrite8bit(currentSrc32, currentDst32);
-                uncompressedSize8 = LZ4_UnCompGetSize(currentSrc32);
+                Compression::LZ4UnCompWrite8bit(currentSrc32, currentDst32);
+                uncompressedSize8 = Compression::LZ4UnCompGetSize(currentSrc32);
 #else
                 Compression::LZ4UnCompWrite8bit(currentSrc32, currentDst32);
                 uncompressedSize8 = Compression::LZ4UnCompGetSize(currentSrc32);

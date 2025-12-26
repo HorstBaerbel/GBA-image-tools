@@ -237,7 +237,7 @@ namespace Media
                 // render subtitles
                 if (!m_currentSubtitles.empty())
                 {
-                    const float textScale = 2.0F;
+                    const float textScale = 1.0F;
                     SDL_SetRenderScale(getRenderer(), textScale, textScale);
                     SDL_SetRenderDrawColor(getRenderer(), 255, 255, 255, SDL_ALPHA_OPAQUE);
                     std::pair<int, int> renderSize = {0, 0};

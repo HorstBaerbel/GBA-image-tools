@@ -236,7 +236,7 @@ void printUsage()
     std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << options.dumpAudio.helpString() << std::endl;
     std::cout << options.outputStats.helpString() << std::endl;
-    std::cout << "help: Show this help." << std::endl;
+    std::cout << "h / help: Show this help." << std::endl;
     std::cout << "Image order: input, color conversion, addcolor0, movecolor0, shift, sprites, " << std::endl;
     std::cout << "tiles, deltaimage, dxtg / dtxv, delta8 / delta16, lz4 / lz10, output" << std::endl;
     std::cout << "Note: Multi-channel audio will be converted to stereo and sample bit depth will " << std::endl;
