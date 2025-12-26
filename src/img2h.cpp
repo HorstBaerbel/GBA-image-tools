@@ -6,6 +6,7 @@
 #include "image/imageprocessing.h"
 #include "image/spritehelpers.h"
 #include "io/textio.h"
+#include "io/binio.h"
 #include "processing/datahelpers.h"
 #include "processing/processingoptions.h"
 
@@ -66,6 +67,7 @@ bool readArguments(int argc, const char *argv[])
         // opts.add_option("", options.rle.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.vram.cxxOption);
+        opts.add_option("", options.binary.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.add_option("", options.dumpImage.cxxOption);
         opts.parse_positional({"infile", "outname"});
@@ -195,6 +197,7 @@ void printUsage()
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
+    std::cout << options.binary.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
@@ -420,129 +423,147 @@ int main(int argc, const char *argv[])
             auto dumpPath = std::filesystem::current_path() / "result";
             IO::File::writeImages(data, dumpPath.c_str());
         }
+        // convert image and palette info
+        const bool storeTileOrSpriteWise = (data.size() == 1) && (data0.type.isTiles() || data0.type.isSprites());
+        uint32_t nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, data0.info.size.width() * data0.info.size.height());
+        uint32_t nrOfImagesOrSprites = data.size();
+        if (nrOfImagesOrSprites == 1)
+        {
+            // if we have a single input image, store data per tile or sprite
+            if (data0.type.isSprites())
+            {
+                // calculate number of w*h sprites
+                auto spriteWidth = options.sprites.value.front();
+                auto spriteHeight = options.sprites.value.back();
+                nrOfImagesOrSprites = (data0.info.size.width() * data0.info.size.height()) / (spriteWidth * spriteHeight);
+                nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, spriteWidth * spriteHeight);
+                data0.info.size = {spriteWidth, spriteHeight};
+            }
+            else if (data0.type.isTiles())
+            {
+                // calculate number of 8*8 pixel tiles
+                nrOfImagesOrSprites = (data0.info.size.width() * data0.info.size.height()) / 64;
+                nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, 64);
+                data0.info.size = {8, 8};
+            }
+        }
+        // convert image data to uint32_ts
+        auto [imageData32, imageOrSpriteStartIndices] = Image::combineRawPixelData<uint32_t>(data, options.interleavePixels);
+        // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
+        nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
         // open output files
         if (!options.dryRun)
         {
-            std::ofstream hFile(m_outFile + ".h", std::ios::out);
-            std::ofstream cFile(m_outFile + ".c", std::ios::out);
-            if (hFile.is_open() && cFile.is_open())
+            if (options.binary)
             {
-                std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
-                try
+                IO::Bin::writeData(m_outFile, imageData32);
+                if (data0.type.isTiles() && !data0.map.data.empty())
                 {
-                    // build output file / variable name
-                    std::string baseName = std::filesystem::path(m_outFile).filename().replace_extension("");
-                    std::string varName = baseName;
-                    std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
-                                   { return std::toupper(c, std::locale()); });
-                    // output header
-                    hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
-                    hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
-                          << std::endl;
-                    // output data info
-                    hFile << "// Data is";
-                    if (data0.type.isBitmap())
-                    {
-                        hFile << " bitmap";
-                    }
-                    if (data0.type.isSprites())
-                    {
-                        hFile << " sprites";
-                    }
-                    if (data0.type.isTiles() && !data0.map.data.empty())
-                    {
-                        hFile << " tilemap";
-                    }
-                    else
-                    {
-                        hFile << " tiles";
-                    }
-                    if (data0.type.isCompressed())
-                    {
-                        hFile << " compressed";
-                    }
-                    hFile << ", pixel format: " << Color::formatInfo(data0.info.pixelFormat).name;
-                    if (data0.info.pixelFormat != Color::Format::Unknown)
-                    {
-                        hFile << ", color map format: " << Color::formatInfo(data0.info.colorMapFormat).name;
-                    }
-                    hFile << std::endl
-                          << std::endl;
-                    // output image and palette info
-                    const bool storeTileOrSpriteWise = (data.size() == 1) && (data0.type.isTiles() || data0.type.isSprites());
-                    uint32_t nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, data0.info.size.width() * data0.info.size.height());
-                    uint32_t nrOfImagesOrSprites = data.size();
-                    if (nrOfImagesOrSprites == 1)
-                    {
-                        // if we have a single input image, store data per tile or sprite
-                        if (data0.type.isSprites())
-                        {
-                            // calculate number of w*h sprites
-                            auto spriteWidth = options.sprites.value.front();
-                            auto spriteHeight = options.sprites.value.back();
-                            nrOfImagesOrSprites = (data0.info.size.width() * data0.info.size.height()) / (spriteWidth * spriteHeight);
-                            nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, spriteWidth * spriteHeight);
-                            data0.info.size = {spriteWidth, spriteHeight};
-                        }
-                        else if (data0.type.isTiles())
-                        {
-                            // calculate number of 8*8 pixel tiles
-                            nrOfImagesOrSprites = (data0.info.size.width() * data0.info.size.height()) / 64;
-                            nrOfBytesPerImageOrSprite = Color::bytesPerImage(data0.info.pixelFormat, 64);
-                            data0.info.size = {8, 8};
-                        }
-                    }
-                    // convert image data to uint32_ts
-                    auto [imageData32, imageOrSpriteStartIndices] = Image::combineRawPixelData<uint32_t>(data, options.interleavePixels);
-                    // make sure we have the correct number of images. sprites and tiles will have no start indices, thus we need to use nrOfImagesOrSprites
-                    nrOfImagesOrSprites = imageOrSpriteStartIndices.size() > 1 ? imageOrSpriteStartIndices.size() : nrOfImagesOrSprites;
-                    // output image and palette data
-                    if (data0.type.isTiles() && !data0.map.data.empty())
-                    {
-                        // convert map data to uint32_ts
-                        auto [mapData32, mapStartIndices] = Image::combineRawMapData<uint32_t>(data);
-                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                        IO::Text::writeMapInfoToH(hFile, varName, mapData32);
-                        IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
-                        IO::Text::writeMapDataToC(cFile, varName, mapData32);
-                    }
-                    else
-                    {
-                        IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                        IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
-                    }
-                    if (maxColorMapColors > 0)
-                    {
-                        auto [paletteData, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(data0.data.colorMap().convertDataToRaw(), std::vector<uint32_t>()) : Image::combineRawColorMapData<uint8_t>(data));
-                        IO::Text::writePaletteInfoToH(hFile, varName, paletteData, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
-                        IO::Text::writePaletteDataToC(cFile, varName, paletteData, colorMapsStartIndices, storeTileOrSpriteWise);
-                    }
-                    if (data0.type.isCompressed())
-                    {
-                        // find max memory needed for decompression
-                        const auto maxMemoryNeeded = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
-                                                                      { return imgA.info.maxMemoryNeeded < imgB.info.maxMemoryNeeded; })
-                                                         ->info.maxMemoryNeeded;
-                        IO::Text::writeCompressionInfoToH(hFile, varName, maxMemoryNeeded);
-                    }
-                    hFile << std::endl;
-                    hFile.close();
-                    cFile.close();
+                    // convert map data to uint32_ts
+                    auto [mapData32, mapStartIndices] = Image::combineRawMapData<uint32_t>(data);
+                    IO::Bin::writeData(m_outFile + "_map", mapData32);
                 }
-                catch (const std::runtime_error &e)
+                if (maxColorMapColors > 0)
                 {
-                    hFile.close();
-                    cFile.close();
-                    std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
-                    return 1;
+                    auto [paletteData, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(data0.data.colorMap().convertDataToRaw(), std::vector<uint32_t>()) : Image::combineRawColorMapData<uint8_t>(data));
+                    IO::Bin::writeData(m_outFile + "_pal", paletteData);
                 }
             }
             else
             {
-                hFile.close();
-                cFile.close();
-                std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
-                return 1;
+                std::ofstream hFile(m_outFile + ".h", std::ios::out);
+                std::ofstream cFile(m_outFile + ".c", std::ios::out);
+                if (hFile.is_open() && cFile.is_open())
+                {
+                    std::cout << "Writing output files " << m_outFile << ".h, " << m_outFile << ".c" << std::endl;
+                    try
+                    {
+                        // build output file / variable name
+                        std::string baseName = std::filesystem::path(m_outFile).filename().replace_extension("");
+                        std::string varName = baseName;
+                        std::transform(varName.begin(), varName.end(), varName.begin(), [](char c)
+                                       { return std::toupper(c, std::locale()); });
+                        // output header
+                        hFile << "// Converted with img2h " << getCommandLine(argc, argv) << std::endl;
+                        hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
+                              << std::endl;
+                        // output data info
+                        hFile << "// Data is";
+                        if (data0.type.isBitmap())
+                        {
+                            hFile << " bitmap";
+                        }
+                        if (data0.type.isSprites())
+                        {
+                            hFile << " sprites";
+                        }
+                        if (data0.type.isTiles() && !data0.map.data.empty())
+                        {
+                            hFile << " tilemap";
+                        }
+                        else
+                        {
+                            hFile << " tiles";
+                        }
+                        if (data0.type.isCompressed())
+                        {
+                            hFile << " compressed";
+                        }
+                        hFile << ", pixel format: " << Color::formatInfo(data0.info.pixelFormat).name;
+                        if (data0.info.pixelFormat != Color::Format::Unknown)
+                        {
+                            hFile << ", color map format: " << Color::formatInfo(data0.info.colorMapFormat).name;
+                        }
+                        hFile << std::endl
+                              << std::endl;
+                        // output image and palette data
+                        if (data0.type.isTiles() && !data0.map.data.empty())
+                        {
+                            // convert map data to uint32_ts
+                            auto [mapData32, mapStartIndices] = Image::combineRawMapData<uint32_t>(data);
+                            IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                            IO::Text::writeMapInfoToH(hFile, varName, mapData32);
+                            IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
+                            IO::Text::writeMapDataToC(cFile, varName, mapData32);
+                        }
+                        else
+                        {
+                            IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
+                            IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
+                        }
+                        if (maxColorMapColors > 0)
+                        {
+                            auto [paletteData, colorMapsStartIndices] = (allColorMapsSame ? std::make_pair(data0.data.colorMap().convertDataToRaw(), std::vector<uint32_t>()) : Image::combineRawColorMapData<uint8_t>(data));
+                            IO::Text::writePaletteInfoToH(hFile, varName, paletteData, maxColorMapColors, allColorMapsSame || colorMapsStartIndices.size() <= 1, storeTileOrSpriteWise);
+                            IO::Text::writePaletteDataToC(cFile, varName, paletteData, colorMapsStartIndices, storeTileOrSpriteWise);
+                        }
+                        if (data0.type.isCompressed())
+                        {
+                            // find max memory needed for decompression
+                            const auto maxMemoryNeeded = std::max_element(data.cbegin(), data.cend(), [](const auto &imgA, const auto &imgB)
+                                                                          { return imgA.info.maxMemoryNeeded < imgB.info.maxMemoryNeeded; })
+                                                             ->info.maxMemoryNeeded;
+                            IO::Text::writeCompressionInfoToH(hFile, varName, maxMemoryNeeded);
+                        }
+                        hFile << std::endl;
+                        hFile.close();
+                        cFile.close();
+                    }
+                    catch (const std::runtime_error &e)
+                    {
+                        hFile.close();
+                        cFile.close();
+                        std::cerr << "Failed to write data to output files: " << e.what() << std::endl;
+                        return 1;
+                    }
+                }
+                else
+                {
+                    hFile.close();
+                    cFile.close();
+                    std::cerr << "Failed to open " << m_outFile << ".h, " << m_outFile << ".c for writing" << std::endl;
+                    return 1;
+                }
             }
         }
         std::cout << "Done" << std::endl;

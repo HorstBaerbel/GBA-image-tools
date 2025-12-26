@@ -450,4 +450,4 @@ ProcessingOptions::Option ProcessingOptions::outputStats{
 
 ProcessingOptions::Option ProcessingOptions::binary{
     false,
-    {"binary", "Output data as binary blob .bin file instead of .h / .c files.", cxxopts::value(binary.isSet)}};
+    {"binary", "Output data as binary blob file instead of .h / .c files.", cxxopts::value(binary.isSet)}};
