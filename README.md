@@ -24,7 +24,7 @@ All of my work is under the [MIT License](LICENSE). It uses:
 * [Catch2](https://github.com/catchorg/Catch2) for unit tests.
 * [LZ77 decompression routines](gba/compression/lz77.s) from [Lorenzooone/Pokemon-Gen3-to-Gen-X](https://github.com/Lorenzooone/Pokemon-Gen3-to-Gen-X/blob/main/source/decompress.s) which is in turn derived from [Cult-of-GBA/BIOS](https://github.com/Cult-of-GBA/BIOS/blob/master/bios_calls/decompression/lz77.s). Licensed as [MIT License](https://github.com/Cult-of-GBA/BIOS/blob/master/LICENSE).
 * Test images and video from the Blender "[Big Buck Bunny](https://peach.blender.org/)" movie (c) copyright 2008, Blender Foundation. Licensed as [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
-* Test images and video from the Blender "[Tears of Steel](https://mango.blender.org/)" movie (c) copyright 2008, Blender Foundation. Licensed as [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+* Test images and video from the Blender "[Tears of Steel](https://mango.blender.org/)" movie (c) copyright 2012, Blender Foundation. Licensed as [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 * Test images from [imagecompression.info](https://imagecompression.info/test_images/) resized to fit my needs.
 
 ## Prerequisites

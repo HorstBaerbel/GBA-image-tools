@@ -62,7 +62,7 @@ namespace Media
                 break;
             case Image::ProcessingType::CompressDXTV:
 #ifdef USE_DXTV_ASM
-                uncompressedSize8 = Dxtv_UnCompGetSize(currentSrc32);
+                uncompressedSize8 = Dxtv::UnCompGetSize_ASM(currentSrc32);
 #else
                 uncompressedSize = Dxtv::UnCompGetSize(currentSrc);
 #endif
@@ -95,7 +95,7 @@ namespace Media
                 break;
             case Image::ProcessingType::CompressDXTV:
 #ifdef USE_DXTV_ASM
-                Dxtv_UnCompWrite16bit(currentSrc32, currentDst32, (const uint32_t *)vramPtr8, vramLineStride8, info.video.width, info.video.height);
+                Dxtv::UnCompWrite16bit_ASM(currentSrc32, currentDst32, (const uint32_t *)vramPtr8, vramLineStride8, info.video.width, info.video.height);
 #else
                 Dxtv::UnCompWrite16bit(currentSrc, currentDst, (const uint32_t *)vramPtr8, vramLineStride8, info.video.width, info.video.height);
 #endif
@@ -142,7 +142,7 @@ namespace Media
             case Audio::ProcessingType::CompressLZ4_40:
 #ifdef USE_LZ4_ASM
                 Compression::LZ4UnCompWrite16bit_ASM(currentSrc32, currentDst32);
-                uncompressedSize8 = Compression::LZ4UnCompGetSize(currentSrc32);
+                uncompressedSize8 = Compression::LZ4UnCompGetSize_ASM(currentSrc32);
 #else
                 Compression::LZ4UnCompWrite8bit(currentSrc32, currentDst32);
                 uncompressedSize8 = Compression::LZ4UnCompGetSize(currentSrc32);

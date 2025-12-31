@@ -15,24 +15,6 @@
 #include "time.h"
 #endif
 
-// BBB no entropy coder
-// Video avg. decode: 16.19 ms (max. 24.41 ms) ASM
-// Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
-
-// BBB LZ4 compression
-// Video avg. decode: 20.04 ms (max. 35.16 ms) ASM
-// Audio avg. decode: 5.99 ms (max. 6.84 ms) ASM
-
-// AF 96% LZ4 compression
-// Video avg. decode: 19.01 ms (max. 31.25 ms) ASM
-// Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
-
-// AF 95% LZ4 compression
-// Video avg. decode: 18.26 ms (max. 29.30 ms) ASM
-// Audio avg. decode: 5.74 ms (max. 5.86 ms) ASM
-
-// Video avg. blit: 10.26 ms (max. 10.74 ms)
-
 namespace Media
 {
     // general
@@ -46,10 +28,10 @@ namespace Media
     IWRAM_DATA IO::Vid2h::Frame m_queuedAudioFrame{};       // Audio frame waiting to be decoded
     IWRAM_DATA volatile int16_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
     IWRAM_DATA volatile int16_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
-    IWRAM_DATA uint32_t *m_audioScratchPad = nullptr;       // Pointer to audio scratch pad for decoding
+    IWRAM_DATA uint32_t *m_audioScratchPad = nullptr;       // Pointer to audio scratch pad for decoding in EWRAM
     IWRAM_DATA uint16_t m_audioBufferSize8 = 0;             // Size of one audio buffer in IWRAM and the scratch pad in EWRAM
-    IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing
-    IWRAM_DATA uint32_t *m_audioBackBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently decoding
+    IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing in IWRAM
+    IWRAM_DATA uint32_t *m_audioBackBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently decoding in IWRAM
     IWRAM_DATA uint16_t m_audioPlayBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently playing
     IWRAM_DATA uint16_t m_audioBackBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently decoding
 
@@ -373,7 +355,7 @@ namespace Media
             {
                 // allocate video back buffer and scratch pad
                 const uint32_t videoBuffersize = m_mediaInfo.video.width * m_mediaInfo.video.height * ((m_mediaInfo.video.bitsPerPixel + 7) / 8);
-                m_videoScratchPadSize8 = videoBuffersize + m_mediaInfo.video.memoryNeeded + 64;
+                m_videoScratchPadSize8 = videoBuffersize + m_mediaInfo.video.memoryNeeded + 32;
                 m_videoScratchPad = reinterpret_cast<uint32_t *>(Memory::malloc_EWRAM(m_videoScratchPadSize8));
             }
             if (m_mediaInfo.contentType & IO::FileType::Audio)

@@ -368,14 +368,14 @@ DecodeBlock8x8:
 
 .arm
  .align
- .global Dxtv_UnCompWrite16bit
- .type Dxtv_UnCompWrite16bit,function
+ .global UnCompWrite16bit_ASM
+ .type UnCompWrite16bit_ASM,function
 #ifdef __NDS__
  .section .itcm, "ax", %progbits
 #else
  .section .iwram, "ax", %progbits
 #endif
-Dxtv_UnCompWrite16bit:
+UnCompWrite16bit_ASM:
     @ Decode an image frame in DXTV format
     @ ------------------------------
     @ Input:
@@ -476,14 +476,14 @@ Dxtv_UnCompWrite16bit:
 
 .arm
  .align
- .global Dxtv_UnCompGetSize
- .type Dxtv_UnCompGetSize,function
+ .global UnCompGetSize_ASM
+ .type UnCompGetSize_ASM,function
 #ifdef __NDS__
  .section .itcm, "ax", %progbits
 #else
  .section .iwram, "ax", %progbits
 #endif
-Dxtv_UnCompGetSize:
+UnCompGetSize_ASM:
     @ Calculate decompressed frame data size
     @ r0: pointer to DXTV frame data, must be 4-byte-aligned (trashed for return value)
     ldr r0, [r0] @ read frame header
