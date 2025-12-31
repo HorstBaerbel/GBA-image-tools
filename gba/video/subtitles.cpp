@@ -1,7 +1,5 @@
 #include "subtitles.h"
 
-#include <video.h>
-
 #include "memory/memory.h"
 #include "palette.h"
 #include "print/itoa.h"
