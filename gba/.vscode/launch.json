@@ -122,7 +122,18 @@
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "${defaultBuildTask}",
-            "program": "/home/horstbaerbel/Software/Mesen",
+            "program": "/home/${env:USER}/Software/Mesen",
+            "args": [
+                "${command:cmake.launchTargetPath}.gba",
+            ],
+            "cwd": "${command:cmake.buildDirectory}"
+        },
+        {
+            "name": "Run in NanoBoyAdvance",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "${defaultBuildTask}",
+            "program": "/home/${env:USER}/Software/NanoBoyAdvance",
             "args": [
                 "${command:cmake.launchTargetPath}.gba",
             ],
