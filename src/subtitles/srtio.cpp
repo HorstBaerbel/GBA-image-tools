@@ -35,7 +35,11 @@ namespace IO
         {
             line.erase(line.find_last_not_of(SrtWhiteSpace) + 1); // trim right
             line.erase(0, line.find_first_not_of(SrtWhiteSpace)); // trim left
-            lines.push_back(line);
+            // only push line if not empty or if line before it is not empty to filter out duplicate empty lines
+            if (!line.empty() || (!lines.empty() && !lines.back().empty()))
+            {
+                lines.push_back(line);
+            }
         }
         fileSrt.close();
         REQUIRE(!lines.empty(), std::runtime_error, "No content in " << filePath);
