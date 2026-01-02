@@ -325,7 +325,7 @@ private:
 
     static auto dumpToCSV(const std::vector<Cluster> &clusters, const std::map<PIXEL_TYPE, ColorObject> &objects) -> void
     {
-        std::ofstream csvObjects("result/colorfit_objects.csv");
+        std::ofstream csvObjects("colorfit_objects.csv");
         IO::CSV::writeCSV(csvObjects, {"r", "g", "b", "csscolor", "weight", "type", "clusterindex"}, objects, [](decltype(*objects.cbegin()) o, std::size_t index)
                           { switch (index) {
                             case 0:
@@ -345,7 +345,7 @@ private:
                             default:
                                 THROW(std::runtime_error, "Bad index");
                             } });
-        std::ofstream csvClusters("result/colorfit_clusters.csv");
+        std::ofstream csvClusters("colorfit_clusters.csv");
         IO::CSV::writeCSV(csvClusters, {"r", "g", "b", "csscolor"}, clusters, [](decltype(clusters.front()) c, std::size_t index)
                           { switch (index) {
                             case 0:
