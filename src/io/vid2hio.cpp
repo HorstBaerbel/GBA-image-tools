@@ -186,7 +186,6 @@ namespace IO::Vid2h
     auto writeFrame(std::ostream &os, const Subtitles::Frame &frame) -> void
     {
         static_assert(sizeof(FrameHeader) % 4 == 0);
-        REQUIRE(frame.text.size() <= Subtitles::MaxSubTitleLength, std::runtime_error, "Max. subtitles length is " << Subtitles::MaxSubTitleLength);
         // convert subtitle to raw data (start, end, text)
         std::vector<uint8_t> subtitleData(4 + 4);
         subtitleData.reserve(4 + 4 + frame.text.size() + 1);

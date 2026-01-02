@@ -534,6 +534,15 @@ int main(int argc, const char *argv[])
             std::cout << "Reading subtitles from: " << options.subtitlesFile.value << std::endl;
             subtitles = IO::SRT::readSRT(options.subtitlesFile.value);
             std::cout << "Found " << subtitles.size() << " subtitle entries" << std::endl;
+            // check length of subtitles
+            for (std::size_t si = 0; si < subtitles.size(); ++si)
+            {
+                const auto &subtitle = subtitles[si];
+                if (subtitle.text.size() > Subtitles::MaxSubTitleLength)
+                {
+                    std::cout << "Warning: Subtitle #" << subtitle.index << " exceeds max. subtitle length of " << Subtitles::MaxSubTitleLength << std::endl;
+                }
+            }
             outputHasSubtitles = true;
         }
         // ----- get meta data -----
