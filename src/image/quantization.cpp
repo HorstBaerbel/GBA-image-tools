@@ -31,8 +31,8 @@ namespace Image
         auto colorMapping = colorFit.reduceColors(Histogram::buildHistogram(srcPixels), nrOfColors);
         REQUIRE(colorMapping.size() > 0 && nrOfColors >= colorMapping.size(), std::runtime_error, "Unexpected number of mapped colors");
         // build color map
-        std::vector<Color::XRGB8888> colorMap;
-        std::transform(colorMapping.cbegin(), colorMapping.cend(), std::back_inserter(colorMap), [](const auto &m)
+        std::vector<Color::XRGB8888> resultColorMap;
+        std::transform(colorMapping.cbegin(), colorMapping.cend(), std::back_inserter(resultColorMap), [](const auto &m)
                        { return m.first; });
         // reverse color mapping
         std::map<Color::XRGB8888, uint8_t> reverseMapping;
@@ -40,11 +40,11 @@ namespace Image
                       { std::transform(m.second.cbegin(), m.second.cend(), std::inserter(reverseMapping, reverseMapping.end()), [index](auto srcColor)
                                       { return std::make_pair(srcColor, index); }); ++index; });
         // map pixel colors to indices
-        std::vector<uint8_t> result;
-        result.reserve(srcPixels.size());
-        std::transform(srcPixels.cbegin(), srcPixels.cend(), std::back_inserter(result), [&reverseMapping](auto srcPixel)
+        std::vector<uint8_t> resultPixels;
+        resultPixels.reserve(srcPixels.size());
+        std::transform(srcPixels.cbegin(), srcPixels.cend(), std::back_inserter(resultPixels), [&reverseMapping](auto srcPixel)
                        { return reverseMapping[srcPixel]; });
-        return ImageData(result, Color::Format::Paletted8, colorMap);
+        return ImageData(resultPixels, Color::Format::Paletted8, resultColorMap);
     }
 
     auto Quantization::atkinsonDither(const ImageData &data, uint32_t nrOfColors, const std::vector<Color::XRGB8888> &colorSpaceMap) -> ImageData

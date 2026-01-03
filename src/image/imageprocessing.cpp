@@ -9,6 +9,7 @@
 #include "compression/lzss.h"
 #include "compression/rans.h"
 #include "exception.h"
+#include "image/imageio.h"
 #include "image_codec/dxt.h"
 #include "imagehelpers.h"
 #include "math/colorfit.h"
@@ -29,34 +30,34 @@ namespace Image
 
     const std::map<ProcessingType, Processing::ProcessingFunc>
         Processing::ProcessingFunctions = {
-            {ProcessingType::ConvertBlackWhite, {"binary", OperationType::Convert, FunctionType(toBlackWhite)}},
-            {ProcessingType::ConvertPaletted, {"paletted", OperationType::Convert, FunctionType(toPaletted)}},
-            {ProcessingType::ConvertTruecolor, {"truecolor", OperationType::Convert, FunctionType(toTruecolor)}},
-            {ProcessingType::ConvertCommonPalette, {"common palette", OperationType::BatchConvert, FunctionType(toCommonPalette)}},
-            {ProcessingType::ConvertTiles, {"tiles", OperationType::Convert, FunctionType(toTiles)}},
-            {ProcessingType::ConvertSprites, {"sprites", OperationType::Convert, FunctionType(toSprites)}},
-            {ProcessingType::BuildTileMap, {"tilemap", OperationType::Convert, FunctionType(toUniqueTileMap)}},
-            {ProcessingType::AddColor0, {"add color #0", OperationType::Convert, FunctionType(addColor0)}},
-            {ProcessingType::MoveColor0, {"move color #0", OperationType::Convert, FunctionType(moveColor0)}},
-            {ProcessingType::ReorderColors, {"reorder colors", OperationType::Convert, FunctionType(reorderColors)}},
-            {ProcessingType::ShiftIndices, {"shift indices", OperationType::Convert, FunctionType(shiftIndices)}},
-            {ProcessingType::PruneIndices, {"prune indices", OperationType::Convert, FunctionType(pruneIndices)}},
-            {ProcessingType::ConvertDelta8, {"delta-8", OperationType::Convert, FunctionType(toDelta8)}},
-            {ProcessingType::ConvertDelta16, {"delta-16", OperationType::Convert, FunctionType(toDelta16)}},
-            {ProcessingType::DeltaImage, {"pixel diff", OperationType::ConvertState, FunctionType(pixelDiff)}},
-            {ProcessingType::CompressLZ4_40, {"compress LZ4 40h", OperationType::Convert, FunctionType(compressLZ4_40)}},
-            {ProcessingType::CompressLZSS_10, {"compress LZSS 10h", OperationType::Convert, FunctionType(compressLZSS_10)}},
-            {ProcessingType::CompressRANS_50, {"compress rANS 50h", OperationType::Convert, FunctionType(compressRANS_50)}},
-            //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
-            {ProcessingType::CompressDXT, {"compress DXT", OperationType::Convert, FunctionType(compressDXT)}},
-            {ProcessingType::CompressDXTV, {"compress DXTV", OperationType::ConvertState, FunctionType(compressDXTV)}},
-            {ProcessingType::CompressGVID, {"compress GVID", OperationType::ConvertState, FunctionType(compressGVID)}},
-            {ProcessingType::ConvertPixelsToRaw, {"convert pixels", OperationType::Convert, FunctionType(convertPixelsToRaw)}},
-            {ProcessingType::PadPixelData, {"pad pixel data", OperationType::Convert, FunctionType(padPixelData)}},
-            {ProcessingType::PadColorMap, {"pad color map", OperationType::Convert, FunctionType(padColorMap)}},
-            {ProcessingType::EqualizeColorMaps, {"equalize color maps", OperationType::BatchConvert, FunctionType(equalizeColorMaps)}},
-            {ProcessingType::ConvertColorMapToRaw, {"convert color map", OperationType::Convert, FunctionType(convertColorMapToRaw)}},
-            {ProcessingType::PadColorMapData, {"pad color map data", OperationType::Convert, FunctionType(padColorMapData)}}};
+            {ProcessingType::ConvertBlackWhite, {"binary", ConvertFunc(toBlackWhite)}},
+            {ProcessingType::ConvertPaletted, {"paletted", ConvertFunc(toPaletted)}},
+            {ProcessingType::ConvertTruecolor, {"truecolor", ConvertFunc(toTruecolor)}},
+            {ProcessingType::ConvertCommonPalette, {"common palette", BatchConvertFunc(toCommonPalette)}},
+            {ProcessingType::ConvertTiles, {"tiles", ConvertFunc(toTiles)}},
+            {ProcessingType::ConvertSprites, {"sprites", ConvertFunc(toSprites)}},
+            {ProcessingType::BuildTileMap, {"tilemap", ConvertFunc(toUniqueTileMap)}},
+            {ProcessingType::AddColor0, {"add color #0", ConvertFunc(addColor0)}},
+            {ProcessingType::MoveColor0, {"move color #0", ConvertFunc(moveColor0)}},
+            {ProcessingType::ReorderColors, {"reorder colors", ConvertFunc(reorderColors)}},
+            {ProcessingType::ShiftIndices, {"shift indices", ConvertFunc(shiftIndices)}},
+            {ProcessingType::PruneIndices, {"prune indices", ConvertFunc(pruneIndices)}},
+            {ProcessingType::ConvertDelta8, {"delta-8", ConvertFunc(toDelta8)}},
+            {ProcessingType::ConvertDelta16, {"delta-16", ConvertFunc(toDelta16)}},
+            {ProcessingType::DeltaImage, {"pixel diff", ConvertStateFunc(pixelDiff)}},
+            {ProcessingType::CompressLZ4_40, {"compress LZ4 40h", ConvertFunc(compressLZ4_40)}},
+            {ProcessingType::CompressLZSS_10, {"compress LZSS 10h", ConvertFunc(compressLZSS_10)}},
+            {ProcessingType::CompressRANS_50, {"compress rANS 50h", ConvertFunc(compressRANS_50)}},
+            //{ProcessingType::CompressRLE, {"compress RLE", ConvertFunc(compressRLE)}},
+            {ProcessingType::CompressDXT, {"compress DXT", ConvertFunc(compressDXT)}},
+            {ProcessingType::CompressDXTV, {"compress DXTV", ConvertStateFunc(compressDXTV)}},
+            {ProcessingType::CompressGVID, {"compress GVID", ConvertStateFunc(compressGVID)}},
+            {ProcessingType::ConvertPixelsToRaw, {"convert pixels", ConvertFunc(convertPixelsToRaw)}},
+            {ProcessingType::PadPixelData, {"pad pixel data", ConvertFunc(padPixelData)}},
+            {ProcessingType::PadColorMap, {"pad color map", ConvertFunc(padColorMap)}},
+            {ProcessingType::EqualizeColorMaps, {"equalize color maps", BatchConvertFunc(equalizeColorMaps)}},
+            {ProcessingType::ConvertColorMapToRaw, {"convert color map", ConvertFunc(convertColorMapToRaw)}},
+            {ProcessingType::PadColorMapData, {"pad color map data", ConvertFunc(padColorMapData)}}};
 
     Frame Processing::toBlackWhite(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
     {
@@ -653,9 +654,24 @@ namespace Image
 
     // ----------------------------------------------------------------------------
 
-    void Processing::addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessingInfo, bool addStatistics)
+    void Processing::dumpImage(const Frame &data, [[maybe_unused]] const std::vector<Parameter> &parameters, [[maybe_unused]] Statistics::Frame::SPtr statistics)
     {
-        m_steps.push_back({type, parameters, prependProcessingInfo, addStatistics});
+        IO::File::writeImage(data, "", "result" + std::to_string(data.index) + ".png");
+    }
+
+    // ----------------------------------------------------------------------------
+
+    void Processing::addStep(ProcessingType type, std::vector<Parameter> parameters, bool prependProcessingInfo, bool addStatistics)
+    {
+        // find function for type
+        const auto pfIt = ProcessingFunctions.find(type);
+        REQUIRE(pfIt != ProcessingFunctions.cend(), std::runtime_error, "Failed to find function for image processing type " << static_cast<uint32_t>(type));
+        m_steps.push_back({type, parameters, prependProcessingInfo, addStatistics, {}, pfIt->second});
+    }
+
+    void Processing::addDumpStep(std::vector<Parameter> parameters, bool addStatistics)
+    {
+        m_steps.push_back({ProcessingType::Invalid, parameters, false, addStatistics, {}, {"dump", OutputFunc(dumpImage)}});
     }
 
     std::size_t Processing::nrOfSteps() const
@@ -683,7 +699,7 @@ namespace Image
         for (std::size_t si = 0; si < m_steps.size(); si++)
         {
             const auto &step = m_steps[si];
-            const auto &stepFunc = ProcessingFunctions.find(step.type)->second;
+            const auto &stepFunc = step.function;
             result += stepFunc.description;
             result += step.parameters.size() > 0 ? " " : "";
             for (std::size_t pi = 0; pi < step.parameters.size(); pi++)
@@ -737,7 +753,7 @@ namespace Image
         std::vector<Frame> processed = data;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
-            auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
+            const auto &stepFunc = stepIt->function.func;
             // check if this was the final processing step (first non-input processing)
             bool isFinalStep = false;
             if (!finalStepFound)
@@ -746,9 +762,9 @@ namespace Image
                 finalStepFound = true;
             }
             // process depending on operation type
-            if (stepFunc.type == OperationType::Convert)
+            if (std::holds_alternative<ConvertFunc>(stepFunc))
             {
-                auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
+                auto convertFunc = std::get<ConvertFunc>(stepFunc);
                 for (auto &img : processed)
                 {
                     const auto inputSize = img.data.pixels().rawSize();
@@ -758,9 +774,9 @@ namespace Image
                     img.info.maxMemoryNeeded = (img.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.info.maxMemoryNeeded;
                 }
             }
-            else if (stepFunc.type == OperationType::ConvertState)
+            else if (std::holds_alternative<ConvertStateFunc>(stepFunc))
             {
-                auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
+                auto convertFunc = std::get<ConvertStateFunc>(stepFunc);
                 for (auto &img : processed)
                 {
                     const uint32_t inputSize = img.data.pixels().rawSize();
@@ -770,13 +786,13 @@ namespace Image
                     img.info.maxMemoryNeeded = (img.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : img.info.maxMemoryNeeded;
                 }
             }
-            else if (stepFunc.type == OperationType::BatchConvert)
+            else if (std::holds_alternative<BatchConvertFunc>(stepFunc))
             {
                 // get all input sizes
                 std::vector<uint32_t> inputSizes = {};
                 std::transform(processed.cbegin(), processed.cend(), std::back_inserter(inputSizes), [](const auto &d)
                                { return d.data.pixels().rawSize(); });
-                auto batchFunc = std::get<BatchConvertFunc>(stepFunc.func);
+                auto batchFunc = std::get<BatchConvertFunc>(stepFunc);
                 processed = batchFunc(processed, stepIt->parameters, nullptr);
                 for (auto pIt = processed.begin(); pIt != processed.end(); pIt++)
                 {
@@ -785,10 +801,18 @@ namespace Image
                     pIt->info.maxMemoryNeeded = (pIt->info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : pIt->info.maxMemoryNeeded;
                 }
             }
-            else if (stepFunc.type == OperationType::Reduce)
+            else if (std::holds_alternative<ReduceFunc>(stepFunc))
             {
-                auto reduceFunc = std::get<ReduceFunc>(stepFunc.func);
+                auto reduceFunc = std::get<ReduceFunc>(stepFunc);
                 processed = {reduceFunc(processed, stepIt->parameters, nullptr)};
+            }
+            else if (std::holds_alternative<OutputFunc>(stepFunc))
+            {
+                auto outputFunc = std::get<OutputFunc>(stepFunc);
+                for (auto pIt = processed.cbegin(); pIt != processed.cend(); pIt++)
+                {
+                    outputFunc(*pIt, stepIt->parameters, nullptr);
+                }
             }
         }
         return processed;
@@ -803,21 +827,32 @@ namespace Image
         {
             const uint32_t inputSize = processed.data.pixels().rawSize();
             auto stepStatistics = stepIt->addStatistics ? frameStatistics : nullptr;
-            auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
-            if (stepFunc.type == OperationType::Convert)
+            auto &stepFunc = stepIt->function.func;
+            bool updateMaxMemoryNeeded = false;
+            if (std::holds_alternative<ConvertFunc>(stepFunc))
             {
-                auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
+                auto convertFunc = std::get<ConvertFunc>(stepFunc);
                 processed = convertFunc(processed, stepIt->parameters, stepStatistics);
+                updateMaxMemoryNeeded = true;
             }
-            else if (stepFunc.type == OperationType::ConvertState)
+            else if (std::holds_alternative<ConvertStateFunc>(stepFunc))
             {
-                auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
+                auto convertFunc = std::get<ConvertStateFunc>(stepFunc);
                 processed = convertFunc(processed, stepIt->parameters, stepIt->state, stepStatistics);
+                updateMaxMemoryNeeded = true;
             }
-            // we're silently ignoring OperationType::BatchInput ::BatchConvert and ::Reduce operations here
-            // record max. memory needed for everything, but the first step
-            auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : processed.data.pixels().rawSize() + sizeof(uint32_t);
-            processed.info.maxMemoryNeeded = (processed.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.info.maxMemoryNeeded;
+            else if (std::holds_alternative<OutputFunc>(stepFunc))
+            {
+                auto outputFunc = std::get<OutputFunc>(stepFunc);
+                outputFunc(processed, stepIt->parameters, stepStatistics);
+            }
+            // we're silently ignoring OperationType::BatchConvert and ::Reduce operations here
+            if (updateMaxMemoryNeeded)
+            {
+                // record max. memory needed for everything, but the first step
+                auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : processed.data.pixels().rawSize() + sizeof(uint32_t);
+                processed.info.maxMemoryNeeded = (processed.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.info.maxMemoryNeeded;
+            }
         }
         return processed;
     }
@@ -828,6 +863,7 @@ namespace Image
         auto srIt = m_steps.crbegin();
         while (srIt != m_steps.crend())
         {
+            REQUIRE(srIt->type != ProcessingType::Invalid, std::runtime_error, "Bad processing type for step " << m_steps.size() - static_cast<int32_t>(std::distance(m_steps.crend(), srIt)));
             if (srIt->decodeRelevant)
             {
                 decodingSteps.push_back(srIt->type);

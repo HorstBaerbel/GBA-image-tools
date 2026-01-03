@@ -68,6 +68,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.binary.cxxOption);
+        opts.add_option("", options.dumpImage.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
@@ -197,10 +198,11 @@ void printUsage()
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.binary.helpString() << std::endl;
+    std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
     std::cout << "ORDER: input, reordercolors, addcolor0, movecolor0, shift, sprites, tiles" << std::endl;
-    std::cout << "tilemap, prune, delta8 / delta16, rle, lz10, interleavepixels, output" << std::endl;
+    std::cout << "tilemap, prune, dump, delta8 / delta16, rle, lz10, interleavepixels, output" << std::endl;
 }
 
 std::vector<Image::Frame> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
@@ -331,7 +333,7 @@ int main(int argc, const char *argv[])
         // build processing pipeline - conversion
         if (options.reorderColors)
         {
-            processing.addStep(Image::ProcessingType::ReorderColors, {});
+            processing.addStep(Image::ProcessingType::ReorderColors);
         }
         if (options.addColor0)
         {
@@ -349,10 +351,8 @@ int main(int argc, const char *argv[])
         {
             if (images.size() > 1)
             {
-                processing.addStep(Image::ProcessingType::EqualizeColorMaps, {});
+                processing.addStep(Image::ProcessingType::EqualizeColorMaps);
             }
-            processing.addStep(Image::ProcessingType::ConvertColorMapToRaw, {options.outformat.value});
-            processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         if (options.sprites)
         {
@@ -360,7 +360,7 @@ int main(int argc, const char *argv[])
         }
         if (options.tiles)
         {
-            processing.addStep(Image::ProcessingType::ConvertTiles, {});
+            processing.addStep(Image::ProcessingType::ConvertTiles);
         }
         if (options.tilemap)
         {
@@ -369,6 +369,15 @@ int main(int argc, const char *argv[])
         if (options.pruneIndices)
         {
             processing.addStep(Image::ProcessingType::PruneIndices, {options.pruneIndices.value});
+        }
+        if (options.dumpImage)
+        {
+            processing.addDumpStep();
+        }
+        if (options.blackWhite || options.paletted || options.commonPalette)
+        {
+            processing.addStep(Image::ProcessingType::ConvertColorMapToRaw, {options.outformat.value});
+            processing.addStep(Image::ProcessingType::PadColorMapData, {uint32_t(4)});
         }
         // image compression
         if (options.dxt)
@@ -380,15 +389,15 @@ int main(int argc, const char *argv[])
         // entropy compression
         if (options.delta8)
         {
-            processing.addStep(Image::ProcessingType::ConvertDelta8, {});
+            processing.addStep(Image::ProcessingType::ConvertDelta8);
         }
         if (options.delta16)
         {
-            processing.addStep(Image::ProcessingType::ConvertDelta16, {});
+            processing.addStep(Image::ProcessingType::ConvertDelta16);
         }
         /*if (options.rle)
         {
-            processing.addStep(Image::ProcessingType::CompressRLE, {});
+            processing.addStep(Image::ProcessingType::CompressRLE);
         }*/
         if (options.lz10)
         {

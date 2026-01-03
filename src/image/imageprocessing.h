@@ -30,7 +30,12 @@ namespace Image
         /// @param parameters Parameters to pass to processing
         /// @param decodeRelevant If true the processing type is recorded for a call to getDecodingSteps().
         /// @param addStatistics The step should output statistics to the statistics container
-        void addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool decodeRelevant = false, bool addStatistics = false);
+        void addStep(ProcessingType type, std::vector<Parameter> parameters = {}, bool decodeRelevant = false, bool addStatistics = false);
+
+        /// @brief Add a step to dump the current processed image
+        /// @param parameters Parameters to pass to processing
+        /// @param addStatistics The step should output statistics to the statistics container
+        void addDumpStep(std::vector<Parameter> parameters = {}, bool addStatistics = false);
 
         /// @brief Get current # of steps in processing pipeline
         std::size_t nrOfSteps() const;
@@ -210,38 +215,37 @@ namespace Image
         /// @param state Previous image as Data
         static Frame pixelDiff(const Frame &image, const std::vector<Parameter> &parameters, std::vector<uint8_t> &state, Statistics::Frame::SPtr statistics);
 
+        // --- output functions ------------------------------------------------------------------------
+
+        /// @brief Dump current image to disk
+        /// @param parameters None
+        static void dumpImage(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
+
     private:
-        struct ProcessingStep
-        {
-            ProcessingType type;                // Type of processing operation applied
-            std::vector<Parameter> parameters;  // Input parameters for operation
-            bool decodeRelevant = false;        // If processing information is needed for decoding
-            bool addStatistics = false;         // If operation statistics should be written to
-            std::vector<uint8_t> state;         // The input / output state for stateful operations
-        };
-        std::vector<ProcessingStep> m_steps;
-
-        enum class OperationType
-        {
-            Convert,      // Converts 1 data input into 1 data output
-            ConvertState, // Converts 1 data input + state into 1 data output
-            BatchConvert, // Converts N data inputs into N data outputs
-            Reduce        // Converts N data inputs into 1 data output
-        };
-
-        using ConvertFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;
-        using ConvertStateFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, std::vector<uint8_t> &, Statistics::Frame::SPtr statistics)>;
-        using BatchConvertFunc = std::function<std::vector<Frame>(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;
-        using ReduceFunc = std::function<Frame(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;
-        using FunctionType = std::variant<ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc>;
+        using ConvertFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;                                // Converts 1 data input into 1 data output
+        using ConvertStateFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, std::vector<uint8_t> &, Statistics::Frame::SPtr statistics)>;   // Converts 1 data input + state into 1 data output
+        using BatchConvertFunc = std::function<std::vector<Frame>(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>; // Converts N data inputs into N data outputs
+        using ReduceFunc = std::function<Frame(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;                    // Converts N data inputs into 1 data output
+        using OutputFunc = std::function<void(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;                                  // Outputs the result and does not change the data
+        using FunctionType = std::variant<ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc, OutputFunc>;
 
         struct ProcessingFunc
         {
             std::string description; // Processing operation description
-            OperationType type;      // Of what type the operation is
             FunctionType func;       // Actual processing function
         };
         static const std::map<ProcessingType, ProcessingFunc> ProcessingFunctions;
+
+        struct ProcessingStep
+        {
+            ProcessingType type;               // Type of processing operation applied
+            std::vector<Parameter> parameters; // Input parameters for operation
+            bool decodeRelevant = false;       // If processing information is needed for decoding
+            bool addStatistics = false;        // If operation statistics should be written to
+            std::vector<uint8_t> state;        // The input / output state for stateful operations
+            ProcessingFunc function;           // The processing function to apply to the data
+        };
+        std::vector<ProcessingStep> m_steps;
     };
 
 }
