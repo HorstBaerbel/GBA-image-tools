@@ -1,5 +1,8 @@
 {
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.files.exclude": {
+        "**/build/**/*.*": true
+    },
     "files.associations": {
         "array": "cpp",
         "string_view": "cpp",

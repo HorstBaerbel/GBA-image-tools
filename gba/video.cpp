@@ -21,13 +21,13 @@ int main()
 	{
 		if (Memory::trySetWaitCnt(Memory::WaitCntNormal))
 		{
-			TUI::setColor(TUI::Color::Black, TUI::Color::Red);
+			TUI::setColor(TUI::Color::Black, TUI::Color::Yellow);
 			TUI::printf(0, 9, "      Slow ROM detected");
 			TUI::printf(0, 10, " Playback might not be optimal");
 		}
 		else
 		{
-			TUI::setColor(TUI::Color::Black, TUI::Color::Yellow);
+			TUI::setColor(TUI::Color::Black, TUI::Color::Red);
 			TUI::printf(0, 9, "    Very slow ROM detected");
 			TUI::printf(0, 10, "   Expect playback problems");
 		}
@@ -42,6 +42,7 @@ int main()
 				break;
 			}
 		} while (true);
+		TUI::fillBackground(TUI::Color::Black);
 	}
 	Memory::RegWaitEwram = Memory::WaitEwramNormal;
 	// get media info and check if we have meta data
