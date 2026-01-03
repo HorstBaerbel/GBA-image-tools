@@ -428,8 +428,8 @@ namespace Media
                 REG_TM0CNT_L = 65536U - frameTime;
                 REG_TM0CNT_H = 0; // start timer later
                 // set timer 1 to cascade from timer 0, issue IRQ to swap sample buffers and set divider to 0 == 1/1
-                irqSet(IRQMask::IRQ_TIMER1, AudioBufferRequest);
-                irqEnable(IRQMask::IRQ_TIMER1);
+                Irq::setHandler(Irq::Mask::Timer1, AudioBufferRequest);
+                Irq::enable(Irq::Mask::Timer1);
                 REG_TM1CNT_L = 0;                           // set up number of samples in buffer later
                 REG_TM1CNT_H = TIMER_COUNT | TIMER_IRQ | 0; // start timer later
                 // read the first video frame from media data
@@ -449,8 +449,8 @@ namespace Media
                 Memory::memset32(m_videoScratchPad, clearColor, m_videoScratchPadSize8 / 4);
                 // set up timer 2 to increase with video frame interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
                 // set timer 2 divider to 2 == 1/256 -> 16*1024*1024 cycles/s / 256 = 65536/s
-                irqSet(IRQMask::IRQ_TIMER2, VideoFrameRequest);
-                irqEnable(IRQMask::IRQ_TIMER2);
+                Irq::setHandler(Irq::Mask::Timer2, VideoFrameRequest);
+                Irq::enable(Irq::Mask::Timer2);
                 const uint32_t frameTime = uint64_t(4294967296) / m_mediaInfo.video.frameRateHz;
                 m_videoFrameTime = frameTime;
                 REG_TM2CNT_L = 65536U - frameTime;
@@ -539,41 +539,53 @@ namespace Media
             m_playing = false;
             m_audioFramesRequested = 0;
             m_videoFramesRequested = 0;
-            // disable sound for now
-            REG_SOUNDCNT_X = 0;
-            // disable audio timers
-            REG_TM0CNT_H = 0;
-            REG_TM1CNT_H = 0;
-            irqDisable(IRQMask::IRQ_TIMER1);
-            // disable audio DMAs
-            REG_DMA[1].control = 0;
-            if (m_mediaInfo.audio.channels == 2)
-            {
-                REG_DMA[2].control = 0;
-            }
-            // disable video timer
-            REG_TM2CNT_H = 0;
-            irqDisable(IRQMask::IRQ_TIMER2);
             // clean up subtitles
-            Subtitles::cleanup();
-            m_subtitleCurrent = {0, 0, nullptr};
-            m_subtitleNext = {0, 0, nullptr};
-            // free memory
-            if (m_audioPlayBuffer)
+            if (m_mediaInfo.contentType & IO::FileType::Subtitles)
             {
-                Memory::free(m_audioPlayBuffer);
-                m_audioPlayBuffer = nullptr;
-                m_audioBackBuffer = nullptr;
+                Subtitles::cleanup();
+                m_subtitleCurrent = {0, 0, nullptr};
+                m_subtitleNext = {0, 0, nullptr};
             }
-            if (m_audioScratchPad)
+            // clean up audio
+            if (m_mediaInfo.contentType & IO::FileType::Audio)
             {
-                Memory::free(m_audioScratchPad);
-                m_audioScratchPad = nullptr;
+                // disable sound for now
+                REG_SOUNDCNT_X = 0;
+                // disable audio timers
+                REG_TM0CNT_H = 0;
+                REG_TM1CNT_H = 0;
+                Irq::disable(Irq::Mask::Timer1);
+                // disable audio DMAs
+                REG_DMA[1].control = 0;
+                if (m_mediaInfo.audio.channels == 2)
+                {
+                    REG_DMA[2].control = 0;
+                }
+                // free audio memory
+                if (m_audioPlayBuffer)
+                {
+                    Memory::free(m_audioPlayBuffer);
+                    m_audioPlayBuffer = nullptr;
+                    m_audioBackBuffer = nullptr;
+                }
+                if (m_audioScratchPad)
+                {
+                    Memory::free(m_audioScratchPad);
+                    m_audioScratchPad = nullptr;
+                }
             }
-            if (m_videoScratchPad)
+            // clean up video
+            if (m_mediaInfo.contentType & IO::FileType::Video)
             {
-                Memory::free(m_videoScratchPad);
-                m_videoScratchPad = nullptr;
+                // disable video timer
+                REG_TM2CNT_H = 0;
+                Irq::disable(Irq::Mask::Timer2);
+                // free memory
+                if (m_videoScratchPad)
+                {
+                    Memory::free(m_videoScratchPad);
+                    m_videoScratchPad = nullptr;
+                }
             }
 #ifdef DEBUG_PLAYER
             Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);

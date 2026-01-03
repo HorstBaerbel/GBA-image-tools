@@ -1,9 +1,9 @@
 #include "sys/video.h"
-#include "memory/memory.h"
 #include "print/output.h"
 #include "sys/base.h"
 #include "sys/input.h"
 #include "sys/interrupts.h"
+#include "sys/memctrl.h"
 #include "tui.h"
 #include "videoplayer.h"
 
@@ -12,14 +12,14 @@
 int main()
 {
 	// start wall clock
-	irqInit();
+	Irq::init();
 	// set up text UI
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
-	// set waitstates for GamePak ROM and EWRAM
-	if (!Memory::trySetWaitCnt(Memory::WaitCntFast))
+	// set waitstates for GamePak ROM
+	if (!MemCtrl::setWaitCnt(MemCtrl::WaitCntFast))
 	{
-		if (Memory::trySetWaitCnt(Memory::WaitCntNormal))
+		if (MemCtrl::setWaitCnt(MemCtrl::WaitCntNormal))
 		{
 			TUI::setColor(TUI::Color::Black, TUI::Color::Yellow);
 			TUI::printf(0, 9, "      Slow ROM detected");
@@ -34,17 +34,9 @@ int main()
 		TUI::setColor(TUI::Color::Black, TUI::Color::LightGray);
 		TUI::printf(0, 19, "     Press A to continue");
 		// wait for keypress
-		do
-		{
-			scanKeys();
-			if (keysDown() & KEY_A)
-			{
-				break;
-			}
-		} while (true);
-		TUI::fillBackground(TUI::Color::Black);
+		Input::waitForKeysDown(Input::KeyA, true);
+		TUI::fillForeground(TUI::Color::Black);
 	}
-	Memory::RegWaitEwram = Memory::WaitEwramNormal;
 	// get media info and check if we have meta data
 	const auto mediaInfo = IO::Vid2h::GetInfo(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
 	if (mediaInfo.metaDataSize > 0 && mediaInfo.metaData != nullptr)
@@ -105,14 +97,7 @@ int main()
 	// center video on screen
 	Media::SetPosition((240 - mediaInfo.video.width) / 2, (160 - mediaInfo.video.height) / 2);
 	// wait for keypress
-	do
-	{
-		scanKeys();
-		if (keysDown() & KEY_A)
-		{
-			break;
-		}
-	} while (true);
+	Input::waitForKeysDown(Input::KeyA, true);
 	// switch video mode to 240x160x2
 	REG_DISPCNT = MODE_3 | BG2_ON;
 	// set up video system and clear color
@@ -126,14 +111,7 @@ int main()
 		if (!Media::HasMoreFrames())
 		{
 			Media::Stop();
-			do
-			{
-				scanKeys();
-				if (keysDown() & KEY_A)
-				{
-					break;
-				}
-			} while (true);
+			Input::waitForKeysDown(Input::KeyA, true);
 			Media::Play(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
 		}
 	} while (true);

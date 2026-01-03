@@ -44,9 +44,11 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	GBA-demo-framework/src/memory/memset.s
 	GBA-demo-framework/src/print/itoa.cpp
 	GBA-demo-framework/src/print/output.cpp
+	GBA-demo-framework/src/sys/halt.cpp
 	GBA-demo-framework/src/sys/interrupts.cpp
 	GBA-demo-framework/src/sys/intdispatcher.s
 	GBA-demo-framework/src/sys/input.cpp
+	GBA-demo-framework/src/sys/memctrl.cpp
 	GBA-demo-framework/src/compression/bios.cpp
 	GBA-demo-framework/src/compression/lz4.cpp
 	GBA-demo-framework/src/compression/lz4_asm.s
@@ -80,9 +82,11 @@ LIST(APPEND IMAGE_SOURCE_FILES
 	GBA-demo-framework/src/memory/memset.s
 	GBA-demo-framework/src/print/itoa.cpp
 	GBA-demo-framework/src/print/output.cpp
+	GBA-demo-framework/src/sys/halt.cpp
 	GBA-demo-framework/src/sys/interrupts.cpp
 	GBA-demo-framework/src/sys/intdispatcher.s
 	GBA-demo-framework/src/sys/input.cpp
+	GBA-demo-framework/src/sys/memctrl.cpp
 	GBA-demo-framework/src/compression/bios.cpp
 	GBA-demo-framework/src/compression/lz4.cpp
 	GBA-demo-framework/src/compression/lz4_asm.s
