@@ -16,15 +16,15 @@ namespace Audio
 
     const std::map<ProcessingType, Processing::ProcessingFunc>
         Processing::ProcessingFunctions = {
-            {ProcessingType::Resample, {"resample", OperationType::Convert, FunctionType(resample)}},
-            {ProcessingType::Repackage, {"repackage", OperationType::Convert, FunctionType(repackage)}},
-            {ProcessingType::CompressLZ4_40, {"compress LZ4 40h", OperationType::Convert, FunctionType(compressLZ4_40)}},
-            {ProcessingType::CompressLZSS_10, {"compress LZSS 10h", OperationType::Convert, FunctionType(compressLZSS_10)}},
-            {ProcessingType::CompressRANS_50, {"compress rANS 50h", OperationType::Convert, FunctionType(compressRANS_50)}},
-            //{ProcessingType::CompressRLE, {"compress RLE", OperationType::Convert, FunctionType(compressRLE)}},
-            {ProcessingType::CompressADPCM, {"ADPCM compression", OperationType::Convert, FunctionType(compressADPCM)}},
-            {ProcessingType::ConvertSamplesToRaw, {"data to raw", OperationType::Convert, FunctionType(convertSamplesToRaw)}},
-            {ProcessingType::PadAudioData, {"pad pixel data", OperationType::Convert, FunctionType(padAudioData)}}};
+            {ProcessingType::Resample, {"resample", ConvertFunc(resample)}},
+            {ProcessingType::Repackage, {"repackage", ConvertFunc(repackage)}},
+            {ProcessingType::CompressLZ4_40, {"compress LZ4 40h", ConvertFunc(compressLZ4_40)}},
+            {ProcessingType::CompressLZSS_10, {"compress LZSS 10h", ConvertFunc(compressLZSS_10)}},
+            {ProcessingType::CompressRANS_50, {"compress rANS 50h", ConvertFunc(compressRANS_50)}},
+            //{ProcessingType::CompressRLE, {"compress RLE", ConvertFunc(compressRLE)}},
+            {ProcessingType::CompressADPCM, {"ADPCM compression", ConvertFunc(compressADPCM)}},
+            {ProcessingType::ConvertSamplesToRaw, {"data to raw", ConvertFunc(convertSamplesToRaw)}},
+            {ProcessingType::PadAudioData, {"pad pixel data", ConvertFunc(padAudioData)}}};
 
     // ----------------------------------------------------------------------------
 
@@ -199,7 +199,10 @@ namespace Audio
 
     void Processing::addStep(ProcessingType type, const std::vector<Parameter> &parameters, bool prependProcessingInfo, bool addStatistics)
     {
-        m_steps.push_back({type, parameters, prependProcessingInfo, addStatistics});
+        // find function for type
+        const auto pfIt = ProcessingFunctions.find(type);
+        REQUIRE(pfIt != ProcessingFunctions.cend(), std::runtime_error, "Failed to find function for audio processing type " << static_cast<uint32_t>(type));
+        m_steps.push_back({type, parameters, prependProcessingInfo, addStatistics, {}, pfIt->second});
     }
 
     std::size_t Processing::nrOfSteps() const
@@ -235,7 +238,7 @@ namespace Audio
         for (std::size_t si = 0; si < m_steps.size(); si++)
         {
             const auto &step = m_steps[si];
-            const auto &stepFunc = ProcessingFunctions.find(step.type)->second;
+            const auto &stepFunc = step.function;
             result += stepFunc.description;
             result += step.parameters.size() > 0 ? " " : "";
             for (std::size_t pi = 0; pi < step.parameters.size(); pi++)
@@ -288,10 +291,10 @@ namespace Audio
         {
             const uint32_t inputSize = AudioHelpers::rawDataSize(processed.data);
             auto stepStatistics = stepIt->addStatistics ? frameStatistics : nullptr;
-            auto &stepFunc = ProcessingFunctions.find(stepIt->type)->second;
-            if (stepFunc.type == OperationType::Convert)
+            const auto &stepFunc = stepIt->function.func;
+            if (std::holds_alternative<ConvertFunc>(stepFunc))
             {
-                auto convertFunc = std::get<ConvertFunc>(stepFunc.func);
+                auto convertFunc = std::get<ConvertFunc>(stepFunc);
                 auto result = convertFunc(*this, processed, stepIt->parameters, flushBuffers, stepStatistics);
                 // check if we got an output frame, else report to the caller
                 if (!result.has_value())
@@ -300,9 +303,9 @@ namespace Audio
                 }
                 processed = result.value();
             }
-            else if (stepFunc.type == OperationType::ConvertState)
+            else if (std::holds_alternative<ConvertStateFunc>(stepFunc))
             {
-                auto convertFunc = std::get<ConvertStateFunc>(stepFunc.func);
+                auto convertFunc = std::get<ConvertStateFunc>(stepFunc);
                 auto result = convertFunc(*this, processed, stepIt->parameters, stepIt->state, flushBuffers, stepStatistics);
                 // check if we got an output frame, else report to the caller
                 if (!result)
@@ -354,6 +357,7 @@ namespace Audio
         auto srIt = m_steps.crbegin();
         while (srIt != m_steps.crend())
         {
+            REQUIRE(srIt->type != ProcessingType::Invalid, std::runtime_error, "Bad processing type for step " << m_steps.size() - static_cast<int32_t>(std::distance(m_steps.crend(), srIt)));
             if (srIt->decodeRelevant)
             {
                 decodingSteps.push_back(srIt->type);

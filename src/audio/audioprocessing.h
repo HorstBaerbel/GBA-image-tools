@@ -153,16 +153,6 @@ namespace Audio
         /// @param parameters "Modulo value" as uint32_t. The audio data will be padded to a multiple of this
         static std::optional<Frame> padAudioData(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics);
 
-        struct ProcessingStep
-        {
-            ProcessingType type;               // Type of processing operation applied
-            std::vector<Parameter> parameters; // Input parameters for operation
-            bool decodeRelevant = false;       // If processing information is needed for decoding
-            bool addStatistics = false;        // If operation statistics should be written to
-            std::vector<uint8_t> state;        // The input / output state for stateful operations
-        };
-        std::vector<ProcessingStep> m_steps; // Processing steps used in pipeline
-
         uint32_t m_nrOfInputFrames = 0;               // Number of frames input into processing
         uint32_t m_nrOfOutputFrames = 0;              // Number of frames output from processing
         uint32_t m_nrOfOutputSamples = 0;             // Number of samples output from processing
@@ -173,22 +163,26 @@ namespace Audio
         double m_sampleDeltaPrevFrame = 0;            // Number of audio samples per channel last frame in comparison to requested audioSamplesPerFrame
         std::shared_ptr<Adpcm> m_codecAdpcm;          // ADPCM compressor
 
-        enum class OperationType
-        {
-            Convert,      // Converts 1 data input into 1 data output
-            ConvertState, // Converts 1 data input + state into 1 data output
-        };
-
-        using ConvertFunc = std::function<std::optional<Frame>(Processing &processing, const Frame &, const std::vector<Parameter> &, bool, Statistics::Frame::SPtr statistics)>;
-        using ConvertStateFunc = std::function<std::optional<Frame>(Processing &processing, const Frame &, const std::vector<Parameter> &, std::vector<uint8_t> &, bool, Statistics::Frame::SPtr statistics)>;
+        using ConvertFunc = std::function<std::optional<Frame>(Processing &processing, const Frame &, const std::vector<Parameter> &, bool, Statistics::Frame::SPtr statistics)>;                              // Converts 1 data input into 1 data output
+        using ConvertStateFunc = std::function<std::optional<Frame>(Processing &processing, const Frame &, const std::vector<Parameter> &, std::vector<uint8_t> &, bool, Statistics::Frame::SPtr statistics)>; // Converts 1 data input + state into 1 data output
         using FunctionType = std::variant<ConvertFunc, ConvertStateFunc>;
 
         struct ProcessingFunc
         {
             std::string description; // Processing operation description
-            OperationType type;      // Of what type the operation is
             FunctionType func;       // Actual processing function
         };
         static const std::map<ProcessingType, ProcessingFunc> ProcessingFunctions;
+
+        struct ProcessingStep
+        {
+            ProcessingType type;               // Type of processing operation applied
+            std::vector<Parameter> parameters; // Input parameters for operation
+            bool decodeRelevant = false;       // If processing information is needed for decoding
+            bool addStatistics = false;        // If operation statistics should be written to
+            std::vector<uint8_t> state;        // The input / output state for stateful operations
+            ProcessingFunc function;           // The processing function to apply to the data
+        };
+        std::vector<ProcessingStep> m_steps; // Processing steps used in pipeline
     };
 }
