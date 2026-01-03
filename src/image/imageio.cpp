@@ -115,6 +115,8 @@ namespace IO
         dstImage.type = PLUM_IMAGE_PNG,
         dstImage.width = src.info.size.width();
         dstImage.height = src.info.size.height();
+        dstImage.color_format = PLUM_COLOR_32;
+        dstImage.max_palette_index = 0;
         dstImage.frames = 1;
         // create data storage
         std::vector<uint8_t> data8;   // index data if any
@@ -143,7 +145,14 @@ namespace IO
                 const auto color = srcColors.at(i);
                 data32.push_back(PLUM_COLOR_VALUE_32(color.R(), color.G(), color.B(), 0));
             }
+            REQUIRE(data32.size() > 0, std::runtime_error, "Palette can not be empty");
+            // check index data
+            for (std::size_t i = 0; i < data8.size(); ++i)
+            {
+                REQUIRE(data8[i] < data32.size(), std::runtime_error, "Bad palette index " << data8[i] << " in pixel " << i);
+            }
             dstImage.palette32 = data32.data();
+            dstImage.max_palette_index = data32.size() - 1;
         }
         // check if we've created a valid image
         if (const auto error = plum_validate_image(&dstImage) != PLUM_OK)
@@ -162,7 +171,7 @@ namespace IO
         const auto sizeWritten = plum_store_image(&dstImage, (void *)outPath.string().c_str(), PLUM_MODE_FILENAME, &error);
         if (sizeWritten == 0 || error != PLUM_OK)
         {
-            THROW(std::runtime_error, "Failed to write image \"" << outPath << "\":" << plum_get_error_text(error));
+            THROW(std::runtime_error, "Failed to write image " << outPath << ": " << plum_get_error_text(error));
         }
     }
 
