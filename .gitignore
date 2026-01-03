@@ -41,5 +41,7 @@ cmake_install.cmake
 *.out
 *.app
 
-colorfit_clusters.csv
-colorfit_objects.csv
+colorfit_*.csv
+colorfit_*.csv
+*_stats_*.csv
+*_stats_*.csv
