@@ -31,26 +31,9 @@ namespace Subtitles
         spritesInUse = 0;
         sprites = Memory::malloc_EWRAM<Sprites::Sprite2D>(MaxSubtitlesChars);
         Sprites::create(sprites, MaxSubtitlesChars, 0, 512, Sprites::SizeCode::Size8x8, Sprites::ColorDepth::Depth16);
-        // copy data to tile map char by char
-        uint32_t charPos = 0; // horizontal position in bitmap our char is in
-        for (uint32_t ci = 0; ci < FONT_SANS_NR_OF_CHARS; ++ci)
-        {
-            auto spriteTile = Sprites::TILE_INDEX_TO_MEM<uint32_t>(512 + ci);
-            const uint32_t charWidth = FONT_SANS_CHAR_WIDTH[ci] > 8 ? 8 : FONT_SANS_CHAR_WIDTH[ci];
-            auto charLinePtr = &(reinterpret_cast<const uint8_t *>(FONT_SANS_DATA))[charPos];
-            for (uint32_t y = 0; y < FONT_SANS_HEIGHT; ++y)
-            {
-                uint32_t pixelLine = 0;
-                for (uint32_t x = 0; x < charWidth; ++x)
-                {
-                    pixelLine = (pixelLine >> 4) | ((charLinePtr[x] & 0x0F) << 28);
-                }
-                pixelLine >>= (8 - charWidth) * 4;
-                spriteTile[y] = pixelLine;
-                charLinePtr += FONT_SANS_WIDTH;
-            }
-            charPos += charWidth;
-        }
+        // copy data to tile map
+        auto spriteTile = Sprites::TILE_INDEX_TO_MEM<uint32_t>(512);
+        Memory::memcpy32(spriteTile, FONT_SANS_DATA, FONT_SANS_DATA_SIZE);
         // enable sprites
         REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     }
@@ -68,12 +51,12 @@ namespace Subtitles
             auto charIndex = static_cast<int32_t>(*string) - 32;
             if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
             {
-                screenWidth += FONT_SANS_CHAR_WIDTH[charIndex] - 1;
+                screenWidth += FONT_SANS_CHAR_WIDTH[charIndex] + 1;
                 ++charCount;
             }
             ++string;
         }
-        return screenWidth;
+        return screenWidth - 1;
     }
 
     auto getNrOfLines(const char *string) -> uint32_t
@@ -128,7 +111,7 @@ namespace Subtitles
                 sprite.y = y;
                 sprite.visible = true;
                 sprite.priority = Sprites::Priority::Prio0;
-                charX += FONT_SANS_CHAR_WIDTH[charIndex] - 1;
+                charX += FONT_SANS_CHAR_WIDTH[charIndex] + 1;
                 ++spritesInUse;
             }
             ++string;
