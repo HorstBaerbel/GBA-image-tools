@@ -15,11 +15,11 @@ IWRAM_DATA ALIGN(4) uint32_t ScratchPad[IMAGES_DXT_DECOMPRESSION_BUFFER_SIZE / 4
 
 int main()
 {
-	// set waitstates for GamePak ROM and EWRAM
-	Memory::RegWaitCnt = Memory::WaitCntFast;
-	Memory::RegWaitEwram = Memory::WaitEwramNormal;
 	// start wall clock
 	irqInit();
+	// set waitstates for GamePak ROM and EWRAM
+	Memory::RegWaitCnt = Memory::WaitCntNormal;
+	Memory::RegWaitEwram = Memory::WaitEwramNormal;
 	// set up text UI
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);

@@ -11,14 +11,39 @@
 
 int main()
 {
-	// set waitstates for GamePak ROM and EWRAM
-	Memory::RegWaitCnt = Memory::WaitCntFast;
-	Memory::RegWaitEwram = Memory::WaitEwramNormal;
 	// start wall clock
 	irqInit();
 	// set up text UI
 	TUI::setup();
 	TUI::fillBackground(TUI::Color::Black);
+	// set waitstates for GamePak ROM and EWRAM
+	if (!Memory::trySetWaitCnt(Memory::WaitCntFast))
+	{
+		if (Memory::trySetWaitCnt(Memory::WaitCntNormal))
+		{
+			TUI::setColor(TUI::Color::Black, TUI::Color::Red);
+			TUI::printf(0, 9, "      Slow ROM detected");
+			TUI::printf(0, 10, " Playback might not be optimal");
+		}
+		else
+		{
+			TUI::setColor(TUI::Color::Black, TUI::Color::Yellow);
+			TUI::printf(0, 9, "    Very slow ROM detected");
+			TUI::printf(0, 10, "   Expect playback problems");
+		}
+		TUI::setColor(TUI::Color::Black, TUI::Color::LightGray);
+		TUI::printf(0, 19, "     Press A to continue");
+		// wait for keypress
+		do
+		{
+			scanKeys();
+			if (keysDown() & KEY_A)
+			{
+				break;
+			}
+		} while (true);
+	}
+	Memory::RegWaitEwram = Memory::WaitEwramNormal;
 	// get media info and check if we have meta data
 	const auto mediaInfo = IO::Vid2h::GetInfo(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
 	if (mediaInfo.metaDataSize > 0 && mediaInfo.metaData != nullptr)
