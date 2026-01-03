@@ -357,6 +357,9 @@ namespace Media
                 const uint32_t videoBuffersize = m_mediaInfo.video.width * m_mediaInfo.video.height * ((m_mediaInfo.video.bitsPerPixel + 7) / 8);
                 m_videoScratchPadSize8 = videoBuffersize + m_mediaInfo.video.memoryNeeded + 32;
                 m_videoScratchPad = reinterpret_cast<uint32_t *>(Memory::malloc_EWRAM(m_videoScratchPadSize8));
+                // fill background with clear color
+                const uint32_t clearColor = static_cast<uint32_t>(m_vramClearColor) << 16 | m_vramClearColor;
+                Memory::memset32((void *)VRAM, clearColor, m_mediaInfo.video.width * m_mediaInfo.video.height / 2);
             }
             if (m_mediaInfo.contentType & IO::FileType::Audio)
             {
@@ -443,9 +446,8 @@ namespace Media
             }
             if (m_mediaInfo.contentType & IO::FileType::Video)
             {
-                // fill background and scratch pad to clear color
+                // fill scratch pad with clear color
                 const uint32_t clearColor = static_cast<uint32_t>(m_vramClearColor) << 16 | m_vramClearColor;
-                Memory::memset32((void *)VRAM, clearColor, m_mediaInfo.video.width * m_mediaInfo.video.height / 2);
                 Memory::memset32(m_videoScratchPad, clearColor, m_videoScratchPadSize8 / 4);
                 // set up timer 2 to increase with video frame interval = 1 / fps (where 65536 == 1s). frames/s are in 16:16 format
                 // set timer 2 divider to 2 == 1/256 -> 16*1024*1024 cycles/s / 256 = 65536/s
