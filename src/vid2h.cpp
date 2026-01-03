@@ -83,8 +83,6 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.metaString.cxxOption);
         opts.add_option("", options.printStats.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
-        opts.add_option("", options.dumpImage.cxxOption);
-        opts.add_option("", options.dumpAudio.cxxOption);
         opts.add_option("", options.outputStats.cxxOption);
         opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
@@ -233,8 +231,6 @@ void printUsage()
     std::cout << "Misc options (all optional):" << std::endl;
     std::cout << options.printStats.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
-    std::cout << options.dumpImage.helpString() << std::endl;
-    std::cout << options.dumpAudio.helpString() << std::endl;
     std::cout << options.outputStats.helpString() << std::endl;
     std::cout << "h / help: Show this help." << std::endl;
     std::cout << "Image order: input, color conversion, addcolor0, movecolor0, shift, sprites, " << std::endl;

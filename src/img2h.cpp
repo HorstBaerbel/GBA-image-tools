@@ -69,7 +69,6 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.binary.cxxOption);
         opts.add_option("", options.dryRun.cxxOption);
-        opts.add_option("", options.dumpImage.cxxOption);
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
         // check if help was requested
@@ -199,7 +198,6 @@ void printUsage()
     std::cout << "MISC options (all optional):" << std::endl;
     std::cout << options.binary.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
-    std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
     std::cout << "ORDER: input, reordercolors, addcolor0, movecolor0, shift, sprites, tiles" << std::endl;
     std::cout << "tilemap, prune, delta8 / delta16, rle, lz10, interleavepixels, output" << std::endl;
@@ -416,12 +414,6 @@ int main(int argc, const char *argv[])
                                                     { return img.data.colorMap() == refColorMap; }) == data.cend();
             }
             std::cout << "Saving " << (allColorMapsSame ? 1 : data.size()) << " color map(s) with " << maxColorMapColors << " colors" << std::endl;
-        }
-        // now dump conversion results
-        if (options.dumpImage)
-        {
-            auto dumpPath = std::filesystem::current_path() / "result";
-            IO::File::writeImages(data, dumpPath.c_str());
         }
         // convert image and palette info
         const bool storeTileOrSpriteWise = (data.size() == 1) && (data0.type.isTiles() || data0.type.isSprites());
