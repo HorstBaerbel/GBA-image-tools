@@ -208,12 +208,11 @@ namespace Media
         {
             auto inData = frame.second;
             REQUIRE(inData.size() > (4 + 4 + 1), std::runtime_error, "Subtitles frame data too small");
-            REQUIRE(inData.size() <= (4 + 4 + 1 + Subtitles::MaxSubTitleLength), std::runtime_error, "Subtitles frame data too big");
             Subtitles::RawData outData;
             outData.startTimeS = static_cast<double>(*reinterpret_cast<int32_t *>(inData.data() + 0)) / 65536.0;
             outData.endTimeS = static_cast<double>(*reinterpret_cast<int32_t *>(inData.data() + 4)) / 65536.0;
             outData.text = reinterpret_cast<const char *>(inData.data() + 8);
-            REQUIRE(outData.text.size() > 0 && outData.text.size() <= (inData.size() - 8) && outData.text.size() <= Subtitles::MaxSubTitleLength, std::runtime_error, "Bad subtitles string size");
+            REQUIRE(outData.text.size() > 0 && outData.text.size() <= (inData.size() - 8), std::runtime_error, "Bad subtitles string size");
             return {IO::FrameType::Subtitles, outData.startTimeS, outData};
         }
         return {IO::FrameType::Unknown, 0.0, {}};
