@@ -8,8 +8,12 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iostream>
 #include <map>
 #include <vector>
+
+// #define USE_SNAPPED_COLORS
+#define ADD_OBJECTS_BY_WEIGHT
 
 template <typename PIXEL_TYPE>
 class ColorFit
@@ -29,6 +33,7 @@ class ColorFit
         Color::RGBf center;              // Cluster center / color
         double weight = 0.0;             // Weight of all objects in cluster combined
         std::vector<PIXEL_TYPE> objects; // Objects / colors in cluster
+        std::vector<float> errors;       // Error an object has against cluster center
     };
 
 public:
@@ -65,6 +70,16 @@ public:
         BoundingBox<Color::RGBf> colorBounds(Color::convertTo<Color::RGBf>(colorHistogram.cbegin()->first));
         std::for_each(colorHistogram.cbegin(), colorHistogram.cend(), [&colorBounds](const auto &c)
                       { colorBounds |= Color::convertTo<Color::RGBf>(c.first); });
+#ifdef ADD_OBJECTS_BY_WEIGHT
+        std::vector<PIXEL_TYPE> objectsByCount;
+        objectsByCount.reserve(objects.size());
+        for (const auto &object : objects)
+        {
+            objectsByCount.push_back(object.first);
+        }
+        std::sort(objectsByCount.begin(), objectsByCount.end(), [&colorHistogram](const auto &a, const auto &b)
+                  { return colorHistogram.at(a) > colorHistogram.at(b); });
+#endif
         // ---------- Maximin initialization ----------
         // start with cluster center in the middle
         std::vector<Cluster> clusters;
@@ -93,12 +108,16 @@ public:
                     maxDistanceObject = objectIt->first;
                 }
             }
+#ifdef USE_SNAPPED_COLORS
             // snap center to closest colorspace color
-            // auto snappedColor = getClosestColor(objectIt->first, m_colorSpace);
-            // clusters.push_back(Cluster{Color::convertTo<Color::RGBf>(snappedColor), 0.0, {}});
+            auto snappedColor = getClosestColor(maxDistanceObject, m_colorSpace);
+            clusters.push_back(Cluster{Color::convertTo<Color::RGBf>(snappedColor), 0.0, {}});
+#else
             clusters.push_back(Cluster{Color::convertTo<Color::RGBf>(maxDistanceObject), 0.0, {}});
+#endif
         }
         // ---------- Run Online-k-means ----------
+#ifndef ADD_OBJECTS_BY_WEIGHT
         // generate a random value that is coprime with objects.size()
         // See: https://lemire.me/blog/2017/09/18/visiting-all-values-in-an-array-exactly-once-in-random-order/
         std::size_t lcpA = 0;
@@ -108,17 +127,24 @@ public:
         } while (std::gcd(lcpA, objects.size()) != 1);
         // generate a random value from 0 to objects.size() - 1
         const std::size_t lcpB = std::rand() % objects.size();
-        // take samples from objects
+#endif
+        // add objects to clusters
         // This differs from standard Online-k-means as:
         // Were not sampling an image, but a histogram, so our sampling rate is set to 1
         // The learning rate is also 1 and centers shift based on object weight
         for (int i = 0; i < static_cast<int>(objects.size()); i++)
         {
+#ifdef ADD_OBJECTS_BY_WEIGHT
+            const auto objectColor = objectsByCount.at(i);
+            auto &object = objects.at(objectColor);
+#else
             // get pseudo-random object
             const auto objectIndex = (static_cast<std::size_t>(i) * lcpA + lcpB) % objects.size();
-            const auto objectIt = std::next(objects.begin(), objectIndex);
-            const auto objectCenter = Color::convertTo<Color::RGBf>(objectIt->first);
-            const auto objectWeight = objectIt->second.weight;
+            const auto objectColor = std::next(objects.begin(), objectIndex)->first;
+            auto &object = objects.at(objectColor);
+#endif
+            const auto objectCenter = Color::convertTo<Color::RGBf>(objectColor);
+            const auto objectWeight = object.weight;
             // find closest cluster center
             auto bestDistanceClusterIndex = std::numeric_limits<int>::max();
             auto bestDistanceToCluster = std::numeric_limits<float>::max();
@@ -133,8 +159,8 @@ public:
             }
             // add object to cluster
             auto &cluster = clusters.at(bestDistanceClusterIndex);
-            cluster.objects.push_back(objectIt->first);
-            objectIt->second.clusterIndex = bestDistanceClusterIndex;
+            cluster.objects.push_back(objectColor);
+            object.clusterIndex = bestDistanceClusterIndex;
             // update cluster center
             Color::RGBf clusterCenter(cluster.center.R(), cluster.center.G(), cluster.center.B());
             auto combinedWeight = cluster.weight + objectWeight;
@@ -143,14 +169,33 @@ public:
             clusterCenter.R() = t0 * clusterCenter.R() + t1 * objectCenter.R();
             clusterCenter.G() = t0 * clusterCenter.G() + t1 * objectCenter.G();
             clusterCenter.B() = t0 * clusterCenter.B() + t1 * objectCenter.B();
+#ifdef USE_SNAPPED_COLORS
             // snap center to closest colorspace color
-            // PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(clusterCenter);
-            // auto snappedColor = getClosestColor(centerColor, m_colorSpace);
-            // cluster.center = Color::convertTo<Color::RGBf>(snappedColor);
+            PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(clusterCenter);
+            auto snappedColor = getClosestColor(centerColor, m_colorSpace);
+            cluster.center = Color::convertTo<Color::RGBf>(snappedColor);
+#else
             cluster.center = clusterCenter;
             cluster.weight = combinedWeight;
+#endif
         }
         REQUIRE(clusters.size() == nrOfColors, std::runtime_error, "Failed to find expected number of clusters");
+        // update cluster error and calculate overall error
+        double overallMse = 0.0;
+        double overallCount = 0.0;
+        for (auto &cluster : clusters)
+        {
+            const auto clusterCenter = Color::convertTo<PIXEL_TYPE>(cluster.center);
+            for (auto object : cluster.objects)
+            {
+                auto error = PIXEL_TYPE::mse(object, clusterCenter);
+                overallMse += static_cast<double>(error) * objects.at(object).weight;
+                ++overallCount;
+            }
+        }
+        overallMse /= overallCount; // calculate mean squared error
+        const auto overallPsnr = 10.0 * std::log10(1.0 / overallMse);
+        std::cout << "Overall PSNR: " << overallPsnr << " dB" << std::endl;
         // return mapping from reduced set of colors to original colors while snapping all cluster centers to color space
         std::map<PIXEL_TYPE, std::vector<PIXEL_TYPE>> colorMapping;
         for (auto &cluster : clusters)
@@ -170,7 +215,7 @@ public:
                 colorMapping[snappedCenter] = cluster.objects;
             }
         }
-        // dumpToCSV(clusters, objects);
+        dumpToCSV(clusters, objects);
         //  now here the number of mappings can be less then the nrOfColors (cluster getting merged), but we need to have all colors mapped
         const auto nrOfMappedColors = std::accumulate(colorMapping.cbegin(), colorMapping.cend(), uint64_t(0), [](const auto &a, const auto &b)
                                                       { return a + b.second.size(); });
@@ -197,6 +242,18 @@ private:
             ++colorIt;
         }
         return closestColor;
+    }
+
+    static auto getClusterError(const Cluster &cluster) -> std::vector<float>
+    {
+        std::vector<float> errors;
+        errors.reserve(cluster.objects.size());
+        const auto clusterCenter = Color::convertTo<PIXEL_TYPE>(cluster.center);
+        for (auto object : cluster.objects)
+        {
+            errors.push_back(PIXEL_TYPE::mse(object, clusterCenter));
+        }
+        return errors;
     }
 
     static auto dumpToCSV(const std::vector<Cluster> &clusters, const std::map<PIXEL_TYPE, ColorObject> &objects) -> void
