@@ -15,7 +15,7 @@ public:
 
     auto max() const -> const T &
     {
-        m_max;
+        return m_max;
     }
 
     auto operator|=(const T &p) -> BoundingBox &
