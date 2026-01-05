@@ -43,7 +43,7 @@ namespace Image
         std::vector<uint8_t> resultPixels;
         resultPixels.reserve(srcPixels.size());
         std::transform(srcPixels.cbegin(), srcPixels.cend(), std::back_inserter(resultPixels), [&reverseMapping](auto srcPixel)
-                       { return reverseMapping[srcPixel]; });
+                       { return reverseMapping.at(srcPixel); });
         return ImageData(resultPixels, Color::Format::Paletted8, resultColorMap);
     }
 

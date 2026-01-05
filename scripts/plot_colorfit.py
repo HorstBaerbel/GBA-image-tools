@@ -11,13 +11,11 @@ clusters_data = pd.read_csv('colorfit_clusters.csv')
 objects_colorsource = {
     "RGB value": [dict(color=objects_data['csscolor']), dict(colorscale='')],
     "Weight": [dict(color=objects_data['weight']), dict(colorscale='Inferno')],
-    "Object type": [dict(color=objects_data['type']), dict(colorscale='Rainbow')],
     "Cluster index": [dict(color=objects_data['clusterindex']), dict(colorscale='Rainbow')]
 }
 objects_sizesource = {
     "Fixed": dict(size=''),
     "Weight": dict(size=objects_data['weight']),
-    "Object type": dict(size=objects_data['type']),
     "Cluster index": dict(size=objects_data['clusterindex'])
 }
 objects_markeropacity = 1.0
@@ -53,7 +51,7 @@ def create_sizebuttons():
 
 
 # Show object scatter plot
-objects_markerdata = ['weight', 'type', 'clusterindex']
+objects_markerdata = ['weight', 'clusterindex']
 objects_fig = px.scatter_3d(
     objects_data, x='r', y='g', z='b', hover_data=objects_markerdata)
 # Set axis ranges
@@ -94,12 +92,3 @@ clusters_fig.update_traces(marker=dict(
     color=clusters_data['csscolor'],
     opacity=objects_markeropacity))
 clusters_fig.show()
-
-# Read data and show color weights (we should sort data by hue)
-weights_markerdata = ['weight']
-weights_fig = px.histogram(objects_data, x="csscolor", y="weight",
-                           histfunc="avg", nbins=int(len(weights_markerdata) / 1000), hover_data=weights_markerdata)
-# weights_fig = px.bar(weights_data, x='csscolor', y='weight', barmode='group', color_discrete_sequence=weights_data['csscolor'], hover_data=weights_markerdata)
-# Color markers by RGB
-weights_fig.update_traces(marker_color=objects_data['csscolor'])
-# weights_fig.show()
