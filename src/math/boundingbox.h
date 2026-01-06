@@ -20,12 +20,12 @@ public:
 
     auto operator|=(const T &p) -> BoundingBox &
     {
-        m_min.R() = p.R() < m_min.R() ? p.R() : m_min.R();
-        m_min.G() = p.G() < m_min.G() ? p.G() : m_min.G();
-        m_min.B() = p.B() < m_min.B() ? p.B() : m_min.B();
-        m_max.R() = p.R() > m_max.R() ? p.R() : m_max.R();
-        m_max.G() = p.G() > m_max.G() ? p.G() : m_max.G();
-        m_max.B() = p.B() > m_max.B() ? p.B() : m_max.B();
+        m_min[0] = p[0] < m_min[0] ? p[0] : m_min[0];
+        m_min[1] = p[1] < m_min[1] ? p[1] : m_min[1];
+        m_min[2] = p[2] < m_min[2] ? p[2] : m_min[2];
+        m_max[0] = p[0] > m_max[0] ? p[0] : m_max[0];
+        m_max[1] = p[1] > m_max[1] ? p[1] : m_max[1];
+        m_max[2] = p[2] > m_max[2] ? p[2] : m_max[2];
         return *this;
     }
 
