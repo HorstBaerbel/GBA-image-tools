@@ -10,14 +10,15 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
-                "--blackwhite=0.5",
+                //"--dumpimage",
+                "--paletted=64",
                 "--outformat=bgr555",
                 //"--tiles",
                 //"--prune=1",
-                //"\"${workspaceFolder}/data/images/240x160/BigBuckBunny_40_240x160.png\"",
-                //"image"
-                "\"${workspaceFolder}/gba/data/font_sans.png\"",
-                "font_sans"
+                "\"${workspaceFolder}/data/images/240x160/BigBuckBunny_648_240x160.png\"",
+                "image"
+                //"\"${workspaceFolder}/gba/data/font_sans.png\"",
+                //"font_sans"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -60,9 +61,12 @@
                 "--channelformat=mono",
                 "--adpcm",
                 //"--metafile=data/data/lorem_ipsum_2k.txt",
-                "--subtitlesfile=data/videos/test/BigBuckBunny_384x256_30fps.srt",
-                "--metastring=Big Buck Bunny",
-                "\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
+                //"--subtitlesfile=data/videos/test/BigBuckBunny_384x256_30fps.srt",
+                //"--metastring=Big Buck Bunny",
+                //"\"${workspaceFolder}/data/videos/240x160/BigBuckBunny_240x160_15fps.mp4\"",
+                "--subtitlesfile=data/videos/test/TearsOfSteel_384x256_30fps.srt",
+                "--metastring=Tears Of Steel",
+                "\"${workspaceFolder}/data/videos/240x160/TearsOfSteel_240x160_15fps.mp4\"",
                 "video"
             ],
             "stopAtEntry": false,

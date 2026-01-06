@@ -14,8 +14,9 @@
 #include <set>
 #include <vector>
 
-// Overall MSE : 56.8991, PSNR : 28.2923 dB
-// Snapped MSE : 60.1273, PSNR : 28.0526 dB
+// Best 0.5
+// Overall MSE: 20.5631, PSNR: 32.7124 dB
+// Snapped MSE: 23.9223, PSNR: 32.0553 dB
 
 // #define USE_SNAPPED_COLORS
 
@@ -36,7 +37,7 @@ class ColorFit
     // Cluster containing color objects
     struct Cluster
     {
-        Color::RGBf center;              // Cluster center / color
+        Color::YCgCoRf center;           // Cluster center / color
         double weight = 0.0;             // Weight of all objects in cluster combined
         std::vector<PIXEL_TYPE> objects; // Objects / colors in cluster
         std::vector<double> errors;      // Error an object has against cluster center
@@ -64,13 +65,13 @@ public:
         {
             // get pseudo-random pixel
             const auto pixel = pixels.at((static_cast<std::size_t>(i) * lcpA + lcpB) % pixels.size());
-            const auto pixelf = Color::convertTo<Color::RGBf>(pixel);
+            const auto pixelf = Color::convertTo<Color::YCgCoRf>(pixel);
             // find closest cluster center
             auto bestDistanceClusterIndex = std::numeric_limits<int>::max();
             auto bestDistanceToCluster = std::numeric_limits<float>::max();
             for (int clusterIndex = 0; clusterIndex < static_cast<int>(clusters.size()); clusterIndex++)
             {
-                const auto distanceToCluster = Color::RGBf::mse(pixelf, clusters.at(clusterIndex).center);
+                const auto distanceToCluster = Color::YCgCoRf::mse(pixelf, clusters.at(clusterIndex).center);
                 if (distanceToCluster < bestDistanceToCluster)
                 {
                     bestDistanceToCluster = distanceToCluster;
@@ -81,12 +82,12 @@ public:
             auto &cluster = clusters.at(bestDistanceClusterIndex);
             cluster.weight += 1.0;
             const double learnRate = std::pow(cluster.weight, -LearnRateExponent);
-            Color::RGBf clusterCenter = cluster.center + learnRate * (pixelf - cluster.center);
+            Color::YCgCoRf clusterCenter = cluster.center + learnRate * (pixelf - cluster.center);
 #ifdef USE_SNAPPED_COLORS
             // snap center to closest colorspace color
             PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(clusterCenter);
             auto snappedColor = getClosestColor(centerColor, m_colorSpace);
-            cluster.center = Color::convertTo<Color::RGBf>(snappedColor);
+            cluster.center = Color::convertTo<Color::YCgCoRf>(snappedColor);
 #else
             cluster.center = clusterCenter;
 #endif
@@ -128,9 +129,9 @@ public:
         }
         // ---------- Maximin initialization ----------
         // calculate bounding box of data
-        BoundingBox<Color::RGBf> colorBounds(Color::convertTo<Color::RGBf>(uniqueColors.front()));
+        BoundingBox<Color::YCgCoRf> colorBounds(Color::convertTo<Color::YCgCoRf>(uniqueColors.front()));
         std::for_each(uniqueColors.cbegin(), uniqueColors.cend(), [&colorBounds](auto c)
-                      { colorBounds |= Color::convertTo<Color::RGBf>(c); });
+                      { colorBounds |= Color::convertTo<Color::YCgCoRf>(c); });
         // start with cluster center in the middle
         std::vector<Cluster> clusters;
         clusters.push_back(Cluster{0.5 * (colorBounds.min() + colorBounds.max()), 0.0, {}});
@@ -145,8 +146,8 @@ public:
             for (int oi = 0; oi < static_cast<int>(uniqueColors.size()); oi++)
             {
                 const auto color = uniqueColors.at(oi);
-                const auto objectPosition = Color::convertTo<Color::RGBf>(color);
-                const auto distanceToPrevCenter = Color::RGBf::mse(objectPosition, prevClusterCenter);
+                const auto objectPosition = Color::convertTo<Color::YCgCoRf>(color);
+                const auto distanceToPrevCenter = Color::YCgCoRf::mse(objectPosition, prevClusterCenter);
                 if (distanceToPrevCenter < objectClosestCenterDistance.at(oi))
                 {
                     objectClosestCenterDistance.at(oi) = distanceToPrevCenter;
@@ -161,9 +162,9 @@ public:
 #ifdef USE_SNAPPED_COLORS
             // snap center to closest colorspace color
             auto snappedColor = getClosestColor(maxDistanceObject, m_colorSpace);
-            clusters.push_back(Cluster{Color::convertTo<Color::RGBf>(snappedColor), 0.0, {}});
+            clusters.push_back(Cluster{Color::convertTo<Color::YCgCoRf>(snappedColor), 0.0, {}});
 #else
-            clusters.push_back(Cluster{Color::convertTo<Color::RGBf>(maxDistanceObject), 0.0, {}});
+            clusters.push_back(Cluster{Color::convertTo<Color::YCgCoRf>(maxDistanceObject), 0.0, {}});
 #endif
         }
         // ---------- Run Online-k-means ----------
@@ -176,118 +177,118 @@ public:
             auto &cluster = clusters.at(ci);
             PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(cluster.center);
             const auto snappedCenter = getClosestColor(centerColor, m_colorSpace);
-            cluster.center = Color::convertTo<Color::RGBf>(snappedCenter);
+            cluster.center = Color::convertTo<Color::YCgCoRf>(snappedCenter);
             cluster.weight = 0.0;
             cluster.objects.clear();
         }
         onlineKmeans(clusters, pixels);
-        //        std::size_t iterationsLeft = 0;
-        //        while (iterationsLeft--)
-        //        {
-        //            std::vector<PIXEL_TYPE> furthestObjects;
-        //            // loop through clusters
-        // #pragma omp parallel for
-        //            for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++)
-        //            {
-        //                auto &cluster = clusters.at(ci);
-        //                // skip clusters that are empty or only have one object
-        //                if (cluster.objects.size() <= 1)
-        //                {
-        //                    continue;
-        //                }
-        //                // find cluster object that is furthest from this cluster
-        //                auto maxIt = cluster.objects.end();
-        //                auto maxDistance = std::numeric_limits<float>::lowest();
-        //                for (auto oIt = cluster.objects.begin(); oIt != cluster.objects.end(); ++oIt)
-        //                {
-        //                    const auto distance = Color::RGBf::mse(cluster.center, Color::convertTo<Color::RGBf>(*oIt));
-        //                    if (distance > maxDistance)
-        //                    {
-        //                        maxDistance = distance;
-        //                        maxIt = oIt;
-        //                    }
-        //                }
-        //                // remove object from cluster
-        //                const PIXEL_TYPE maxObject = *maxIt;
-        //                cluster.objects.erase(maxIt);
-        //                // recalculate cluster center
-        //                cluster.center = Color::convertTo<Color::RGBf>(cluster.objects.front());
-        //                cluster.weight = objects.at(cluster.objects.front()).weight;
-        //                for (auto oIt = std::next(cluster.objects.begin()); oIt != cluster.objects.end(); ++oIt)
-        //                {
-        //                    const auto combinedWeight = cluster.weight + objects.at(*oIt).weight;
-        //                    const auto t0 = cluster.weight / combinedWeight;
-        //                    const auto t1 = 1.0F - t0;
-        //                    cluster.center = t0 * cluster.center + t1 * Color::convertTo<Color::RGBf>(*oIt);
-        //                    cluster.weight = combinedWeight;
-        //                }
-        // #ifdef USE_SNAPPED_COLORS
-        //                //  snap center to closest colorspace color
-        //                PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(cluster.center);
-        //                auto snappedColor = getClosestColor(centerColor, m_colorSpace);
-        //                cluster.center = Color::convertTo<Color::RGBf>(snappedColor);
-        // #endif
-        //                // adjust cluster index of object
-        //                objects.at(maxObject).clusterIndex = InvalidClusterIndex;
-        // #pragma omp critical
-        //                {
-        //                    // store object for moving
-        //                    furthestObjects.push_back(maxObject);
-        //                }
-        //            }
-        //            // re-add objects to clusters
-        //            for (int oi = 0; oi < static_cast<int>(furthestObjects.size()); oi++)
-        //            {
-        //                const auto objectColor = furthestObjects.at(oi);
-        //                auto &object = objects.at(objectColor);
-        //                const auto objectCenter = Color::convertTo<Color::RGBf>(objectColor);
-        //                const auto objectWeight = object.weight;
-        //                // find closest cluster center
-        //                auto bestDistanceClusterIndex = std::numeric_limits<int>::max();
-        //                auto bestDistanceToCluster = std::numeric_limits<float>::max();
-        //                for (int clusterIndex = 0; clusterIndex < static_cast<int>(clusters.size()); clusterIndex++)
-        //                {
-        //                    const auto distanceToCluster = Color::RGBf::mse(objectCenter, clusters.at(clusterIndex).center);
-        //                    if (distanceToCluster < bestDistanceToCluster)
-        //                    {
-        //                        bestDistanceToCluster = distanceToCluster;
-        //                        bestDistanceClusterIndex = clusterIndex;
-        //                    }
-        //                }
-        //                // add object to cluster
-        //                auto &cluster = clusters.at(bestDistanceClusterIndex);
-        //                cluster.objects.push_back(objectColor);
-        //                object.clusterIndex = bestDistanceClusterIndex;
-        //                // update cluster center
-        //                const auto combinedWeight = cluster.weight + objectWeight;
-        //                const auto t0 = cluster.weight / combinedWeight;
-        //                const auto t1 = 1.0F - t0;
-        //                const Color::RGBf clusterCenter = t0 * cluster.center + t1 * objectCenter;
-        // #ifdef USE_SNAPPED_COLORS
-        //                //  snap center to closest colorspace color
-        //                PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(clusterCenter);
-        //                auto snappedColor = getClosestColor(centerColor, m_colorSpace);
-        //                cluster.center = Color::convertTo<Color::RGBf>(snappedColor);
-        // #else
-        //                cluster.center = clusterCenter;
-        // #endif
-        //                cluster.weight = combinedWeight;
-        //            }
-        //            furthestObjects.clear();
-        //        }
+        //         std::size_t iterationsLeft = 0;
+        //         while (iterationsLeft--)
+        //         {
+        //             std::vector<PIXEL_TYPE> furthestObjects;
+        //             // loop through clusters
+        //  #pragma omp parallel for
+        //             for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++)
+        //             {
+        //                 auto &cluster = clusters.at(ci);
+        //                 // skip clusters that are empty or only have one object
+        //                 if (cluster.objects.size() <= 1)
+        //                 {
+        //                     continue;
+        //                 }
+        //                 // find cluster object that is furthest from this cluster
+        //                 auto maxIt = cluster.objects.end();
+        //                 auto maxDistance = std::numeric_limits<float>::lowest();
+        //                 for (auto oIt = cluster.objects.begin(); oIt != cluster.objects.end(); ++oIt)
+        //                 {
+        //                     const auto distance = Color::YCgCoRf::mse(cluster.center, Color::convertTo<Color::YCgCoRf>(*oIt));
+        //                     if (distance > maxDistance)
+        //                     {
+        //                         maxDistance = distance;
+        //                         maxIt = oIt;
+        //                     }
+        //                 }
+        //                 // remove object from cluster
+        //                 const PIXEL_TYPE maxObject = *maxIt;
+        //                 cluster.objects.erase(maxIt);
+        //                 // recalculate cluster center
+        //                 cluster.center = Color::convertTo<Color::YCgCoRf>(cluster.objects.front());
+        //                 cluster.weight = objects.at(cluster.objects.front()).weight;
+        //                 for (auto oIt = std::next(cluster.objects.begin()); oIt != cluster.objects.end(); ++oIt)
+        //                 {
+        //                     const auto combinedWeight = cluster.weight + objects.at(*oIt).weight;
+        //                     const auto t0 = cluster.weight / combinedWeight;
+        //                     const auto t1 = 1.0F - t0;
+        //                     cluster.center = t0 * cluster.center + t1 * Color::convertTo<Color::YCgCoRf>(*oIt);
+        //                     cluster.weight = combinedWeight;
+        //                 }
+        //  #ifdef USE_SNAPPED_COLORS
+        //                 //  snap center to closest colorspace color
+        //                 PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(cluster.center);
+        //                 auto snappedColor = getClosestColor(centerColor, m_colorSpace);
+        //                 cluster.center = Color::convertTo<Color::YCgCoRf>(snappedColor);
+        //  #endif
+        //                 // adjust cluster index of object
+        //                 objects.at(maxObject).clusterIndex = InvalidClusterIndex;
+        //  #pragma omp critical
+        //                 {
+        //                     // store object for moving
+        //                     furthestObjects.push_back(maxObject);
+        //                 }
+        //             }
+        //             // re-add objects to clusters
+        //             for (int oi = 0; oi < static_cast<int>(furthestObjects.size()); oi++)
+        //             {
+        //                 const auto objectColor = furthestObjects.at(oi);
+        //                 auto &object = objects.at(objectColor);
+        //                 const auto objectCenter = Color::convertTo<Color::YCgCoRf>(objectColor);
+        //                 const auto objectWeight = object.weight;
+        //                 // find closest cluster center
+        //                 auto bestDistanceClusterIndex = std::numeric_limits<int>::max();
+        //                 auto bestDistanceToCluster = std::numeric_limits<float>::max();
+        //                 for (int clusterIndex = 0; clusterIndex < static_cast<int>(clusters.size()); clusterIndex++)
+        //                 {
+        //                     const auto distanceToCluster = Color::YCgCoRf::mse(objectCenter, clusters.at(clusterIndex).center);
+        //                     if (distanceToCluster < bestDistanceToCluster)
+        //                     {
+        //                         bestDistanceToCluster = distanceToCluster;
+        //                         bestDistanceClusterIndex = clusterIndex;
+        //                     }
+        //                 }
+        //                 // add object to cluster
+        //                 auto &cluster = clusters.at(bestDistanceClusterIndex);
+        //                 cluster.objects.push_back(objectColor);
+        //                 object.clusterIndex = bestDistanceClusterIndex;
+        //                 // update cluster center
+        //                 const auto combinedWeight = cluster.weight + objectWeight;
+        //                 const auto t0 = cluster.weight / combinedWeight;
+        //                 const auto t1 = 1.0F - t0;
+        //                 const Color::YCgCoRf clusterCenter = t0 * cluster.center + t1 * objectCenter;
+        //  #ifdef USE_SNAPPED_COLORS
+        //                 //  snap center to closest colorspace color
+        //                 PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(clusterCenter);
+        //                 auto snappedColor = getClosestColor(centerColor, m_colorSpace);
+        //                 cluster.center = Color::convertTo<Color::YCgCoRf>(snappedColor);
+        //  #else
+        //                 cluster.center = clusterCenter;
+        //  #endif
+        //                 cluster.weight = combinedWeight;
+        //             }
+        //             furthestObjects.clear();
+        //         }
         REQUIRE(clusters.size() == nrOfColors, std::runtime_error, "Failed to find expected number of clusters");
         // add colors to closest cluster
 #pragma omp parallel for
         for (int ci = 0; ci < static_cast<int>(uniqueColors.size()); ci++)
         {
             const auto color = uniqueColors.at(ci);
-            const auto colorf = Color::convertTo<Color::RGBf>(color);
+            const auto colorf = Color::convertTo<Color::YCgCoRf>(color);
             // find closest cluster center
             auto bestDistanceClusterIndex = std::numeric_limits<int>::max();
             auto bestDistanceToCluster = std::numeric_limits<float>::max();
             for (int clusterIndex = 0; clusterIndex < static_cast<int>(clusters.size()); clusterIndex++)
             {
-                const auto distanceToCluster = Color::RGBf::mse(colorf, clusters.at(clusterIndex).center);
+                const auto distanceToCluster = Color::YCgCoRf::mse(colorf, clusters.at(clusterIndex).center);
                 if (distanceToCluster < bestDistanceToCluster)
                 {
                     bestDistanceToCluster = distanceToCluster;
@@ -311,13 +312,13 @@ public:
             auto &cluster = clusters.at(ci);
             PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(cluster.center);
             const auto snappedCenter = getClosestColor(centerColor, m_colorSpace);
-            cluster.center = Color::convertTo<Color::RGBf>(snappedCenter);
+            cluster.center = Color::convertTo<Color::YCgCoRf>(snappedCenter);
         }
         // calculate overall error for snapped colors
         auto [snappedMse, snappedPsnr] = getError(clusters, colorHistogram);
         std::cout << "Snapped MSE: " << snappedMse << ", PSNR: " << snappedPsnr << " dB" << std::endl;
         // dumpToCSV(clusters, colorHistogram);
-        //  return mapping from reduced set of colors to original colors
+        // return mapping from reduced set of colors to original colors
         const auto colorMapping = getColorMapping(clusters);
         // now here the number of mappings can be less then the nrOfColors (clusters getting merged), but we need to have all colors mapped
         const auto nrOfMappedColors = std::accumulate(colorMapping.cbegin(), colorMapping.cend(), uint64_t(0), [](const auto &a, const auto &b)
