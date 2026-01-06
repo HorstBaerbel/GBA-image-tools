@@ -90,10 +90,13 @@ public:
     /// How it works:
     /// - Initialize cluster centers using Maximin initialization method for Batch- / Online-k-means
     /// - Run Online-k-means
+    /// - Snap colors to input color space
+    /// - Run Online-k-means again to improve result
     /// See: Amber Abernathy, M. Emre Celebi 2022, The incremental online k-means clustering algorithm and its application to color quantization
     /// https://uca.edu/cse/files/2022/06/The_Incremental_Online_K_Means_Clustering_Algorithm_and_Its_Application_to_Color_Quantization.pdf
     /// https://github.com/AmberAbernathy/Color_Quantization
-    /// @note This can be quite slow and take quite a bit of RAM. You have been warned...
+    /// Using YCgCoR instead of RGBf as color model improves PSNR by ~1-2 dB
+    /// @note This can be quite slow and take a bit of RAM. You have been warned...
     /// @param pixels Input pixels
     /// @param nrOfColors Number of colors to reduce input colors to
     /// @returns Mapping of reduced color -> input colors. This might not contain exactly nrOfColors, but possibly less due to restricted color space
