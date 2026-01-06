@@ -220,7 +220,7 @@ int main(int argc, const char *argv[])
         // create player window if we're not dumping
         if (!options.dumpAudio && !options.dumpMeta)
         {
-            Media::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay");
+            Media::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2hplay - " + inFileBaseName.string());
             window.play(mediaReader);
             // wait until the player stops
             while (window.getPlayState() != Media::Window::PlayState::Stopped)
