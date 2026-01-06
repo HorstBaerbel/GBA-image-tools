@@ -18,17 +18,17 @@ namespace Image
 
         /// @brief Quantize pixel data by choosing closest colors from given palette using cluster-fit
         /// @param[in] data Input image data
-        /// @param[in] nrOfColors Number of colors to reduce image to
-        /// @param[in] colorSpaceMap Map with all colors in color space, e.g. RGB565
+        /// @param[in] colorMapping Mapping of target color -> source colors
         /// @return Returns pixel data quantized and converted to Color::Format::Paletted8
-        auto quantizeClosest(const ImageData &data, uint32_t nrOfColors, const std::vector<Color::XRGB8888> &colorSpaceMap) -> ImageData;
+        auto quantizeClosest(const ImageData &data, const std::map<Color::XRGB8888, std::vector<Color::XRGB8888>> &colorMapping) -> ImageData;
 
         /// @brief Quantize pixel data using Atkison error-diffusion dither and choosing colors from given palette
         /// @param[in] data Input image data
-        /// @param[in] nrOfColors Number of colors to reduce image to
-        /// @param[in] colorSpaceMap Map with all colors in color space, e.g. RGB565
+        /// @param[in] width Image width
+        /// @param[in] height Image height
+        /// @param[in] colorMapping Mapping of target color -> source colors
         /// @return Returns pixel data quantized and converted to Color::Format::Paletted8
-        auto atkinsonDither(const ImageData &data, uint32_t nrOfColors, const std::vector<Color::XRGB8888> &colorSpaceMap) -> ImageData;
+        auto atkinsonDither(const ImageData &data, uint32_t width, uint32_t height, const std::map<Color::XRGB8888, std::vector<Color::XRGB8888>> &colorMapping) -> ImageData;
     }
 
 }

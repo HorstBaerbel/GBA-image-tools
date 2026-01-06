@@ -89,15 +89,20 @@ namespace Image
         REQUIRE(nrOfColors >= 2 && nrOfColors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
         const auto colorSpaceMap = VariantHelpers::getValue<std::vector<Color::XRGB8888>, 2>(parameters);
         REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "colorSpaceMap can not be empty");
+        // use cluster fit to find optimum color mapping
+        ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
+        const auto srcPixels = data.data.pixels().data<Color::XRGB8888>();
+        const auto colorMapping = colorFit.reduceColors(srcPixels, nrOfColors);
+        REQUIRE(colorMapping.size() > 0 && nrOfColors >= colorMapping.size(), std::runtime_error, "Unexpected number of mapped colors");
         // convert image to paletted possibly using dithering
         auto result = data;
         switch (quantizationMethod)
         {
         case Quantization::Method::ClosestColor:
-            result.data = Quantization::quantizeClosest(data.data, nrOfColors, colorSpaceMap);
+            result.data = Quantization::quantizeClosest(data.data, colorMapping);
             break;
         case Quantization::Method::AtkinsonDither:
-            result.data = Quantization::atkinsonDither(data.data, nrOfColors, colorSpaceMap);
+            result.data = Quantization::atkinsonDither(data.data, data.info.size.width(), data.info.size.height(), colorMapping);
             break;
         default:
             THROW(std::runtime_error, "Unsupported quantization method " << Quantization::toString(quantizationMethod));
@@ -121,50 +126,46 @@ namespace Image
         REQUIRE(nrOfColors >= 2 && nrOfColors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
         const auto colorSpaceMap = VariantHelpers::getValue<std::vector<Color::XRGB8888>, 2>(parameters);
         REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "colorSpaceMap can not be empty");
-        // build histogram of colors used in all input images
-        std::cout << "Building histogram..." << std::endl;
-        std::map<Color::XRGB8888, uint64_t> histogram;
-        std::for_each(data.cbegin(), data.cend(), [&histogram](const auto &d)
-                      {
-            auto & imageData = d.data.pixels().template data<Color::XRGB8888>();
-            std::for_each(imageData.cbegin(), imageData.cend(), [&histogram](auto pixel)
-                { histogram[pixel]++; }); });
-        std::cout << histogram.size() << " unique colors in " << data.size() << " images" << std::endl;
-        // create as many preliminary clusters as colors in colorSpaceMap
         ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
-        std::cout << "Color space has " << colorSpaceMap.size() << " colors" << std::endl;
-        // map histogram colors to closest color space colors
-        std::cout << "Sorting colors into max. " << nrOfColors << " clusters... (this might take some time)" << std::endl;
-        auto colorMapping = colorFit.reduceColors(histogram, nrOfColors);
-        // convert mapping to color map
-        std::vector<Color::XRGB8888> commonColorMap;
-        std::transform(colorMapping.cbegin(), colorMapping.cend(), std::back_inserter(commonColorMap), [](auto m)
-                       { return m.first; });
+        std::cout << "Combining images..." << std::endl;
+        // combine all images into one
+        std::vector<Color::XRGB8888> combinedPixels;
+        std::for_each(data.cbegin(), data.cend(), [&combinedPixels](const Frame &d)
+                      { const auto srcPixels = d.data.pixels().data<Color::XRGB8888>();
+                        combinedPixels.reserve(combinedPixels.size() + srcPixels.size());
+                        std::copy(srcPixels.cbegin(), srcPixels.cend(), std::back_inserter(combinedPixels)); });
+        // calculate common color map
+        std::cout << "Building common color map (this might take some time)..." << std::endl;
+        const auto colorMapping = colorFit.reduceColors(combinedPixels, nrOfColors);
+        REQUIRE(colorMapping.size() > 0 && nrOfColors >= colorMapping.size(), std::runtime_error, "Unexpected number of mapped colors");
         // apply color map to all images
         std::cout << "Converting images..." << std::endl;
-        std::vector<Frame> result;
-        std::transform(data.cbegin(), data.cend(), std::back_inserter(result), [&commonColorMap, quantizationMethod, nrOfColors](const auto &d)
-                       {
-                           // convert image to paletted using dithering
-                           auto r = d;
-                           switch (quantizationMethod)
-                           {
-                           case Quantization::Method::ClosestColor:
-                               r.data = Quantization::quantizeClosest(d.data, nrOfColors, commonColorMap);
-                               break;
-                           case Quantization::Method::AtkinsonDither:
-                               r.data = Quantization::atkinsonDither(d.data, nrOfColors, commonColorMap);
-                               break;
-                           default:
-                               THROW(std::runtime_error, "Unsupported quantization method " << Quantization::toString(quantizationMethod));
-                           }
-                           REQUIRE(r.data.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted return image");
-                           // auto dumpPath = std::filesystem::current_path() / "result" / (std::to_string(d.index) + ".png");
-                           // temp.write(dumpPath.c_str());
-                           r.info.pixelFormat = r.data.pixels().format();
-                           r.info.colorMapFormat = r.data.colorMap().format();
-                           r.info.nrOfColorMapEntries = r.data.colorMap().size();
-                           return r; });
+        std::vector<Frame> result(data.size());
+#pragma omp parallel for
+        for (int di = 0; di < static_cast<int>(data.size()); di++)
+        {
+            // convert image to paletted using dithering
+            const auto &d = data.at(di);
+            auto r = d;
+            switch (quantizationMethod)
+            {
+            case Quantization::Method::ClosestColor:
+                r.data = Quantization::quantizeClosest(d.data, colorMapping);
+                break;
+            case Quantization::Method::AtkinsonDither:
+                r.data = Quantization::atkinsonDither(d.data, d.info.size.width(), d.info.size.height(), colorMapping);
+                break;
+            default:
+                THROW(std::runtime_error, "Unsupported quantization method " << Quantization::toString(quantizationMethod));
+            }
+            REQUIRE(r.data.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted return image");
+            // auto dumpPath = std::filesystem::current_path() / "result" / (std::to_string(d.index) + ".png");
+            // temp.write(dumpPath.c_str());
+            r.info.pixelFormat = r.data.pixels().format();
+            r.info.colorMapFormat = r.data.colorMap().format();
+            r.info.nrOfColorMapEntries = r.data.colorMap().size();
+            result.at(di) = r;
+        }
         return result;
     }
 

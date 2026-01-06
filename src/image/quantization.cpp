@@ -2,7 +2,6 @@
 
 #include "exception.h"
 #include "math/colorfit.h"
-#include "math/histogram.h"
 
 namespace Image
 {
@@ -19,17 +18,11 @@ namespace Image
         return ImageData(result, Color::Format::Paletted8, std::vector<Color::XRGB8888>({0x00000000, 0x00FFFFFF}));
     }
 
-    auto Quantization::quantizeClosest(const ImageData &data, uint32_t nrOfColors, const std::vector<Color::XRGB8888> &colorSpaceMap) -> ImageData
+    auto Quantization::quantizeClosest(const ImageData &data, const std::map<Color::XRGB8888, std::vector<Color::XRGB8888>> &colorMapping) -> ImageData
     {
         REQUIRE(!data.pixels().empty(), std::runtime_error, "Input data can not be empty");
         REQUIRE(data.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "RGB888 input data expected");
-        REQUIRE(nrOfColors >= 1 && nrOfColors <= 255, std::runtime_error, "Number of colors must be in [2, 255]");
-        REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "Color space map can not be empty");
-        // use cluster fit to find clusters for colors
-        ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
-        const auto srcPixels = data.pixels().data<Color::XRGB8888>();
-        auto colorMapping = colorFit.reduceColors(Histogram::buildHistogram(srcPixels), nrOfColors);
-        REQUIRE(colorMapping.size() > 0 && nrOfColors >= colorMapping.size(), std::runtime_error, "Unexpected number of mapped colors");
+        REQUIRE(colorMapping.size() > 0, std::runtime_error, "Color mapping can not be empty");
         // build color map
         std::vector<Color::XRGB8888> resultColorMap;
         std::transform(colorMapping.cbegin(), colorMapping.cend(), std::back_inserter(resultColorMap), [](const auto &m)
@@ -40,6 +33,7 @@ namespace Image
                       { std::transform(m.second.cbegin(), m.second.cend(), std::inserter(reverseMapping, reverseMapping.end()), [index](auto srcColor)
                                       { return std::make_pair(srcColor, index); }); ++index; });
         // map pixel colors to indices
+        const auto srcPixels = data.pixels().data<Color::XRGB8888>();
         std::vector<uint8_t> resultPixels;
         resultPixels.reserve(srcPixels.size());
         std::transform(srcPixels.cbegin(), srcPixels.cend(), std::back_inserter(resultPixels), [&reverseMapping](auto srcPixel)
@@ -47,12 +41,12 @@ namespace Image
         return ImageData(resultPixels, Color::Format::Paletted8, resultColorMap);
     }
 
-    auto Quantization::atkinsonDither(const ImageData &data, uint32_t nrOfColors, const std::vector<Color::XRGB8888> &colorSpaceMap) -> ImageData
+    auto Quantization::atkinsonDither(const ImageData &data, uint32_t width, uint32_t height, const std::map<Color::XRGB8888, std::vector<Color::XRGB8888>> &colorMapping) -> ImageData
     {
         REQUIRE(!data.pixels().empty(), std::runtime_error, "Input data can not be empty");
         REQUIRE(data.pixels().format() == Color::Format::XRGB8888, std::runtime_error, "RGB888 input data expected");
-        REQUIRE(nrOfColors >= 2 && nrOfColors <= 255, std::runtime_error, "Number of colors must be in [2, 255]");
-        REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "Color space map can not be empty");
+        REQUIRE(width > 0 && height > 0, std::runtime_error, "Bad input image size");
+        REQUIRE(colorMapping.size() > 0, std::runtime_error, "Color mapping can not be empty");
         return ImageData{};
     }
 
