@@ -19,28 +19,20 @@
 // Snapped MSE: 23.9223, PSNR: 32.0553 dB
 
 // #define USE_SNAPPED_COLORS
+// #define DUMP_STATS
 
 template <typename PIXEL_TYPE>
 class ColorFit
 {
     static constexpr std::size_t InvalidClusterIndex = std::numeric_limits<std::size_t>::max();
-    static constexpr double LearnRateExponent = 0.5;
-
-    // Color object
-    struct ColorObject
-    {
-        const double weight = 0.0;                      // Normalized number of occurrences in histogram
-        const uint64_t count = 0;                       // Count of occurrence of value
-        std::size_t clusterIndex = InvalidClusterIndex; // Index of cluster this object belongs to
-    };
+    static constexpr float LearnRateExponent = 0.5;
 
     // Cluster containing color objects
     struct Cluster
     {
         Color::YCgCoRf center;           // Cluster center / color
-        double weight = 0.0;             // Weight of all objects in cluster combined
+        uint32_t weight = 0;             // Weight of all objects in cluster combined
         std::vector<PIXEL_TYPE> objects; // Objects / colors in cluster
-        std::vector<double> errors;      // Error an object has against cluster center
     };
 
 public:
@@ -80,8 +72,8 @@ public:
             }
             // update cluster center
             auto &cluster = clusters.at(bestDistanceClusterIndex);
-            cluster.weight += 1.0;
-            const double learnRate = std::pow(cluster.weight, -LearnRateExponent);
+            cluster.weight++;
+            const float learnRate = std::powf(cluster.weight, -LearnRateExponent);
             Color::YCgCoRf clusterCenter = cluster.center + learnRate * (pixelf - cluster.center);
 #ifdef USE_SNAPPED_COLORS
             // snap center to closest colorspace color
@@ -134,7 +126,7 @@ public:
                       { colorBounds |= Color::convertTo<Color::YCgCoRf>(c); });
         // start with cluster center in the middle
         std::vector<Cluster> clusters;
-        clusters.push_back(Cluster{0.5 * (colorBounds.min() + colorBounds.max()), 0.0, {}});
+        clusters.push_back(Cluster{0.5F * (colorBounds.min() + colorBounds.max()), 0, {}});
         // calculate additional cluster centers using Maximin initialization method
         std::vector<float> objectClosestCenterDistance(uniqueColors.size(), std::numeric_limits<float>::max()); // this is the distance to the closest cluster center yet encountered for this object
         for (std::size_t ci = 1; ci < nrOfColors; ++ci)
@@ -162,14 +154,14 @@ public:
 #ifdef USE_SNAPPED_COLORS
             // snap center to closest colorspace color
             auto snappedColor = getClosestColor(maxDistanceObject, m_colorSpace);
-            clusters.push_back(Cluster{Color::convertTo<Color::YCgCoRf>(snappedColor), 0.0, {}});
+            clusters.push_back(Cluster{Color::convertTo<Color::YCgCoRf>(snappedColor), 0, {}});
 #else
-            clusters.push_back(Cluster{Color::convertTo<Color::YCgCoRf>(maxDistanceObject), 0.0, {}});
+            clusters.push_back(Cluster{Color::convertTo<Color::YCgCoRf>(maxDistanceObject), 0, {}});
 #endif
         }
-        // ---------- Run Online-k-means ----------
+        REQUIRE(clusters.size() == nrOfColors, std::runtime_error, "Failed build expected number of clusters");
+        // run Online-k-means
         onlineKmeans(clusters, pixels);
-        //  ---------- Try to improve result ----------
         // snap all cluster centers to color space and clear cluster weights and objects
 #pragma omp parallel for
         for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++)
@@ -178,11 +170,10 @@ public:
             PIXEL_TYPE centerColor = Color::convertTo<PIXEL_TYPE>(cluster.center);
             const auto snappedCenter = getClosestColor(centerColor, m_colorSpace);
             cluster.center = Color::convertTo<Color::YCgCoRf>(snappedCenter);
-            cluster.weight = 0.0;
-            cluster.objects.clear();
+            cluster.weight = 0;
         }
+        // run Online-k-means again to improve result
         onlineKmeans(clusters, pixels);
-        REQUIRE(clusters.size() == nrOfColors, std::runtime_error, "Failed to find expected number of clusters");
         // add colors to closest cluster
 #pragma omp parallel for
         for (int ci = 0; ci < static_cast<int>(uniqueColors.size()); ci++)
@@ -208,9 +199,11 @@ public:
                 cluster.objects.push_back(color);
             }
         }
+#ifdef DUMP_STATS
         // calculate overall error
         auto [overallMse, overallPsnr] = getError(clusters, colorHistogram);
         std::cout << "Overall MSE: " << overallMse << ", PSNR: " << overallPsnr << " dB" << std::endl;
+#endif
         // snap all cluster centers to color space
 #pragma omp parallel for
         for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++)
@@ -220,10 +213,12 @@ public:
             const auto snappedCenter = getClosestColor(centerColor, m_colorSpace);
             cluster.center = Color::convertTo<Color::YCgCoRf>(snappedCenter);
         }
+#ifdef DUMP_STATS
         // calculate overall error for snapped colors
         auto [snappedMse, snappedPsnr] = getError(clusters, colorHistogram);
         std::cout << "Snapped MSE: " << snappedMse << ", PSNR: " << snappedPsnr << " dB" << std::endl;
-        // dumpToCSV(clusters, colorHistogram);
+        dumpToCSV(clusters, colorHistogram);
+#endif
         // return mapping from reduced set of colors to original colors
         const auto colorMapping = getColorMapping(clusters);
         // now here the number of mappings can be less then the nrOfColors (clusters getting merged), but we need to have all colors mapped
@@ -238,18 +233,19 @@ private:
     {
         // Note: We don't use min_element here due to double distance function evaluations
         // Improvement: Use distance query acceleration structure
-        auto colorIt = colors.cbegin();
-        auto closestColor = *colorIt;
+        const auto testColor = Color::convertTo<Color::YCgCoRf>(color);
+        auto closestColor = colors.front();
         double closestDistance = std::numeric_limits<double>::max();
-        while (colorIt != colors.cend())
+        auto cIt = std::next(colors.cbegin());
+        while (cIt != colors.cend())
         {
-            auto colorDistance = PIXEL_TYPE::mse(*colorIt, color);
+            auto colorDistance = Color::YCgCoRf::mse(Color::convertTo<Color::YCgCoRf>(*cIt), testColor);
             if (closestDistance > colorDistance)
             {
                 closestDistance = colorDistance;
-                closestColor = *colorIt;
+                closestColor = *cIt;
             }
-            ++colorIt;
+            ++cIt;
         }
         return closestColor;
     }
@@ -265,7 +261,7 @@ private:
         {
             const auto count = colorHistogram.at(object);
             objectCount += count;
-            const auto error = static_cast<double>(PIXEL_TYPE::mse(object, clusterCenter)) * count;
+            const auto error = static_cast<double>(Color::YCgCoRf::mse(Color::convertTo<Color::YCgCoRf>(object), clusterCenter)) * count;
             errors.push_back(error);
             clusterError += error;
         }
