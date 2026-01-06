@@ -10,12 +10,10 @@ clusters_data = pd.read_csv('colorfit_clusters.csv')
 
 objects_colorsource = {
     "RGB value": [dict(color=objects_data['csscolor']), dict(colorscale='')],
-    "Weight": [dict(color=objects_data['weight']), dict(colorscale='Inferno')],
     "Cluster index": [dict(color=objects_data['clusterindex']), dict(colorscale='Rainbow')]
 }
 objects_sizesource = {
     "Fixed": dict(size=''),
-    "Weight": dict(size=objects_data['weight']),
     "Cluster index": dict(size=objects_data['clusterindex'])
 }
 objects_markeropacity = 1.0
@@ -51,7 +49,7 @@ def create_sizebuttons():
 
 
 # Show object scatter plot
-objects_markerdata = ['weight', 'clusterindex']
+objects_markerdata = ['clusterindex']
 objects_fig = px.scatter_3d(
     objects_data, x='r', y='g', z='b', hover_data=objects_markerdata)
 # Set axis ranges
