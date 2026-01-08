@@ -11,7 +11,7 @@
 namespace Color
 {
 
-    /// @brief Linear RGB888 24-bit color in range [0,255]
+    /// @brief sRGB RGB888 24-bit color in range [0,255]
     class RGB888
     {
     public:
@@ -20,7 +20,7 @@ namespace Color
         static constexpr Color::Format ColorFormat = Format::RGB888;
         static constexpr uint32_t Channels = 3;
 
-        RGB888() : v({0, 0, 0}){};
+        RGB888() : v({0, 0, 0}) {};
 
         constexpr RGB888(value_type R, value_type G, value_type B) : v({B, G, R}) {}
 

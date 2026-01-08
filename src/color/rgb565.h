@@ -10,7 +10,7 @@
 namespace Color
 {
 
-    /// @brief Linear RGB565 color in range [0,31] resp. [0,63]
+    /// @brief sRGB RGB565 color in range [0,31] resp. [0,63]
     class RGB565
     {
     public:

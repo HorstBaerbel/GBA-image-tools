@@ -11,7 +11,7 @@
 namespace Color
 {
 
-    /// @brief Linear floating point RGB color in range [0,1]
+    /// @brief sRGB floating point RGB color in range [0,1]
     class RGBf : public Eigen::Vector3f
     {
     public:
@@ -68,20 +68,7 @@ namespace Color
         /// @brief Calculate mean squared error between colors using simple metric
         /// @return Returns a value in [0,1]
         /// See: https://stackoverflow.com/a/40950076 and https://www.compuphase.com/cmetric.htm
-        static inline auto mse(const RGBf &color0, const RGBf &color1) -> float
-        {
-            if (color0 == color1)
-            {
-                return 0.0F;
-            }
-            float ra = color0.R();
-            float rb = color1.R();
-            float rMean = 0.5F * (ra + rb);
-            float dR = ra - rb;
-            float dG = color0.G() - color1.G();
-            float dB = color0.B() - color1.B();
-            return ((2.0F + rMean) * dR * dR + 4.0F * dG * dG + (2.0F + (1.0F - rMean) * dB * dB)) / 9.0F;
-        } // max:   (2    +     1) *  1 *  1 + 4    *  1 *  1 + (2    +  1    -     1) *  1 *  1) = 3 + 4 + 2 = 9 / 9 = 1
+        static auto mse(const RGBf &color0, const RGBf &color1) -> float;
     };
 
 }

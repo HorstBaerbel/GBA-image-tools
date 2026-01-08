@@ -11,7 +11,7 @@
 namespace Color
 {
 
-    /// @brief Linear floating point YCgCoR color in range
+    /// @brief Floating point YCgCoR color in range
     /// Y [0,1] Luma
     /// Cg [-1,1] Chroma green
     /// Co [-1,1] Chroma orange

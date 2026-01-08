@@ -10,7 +10,7 @@
 namespace Color
 {
 
-    /// @brief Linear XRGB1555 color in range [0,31]
+    /// @brief sRGB XRGB1555 color in range [0,31]
     class XRGB1555
     {
     public:

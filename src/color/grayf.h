@@ -9,7 +9,7 @@
 namespace Color
 {
 
-    /// @brief Linear floating point grayscale intensity in range [0,1]
+    /// @brief Floating point grayscale intensity in range [0,1]
     class Grayf
     {
     public:

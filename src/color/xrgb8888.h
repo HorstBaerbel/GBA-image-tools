@@ -11,7 +11,7 @@
 namespace Color
 {
 
-    /// @brief Linear XRGB8888 32-bit color in range [0,255]
+    /// @brief sRGB XRGB8888 32-bit color in range [0,255]
     class XRGB8888
     {
     public:
@@ -20,7 +20,7 @@ namespace Color
         static constexpr Color::Format ColorFormat = Format::XRGB8888;
         static constexpr uint32_t Channels = 3;
 
-        XRGB8888() : v({0, 0, 0, 0}){};
+        XRGB8888() : v({0, 0, 0, 0}) {};
 
         constexpr XRGB8888(value_type R, value_type G, value_type B) : v({B, G, R, 0}) {}
 
