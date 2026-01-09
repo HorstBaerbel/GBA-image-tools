@@ -23,7 +23,7 @@ namespace Color
         XRGB8888 = 32, // X8R8G8B8 32-bit straight truecolor format
         XBGR8888 = 33, // X8R8G8B8 32-bit straight truecolor format with swapped red and blue (has no Color:: class)
         RGBf = 96,     // RGB float truecolor format
-        LChf = 97,     // LCh float truecolor format
+        CIELabf = 97,  // CIEL*a*b* float truecolor format
         YCgCoRf = 98,  // YCgCoR float truecolor format
         Grayf = 111    // Single-channel float grayscale format
     };
@@ -32,14 +32,15 @@ namespace Color
     struct FormatInfo
     {
         Format format = Format::Unknown;
-        std::string name;           // Color format as string
-        uint32_t bitsPerPixel = 0;  // Bits per pixel for input color format
-        uint32_t bytesPerPixel = 0; // Bytes per pixel for input color format
-        uint32_t channels = 0;      // Color channels in color data
-        bool isIndexed = false;     // True if color format is indexed / paletted
-        bool isTruecolor = false;   // True if color format is truecolor
-        bool hasAlpha = false;      // True if color format has alpah channel
+        std::string name;               // Color format as string
+        uint32_t bitsPerPixel = 0;      // Bits per pixel for input color format
+        uint32_t bytesPerPixel = 0;     // Bytes per pixel for input color format
+        uint32_t channels = 0;          // Color channels in color data
+        bool isIndexed = false;         // True if color format is indexed / paletted
+        bool isTruecolor = false;       // True if color format is truecolor
+        bool hasAlpha = false;          // True if color format has alpah channel
         bool hasSwappedRedBlue = false; // True if the color has swapped red and blue component
+        bool isLinear = false;          // True if the color space is linear (no gamma applied)
     };
 
     /// @brief Return color format information

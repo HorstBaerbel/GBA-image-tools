@@ -1,7 +1,7 @@
 #include "conversions.h"
 
 #include "grayf.h"
-#include "lchf.h"
+#include "cielabf.h"
 #include "rgb565.h"
 #include "rgb888.h"
 #include "rgbf.h"
@@ -92,13 +92,13 @@ namespace Color
     // and: https://github.com/lucasb-eyer/go-colorful/blob/master/colors.go
     // and: http://www.brucelindbloom.com/index.html -> Math
     template <>
-    auto convertTo(const LChf &color) -> RGBf
+    auto convertTo(const CIELabf &color) -> RGBf
     {
         constexpr float KAPPA = 24389.0 / 27.0;
         // convert from LCh(ab) to Lab
         float L = color.L();
-        float a = color.C() * std::cos(color.h() * float(M_PI / 180.0));
-        float b = color.C() * std::sin(color.h() * float(M_PI / 180.0));
+        float a = color.a();
+        float b = color.b();
         // convert Lab to XYZ
         float fy = (L + 16.0F) / 116.0F;
         float fx = fy + a / 500.0F;
@@ -122,6 +122,7 @@ namespace Color
             G -= minC;
             B -= minC;
         }
+        // TODO: apply gamma
         // clamp to range, because LCh / conversion result can have a much bigger range
         R = R > 1.0F ? 1.0F : R;
         G = G > 1.0F ? 1.0F : G;
@@ -204,7 +205,7 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const LChf &color) -> XRGB1555
+    auto convertTo(const CIELabf &color) -> XRGB1555
     {
         return convertTo<XRGB1555>(convertTo<RGBf>(color));
     }
@@ -286,7 +287,7 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const LChf &color) -> RGB565
+    auto convertTo(const CIELabf &color) -> RGB565
     {
         return convertTo<RGB565>(convertTo<RGBf>(color));
     }
@@ -364,7 +365,7 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const LChf &color) -> XRGB8888
+    auto convertTo(const CIELabf &color) -> XRGB8888
     {
         return convertTo<XRGB8888>(convertTo<RGBf>(color));
     }
@@ -414,7 +415,7 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const LChf &color) -> RGB888
+    auto convertTo(const CIELabf &color) -> RGB888
     {
         return convertTo<RGB888>(convertTo<XRGB8888>(color));
     }
@@ -462,12 +463,12 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const LChf &color) -> YCgCoRf
+    auto convertTo(const CIELabf &color) -> YCgCoRf
     {
         return convertTo<YCgCoRf>(convertTo<RGBf>(color));
     }
 
-    // ----- LCHf --------------------------------------------------------------
+    // ----- CIELabf --------------------------------------------------------------
 
     auto LABF(float v) -> float
     {
@@ -482,8 +483,9 @@ namespace Color
     // and: https://github.com/lucasb-eyer/go-colorful/blob/master/colors.go
     // and: http://www.brucelindbloom.com/index.html -> Math
     template <>
-    auto convertTo(const RGBf &color) -> LChf
+    auto convertTo(const RGBf &color) -> CIELabf
     {
+        // TODO: apply inverse gamma
         // convert RGB to XYZ
         float X = color.R() * 0.4124108464885388F + color.G() * 0.3575845678529519F + color.B() * 0.18045380393360833F;
         float Y = color.R() * 0.21264934272065283F + color.G() * 0.7151691357059038F + color.B() * 0.07218152157344333F;
@@ -499,50 +501,43 @@ namespace Color
         float L = 116.0F * fy - 16.0F;
         float a = 500.0F * (fx - fy);
         float b = 200.0F * (fy - fz);
-        // convert Lab to LCh(ab)
-        auto C = std::sqrt(a * a + b * b);
-        auto h = std::atan2(b, a) * float(180.0 / M_PI);
-        if (h < 0.0F)
-        {
-            h += 360.0F;
-        }
-        return LChf(L, C, h);
+        return CIELabf(L, a, b);
     }
 
     template <>
-    auto convertTo(const Grayf &color) -> LChf
+    auto convertTo(const Grayf &color) -> CIELabf
     {
-        return convertTo<LChf>(convertTo<RGBf>(color));
+        return convertTo<CIELabf>(convertTo<RGBf>(color));
     }
 
     template <>
-    auto convertTo(const XRGB1555 &color) -> LChf
+    auto convertTo(const XRGB1555 &color) -> CIELabf
     {
-        return convertTo<LChf>(convertTo<RGBf>(color));
+        return convertTo<CIELabf>(convertTo<RGBf>(color));
     }
 
     template <>
-    auto convertTo(const RGB565 &color) -> LChf
+    auto convertTo(const RGB565 &color) -> CIELabf
     {
-        return convertTo<LChf>(convertTo<RGBf>(color));
+        return convertTo<CIELabf>(convertTo<RGBf>(color));
     }
 
     template <>
-    auto convertTo(const RGB888 &color) -> LChf
+    auto convertTo(const RGB888 &color) -> CIELabf
     {
-        return convertTo<LChf>(convertTo<RGBf>(color));
+        return convertTo<CIELabf>(convertTo<RGBf>(color));
     }
 
     template <>
-    auto convertTo(const XRGB8888 &color) -> LChf
+    auto convertTo(const XRGB8888 &color) -> CIELabf
     {
-        return convertTo<LChf>(convertTo<RGBf>(color));
+        return convertTo<CIELabf>(convertTo<RGBf>(color));
     }
 
     template <>
-    auto convertTo(const YCgCoRf &color) -> LChf
+    auto convertTo(const YCgCoRf &color) -> CIELabf
     {
-        return convertTo<LChf>(convertTo<RGBf>(color));
+        return convertTo<CIELabf>(convertTo<RGBf>(color));
     }
 
     // ----- Grayf --------------------------------------------------------------
@@ -584,7 +579,7 @@ namespace Color
     }
 
     template <>
-    auto convertTo(const LChf &color) -> Grayf
+    auto convertTo(const CIELabf &color) -> Grayf
     {
         return convertTo<Grayf>(convertTo<RGBf>(color));
     }

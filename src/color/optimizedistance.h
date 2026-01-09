@@ -1,7 +1,7 @@
 #pragma once
 
 #include "color/conversions.h"
-#include "color/lchf.h"
+#include "color/cielabf.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,47 +15,43 @@ namespace ColorHelpers
     /// @brief Find optimal insertion position for color according to color distance map
     auto insertIndexOptimal(const std::vector<uint8_t> &indices, const std::map<uint8_t, std::vector<float>> &distancesSqrMap, uint8_t indexToInsert) -> std::vector<uint8_t>;
 
-    /// @brief Reorder colors to optimize / minimize preceived color distance using LCh color space distance
-    /// Sorts by hue, then by chroma, then by lightness
+    /// @brief Reorder colors to optimize / minimize preceived color distance using CIELab color space distance
+    /// Sorts by a, then by b, then by lightness
     /// @return Returns the new order of indices: old_index -> new_index
     template <typename T>
     auto optimizeColorDistance(const std::vector<T> &colors) -> std::vector<uint8_t>
     {
-        // convert all colors to LCh color space
-        std::vector<Color::LChf> lchColors;
-        std::transform(colors.cbegin(), colors.cend(), std::back_inserter(lchColors), [](const auto &c)
-                       { return convertTo<Color::LChf>(c); });
+        // convert all colors to CIELab color space
+        std::vector<Color::CIELabf> labColors;
+        std::transform(colors.cbegin(), colors.cend(), std::back_inserter(labColors), [](const auto &c)
+                       { return convertTo<Color::CIELabf>(c); });
         // build map with color distance for all possible combinations from palette
         std::map<uint8_t, std::vector<float>> distancesSqrMap;
-        for (uint32_t i = 0; i < lchColors.size(); i++)
+        for (uint32_t i = 0; i < labColors.size(); i++)
         {
-            const auto &a = lchColors.at(i);
+            const auto &a = labColors.at(i);
             std::vector<float> distances;
-            for (const auto &b : lchColors)
+            for (const auto &b : labColors)
             {
-                distances.push_back(Color::LChf::mse(a, b));
+                distances.push_back(Color::CIELabf::mse(a, b));
             }
             distancesSqrMap[i] = distances;
         }
-        // sort color indices by hue and lightness first
+        // sort color indices
         std::vector<uint8_t> sortedIndices;
-        std::generate_n(std::back_inserter(sortedIndices), lchColors.size(), [i = 0]() mutable
+        std::generate_n(std::back_inserter(sortedIndices), labColors.size(), [i = 0]() mutable
                         { return i++; });
         constexpr float epsilon = 0.1F;
-        std::sort(sortedIndices.begin(), sortedIndices.end(), [lchColors](auto ia, auto ib)
+        std::sort(sortedIndices.begin(), sortedIndices.end(), [labColors](auto ia, auto ib)
                   {
-                  const auto &ca = lchColors.at(ia);
-                  const auto &cb = lchColors.at(ib);
-                  // use closest hue distance to make hue wrap around
-                  constexpr float OneOver360 = 1.0 / 360.0;
-                  float distH0 = 2.0F * std::abs((ca.h() * OneOver360) - (cb.h() * OneOver360));
-                  float distH1 = 2.0F - distH0;
-                  float distH = distH0 < distH1 ? distH0 : distH1;
-                  auto distC = std::abs(cb.C() - ca.C());
+                  const auto &ca = labColors.at(ia);
+                  const auto &cb = labColors.at(ib);
+                  auto dista = std::abs(cb.a() - ca.a());
+                  auto distb = std::abs(cb.b() - ca.b());
                   auto distL = std::abs(cb.L() - ca.L());
-                  return (distH > epsilon && distC > epsilon && distL > epsilon) ||
-                         (distH < epsilon && distC > epsilon && distL > epsilon) ||
-                         (distH < epsilon && distC < epsilon && distL > epsilon); });
+                  return (dista > epsilon && distb > epsilon && distL > epsilon) ||
+                         (dista < epsilon && distb > epsilon && distL > epsilon) ||
+                         (dista < epsilon && distb < epsilon && distL > epsilon); });
         // insert colors / indices successively at optimal positions
         std::vector<uint8_t> currentIndices(1, sortedIndices.front());
         for (uint32_t i = 1; i < sortedIndices.size(); i++)

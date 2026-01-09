@@ -2,7 +2,7 @@
 
 #include "conversions.h"
 #include "grayf.h"
-#include "lchf.h"
+#include "cielabf.h"
 #include "rgb565.h"
 #include "rgb888.h"
 #include "rgbf.h"
@@ -112,8 +112,8 @@ namespace ColorHelpers
         case Color::Format::RGBf:
             result = Color::convertTo<Color::XRGB8888, Color::RGBf>(pixels);
             break;
-        case Color::Format::LChf:
-            result = Color::convertTo<Color::XRGB8888, Color::LChf>(pixels);
+        case Color::Format::CIELabf:
+            result = Color::convertTo<Color::XRGB8888, Color::CIELabf>(pixels);
             break;
         case Color::Format::YCgCoRf:
             result = Color::convertTo<Color::XRGB8888, Color::YCgCoRf>(pixels);

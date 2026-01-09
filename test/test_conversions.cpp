@@ -4,7 +4,7 @@
 
 #include "color/conversions.h"
 #include "color/grayf.h"
-#include "color/lchf.h"
+#include "color/cielabf.h"
 #include "color/rgb565.h"
 #include "color/rgb888.h"
 #include "color/rgbf.h"
@@ -63,8 +63,8 @@ TEST_CASE("Grayf")
     // YCgCoRf
     std::array<Color::YCgCoRf, 3> c5 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.321568638, 0, 0)};
     compare(c, c5);
-    // LChf
-    std::array<Color::LChf, 3> c6 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(63.4723129, 0.00575300632, 213.75572)};
+    // CIELabf
+    std::array<Color::CIELabf, 3> c6 = {Color::CIELabf(0, 0, 0), Color::CIELabf(100, 0.00840794, 213.9604), Color::CIELabf(63.4723129, 0.00575300632, 213.75572)};
     compare(c, c6);
     // RGBf
     std::array<Color::RGBf, 3> c7 = {Color::RGBf(0, 0, 0), Color::RGBf(1, 1, 1), Color::RGBf(82.0 / 255, 82.0 / 255, 82.0 / 255)};
@@ -95,8 +95,8 @@ TEST_CASE("RGB565")
     // YCgCoRf
     std::array<Color::YCgCoRf, 6> c5 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.433692, -0.422939, -0.645161)};
     compare(c, c5);
-    // LChf
-    std::array<Color::LChf, 6> c6 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.42716, 68.55281, 302.5583)};
+    // CIELabf
+    std::array<Color::CIELabf, 6> c6 = {Color::CIELabf(0, 0, 0), Color::CIELabf(100, 0.00840794, 213.9604), Color::CIELabf(53.23824, 104.5461, 39.99994), Color::CIELabf(87.73554, 119.7787, 136.0166), Color::CIELabf(32.29847, 133.8101, 306.2844), Color::CIELabf(61.42716, 68.55281, 302.5583)};
     compare(c, c6);
     // grayscale
     CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::RGB565(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
@@ -128,8 +128,8 @@ TEST_CASE("XRGB1555")
     // YCgCoRf
     std::array<Color::YCgCoRf, 6> c5 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.43548, -0.41935, -0.645161)};
     compare(c, c5);
-    // LChf
-    std::array<Color::LChf, 6> c6 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.64899, 67.9604, 302.32974)};
+    // CIELabf
+    std::array<Color::CIELabf, 6> c6 = {Color::CIELabf(0, 0, 0), Color::CIELabf(100, 0.00840794, 213.9604), Color::CIELabf(53.23824, 104.5461, 39.99994), Color::CIELabf(87.73554, 119.7787, 136.0166), Color::CIELabf(32.29847, 133.8101, 306.2844), Color::CIELabf(61.64899, 67.9604, 302.32974)};
     compare(c, c6);
     // grayscale
     CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::XRGB1555(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
@@ -158,8 +158,8 @@ TEST_CASE("RGB888")
     // YCgCoRf
     std::array<Color::YCgCoRf, 6> c4 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.43431, -0.42157, -0.64706)};
     compare(c, c4);
-    // LChf
-    std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38783, 302.42209)};
+    // CIELabf
+    std::array<Color::CIELabf, 6> c5 = {Color::CIELabf(0, 0, 0), Color::CIELabf(100, 0.00840794, 213.9604), Color::CIELabf(53.23824, 104.5461, 39.99994), Color::CIELabf(87.73554, 119.7787, 136.0166), Color::CIELabf(32.29847, 133.8101, 306.2844), Color::CIELabf(61.49511, 68.38783, 302.42209)};
     compare(c, c5);
     // XRGB8888
     std::array<Color::XRGB8888, 6> c6 = {Color::XRGB8888(0, 0, 0), Color::XRGB8888(255, 255, 255), Color::XRGB8888(255, 0, 0), Color::XRGB8888(0, 255, 0), Color::XRGB8888(0, 0, 255), Color::XRGB8888(82, 57, 247)};
@@ -191,8 +191,8 @@ TEST_CASE("XRGB8888")
     // YCgCoRf
     std::array<Color::YCgCoRf, 6> c4 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.43431, -0.42157, -0.64706)};
     compare(c, c4);
-    // LChf
-    std::array<Color::LChf, 6> c5 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38783, 302.42209)};
+    // CIELabf
+    std::array<Color::CIELabf, 6> c5 = {Color::CIELabf(0, 0, 0), Color::CIELabf(100, 0.00840794, 213.9604), Color::CIELabf(53.23824, 104.5461, 39.99994), Color::CIELabf(87.73554, 119.7787, 136.0166), Color::CIELabf(32.29847, 133.8101, 306.2844), Color::CIELabf(61.49511, 68.38783, 302.42209)};
     compare(c, c5);
     // RGB888
     std::array<Color::RGB888, 6> c6 = {Color::RGB888(0, 0, 0), Color::RGB888(255, 255, 255), Color::RGB888(255, 0, 0), Color::RGB888(0, 255, 0), Color::RGB888(0, 0, 255), Color::RGB888(82, 57, 247)};
@@ -227,8 +227,8 @@ TEST_CASE("RGBf")
     // YCgCoRf
     std::array<Color::YCgCoRf, 6> c5 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.43431, -0.42157, -0.64706)};
     compare(c, c5);
-    // LChf
-    std::array<Color::LChf, 6> c6 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38783, 302.42209)};
+    // CIELabf
+    std::array<Color::CIELabf, 6> c6 = {Color::CIELabf(0, 0, 0), Color::CIELabf(100, 0.00840794, 213.9604), Color::CIELabf(53.23824, 104.5461, 39.99994), Color::CIELabf(87.73554, 119.7787, 136.0166), Color::CIELabf(32.29847, 133.8101, 306.2844), Color::CIELabf(61.49511, 68.38783, 302.42209)};
     compare(c, c6);
     // grayscale
     CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::RGBf(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
@@ -260,8 +260,8 @@ TEST_CASE("YCgCoRf")
     // RGBf
     std::array<Color::RGBf, 6> c5 = {Color::RGBf(0, 0, 0), Color::RGBf(1, 1, 1), Color::RGBf(1, 0, 0), Color::RGBf(0, 1, 0), Color::RGBf(0, 0, 1), Color::RGBf(82.0 / 255, 57.0 / 255, 247.0 / 255)};
     compare(c, c5);
-    // LChf
-    std::array<Color::LChf, 6> c6 = {Color::LChf(0, 0, 0), Color::LChf(100, 0.00840794, 213.9604), Color::LChf(53.23824, 104.5461, 39.99994), Color::LChf(87.73554, 119.7787, 136.0166), Color::LChf(32.29847, 133.8101, 306.2844), Color::LChf(61.49511, 68.38841, 302.42209)};
+    // CIELabf
+    std::array<Color::CIELabf, 6> c6 = {Color::CIELabf(0, 0, 0), Color::CIELabf(100, 0.00840794, 213.9604), Color::CIELabf(53.23824, 104.5461, 39.99994), Color::CIELabf(87.73554, 119.7787, 136.0166), Color::CIELabf(32.29847, 133.8101, 306.2844), Color::CIELabf(61.49511, 68.38841, 302.42209)};
     compare(c, c6);
     // grayscale
     CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::YCgCoRf(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
@@ -269,15 +269,15 @@ TEST_CASE("YCgCoRf")
     CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::YCgCoRf(1, 0, 0)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }
 
-TEST_CASE("LChf")
+TEST_CASE("CIELabf")
 {
-    std::array<Color::LChf, 6> c = {
-        Color::LChf(0, 0, 0),
-        Color::LChf(100, 0, 360),
-        Color::LChf(53.23824, 104.5461, 39.99994),
-        Color::LChf(87.73554, 119.7787, 136.0166),
-        Color::LChf(32.29847, 133.8101, 306.2844),
-        Color::LChf(61.49511, 68.38783, 302.42209)};
+    std::array<Color::CIELabf, 6> c = {
+        Color::CIELabf(0, 0, 0),
+        Color::CIELabf(100, 0, 360),
+        Color::CIELabf(53.23824, 104.5461, 39.99994),
+        Color::CIELabf(87.73554, 119.7787, 136.0166),
+        Color::CIELabf(32.29847, 133.8101, 306.2844),
+        Color::CIELabf(61.49511, 68.38783, 302.42209)};
     // RGB565
     std::array<Color::RGB565, 6> c1 = {Color::RGB565(0, 0, 0), Color::RGB565(31, 63, 31), Color::RGB565(31, 0, 0), Color::RGB565(0, 63, 0), Color::RGB565(0, 0, 31), Color::RGB565(10, 14, 30)};
     compare(c, c1);
@@ -297,7 +297,7 @@ TEST_CASE("LChf")
     std::array<Color::YCgCoRf, 6> c6 = {Color::YCgCoRf(0, 0, 0), Color::YCgCoRf(1, 0, 0), Color::YCgCoRf(0.25, -0.5, 1), Color::YCgCoRf(0.5, 1, 0), Color::YCgCoRf(0.25, -0.5, -1), Color::YCgCoRf(0.43431, -0.42157, -0.64706)};
     compare(c, c6);
     // grayscale
-    CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::LChf(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
-    // CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::LChf(50, 0, 0)), Catch::Matchers::WithinAbs(0.5, 0.001));
-    CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::LChf(100, 0, 360)), Catch::Matchers::WithinAbs(1.0, 0.0001));
+    CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::CIELabf(0, 0, 0)), Catch::Matchers::WithinAbs(0.0, 0.0001));
+    // CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::CIELabf(50, 0, 0)), Catch::Matchers::WithinAbs(0.5, 0.001));
+    CATCH_REQUIRE_THAT(Color::convertTo<Color::Grayf>(Color::CIELabf(100, 0, 360)), Catch::Matchers::WithinAbs(1.0, 0.0001));
 }

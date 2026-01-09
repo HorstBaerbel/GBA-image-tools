@@ -3,7 +3,7 @@
 #include "color/colorformat.h"
 #include "color/conversions.h"
 #include "color/grayf.h"
-#include "color/lchf.h"
+#include "color/cielabf.h"
 #include "color/rgb565.h"
 #include "color/rgb888.h"
 #include "color/rgbf.h"
@@ -24,7 +24,7 @@ namespace Image
     class PixelData
     {
     public:
-        using storage_type = std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::RGB888>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::LChf>, std::vector<Color::YCgCoRf>, std::vector<Color::Grayf>>;
+        using storage_type = std::variant<std::monostate, std::vector<uint8_t>, std::vector<Color::XRGB1555>, std::vector<Color::RGB565>, std::vector<Color::RGB888>, std::vector<Color::XRGB8888>, std::vector<Color::RGBf>, std::vector<Color::CIELabf>, std::vector<Color::YCgCoRf>, std::vector<Color::Grayf>>;
 
         PixelData() = default;
 
@@ -40,9 +40,9 @@ namespace Image
             {
                 REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
                             m_dataFormat == Color::Format::RGB888 || m_dataFormat == Color::Format::XRGB8888 ||
-                            m_dataFormat == Color::Format::RGBf || m_dataFormat == Color::Format::LChf ||
+                            m_dataFormat == Color::Format::RGBf || m_dataFormat == Color::Format::CIELabf ||
                             m_dataFormat == Color::Format::YCgCoRf || m_dataFormat == Color::Format::Grayf,
-                        std::runtime_error, "Color format must be XRGB1555, RGB565, RGB888, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, RGB888, XRGB8888, RGBf, CIELabf, YCgCoRf, Grayf");
             }
         }
 
@@ -58,9 +58,9 @@ namespace Image
             {
                 REQUIRE(m_dataFormat == Color::Format::XRGB1555 || m_dataFormat == Color::Format::RGB565 ||
                             m_dataFormat == Color::Format::RGB888 || m_dataFormat == Color::Format::XRGB8888 ||
-                            m_dataFormat == Color::Format::RGBf || m_dataFormat == Color::Format::LChf ||
+                            m_dataFormat == Color::Format::RGBf || m_dataFormat == Color::Format::CIELabf ||
                             m_dataFormat == Color::Format::YCgCoRf || m_dataFormat == Color::Format::Grayf,
-                        std::runtime_error, "Color format must be XRGB1555, RGB565, RGB888, XRGB8888, RGBf, LChf, YCgCoRf, Grayf");
+                        std::runtime_error, "Color format must be XRGB1555, RGB565, RGB888, XRGB8888, RGBf, CIELabf, YCgCoRf, Grayf");
             }
             m_data = std::move(data);
         }
@@ -117,9 +117,9 @@ namespace Image
                 {
                     return Color::convertTo<T>(std::get<std::vector<Color::RGBf>>(m_data));
                 }
-                else if (std::holds_alternative<std::vector<Color::LChf>>(m_data))
+                else if (std::holds_alternative<std::vector<Color::CIELabf>>(m_data))
                 {
-                    return Color::convertTo<T>(std::get<std::vector<Color::LChf>>(m_data));
+                    return Color::convertTo<T>(std::get<std::vector<Color::CIELabf>>(m_data));
                 }
                 else if (std::holds_alternative<std::vector<Color::YCgCoRf>>(m_data))
                 {
@@ -155,9 +155,9 @@ namespace Image
             {
                 return getAsRaw<Color::XRGB8888>();
             }
-            else if (std::holds_alternative<std::vector<Color::LChf>>(m_data))
+            else if (std::holds_alternative<std::vector<Color::CIELabf>>(m_data))
             {
-                return getAsRaw<Color::LChf>();
+                return getAsRaw<Color::CIELabf>();
             }
             else if (std::holds_alternative<std::vector<Color::YCgCoRf>>(m_data))
             {
@@ -196,9 +196,9 @@ namespace Image
                 auto data = convertData<Color::XRGB8888>();
                 return PixelData(format == Color::Format::XBGR8888 ? swapToBGR(data) : data, Color::Format::XRGB8888);
             }
-            else if (format == Color::Format::LChf)
+            else if (format == Color::Format::CIELabf)
             {
-                return PixelData(convertData<Color::LChf>(), Color::Format::LChf);
+                return PixelData(convertData<Color::CIELabf>(), Color::Format::CIELabf);
             }
             else if (format == Color::Format::YCgCoRf)
             {

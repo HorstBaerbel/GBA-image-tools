@@ -2,7 +2,7 @@
 // You'll need libmagick++-dev installed!
 
 #include "color/colorhelpers.h"
-#include "color/lchf.h"
+#include "color/xrgb8888.h"
 #include "image/imageio.h"
 
 int main(int argc, char *argv[])

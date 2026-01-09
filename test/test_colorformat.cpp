@@ -72,11 +72,11 @@ TEST_CASE("addColorAtIndex0")
     CATCH_REQUIRE(bytesPerImage(Format::RGBf, 0) == 0);
     CATCH_REQUIRE(bytesPerImage(Format::RGBf, 1) == bytesRGBf);
     CATCH_REQUIRE(bytesPerImage(Format::RGBf, 2) == 2 * bytesRGBf);
-    // LChf
-    const auto bytesLChf = formatInfo(Format::LChf).bytesPerPixel;
-    CATCH_REQUIRE(bytesPerImage(Format::LChf, 0) == 0);
-    CATCH_REQUIRE(bytesPerImage(Format::LChf, 1) == bytesLChf);
-    CATCH_REQUIRE(bytesPerImage(Format::LChf, 2) == 2 * bytesLChf);
+    // CIELabf
+    const auto bytesCIELabf = formatInfo(Format::CIELabf).bytesPerPixel;
+    CATCH_REQUIRE(bytesPerImage(Format::CIELabf, 0) == 0);
+    CATCH_REQUIRE(bytesPerImage(Format::CIELabf, 1) == bytesCIELabf);
+    CATCH_REQUIRE(bytesPerImage(Format::CIELabf, 2) == 2 * bytesCIELabf);
     // YCgCoRf
     const auto bytesYCgCoRf = formatInfo(Format::YCgCoRf).bytesPerPixel;
     CATCH_REQUIRE(bytesPerImage(Format::YCgCoRf, 0) == 0);

@@ -37,7 +37,7 @@ TEST_CASE("ConstructionIndexed")
     std::vector<Color::XRGB8888> m0{Color::XRGB8888(1, 1, 1), Color::XRGB8888(2, 2, 2), Color::XRGB8888(3, 3, 3)};
     CATCH_REQUIRE_THROWS(Image::ImageData(x0, Color::Format::Unknown, m0));
     CATCH_REQUIRE_THROWS(Image::ImageData(x0, Color::Format::Grayf, m0));
-    CATCH_REQUIRE_THROWS(Image::ImageData(x0, Color::Format::LChf, m0));
+    CATCH_REQUIRE_THROWS(Image::ImageData(x0, Color::Format::CIELabf, m0));
     CATCH_REQUIRE_THROWS(Image::ImageData(x0, Color::Format::RGB565, m0));
     CATCH_REQUIRE_THROWS(Image::ImageData(x0, Color::Format::RGB888, m0));
     CATCH_REQUIRE_THROWS(Image::ImageData(x0, Color::Format::RGBf, m0));
@@ -56,7 +56,7 @@ TEST_CASE("ConstructionIndexed")
     CATCH_REQUIRE(i8.colorMap().isTruecolor() == true);
     CATCH_REQUIRE(i8.colorMap().size() == 3);
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::Grayf>());
-    CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::LChf>());
+    CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::CIELabf>());
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::RGB565>());
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::RGB888>());
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::RGBf>());
@@ -74,7 +74,7 @@ TEST_CASE("ConstructionIndexed")
     CATCH_REQUIRE(i8.pixels().isTruecolor() == false);
     CATCH_REQUIRE(i8.pixels().size() == 4);
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::Grayf>());
-    CATCH_REQUIRE_THROWS(i8.pixels().data<Color::LChf>());
+    CATCH_REQUIRE_THROWS(i8.pixels().data<Color::CIELabf>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::RGB565>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::RGB888>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::RGBf>());
@@ -93,7 +93,7 @@ TEST_CASE("ConstructionTruecolor")
     std::vector<Color::RGB888> c7{Color::RGB888(1, 1, 1), Color::RGB888(2, 2, 2), Color::RGB888(3, 3, 3)};
     std::vector<Color::XRGB8888> c8{Color::XRGB8888(1, 1, 1), Color::XRGB8888(2, 2, 2), Color::XRGB8888(3, 3, 3)};
     std::vector<Color::RGBf> c3{Color::RGBf(1, 1, 1), Color::RGBf(2, 2, 2), Color::RGBf(3, 3, 3)};
-    std::vector<Color::LChf> c4{Color::LChf(1, 1, 1), Color::LChf(2, 2, 2), Color::LChf(3, 3, 3)};
+    std::vector<Color::CIELabf> c4{Color::CIELabf(1, 1, 1), Color::CIELabf(2, 2, 2), Color::CIELabf(3, 3, 3)};
     std::vector<Color::YCgCoRf> c5{Color::YCgCoRf(1, 1, 1), Color::YCgCoRf(2, 2, 2), Color::YCgCoRf(3, 3, 3)};
     Image::ImageData i8(c8);
     CATCH_REQUIRE(i8.colorMap().empty() == true);
@@ -104,7 +104,7 @@ TEST_CASE("ConstructionTruecolor")
     CATCH_REQUIRE(i8.colorMap().isTruecolor() == false);
     CATCH_REQUIRE(i8.colorMap().size() == 0);
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::Grayf>());
-    CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::LChf>());
+    CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::CIELabf>());
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::RGB565>());
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::RGB888>());
     CATCH_REQUIRE_THROWS(i8.colorMap().data<Color::RGBf>());
@@ -122,7 +122,7 @@ TEST_CASE("ConstructionTruecolor")
     CATCH_REQUIRE(i8.pixels().isTruecolor() == true);
     CATCH_REQUIRE(i8.pixels().size() == 3);
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::Grayf>());
-    CATCH_REQUIRE_THROWS(i8.pixels().data<Color::LChf>());
+    CATCH_REQUIRE_THROWS(i8.pixels().data<Color::CIELabf>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::RGB565>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::RGB888>());
     CATCH_REQUIRE_THROWS(i8.pixels().data<Color::RGBf>());
