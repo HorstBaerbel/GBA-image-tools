@@ -41,6 +41,7 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/color/colorhelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/color/grayf.cpp
     ${PROJECT_SOURCE_DIR}/src/color/cielabf.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/gamma.cpp
     ${PROJECT_SOURCE_DIR}/src/color/rgb565.cpp
     ${PROJECT_SOURCE_DIR}/src/color/rgb888.cpp
     ${PROJECT_SOURCE_DIR}/src/color/rgbf.cpp

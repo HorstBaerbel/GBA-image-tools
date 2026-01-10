@@ -91,11 +91,11 @@ namespace Color
     // and: https://getreuer.info/posts/colorspace/
     // and: https://github.com/lucasb-eyer/go-colorful/blob/master/colors.go
     // and: http://www.brucelindbloom.com/index.html -> Math
+    // Note that we need linearized RGB values here!
     template <>
     auto convertTo(const CIELabf &color) -> RGBf
     {
         constexpr float KAPPA = 24389.0 / 27.0;
-        // convert from LCh(ab) to Lab
         float L = color.L();
         float a = color.a();
         float b = color.b();
@@ -122,8 +122,7 @@ namespace Color
             G -= minC;
             B -= minC;
         }
-        // TODO: apply gamma
-        // clamp to range, because LCh / conversion result can have a much bigger range
+        // clamp to range, because Lab / conversion result can have a much bigger range
         R = R > 1.0F ? 1.0F : R;
         G = G > 1.0F ? 1.0F : G;
         B = B > 1.0F ? 1.0F : B;
@@ -482,10 +481,10 @@ namespace Color
     // and: https://getreuer.info/posts/colorspace/
     // and: https://github.com/lucasb-eyer/go-colorful/blob/master/colors.go
     // and: http://www.brucelindbloom.com/index.html -> Math
+    // Note that this returns linearized RGB values!
     template <>
     auto convertTo(const RGBf &color) -> CIELabf
     {
-        // TODO: apply inverse gamma
         // convert RGB to XYZ
         float X = color.R() * 0.4124108464885388F + color.G() * 0.3575845678529519F + color.B() * 0.18045380393360833F;
         float Y = color.R() * 0.21264934272065283F + color.G() * 0.7151691357059038F + color.B() * 0.07218152157344333F;

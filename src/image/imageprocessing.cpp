@@ -1,6 +1,7 @@
 #include "imageprocessing.h"
 
 #include "color/colorhelpers.h"
+#include "color/gamma.h"
 #include "color/optimizedistance.h"
 #include "color/rgb565.h"
 #include "color/xrgb1555.h"
