@@ -18,9 +18,9 @@ static const std::vector<std::string> SequenceFiles = {
     "BigBuckBunny_240x160_15fps-180.png",
     "BigBuckBunny_240x160_15fps-181.png"};
 
-static const std::string DataPathTest = "../../data/images/test/";
-static const std::string DataPathGBAImages = "../../data/images/240x160/";
-static const std::string DataPathGBAVideos = "../../data/videos/240x160/";
+static const std::string DataPathTest = "data/images/test/";
+static const std::string DataPathGBAImages = "data/images/240x160/";
+static const std::string DataPathGBAVideos = "data/videos/240x160/";
 
 static constexpr float BlockQualityDXTV8x8 = 70;
 static constexpr float BlockQualityDXTV4x4 = 99;

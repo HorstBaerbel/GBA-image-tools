@@ -25,7 +25,7 @@ static const std::vector<Lz4TestFile> Lz4TestFiles = {
     {"squish_240x160.raw", 61412},
     {"bbb_adpcm_22050.wav", 285560}};
 
-const std::string DataPathTest = "../../data/data/";
+const std::string DataPathTest = "data/data/";
 
 using namespace Compression;
 

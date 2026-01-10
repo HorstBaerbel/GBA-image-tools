@@ -146,7 +146,7 @@
                 //"RANS*"
             ],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/test",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
