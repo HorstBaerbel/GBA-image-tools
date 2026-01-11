@@ -24,7 +24,14 @@ namespace Color
     template <typename T_IN>
     auto srgbToLinear(const T_IN &color) -> RGBf
     {
-        return srgbToLinear(convertTo<RGBf>(color));
+        if constexpr (std::is_same<T_IN, RGBf>::value)
+        {
+            return srgbToLinear(color);
+        }
+        else
+        {
+            return srgbToLinear(convertTo<RGBf>(color));
+        }
     }
 
     /// @brief Convert linear color to sRGB color
@@ -40,7 +47,14 @@ namespace Color
     template <typename T_OUT>
     auto linearToSrgb(const RGBf &color) -> T_OUT
     {
-        return convertTo<T_OUT>(linearToSrgb(color));
+        if constexpr (std::is_same<T_OUT, RGBf>::value)
+        {
+            return linearToSrgb(color);
+        }
+        else
+        {
+            return convertTo<T_OUT>(linearToSrgb(color));
+        }
     }
 
     /// @brief Convert sRGB colors to linear colors
@@ -51,8 +65,16 @@ namespace Color
     static auto srgbToLinear(const std::vector<T_IN> &colors) -> std::vector<RGBf>
     {
         std::vector<RGBf> result(colors.size());
-        std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
-                       { return srgbToLinear(convertTo<RGBf>(c)); });
+        if constexpr (std::is_same<T_IN, RGBf>::value)
+        {
+            std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
+                           { return srgbToLinear(c); });
+        }
+        else
+        {
+            std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
+                           { return srgbToLinear(convertTo<RGBf>(c)); });
+        }
         return result;
     }
 
@@ -64,8 +86,16 @@ namespace Color
     static auto srgbToLinear(const std::vector<RGBf> &colors) -> std::vector<T_OUT>
     {
         std::vector<T_OUT> result(colors.size());
-        std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
-                       { return convertTo<T_OUT>(linearToSrgb(c)); });
+        if constexpr (std::is_same<T_OUT, RGBf>::value)
+        {
+            std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
+                           { return linearToSrgb(c); });
+        }
+        else
+        {
+            std::transform(colors.cbegin(), colors.cend(), result.begin(), [](const auto &c)
+                           { return convertTo<T_OUT>(linearToSrgb(c)); });
+        }
         return result;
     }
 }
