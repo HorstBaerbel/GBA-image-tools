@@ -1,3 +1,4 @@
+# Build files / folders
 build/*
 result*/*
 gba/build/*
@@ -6,6 +7,11 @@ gba/build/*
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
+
+# Stats / perf files
+colorfit_*.csv
+*_stats_*.csv
+perf.*
 
 # Prerequisites
 *.d
@@ -40,8 +46,3 @@ cmake_install.cmake
 *.exe
 *.out
 *.app
-
-colorfit_*.csv
-colorfit_*.csv
-*_stats_*.csv
-*_stats_*.csv

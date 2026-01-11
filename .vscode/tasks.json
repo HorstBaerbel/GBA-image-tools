@@ -1,0 +1,14 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Show perf flamegraph",
+            "type": "shell",
+            "command": "perf script | stackcollapse-perf.pl --all > perf.data.out;flamegraph.pl perf.data.out > perf.svg;firefox perf.svg",
+            "args": [],
+            "problemMatcher": []
+        }
+    ]
+}

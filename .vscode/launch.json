@@ -162,6 +162,35 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            // To use this:
+            // * Install perf, flamegraph, stackcollapse-perf
+            // * Set sudo sysctl kernel.perf_event_paranoid=0 for this (default=2)
+            // * Compile RelWithDebugInfo
+            // * Run the application with perf record
+            // * Run: perf script | stackcollapse-perf.pl --all > perf.data.out;flamegraph.pl perf.data.out > perf.svg;firefox perf.svg
+            "name": "unit test perf",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/perf",
+            "args": [
+                "record",
+                "-F",
+                "99",
+                "-a",
+                "-g",
+                "--call-graph",
+                "dwarf",
+                "${command:cmake.launchTargetPath}",
+                "RANS*"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": []
         }
     ]
 }
