@@ -20,68 +20,68 @@ struct ColorfitTestFile
 };
 
 static const std::vector<ColorfitTestFile> ColorfitTestFiles555 = {
-    {"artificial_384x256.png", 25.80, 30.54, 34.67},
-    {"BigBuckBunny_282_384x256.png", 27.86, 33.06, 36.58},
-    {"BigBuckBunny_361_384x256.png", 27.02, 31.27, 34.40},
-    {"BigBuckBunny_40_384x256.png", 40.64, 41.65, 42.01},
-    {"BigBuckBunny_648_384x256.png", 27.80, 32.00, 34.93},
-    {"BigBuckBunny_664_384x256.png", 26.94, 32.00, 35.14},
-    {"bridge_256x384.png", 28.25, 32.90, 35.54},
-    {"flower_foveon_384x256.png", 28.34, 33.29, 36.53},
-    {"gradient_384x256.png", 26.54, 36.05, 41.90},
-    {"nightshot_iso_100_384x256.png", 30.38, 34.75, 37.48},
-    {"squish_384x384.png", 24.10, 32.28, 37.81},
-    {"TearsOfSteel_1200_384x256.png", 26.60, 31.13, 34.35},
-    {"TearsOfSteel_676_384x256.png", 27.53, 32.76, 36.42}};
+    {"artificial_384x256.png", 16.71, 19.66, 21.19},
+    {"BigBuckBunny_282_384x256.png", 18.13, 19.70, 21.53},
+    {"BigBuckBunny_361_384x256.png", 16.37, 18.65, 20.11},
+    {"BigBuckBunny_40_384x256.png", 24.42, 24.64, 24.70},
+    {"BigBuckBunny_648_384x256.png", 17.03, 19.27, 20.55},
+    {"BigBuckBunny_664_384x256.png", 16.75, 19.19, 20.67},
+    {"bridge_256x384.png", 17.32, 19.35, 20.42},
+    {"flower_foveon_384x256.png", 17.38, 19.33, 20.67},
+    {"gradient_384x256.png", 16.04, 21.08, 24.25},
+    {"nightshot_iso_100_384x256.png", 18.21, 20.16, 21.01},
+    {"squish_384x384.png", 16.28, 20.47, 22.95},
+    {"TearsOfSteel_1200_384x256.png", 16.23, 18.29, 19.96},
+    {"TearsOfSteel_676_384x256.png", 16.80, 19.11, 20.77}};
 
 static const std::vector<ColorfitTestFile> ColorfitTestFiles565 = {
-    {"artificial_384x256.png", 26.14, 30.66, 35.91},
-    {"BigBuckBunny_282_384x256.png", 29.83, 33.82, 36.83},
-    {"BigBuckBunny_361_384x256.png", 27.10, 31.52, 34.79},
-    {"BigBuckBunny_40_384x256.png", 39.92, 41.91, 42.52},
-    {"BigBuckBunny_648_384x256.png", 27.79, 32.13, 35.34},
-    {"BigBuckBunny_664_384x256.png", 27.00, 32.00, 35.65},
-    {"bridge_256x384.png", 28.41, 33.12, 36.23},
-    {"flower_foveon_384x256.png", 28.50, 33.54, 36.90},
-    {"gradient_384x256.png", 26.58, 36.92, 43.13},
-    {"nightshot_iso_100_384x256.png", 30.41, 35.01, 38.04},
-    {"squish_384x384.png", 24.21, 32.44, 38.01},
-    {"TearsOfSteel_1200_384x256.png", 26.72, 31.27, 34.80},
-    {"TearsOfSteel_676_384x256.png", 27.44, 32.92, 37.01}};
+    {"artificial_384x256.png", 16.88, 19.51, 21.45},
+    {"BigBuckBunny_282_384x256.png", 18.33, 19.80, 21.81},
+    {"BigBuckBunny_361_384x256.png", 16.41, 18.78, 20.50},
+    {"BigBuckBunny_40_384x256.png", 24.86, 25.35, 25.50},
+    {"BigBuckBunny_648_384x256.png", 17.19, 19.41, 20.98},
+    {"BigBuckBunny_664_384x256.png", 16.83, 19.18, 21.03},
+    {"bridge_256x384.png", 17.39, 19.60, 21.13},
+    {"flower_foveon_384x256.png", 17.51, 19.80, 21.31},
+    {"gradient_384x256.png", 15.90, 21.12, 24.35},
+    {"nightshot_iso_100_384x256.png", 18.31, 20.55, 21.71},
+    {"squish_384x384.png", 16.41, 20.50, 23.51},
+    {"TearsOfSteel_1200_384x256.png", 16.38, 18.46, 20.30},
+    {"TearsOfSteel_676_384x256.png", 16.91, 19.43, 21.34}};
 
 /*
 XRGB1555
-Quantized artificial_384x256.png to 16, 64, 256 colors, psnr: 25.81, 30.55, 34.68
-Quantized BigBuckBunny_282_384x256.png to 16, 64, 256 colors, psnr: 27.87, 33.07, 36.59
-Quantized BigBuckBunny_361_384x256.png to 16, 64, 256 colors, psnr: 27.03, 31.28, 34.41
-Quantized BigBuckBunny_40_384x256.png to 16, 64, 256 colors, psnr: 40.65, 41.66, 42.02
-Quantized BigBuckBunny_648_384x256.png to 16, 64, 256 colors, psnr: 27.81, 32.01, 34.94
-Quantized BigBuckBunny_664_384x256.png to 16, 64, 256 colors, psnr: 26.95, 32, 35.15
-Quantized bridge_256x384.png to 16, 64, 256 colors, psnr: 28.26, 32.91, 35.55
-Quantized flower_foveon_384x256.png to 16, 64, 256 colors, psnr: 28.35, 33.3, 36.54
-Quantized gradient_384x256.png to 16, 64, 256 colors, psnr: 26.55, 36.25, 41.98
-Quantized nightshot_iso_100_384x256.png to 16, 64, 256 colors, psnr: 30.39, 34.76, 37.49
-Quantized squish_384x384.png to 16, 64, 256 colors, psnr: 24.11, 32.29, 37.82
-Quantized TearsOfSteel_1200_384x256.png to 16, 64, 256 colors, psnr: 26.61, 31.14, 34.36
-Quantized TearsOfSteel_676_384x256.png to 16, 64, 256 colors, psnr: 27.54, 32.77, 36.43
+Quantized artificial_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 16.72, 19.67, 21.2
+Quantized BigBuckBunny_282_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 18.14, 19.71, 21.54
+Quantized BigBuckBunny_361_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 16.38, 18.66, 20.12
+Quantized BigBuckBunny_40_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 24.43, 24.65, 24.71
+Quantized BigBuckBunny_648_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 17.04, 19.28, 20.56
+Quantized BigBuckBunny_664_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 16.76, 19.2, 20.68
+Quantized bridge_256x384.png to RGB555 with 16, 64, 256 colors, psnr: 17.33, 19.36, 20.43
+Quantized flower_foveon_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 17.39, 19.34, 20.68
+Quantized gradient_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 16.05, 21.09, 24.26
+Quantized nightshot_iso_100_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 18.22, 20.17, 21.02
+Quantized squish_384x384.png to RGB555 with 16, 64, 256 colors, psnr: 16.29, 20.48, 22.96
+Quantized TearsOfSteel_1200_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 16.24, 18.3, 19.97
+Quantized TearsOfSteel_676_384x256.png to RGB555 with 16, 64, 256 colors, psnr: 16.81, 19.12, 20.78
 
 RGB565
-Quantized artificial_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 26.15, 30.67, 35.92
-Quantized BigBuckBunny_282_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 29.84, 33.83, 36.84
-Quantized BigBuckBunny_361_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 27.11, 31.53, 34.8
-Quantized BigBuckBunny_40_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 39.93, 41.92, 42.53
-Quantized BigBuckBunny_648_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 27.8, 32.14, 35.35
-Quantized BigBuckBunny_664_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 27.01, 32.01, 35.66
-Quantized bridge_256x384.png to RGB565 with 16, 64, 256 colors, psnr: 28.42, 33.13, 36.24
-Quantized flower_foveon_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 28.51, 33.55, 36.91
-Quantized gradient_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 26.59, 36.96, 43.32
-Quantized nightshot_iso_100_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 30.42, 35.02, 38.05
-Quantized squish_384x384.png to RGB565 with 16, 64, 256 colors, psnr: 24.22, 32.45, 38.02
-Quantized TearsOfSteel_1200_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 26.73, 31.28, 34.81
-Quantized TearsOfSteel_676_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 27.45, 32.93, 37.02
+Quantized artificial_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 16.89, 19.52, 21.46
+Quantized BigBuckBunny_282_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 18.34, 19.81, 21.82
+Quantized BigBuckBunny_361_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 16.42, 18.79, 20.51
+Quantized BigBuckBunny_40_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 24.87, 25.36, 25.51
+Quantized BigBuckBunny_648_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 17.2, 19.42, 20.99
+Quantized BigBuckBunny_664_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 16.84, 19.19, 21.04
+Quantized bridge_256x384.png to RGB565 with 16, 64, 256 colors, psnr: 17.4, 19.61, 21.14
+Quantized flower_foveon_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 17.52, 19.81, 21.32
+Quantized gradient_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 15.91, 21.13, 24.36
+Quantized nightshot_iso_100_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 18.32, 20.56, 21.72
+Quantized squish_384x384.png to RGB565 with 16, 64, 256 colors, psnr: 16.42, 20.51, 23.52
+Quantized TearsOfSteel_1200_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 16.39, 18.47, 20.31
+Quantized TearsOfSteel_676_384x256.png to RGB565 with 16, 64, 256 colors, psnr: 16.92, 19.44, 21.35
 */
 
-static const std::string DataPathTest = "../../data/images/test/";
+static const std::string DataPathTest = "data/images/test/";
 
 // #define WRITE_OUTPUT
 
@@ -111,15 +111,19 @@ TEST_CASE("Colorfit555")
     {
         const auto image = IO::File::readImage(DataPathTest + testFile.fileName);
         const auto inPixels = image.data.pixels().convertData<Color::XRGB8888>();
+        const auto inPixelsGamma = Color::srgbToLinear(inPixels);
         const auto outMapping16 = colorfit.reduceColors(inPixels, 16);
         const auto outPixels16 = mapColors(inPixels, outMapping16);
-        auto psnr16 = Color::psnr(inPixels, outPixels16);
+        const auto outPixels16Gamma = Color::srgbToLinear(outPixels16);
+        auto psnr16 = Color::psnr(inPixelsGamma, outPixels16Gamma);
         const auto outMapping64 = colorfit.reduceColors(inPixels, 64);
         const auto outPixels64 = mapColors(inPixels, outMapping64);
-        auto psnr64 = Color::psnr(inPixels, outPixels64);
+        const auto outPixels64Gamma = Color::srgbToLinear(outPixels64);
+        auto psnr64 = Color::psnr(inPixelsGamma, outPixels64Gamma);
         const auto outMapping256 = colorfit.reduceColors(inPixels, 256);
         const auto outPixels256 = mapColors(inPixels, outMapping256);
-        auto psnr256 = Color::psnr(inPixels, outPixels256);
+        const auto outPixels256Gamma = Color::srgbToLinear(outPixels256);
+        auto psnr256 = Color::psnr(inPixelsGamma, outPixels256Gamma);
         std::cout << "Quantized " << testFile.fileName << " to RGB555 with 16, 64, 256 colors, psnr: " << std::setprecision(4) << psnr16 << ", " << psnr64 << ", " << psnr256 << std::endl;
         CATCH_REQUIRE(psnr16 >= testFile.minPsnr16);
         CATCH_REQUIRE(psnr64 >= testFile.minPsnr64);
@@ -135,15 +139,19 @@ TEST_CASE("Colorfit565")
     {
         const auto image = IO::File::readImage(DataPathTest + testFile.fileName);
         const auto inPixels = image.data.pixels().convertData<Color::XRGB8888>();
+        const auto inPixelsGamma = Color::srgbToLinear(inPixels);
         const auto outMapping16 = colorfit.reduceColors(inPixels, 16);
         const auto outPixels16 = mapColors(inPixels, outMapping16);
-        auto psnr16 = Color::psnr(inPixels, outPixels16);
+        const auto outPixels16Gamma = Color::srgbToLinear(outPixels16);
+        auto psnr16 = Color::psnr(inPixelsGamma, outPixels16Gamma);
         const auto outMapping64 = colorfit.reduceColors(inPixels, 64);
         const auto outPixels64 = mapColors(inPixels, outMapping64);
-        auto psnr64 = Color::psnr(inPixels, outPixels64);
+        const auto outPixels64Gamma = Color::srgbToLinear(outPixels64);
+        auto psnr64 = Color::psnr(inPixelsGamma, outPixels64Gamma);
         const auto outMapping256 = colorfit.reduceColors(inPixels, 256);
         const auto outPixels256 = mapColors(inPixels, outMapping256);
-        auto psnr256 = Color::psnr(inPixels, outPixels256);
+        const auto outPixels256Gamma = Color::srgbToLinear(outPixels256);
+        auto psnr256 = Color::psnr(inPixelsGamma, outPixels256Gamma);
         std::cout << "Quantized " << testFile.fileName << " to RGB565 with 16, 64, 256 colors, psnr: " << std::setprecision(4) << psnr16 << ", " << psnr64 << ", " << psnr256 << std::endl;
         CATCH_REQUIRE(psnr16 >= testFile.minPsnr16);
         CATCH_REQUIRE(psnr64 >= testFile.minPsnr64);
