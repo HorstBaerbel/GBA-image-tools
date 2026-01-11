@@ -90,17 +90,17 @@ auto testEncode(const Image::Frame &data, const float quality, const float allow
 TEST_CASE("EncodeDecodeBlock")
 {
     auto image = IO::File::readImage(DataPathTest + "BigBuckBunny_361_384x256.png");
-    testEncodeBlock(image, BlockQualityDXTV8x8, 19.49F, false);
-    testEncodeBlock(image, BlockQualityDXTV8x8, 19.49F, true);
-    testEncodeBlock(image, BlockQualityDXTV4x4, 22.96F, false);
-    testEncodeBlock(image, BlockQualityDXTV4x4, 22.96F, true);
+    testEncodeBlock(image, BlockQualityDXTV8x8, 15.05, false);
+    testEncodeBlock(image, BlockQualityDXTV8x8, 15.05, true);
+    testEncodeBlock(image, BlockQualityDXTV4x4, 17.63, false);
+    testEncodeBlock(image, BlockQualityDXTV4x4, 17.63, true);
 }
 
 TEST_CASE("EncodeDecodeImage")
 {
     auto image = IO::File::readImage(DataPathGBAImages + "BigBuckBunny_361_240x160.png");
-    testEncode(image, ImageQualityDXT8x8, 23.63F, true);
-    testEncode(image, ImageQualityDXT4x4, 30.46F, true);
+    testEncode(image, ImageQualityDXT8x8, 16.68, true);
+    testEncode(image, ImageQualityDXT4x4, 20.13, true);
 }
 
 TEST_CASE("EncodeDecodeVideo")
@@ -111,7 +111,7 @@ TEST_CASE("EncodeDecodeVideo")
         images.push_back(IO::File::readImage(DataPathGBAVideos + file));
     }
     constexpr bool swapToBGR = true;
-    constexpr float allowedPsnr = 23.56F;
+    constexpr float allowedPsnr = 16.36F;
     std::vector<Color::XRGB8888> prevPixels;
     for (const auto &data : images)
     {

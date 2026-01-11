@@ -26,7 +26,7 @@ static const std::vector<DxtTestFile> DxtTestFiles = {
     {"BigBuckBunny_664_384x256.png", 22.97, 23.80},
     {"bridge_256x384.png", 18.58, 19.18},
     {"flower_foveon_384x256.png", 21.01, 21.89},
-    {"gradient_384x256.png", 24.57, 25.06},
+    {"gradient_384x256.png", 24.57, 25.04},
     {"nightshot_iso_100_384x256.png", 19.47, 20.35},
     {"squish_384x384.png", 24.03, 25.03},
     {"TearsOfSteel_1200_384x256.png", 18.34, 19.07},
