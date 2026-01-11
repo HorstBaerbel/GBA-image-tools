@@ -20,7 +20,7 @@ static const std::vector<IoTestFile> IoTestFiles = {
     {"240x160/artificial_240x160.png", 240, 160, 0xada42e2a},
     {"test/BigBuckBunny_282_384x256.png", 384, 256, 0xd3b33f64}};
 
-static const std::string DataPathTest = "data/images/";
+static const std::string DataPathTest = "../../data/images/";
 
 // MurmurOAAT 32-bit hash function, see: https://stackoverflow.com/a/77342581/1121150
 uint32_t Hash_MurmurOAAT_32(const uint8_t *data, size_t size)

@@ -14,18 +14,18 @@ namespace Color
         Paletted2 = 2, // 2bit paletted format
         Paletted4 = 4, // 4bit paletted format
         Paletted8 = 8, // 8bit paletted format
-        XRGB1555 = 15, // X1R5G5B5 16-bit format
-        RGB565 = 16,   // R5G6B5 16-bit format
-        XBGR1555 = 17, // X1B5G5R5 16-bit format with swapped red and blue for GBA (has no Color:: class)
-        BGR565 = 18,   // B5G6R5 16-bit format with swappe red and blue for NDS, DXT (has no Color:: class)
-        RGB888 = 24,   // R8G8B8 24-bit straight truecolor format
-        BGR888 = 25,   // B8G8R8 24-bit straight truecolor format with swapped red and blue (has no Color:: class)
-        XRGB8888 = 32, // X8R8G8B8 32-bit straight truecolor format
-        XBGR8888 = 33, // X8R8G8B8 32-bit straight truecolor format with swapped red and blue (has no Color:: class)
-        RGBf = 96,     // RGB float truecolor format
-        CIELabf = 97,  // CIEL*a*b* float truecolor format
-        YCgCoRf = 98,  // YCgCoR float truecolor format
-        Grayf = 111    // Single-channel float grayscale format
+        XRGB1555 = 15, // sRGB X1R5G5B5 16-bit format
+        RGB565 = 16,   // sRGB R5G6B5 16-bit format
+        XBGR1555 = 17, // sRGB X1B5G5R5 16-bit format with swapped red and blue for GBA (has no Color:: class)
+        BGR565 = 18,   // sRGB B5G6R5 16-bit format with swappe red and blue for NDS, DXT (has no Color:: class)
+        RGB888 = 24,   // sRGB R8G8B8 24-bit straight truecolor format
+        BGR888 = 25,   // sRGB B8G8R8 24-bit straight truecolor format with swapped red and blue (has no Color:: class)
+        XRGB8888 = 32, // sRGB X8R8G8B8 32-bit straight truecolor format
+        XBGR8888 = 33, // sRGB X8R8G8B8 32-bit straight truecolor format with swapped red and blue (has no Color:: class)
+        RGBf = 96,     // sRGB float truecolor format
+        CIELabf = 97,  // Linear CIEL*a*b* float truecolor format
+        YCgCoRf = 98,  // Non-linear YCgCoR float truecolor format
+        Grayf = 111    // Non-linear Single-channel float grayscale format
     };
 
     /// @brief Color format information

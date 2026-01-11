@@ -25,7 +25,7 @@ static const std::vector<RansTestFile> RansTestFiles = {
     {"squish_240x160.raw", 90840},
     {"bbb_adpcm_22050.wav", 253536}};
 
-const std::string DataPathTest = "data/data/";
+const std::string DataPathTest = "../../data/data/";
 
 using namespace Compression;
 

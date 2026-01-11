@@ -70,7 +70,7 @@ DXT-compressed RGB565 TearsOfSteel_1200_384x256.png, psnr: 19.08
 DXT-compressed RGB565 TearsOfSteel_676_384x256.png, psnr: 21.47
 */
 
-static const std::string DataPathTest = "data/images/test/";
+static const std::string DataPathTest = "../../data/images/test/";
 
 // #define WRITE_OUTPUT
 

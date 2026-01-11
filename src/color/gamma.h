@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exception.h"
+#include "grayf.h"
 #include "rgbf.h"
 
 #include <algorithm>
@@ -16,6 +17,12 @@ namespace Color
     /// @return Converted linear color
     /// See: https://en.wikipedia.org/wiki/SRGB#Transfer_function_(%22gamma%22)
     auto srgbToLinear(const RGBf &color) -> RGBf;
+
+    /// @brief Convert sRGB grayscale to linear color
+    /// @param color Input sRGB grayscale color
+    /// @return Converted linear color
+    /// See: https://en.wikipedia.org/wiki/SRGB#Transfer_function_(%22gamma%22)
+    auto srgbToLinear(const Grayf &color) -> RGBf;
 
     /// @brief Convert sRGB color to linear color
     /// @param color Input sRGB color

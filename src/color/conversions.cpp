@@ -15,14 +15,14 @@ namespace Color
 {
 
     // D65 white point (noon daylight: television, sRGB color space)
-    constexpr float WHITEPOINT_D65_X = 95.0489;
-    constexpr float WHITEPOINT_D65_Y = 100.0;
-    constexpr float WHITEPOINT_D65_Z = 108.884;
+    constexpr float WHITEPOINT_D65_X = 0.950489;
+    constexpr float WHITEPOINT_D65_Y = 1.0;
+    constexpr float WHITEPOINT_D65_Z = 1.088840;
 
     // D50 white point (horizon light, ICC profile PCS)
-    constexpr float WHITEPOINT_D50_X = 96.4212;
-    constexpr float WHITEPOINT_D50_Y = 100.0;
-    constexpr float WHITEPOINT_D50_Z = 82.5188;
+    constexpr float WHITEPOINT_D50_X = 0.964212;
+    constexpr float WHITEPOINT_D50_Y = 1.0;
+    constexpr float WHITEPOINT_D50_Z = 0.825188;
 
     // ----- RGBf -----------------------------------------------------------------
 
@@ -81,8 +81,10 @@ namespace Color
 
     auto LABINVF(float v) -> float
     {
-        constexpr float EPSILON = 0.206896552;
-        return v > EPSILON ? v * v * v : 0.128418549F * (v - 0.137931034F);
+        constexpr float THIRD = 1.0 / 3.0;
+        constexpr float CBRT_EPSILON = 6.0 / 29.0; // = 216 / 24389 ^ (1/3)
+        constexpr float KAPPA = 24389.0 / 27.0;
+        return v > CBRT_EPSILON ? v * v * v : (v * 116.0 - 16.0) / KAPPA;
     }
 
     // See: https://mina86.com/2021/srgb-lab-lchab-conversions/
@@ -97,9 +99,9 @@ namespace Color
         float a = color.a();
         float b = color.b();
         // convert Lab to XYZ
-        float fy = (L + 16.0F) / 116.0F;
-        float fx = fy + a / 500.0F;
-        float fz = fy - b / 200.0F;
+        float fy = (L + 16.0) / 116.0;
+        float fx = fy + a / 500.0;
+        float fz = fy - b / 200.0;
         float X = LABINVF(fx);
         float Y = LABINVF(fy);
         float Z = LABINVF(fz);
@@ -107,19 +109,14 @@ namespace Color
         X *= WHITEPOINT_D65_X;
         Y *= WHITEPOINT_D65_Y;
         Z *= WHITEPOINT_D65_Z;
-        // divide by 100 for RGB conversion
-        X /= 100.0F;
-        Y /= 100.0F;
-        Z /= 100.0F;
         // convert to RGB
-        float R = X * 3.240812398895283F - Y * 1.5373084456298136F - Z * 0.4985865229069666F;
-        float G = X * -0.9692430170086407F + Y * 1.8759663029085742F + Z * 0.04155503085668564F;
-        float B = X * 0.055638398436112804F - Y * 0.20400746093241362F + Z * 1.0571295702861434F;
-        float minC = R < G ? (R < B ? R : B) : (G < B ? G : B);
+        float R = X * 3.2404542 + Y * -1.5371385 + Z * -0.4985314;
+        float G = X * -0.9692660 + Y * 1.8760108 + Z * 0.0415560;
+        float B = X * 0.0556434 + Y * -0.2040259 + Z * 1.0572252;
         // clamp to range, because Lab / conversion result can have a much bigger range
-        R = R < 0.0F ? 0.0F : (R > 1.0F ? 1.0F : R);
-        G = G < 0.0F ? 0.0F : (G > 1.0F ? 1.0F : G);
-        B = B < 0.0F ? 0.0F : (B > 1.0F ? 1.0F : B);
+        R = R < 0.0 ? 0.0 : (R > 1.0 ? 1.0 : R);
+        G = G < 0.0 ? 0.0 : (G > 1.0 ? 1.0 : G);
+        B = B < 0.0 ? 0.0 : (B > 1.0 ? 1.0 : B);
         return RGBf(R, G, B);
     }
 
@@ -466,8 +463,9 @@ namespace Color
     auto LABF(float v) -> float
     {
         constexpr float THIRD = 1.0 / 3.0;
-        constexpr float EPSILON = 0.008856452;
-        return v > EPSILON ? std::powf(v, THIRD) : (7.787037037F * v + 0.137931034F);
+        constexpr float EPSILON = 216.0 / 24389.0;
+        constexpr float KAPPA = 24389.0 / 27.0;
+        return v > EPSILON ? std::pow(v, THIRD) : (KAPPA * v + 16.0) / 116.0;
     }
 
     // See: https://mina86.com/2021/srgb-lab-lchab-conversions/
@@ -479,13 +477,9 @@ namespace Color
     auto convertTo(const RGBf &color) -> CIELabf
     {
         // convert linear RGB to XYZ (assuming D65 white point)
-        float X = color.R() * 0.4124108464885388F + color.G() * 0.3575845678529519F + color.B() * 0.18045380393360833F;
-        float Y = color.R() * 0.21264934272065283F + color.G() * 0.7151691357059038F + color.B() * 0.07218152157344333F;
-        float Z = color.R() * 0.019331758429150258F + color.G() * 0.11919485595098397F + color.B() * 0.9503900340503373F;
-        // multiply by 100 for Lab conversion
-        X *= 100.0F;
-        Y *= 100.0F;
-        Z *= 100.0F;
+        float X = color.R() * 0.4124564 + color.G() * 0.3575761 + color.B() * 0.1804375;
+        float Y = color.R() * 0.2126729 + color.G() * 0.7151522 + color.B() * 0.0721750;
+        float Z = color.R() * 0.0193339 + color.G() * 0.1191920 + color.B() * 0.9503041;
         // apply white reference
         X /= WHITEPOINT_D65_X;
         Y /= WHITEPOINT_D65_Y;
@@ -494,9 +488,9 @@ namespace Color
         float fx = LABF(X);
         float fy = LABF(Y);
         float fz = LABF(Z);
-        float L = 116.0F * fy - 16.0F;
-        float a = 500.0F * (fx - fy);
-        float b = 200.0F * (fy - fz);
+        float L = 116.0 * fy - 16.F;
+        float a = 500.0 * (fx - fy);
+        float b = 200.0 * (fy - fz);
         return CIELabf(L, a, b);
     }
 

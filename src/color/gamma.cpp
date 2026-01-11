@@ -10,6 +10,12 @@ namespace Color
         return {c0, c1, c2};
     }
 
+    auto srgbToLinear(const Grayf &color) -> RGBf
+    {
+        auto c0 = color[0] <= 0.04045F ? (color[0] / 12.92F) : (std::powf((color[0] + 0.055F) / 1.055F, 2.4F));
+        return {c0, c0, c0};
+    }
+
     auto linearToSrgb(const RGBf &color) -> RGBf
     {
         auto c0 = color[0] <= 0.0031308F ? (color[0] * 12.92F) : (std::powf(color[0], 1.0F / 2.4F) * 1.055F - 0.055F);
