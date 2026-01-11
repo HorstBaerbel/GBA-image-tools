@@ -1,6 +1,7 @@
 #pragma once
 
 #include "boundingbox.h"
+#include "color/colorhelpers.h"
 #include "color/gamma.h"
 #include "exception.h"
 #include "math/histogram.h"
@@ -121,7 +122,7 @@ public:
             auto &cluster = clusters.at(ci);
             if (!m_colorSpaceLinear.empty())
             {
-                cluster.center = getClosestColor(cluster.center, m_colorSpaceLinear);
+                cluster.center = ColorHelpers::getClosestColor(cluster.center, m_colorSpaceLinear);
             }
             cluster.weight = 0;
         }
@@ -231,26 +232,6 @@ private:
             const float learnRate = std::powf(cluster.weight, -LearnRateExponent);
             cluster.center += learnRate * (pixel - cluster.center);
         }
-    }
-
-    static auto getClosestColor(const COLOR_TYPE &color, const std::vector<COLOR_TYPE> &colors) -> COLOR_TYPE
-    {
-        // Note: We don't use min_element here due to double distance function evaluations
-        // Improvement: Use distance query acceleration structure
-        auto closestColor = colors.front();
-        double closestDistance = std::numeric_limits<float>::max();
-        auto cIt = std::next(colors.cbegin());
-        while (cIt != colors.cend())
-        {
-            auto colorDistance = COLOR_TYPE::mse(*cIt, color);
-            if (closestDistance > colorDistance)
-            {
-                closestDistance = colorDistance;
-                closestColor = *cIt;
-            }
-            ++cIt;
-        }
-        return closestColor;
     }
 
     static auto dumpToCSV(const std::vector<Cluster> &clusters, const std::map<PIXEL_TYPE, uint64_t> &colorHistogram) -> void

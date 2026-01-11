@@ -27,7 +27,7 @@ namespace ColorHelpers
 
     /// @brief Find color closest to input color in list of colors
     template <typename T, typename R>
-    auto getClosestColor(T color, const std::vector<R> &colors) -> T
+    auto getClosestColor(const T &color, const std::vector<R> &colors) -> T
     {
         R colorR;
         if constexpr (std::is_same<T, R>())
