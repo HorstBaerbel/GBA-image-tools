@@ -5,6 +5,7 @@
 #include "color/gamma.h"
 #include "exception.h"
 #include "math/histogram.h"
+#include "math/kmeans.h"
 #include "statistics/csvio.h"
 
 #include <Eigen/Core>
@@ -21,7 +22,6 @@
 template <typename PIXEL_TYPE>
 class ColorFit
 {
-    static constexpr std::size_t InvalidClusterIndex = std::numeric_limits<std::size_t>::max();
     static constexpr float LearnRateExponent = 0.5;
     using COLOR_TYPE = Color::CIELabf;
 
@@ -50,7 +50,6 @@ public:
     /// See: Amber Abernathy, M. Emre Celebi 2022, The incremental online k-means clustering algorithm and its application to color quantization
     /// https://uca.edu/cse/files/2022/06/The_Incremental_Online_K_Means_Clustering_Algorithm_and_Its_Application_to_Color_Quantization.pdf
     /// https://github.com/AmberAbernathy/Color_Quantization
-    /// Using YCgCoR instead of RGBf as color model improves PSNR by ~1-2 dB
     /// @note This can be quite slow and take a bit of RAM. You have been warned...
     /// @param pixels sRGB input pixels
     /// @param nrOfColors Number of colors to reduce input colors to
@@ -114,8 +113,8 @@ public:
         }
         REQUIRE(clusters.size() == nrOfColors, std::runtime_error, "Failed build expected number of clusters");
         // run Online-k-means
-        onlineKmeans(clusters, linearPixels);
-        // snap all cluster centers to color space and clear cluster weights and objects
+        Kmeans::onlineKmeans(clusters, linearPixels, LearnRateExponent);
+        // snap all cluster centers to color space and clear cluster weights
 #pragma omp parallel for schedule(dynamic)
         for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++)
         {
@@ -127,7 +126,7 @@ public:
             cluster.weight = 0;
         }
         // run Online-k-means again to improve result
-        onlineKmeans(clusters, linearPixels);
+        Kmeans::onlineKmeans(clusters, linearPixels, LearnRateExponent);
         // add colors to closest cluster
 #pragma omp parallel for
         for (int ci = 0; ci < static_cast<int>(linearColors.size()); ci++)
@@ -198,42 +197,6 @@ public:
     }
 
 private:
-    static auto onlineKmeans(std::vector<Cluster> &clusters, const std::vector<COLOR_TYPE> &linearPixels) -> void
-    {
-        // generate a random value that is coprime with linearPixels.size()
-        // See: https://lemire.me/blog/2017/09/18/visiting-all-values-in-an-array-exactly-once-in-random-order/
-        std::size_t lcpA = 0;
-        do
-        {
-            lcpA = 1 + std::rand() % (linearPixels.size() - 1);
-        } while (std::gcd(lcpA, linearPixels.size()) != 1);
-        // generate a random value from 0 to linearPixels.size() - 1
-        const std::size_t lcpB = std::rand() % linearPixels.size();
-        // add linear pixels to clusters
-        for (int i = 0; i < static_cast<int>(linearPixels.size()); i++)
-        {
-            // get pseudo-random pixel
-            const auto pixel = linearPixels.at((static_cast<std::size_t>(i) * lcpA + lcpB) % linearPixels.size());
-            // find closest cluster center
-            auto bestClusterIndex = std::numeric_limits<int>::max();
-            auto bestClusterDistance = std::numeric_limits<float>::max();
-            for (int clusterIndex = 0; clusterIndex < static_cast<int>(clusters.size()); clusterIndex++)
-            {
-                const auto distanceToCluster = COLOR_TYPE::mse(pixel, clusters.at(clusterIndex).center);
-                if (distanceToCluster < bestClusterDistance)
-                {
-                    bestClusterDistance = distanceToCluster;
-                    bestClusterIndex = clusterIndex;
-                }
-            }
-            // update cluster center
-            auto &cluster = clusters.at(bestClusterIndex);
-            cluster.weight++;
-            const float learnRate = std::powf(cluster.weight, -LearnRateExponent);
-            cluster.center += learnRate * (pixel - cluster.center);
-        }
-    }
-
     static auto dumpToCSV(const std::vector<Cluster> &clusters, const std::map<PIXEL_TYPE, uint64_t> &colorHistogram) -> void
     {
         std::ofstream csvObjects("colorfit_objects.csv");

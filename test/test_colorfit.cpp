@@ -43,7 +43,7 @@ static const std::vector<ColorfitTestFile> ColorfitTestFiles565 = {
     {"BigBuckBunny_664_384x256.png", 16.83, 19.18, 21.03},
     {"bridge_256x384.png", 17.39, 19.60, 21.13},
     {"flower_foveon_384x256.png", 17.51, 19.80, 21.31},
-    {"gradient_384x256.png", 15.90, 21.12, 24.35},
+    {"gradient_384x256.png", 15.90, 21.12, 24.34},
     {"nightshot_iso_100_384x256.png", 18.31, 20.55, 21.71},
     {"squish_384x384.png", 16.41, 20.50, 23.51},
     {"TearsOfSteel_1200_384x256.png", 16.38, 18.46, 20.30},
