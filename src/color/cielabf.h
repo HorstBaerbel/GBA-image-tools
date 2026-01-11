@@ -40,9 +40,15 @@ namespace Color
         static constexpr std::array<value_type, 3> Min{0.0F, -128.0F, -128.0F};
         static constexpr std::array<value_type, 3> Max{100.0F, 127.0F, 127.0F};
 
-        /// @brief Calculate mean squared error between colors using CIEDE2000
+        /// @brief Calculate mean squared error between colors usind HyAB distance
+        /// See: https://en.wikipedia.org/wiki/Color_difference#Other_geometric_constructions and http://markfairchild.org/PDFs/PAP40.pdf
         /// @return Returns a value in [0,1]
         static auto mse(const CIELabf &color0, const CIELabf &color1) -> float;
+
+        /// @brief Calculate distance between colors using CIEDE2000
+        /// @return Returns a value in [0,~185]
+        /// @note This is very expensive computation-wise
+        static auto ciede2000(const CIELabf &color0, const CIELabf &color1) -> float;
     };
 
 }
