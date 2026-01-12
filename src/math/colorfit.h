@@ -114,7 +114,7 @@ public:
         REQUIRE(clusters.size() == nrOfColors, std::runtime_error, "Failed build expected number of clusters");
         // run Online-k-means
         Kmeans::onlineKmeans(clusters, linearPixels, LearnRateExponent);
-        // snap all cluster centers to color space and clear cluster weights
+        // snap all cluster centers to color space
 #pragma omp parallel for schedule(dynamic)
         for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++)
         {
@@ -123,7 +123,6 @@ public:
             {
                 cluster.center = ColorHelpers::getClosestColor(cluster.center, m_colorSpaceLinear);
             }
-            cluster.weight = 0;
         }
         // run Online-k-means again to improve result
         Kmeans::onlineKmeans(clusters, linearPixels, LearnRateExponent);

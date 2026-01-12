@@ -58,6 +58,11 @@ namespace Kmeans
     template <class CLUSTER_TYPE, class POSITION_TYPE>
     auto onlineKmeans(std::vector<CLUSTER_TYPE> &clusters, const std::vector<POSITION_TYPE> &positions, const float learnRateExponent) -> void
     {
+        // clear all cluster weights
+        for (auto &cluster : clusters)
+        {
+            cluster.weight = 0;
+        }
         // generate a random value that is coprime with positions.size()
         // See: https://lemire.me/blog/2017/09/18/visiting-all-values-in-an-array-exactly-once-in-random-order/
         std::size_t lcpA = 0;
