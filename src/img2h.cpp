@@ -65,6 +65,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.interleavePixels.cxxOption);
         opts.add_option("", options.dxt.cxxOption);
         // opts.add_option("", options.rle.cxxOption);
+        opts.add_option("", options.lz4.cxxOption);
         opts.add_option("", options.lz10.cxxOption);
         opts.add_option("", options.vram.cxxOption);
         opts.add_option("", options.binary.cxxOption);
@@ -186,6 +187,7 @@ void printUsage()
     std::cout << options.dxt.helpString() << std::endl;
     std::cout << "COMPRESS options (mutually exclusive):" << std::endl;
     // std::cout << options.rle.helpString() << std::endl;
+    std::cout << options.lz4.helpString() << std::endl;
     std::cout << options.lz10.helpString() << std::endl;
     std::cout << "COMPRESS modifiers (optional):" << std::endl;
     std::cout << options.vram.helpString() << std::endl;
@@ -399,6 +401,10 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::CompressRLE);
         }*/
+        if (options.lz4)
+        {
+            processing.addStep(Image::ProcessingType::CompressLZ4_40, {options.vram.isSet});
+        }
         if (options.lz10)
         {
             processing.addStep(Image::ProcessingType::CompressLZSS_10, {options.vram.isSet});
