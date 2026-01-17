@@ -45,15 +45,25 @@ namespace Image
     std::pair<std::vector<OUT_TYPE>, std::vector<INDEX_TYPE>> combineRawMapData(const std::vector<Frame> &images)
     {
         std::vector<std::vector<uint8_t>> temp8;
-        for (const auto &img : images)
+        if (images.size() == 1)
         {
-            std::vector<uint8_t> tempMap8;
-            for (const auto &map : img.map.data)
+            for (const auto &map : images.front().map.data)
             {
-                auto map8 = DataHelpers::convertTo<uint8_t>(map);
-                std::copy(map8.cbegin(), map8.cend(), std::back_inserter(tempMap8));
+                temp8.push_back(DataHelpers::convertTo<uint8_t>(map));
             }
-            temp8.push_back(tempMap8);
+        }
+        else
+        {
+            for (const auto &img : images)
+            {
+                std::vector<uint8_t> tempMap8;
+                for (const auto &map : img.map.data)
+                {
+                    auto map8 = DataHelpers::convertTo<uint8_t>(map);
+                    std::copy(map8.cbegin(), map8.cend(), std::back_inserter(tempMap8));
+                }
+                temp8.push_back(tempMap8);
+            }
         }
         auto startIndices = DataHelpers::getStartIndices<uint8_t, INDEX_TYPE>(temp8);
         for (auto index : startIndices)

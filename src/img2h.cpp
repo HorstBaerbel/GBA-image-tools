@@ -540,7 +540,7 @@ int main(int argc, const char *argv[])
                         // output image and palette data
                         if (data0.type.isTiles() && !data0.map.data.empty())
                         {
-                            // convert map data to uint32_ts
+                            // convert map data to uint16_ts
                             auto [mapData16, mapStartIndices] = Image::combineRawMapData<uint16_t, uint16_t>(data);
                             IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
                             IO::Text::writeMapInfoToH(hFile, varName, mapData16, mapStartIndices.size());

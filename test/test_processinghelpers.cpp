@@ -122,6 +122,13 @@ TEST_CASE("combineRawMapData")
     CATCH_REQUIRE(r3.second.size() == 2);
     CATCH_REQUIRE(r3.second == std::vector<uint16_t>({0, 1}));
     CATCH_REQUIRE_THROWS(combineRawMapData<uint32_t>(v2));
+    d0.map.data.push_back(std::vector<uint16_t>({0x5566, 0x7788}));
+    std::vector<Frame> v4 = {d0};
+    auto r4 = combineRawMapData<uint8_t, uint16_t>(v4);
+    CATCH_REQUIRE(r4.first.size() == 8);
+    CATCH_REQUIRE(r4.first == std::vector<uint8_t>({0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0x88, 0x77}));
+    CATCH_REQUIRE(r4.second.size() == 2);
+    CATCH_REQUIRE(r4.second == std::vector<uint16_t>({0, 4}));
 }
 
 TEST_CASE("combineRawColorMapData")
