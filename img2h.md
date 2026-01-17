@@ -2,39 +2,44 @@
 
 ## General usage
 
-Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn...] OUTNAME```
+Call img2h like this: ```img2h FORMAT OUTFORMAT [CONVERSION] [IMAGE COMPRESSION] [DATA COMPRESSION] [OPTIONS] INFILE [INFILEn...] OUTNAME```
 
-* ```FORMAT``` is mandatory and means the color format to convert the input frame to:
-  * ```--blackwhite``` - Convert frame to b/w paletted image with two colors according to a brightness threshold.
-  * ```--paletted``` - Convert frame to paletted image with specified number of colors.
-  * ```--commonpalette``` - Convert all frames to images using a common palette with specified number of colors.
-  * ```--truecolor``` - Convert frame to RGB555 / RGB565 / RGB888 true-color image.
+* ```FORMAT``` is mandatory and means the color format to convert the input image(s) to:
+  * ```--blackwhite=T``` - Convert frame to b/w paletted image with two colors according to a brightness threshold ```T``` [0, 1].
+  * ```--paletted=N``` - Convert frame to paletted image with specified number of colors ```N``` [2, 256].
+  * ```--truecolor=F``` - Convert frame to true-color image format ```F``` [```RGB888```, ```RGB565``` or ```RGB555```].
+  * ```--outformat=F``` - Set final output color format ```F``` [```RGB888```, ```RGB565```, ```RGB555```, ```BGR888```, ```BGR565``` or ```BGR555```].
+* ```OUTFORMAT``` is mandatory and is the final output pixel or color map format:
+  * ```--outformat=F``` - Format ```F``` can be RGB555 / RGB565 / RGB888 and BGR555 / BGR565 / BGR888 with swapped red/green components.
 * ```CONVERSION``` is optional and means the type of conversion to be done:
   * [```--reordercolors```](#reordering-palette-colors) - Reorder palette colors to minimize preceived color distance.
-  * [```--addcolor0=COLOR```](#adding-a-color-to-index--0-in-the-palette) - Add COLOR at palette index #0 and increase all other color indices by 1.
-  * [```--movecolor0=COLOR```](#moving-a-color-to-index--0-in-the-palette) - Move COLOR to palette index #0 and move all other colors accordingly.
-  * [```--shift=N```](#shifting-index-values) - Increase image index values by N, keeping index #0 at 0.
-  * [```--prune=N```](#pruning-index-values) - Reduce depth of image index values to 1,2 or 4 bit, depending on N.
-  * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
+  * [```--addcolor0=COLOR```](#adding-a-color-to-index-0-in-the-palette) - Add RGB ```COLOR``` at palette index #0 and increase all other color indices by 1.
+  * [```--movecolor0=COLOR```](#moving-a-color-to-index-0-in-the-palette) - Move RGB ```COLOR``` to palette index #0 and move all other colors accordingly.
+  * [```--shift=N```](#shifting-index-values) - Increase image index values by ```N```, keeping index #0 at 0.
+  * [```--prune=N```](#pruning-index-values) - Reduce depth of image index values to 1,2 or 4 bit, depending on ```N```.
+  * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size ```W``` x ```H``` and store spritewise. You might want to add ```--tiles```.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
   * [```--tilemap=DETECT_FLIPS```](#generating-a-tile-and-screen-map-for-tiled-backgrounds) - Output optimized screen and tile map for input image. Implies ```--tiles```. Will detect flipped tiles if ```DETECT_FLIPS``` = ```true```.
-  * [```--commontilemap=DETECT_FLIPS```](#generating-a-tile-and-screen-map-for-tiled-backgrounds) - Output optimized, combined tile map and individual screen maps for input images. Implies ```--tiles```. Will detect flipped tiles if ```DETECT_FLIPS``` = ```true```.
+  * [```--commontilemap=DETECT_FLIPS```](#generating-a-combined-tile-map-for-tiled-backgrounds-from-multiple-images) - Output optimized, combined tile map and individual screen maps for input images. Implies ```--tiles```. Will detect flipped tiles if ```DETECT_FLIPS``` = ```true```.
   * [```--interleavepixels```](#interleaving-pixels) - Interleave pixels from multiple images into one big array.
+* ```IMAGE COMPRESSION``` is optional and means the type of compression to apply:
+  * ```--dxt``` - Use DXT1- / S3TC-like compression on images.
 * ```DATA COMPRESSION``` is optional and means the type of compression to apply:
   * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * ~~[```--rle```](#compressing-data) - Use RLE compression (http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).~~ Currently broken.
-  * [```--lz4```](#compressing-data) - Use LZ4 compression.
+  * [```--lz4```](#compressing-data) - Use [LZ4](https://fastcompression.blogspot.com/2011/05/lz4-explained.html) compression.
   * [```--lz10```](#compressing-data) - Use LZ77 compression ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
 * ```OPTIONS``` are optional:
+  * ```--binary``` - Write binary file(s) for pixel and color map data instead of .h / .c files.
+  * ```--dumpimage``` - Dump intermediate results of processing to PNG file for review. Does not work in all cases.
   * ```--dryrun``` - Process data, but do not write output files.
-  * ```--dump``` - Dump image conversion result before output to result/*.png.
 * ```INFILE / INFILEn``` specifies the input image files. **Multiple input files will always be stored in one .h / .c file**. You can use wildcards here, e.g. "dir/file\*.png".
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_".
 
-The order of the operations performed is: Read all input files ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ sprites ➜ tiles ➜ prune ➜ delta8 / delta16 ➜ rle ➜ lz10 ➜ interleavepixels ➜ Write output
+The order of the operations performed is: Read all input files ➜ FORMAT ➜ reordercolors ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ sprites ➜ tiles ➜ prune ➜ delta8 / delta16 ➜ rle ➜ lz10 ➜ interleavepixels ➜ Write output
 
 Some general information:
 
@@ -102,7 +107,7 @@ The data will be stored so that you can simply memcpy it over to VRAM.
 
 Generate an optimized tile and screen map from an image. This will map duplicate tiles with the same pixels to the same tile data, and only store them once. It will detect horizontally / vertically / both flipped duplicate tiles and set the necessary flip flags if you pass ```--tilemap=true```. This option implies / sets ```--tiles```, so the same restrictions apply. The data generated has ["1D mapping"](http://problemkaputt.de/gbatek.htm#lcdobjvramcharactertilemapping) and can simply be memcpy'ed over to VRAM.
 
-### Generating a combined tile map for tiled backgrounds from mutliple images
+### Generating a combined tile map for tiled backgrounds from multiple images
 
 Generate a single, combined tile map and individual screen maps for each input image. This will map duplicate tiles with the same pixels to the same tile data, and only store them once. It will detect horizontally / vertically / both flipped duplicate tiles and set the necessary flip flags if you pass ```--commontilemap=true```. This option implies / sets ```--tiles```, so the same restrictions apply. The data generated has ["1D mapping"](http://problemkaputt.de/gbatek.htm#lcdobjvramcharactertilemapping) and can simply be memcpy'ed over to VRAM.
 

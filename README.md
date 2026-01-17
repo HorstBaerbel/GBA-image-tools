@@ -73,3 +73,4 @@ make package
 * More TESTS!
 * More modern C++ constructs
 * Clean up and use internal RLE + Huffman compression
+* Improve documentation

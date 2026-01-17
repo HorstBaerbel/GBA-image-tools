@@ -7,38 +7,41 @@
 Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DATA COMPRESSION] [AUDIO CONVERSION] [OPTIONS] INFILE OUTNAME```
 
 * ```IMG FORMAT``` is mandatory and means the color format to convert the input frame to:
-  * ```--blackwhite=T``` - Convert frame to b/w paletted image with two colors according to a brightness threshold T [0, 1].
-  * ```--paletted=N``` - Convert frame to paletted image with specified number of colors N [2, 256].
-  * ```--truecolor=F``` - Convert frame to true-color image format F ["RGB888", "RGB565" or "RGB555"].
-  * ```--outformat=F``` - Set final output color format F ["RGB888", "RGB565", "RGB555", "BGR888", "BGR565" or "BGR555"].
+  * ```--blackwhite=T``` - Convert frame to b/w paletted image with two colors according to a brightness threshold ```T``` [0, 1].
+  * ```--paletted=N``` - Convert frame to paletted image with specified number of colors ```N``` [2, 256].
+  * ```--truecolor=F``` - Convert frame to true-color image format ```F``` [```RGB888```, ```RGB565``` or ```RGB555```].
+  * ```--outformat=F``` - Set final output color format ```F``` [```RGB888```, ```RGB565```, ```RGB555```, ```BGR888```, ```BGR565``` or ```BGR555```].
 * ```IMG CONVERSION``` is optional and means the type of conversion to be done:
-  * [```--addcolor0=COLOR```](#adding-a-color-to-index--0-in-the-palette) - Add COLOR at palette index #0 and increase all other color indices by 1.
-  * [```--movecolor0=COLOR```](#moving-a-color-to-index--0-in-the-palette) - Move COLOR to palette index #0 and move all other colors accordingly.
-  * [```--shift=N```](#shifting-index-values) - Increase image index values by N, keeping index #0 at 0.
-  * [```--prune=N```](#pruning-index-values) - Reduce depth of image index values to 1,2 or 4 bit, depending on N.
-  * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
-  * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
+  * [```--addcolor0=COLOR```](img2h.md#adding-a-color-to-index-0-in-the-palette) - Add RGB ```COLOR``` at palette index #0 and increase all other color indices by 1.
+  * [```--movecolor0=COLOR```](img2h.md#moving-a-color-to-index-0-in-the-palette) - Move RGB ```COLOR``` to palette index #0 and move all other colors accordingly.
+  * [```--shift=N```](img2h.md#shifting-index-values) - Increase image index values by ```N```, keeping index #0 at 0.
+  * [```--prune=N```](img2h.md#pruning-index-values) - Reduce depth of image index values to 1,2 or 4 bit, depending on ```N```.
+  * [```--sprites=W,H```](img2h.md#generating-sprites) - Cut data into sprites of size ```W``` x ```H``` and store spritewise. You might want to add ```--tiles```.
+  * [```--tiles```](img2h.md#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
   * ```--deltaimage``` - Pixel-wise delta encoding between successive images.
 * ```IMG COMPRESSION``` is optional, mutually exclusive:
-  * ```--dxtg``` - Use DXT1-ish RGB555 intra-frame compression on video.
-  * ```--dxtv=QUALITY``` - Use DXT1-ish RGB555 intra- and inter-frame compression on video. QUALITY [0, 100] is a quality factor where higher values == better quality, but worse compression.
+  * ```--dxt``` - Use DXT1- / S3TC-like compression on images.
+  * ```--dxtv=QUALITY``` - Use DXT1-ish RGB555 intra- and inter-frame compression on video. ```QUALITY``` [0, 100] is a quality factor where higher values == better quality, but worse compression.
 * ```DATA COMPRESSION``` is optional:
-  * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--rle```](#compressing-data) - Use RLE compression ["RLUnComp"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--lz10```](#compressing-data) - Use LZ77 compression ["LZ77UnComp variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
+  * [```--delta8```](img2h.md#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--delta16```](img2h.md#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * ~~[```--rle```](img2h.md#compressing-data) - Use RLE compression (http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).~~ Currently broken.
+  * [```--lz4```](img2h.md#compressing-data) - Use [LZ4](https://fastcompression.blogspot.com/2011/05/lz4-explained.html) compression.
+  * [```--lz10```](img2h.md#compressing-data) - Use LZ77 compression ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * [```--vram```](img2h.md#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
 * ```AUDIO CONVERSION``` options are optional:
-  * ```channelformat=F``` - Audio channel format F ["mono" or "stereo"].
-  * ```sampleformat=F``` - Audio sample format F ["s8p" (signed 8-bit), "u8p" (unsigned 8-bit), "s16p" (signed 16-bit), "u16p" (unsigned 16-bit), "f32p" (32-bit floating-point)]. All sample formats are planar (non-interleaved).
-  * ```samplerate=R``` - Audio sample rate R [4000, 48000] in Hz.
+  * ```channelformat=F``` - Audio channel format ```F``` [```mono``` or ```stereo```].
+  * ```sampleformat=F``` - Audio sample format ```F``` [```s8p``` (signed 8-bit), ```u8p``` (unsigned 8-bit), ```s16p``` (signed 16-bit), ```u16p```(unsigned 16-bit), ```f32p``` (32-bit floating-point)]. All sample formats are planar (non-interleaved).
+  * ```samplerate=R``` - Audio sample rate ```R``` [4000, 48000] in Hz.
   Note that all input audio is currently converted to signed 16-bit data and multiple channels are reduced to stereo.
 * ```AUDIO COMPRESSION``` is optional:
-  * ```--adpcm``` - Use 4-bit ADPCM compression on audio.
+  * ```--adpcm``` - Apply 4-bit ADPCM compression to audio.
+* ```SUBTITLE DATA``` is optional:
+  * ```--subtitlefile=F``` - Read subtitles from .srt file ```F``` and add to output.
 * ```META DATA``` is optional:
-  * ```--metafile=F``` - Append meta data from file F to output.
-  * ```--metastring=S``` - Append meta data from string S to output.
+  * ```--metafile=F``` - Append meta data from file ```F``` to output.
+  * ```--metastring=S``` - Append meta data from string ```S``` to output.
 * ```OPTIONS``` are optional:
   * ```--dryrun``` - Process data, but do not write output files.
   * ```--dumpimage``` - Process video data and dump results to *<INFILE>\*.png* files.
@@ -46,7 +49,7 @@ Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DA
 * ```INFILE``` specifies the input video file. Must be readable with FFmpeg.
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_". Binary output will be written as "abc.bin".
 
-The order of the operations performed is: Read input file ➜ image format ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxtg / dxtv ➜ diff8 / diff16 ➜ rle ➜ lz10 ➜ Write output
+The order of the operations performed is: Read input file / frames ➜ FORMAT ➜ image format ➜ addcolor0 ➜ movecolor0 ➜ shift ➜ prune ➜ sprites ➜ tiles ➜ dxt / dxtv ➜ diff8 / diff16 ➜ rle ➜ lz10 ➜ Write output
 
 Some general information:
 
@@ -61,7 +64,7 @@ vid2h will store binary file header fields and frame header fields (see [vid2hst
 | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | **File header**                       |
 | Magic bytes "v2h0"                    | 4 bytes | To identify the file type and version (currently "0")                                                                                |
-| File content type                     | 1 byte  | Bitfield: Audio 0x01, Video 0x02, Audio+Video 0x03                                                                                   |
+| File content type                     | 1 byte  | Bitfield: Audio = 1, Video = 2, Subtitles = 4, so Audio and Video = 3                                                                  |
 | ---                                   | 1 byte  |
 | Meta data size                        | 2 bytes | Size of meta data appended to end of file (size must be < 65536)                                                                     |
 | **Audio header**                      |
@@ -85,9 +88,12 @@ vid2h will store binary file header fields and frame header fields (see [vid2hst
 | Number of color map frames in file    | 2 byte  |
 | Max. intermediate video memory needed | 4 bytes | Max. intermediate memory needed to decompress a video frame. If 0 size should be determined by video frame size                      |
 | Image processing types                | 4 bytes | Max. of 4 image processings or Image::ProcessingType::Invalid, see [processingtypes.h](src/image/processingtype.h). In reverse order |
+| **Subtitles header**                  |
+| Number of subtitle frames in file     | 2 bytes |
+| ---                                   | 2 byte  |
 |                                       |         |
 | **Frame header #0**                   |
-| &emsp; Frame data type                | 1 byte  | Enum: Pixels 0x01, Color map 0x02, Audio 0x03                                                                                        |
+| &emsp; Frame data type                | 1 byte  | Enum: Pixels = 1, Color map = 2, Audio = 3, Subtitles = 4                                                                            |
 | &emsp; Frame size                     | 3 bytes | Size of frame data                                                                                                                   |
 | &emsp; Frame data                     | N bytes | Padded to multiple of 4                                                                                                              |
 |                                       |         |
@@ -113,3 +119,4 @@ An example for a small video player can be found in the [gba](gba) subdirectory.
 
 * VQ-based compression using YCgCoR. Should yield better compression ratio and decompress faster
 * Better image / video preview (in + out)
+* Speed up DXTV compression
