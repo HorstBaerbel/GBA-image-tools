@@ -1,4 +1,4 @@
-// Converted with img2h --blackwhite=0.5 --outformat=bgr555 --prune=4 --tiles data/font_sans.png data/font_sans
+// Converted with img2h --blackwhite=0.5 --outformat=bgr555 --tiles --prune=4 data/font_sans.png data/font_sans
 // Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))
 
 // Data is bitmap tiles, pixel format: Paletted 4-bit, color map format: XBGR1555

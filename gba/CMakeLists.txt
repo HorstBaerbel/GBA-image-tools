@@ -72,7 +72,7 @@ LIST(APPEND VIDEO_SOURCE_FILES
 set_source_files_properties(data/video.s OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/data/video.bin)
 
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
-target_img2h_file(FONT_SANS_FILE "font_sans" "\"data/font_sans.png\"" "--blackwhite=0.5 --outformat=bgr555")
+target_img2h_file(FONT_SANS_FILE "font_sans" "\"data/font_sans.png\"" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
 
 # Image example sources --------------------------------------------
 LIST(APPEND IMAGE_SOURCE_FILES
