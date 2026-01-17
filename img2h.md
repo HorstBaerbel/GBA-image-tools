@@ -18,11 +18,13 @@ Call img2h like this: ```img2h [CONVERSION] [DATA COMPRESSION] INFILE [INFILEn..
   * [```--sprites=W,H```](#generating-sprites) - Cut data into sprites of size W x H and store spritewise. You might want to add ```--tiles```.
   * [```--tiles```](#generating-8x8-tiles-for-tilemaps) - Cut data into 8x8 tiles and store data tile-wise.
   * [```--tilemap=DETECT_FLIPS```](#generating-a-tile-and-screen-map-for-tiled-backgrounds) - Output optimized screen and tile map for input image. Implies ```--tiles```. Will detect flipped tiles if ```DETECT_FLIPS``` = ```true```.
+  * [```--commontilemap=DETECT_FLIPS```](#generating-a-tile-and-screen-map-for-tiled-backgrounds) - Output optimized, combined tile map and individual screen maps for input images. Implies ```--tiles```. Will detect flipped tiles if ```DETECT_FLIPS``` = ```true```.
   * [```--interleavepixels```](#interleaving-pixels) - Interleave pixels from multiple images into one big array.
 * ```DATA COMPRESSION``` is optional and means the type of compression to apply:
   * [```--delta8```](#compressing-data) - 8-bit delta encoding ["Diff8"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--delta16```](#compressing-data) - 16-bit delta encoding ["Diff16"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
-  * [```--rle```](#compressing-data) - Use RLE compression (http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
+  * ~~[```--rle```](#compressing-data) - Use RLE compression (http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).~~ Currently broken.
+  * [```--lz4```](#compressing-data) - Use LZ4 compression.
   * [```--lz10```](#compressing-data) - Use LZ77 compression ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions).
   * [```--vram```](#compressing-data) - Structure LZ-compressed data safe to decompress directly to VRAM.  
   Valid combinations are e.g. ```--diff8 --lz10``` or ```--lz10 --vram```.
@@ -98,7 +100,11 @@ The data will be stored so that you can simply memcpy it over to VRAM.
 
 ### Generating a tile and screen map for tiled backgrounds
 
-Generates an optimized tile and screen map from an image. This will map duplicate tiles with the same pixels to the same tile data, and only store them once. It will detect horizontally / vertically / both flipped duplicate tiles and set the necessary flip flags if you pass ```--tilemap=true```. This option implies / sets ```--tiles```. The data generated can simply be memcpy'ed over to VRAM.
+Generate an optimized tile and screen map from an image. This will map duplicate tiles with the same pixels to the same tile data, and only store them once. It will detect horizontally / vertically / both flipped duplicate tiles and set the necessary flip flags if you pass ```--tilemap=true```. This option implies / sets ```--tiles```, so the same restrictions apply. The data generated has ["1D mapping"](http://problemkaputt.de/gbatek.htm#lcdobjvramcharactertilemapping) and can simply be memcpy'ed over to VRAM.
+
+### Generating a combined tile map for tiled backgrounds from mutliple images
+
+Generate a single, combined tile map and individual screen maps for each input image. This will map duplicate tiles with the same pixels to the same tile data, and only store them once. It will detect horizontally / vertically / both flipped duplicate tiles and set the necessary flip flags if you pass ```--commontilemap=true```. This option implies / sets ```--tiles```, so the same restrictions apply. The data generated has ["1D mapping"](http://problemkaputt.de/gbatek.htm#lcdobjvramcharactertilemapping) and can simply be memcpy'ed over to VRAM.
 
 ### Interleaving pixels
 
@@ -111,6 +117,7 @@ This will put image pixel 0 of file 0 and image pixel 0 of file 1 next to each o
 ### Compressing data
 
 You can compress data using ```--lz10``` (LZ77 ["variant 10"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions), GBA / NDS / DSi BIOS compatible). To be able to safely decompress LZ-compressed data to VRAM, add the option ```--vram```.  
+For better compression use ```--lz4```(https://fastcompression.blogspot.com/2011/05/lz4-explained.html). To be able to safely decompress LZ-compressed data to VRAM, add the option ```--vram```.  There is GBA decompression code in the [gba](gba) subdirectory resp. the [gba demo framework](https://github.com/HorstBaerbel/GBA-demo-framework). Note that LZ4 compression will not benefit from an earlier RLE compression as it has RLE "built-in".
 To improve compression you can apply run-length-encoding using ```--rle``` (See ["RLUnComp"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions)) or apply diff- / delta-encoding using ```--diff8``` or ```--diff16``` which will store the difference of consecutive 8- or 16-bit values instead of the actual data (See ["Diff8bitUnFilter"](http://problemkaputt.de/gbatek.htm#biosdecompressionfunctions)).
 
 ## General hints for processing images in paint programs
@@ -152,3 +159,4 @@ If this still does not give you the desired output (too many colors, bad quality
 ## Todo
 
 * Syntax to apply options to single file only?
+* Dithering on quantization
