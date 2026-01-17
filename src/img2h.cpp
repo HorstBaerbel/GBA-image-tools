@@ -94,11 +94,15 @@ bool readArguments(int argc, const char *argv[])
                 m_outFile = m_inFile.back();
                 m_inFile.resize(m_inFile.size() - 1);
             }
-            // resolve wildcards in input files
-            auto filePaths = glob::glob(m_inFile);
-            m_inFile.clear();
-            std::transform(filePaths.cbegin(), filePaths.cend(), std::back_inserter(m_inFile), [](const auto &p)
-                           { return p.string(); });
+            // check if the name contains possible wildcard characters
+            if (m_inFile.size() == 1 && m_inFile.front().find_first_of("*?![]") != std::string::npos)
+            {
+                // resolve wildcards in input files
+                auto filePaths = glob::glob(m_inFile);
+                m_inFile.clear();
+                std::transform(filePaths.cbegin(), filePaths.cend(), std::back_inserter(m_inFile), [](const auto &p)
+                               { return p.string(); });
+            }
             // make sure all input files exist
             for (const auto &fileName : m_inFile)
             {
