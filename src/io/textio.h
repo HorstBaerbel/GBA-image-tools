@@ -46,8 +46,12 @@ namespace IO
         /// @brief Write image information to a .h file.
         static auto writeImageInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &data, uint32_t width, uint32_t height, uint32_t bytesPerImage, uint32_t nrOfImages = 1, bool asTiles = false) -> void;
 
-        /// @brief Write map data information to a .h file. Use after write writeImageInfoToH.
-        static auto writeMapInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void;
+        /// @brief Write map data information to a .h file. Use after write writeImageInfoToH
+        /// @param hFile Output header file stream
+        /// @param varName Name of the variable for data. Function will append strings as needed
+        /// @param mapData Screen map data
+        /// @param nrOfMaps Number of individual screen maps in mapData
+        static auto writeMapInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint16_t> &mapData, uint32_t nrOfMaps) -> void;
 
         /// @brief Write additional palette information to a .h file. Use after write writeImageInfoToH.
         template <typename T>
@@ -83,7 +87,11 @@ namespace IO
         static auto writeImageDataToC(std::ofstream &cFile, const std::string &varName, const std::string &hFileBaseName, const std::vector<uint32_t> &data, const std::vector<uint32_t> &startIndices = std::vector<uint32_t>(), bool asTiles = false) -> void;
 
         /// @brief Write map data to a .c file. Use after write writeImageDataToC.
-        static auto writeMapDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void;
+        /// @param hFile Output c file stream
+        /// @param varName Name of the variable for data. Function will append strings as needed
+        /// @param mapData Screen map data
+        /// @param startIndices Start indices of individual screen maps in mapData
+        static auto writeMapDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &mapData, const std::vector<uint16_t> &startIndices = std::vector<uint16_t>()) -> void;
 
         /// @brief Write palette data to a .c file. Use after write writeImageDataToC.
         template <typename T>

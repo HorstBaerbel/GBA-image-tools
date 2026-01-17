@@ -11,10 +11,13 @@
             "program": "${command:cmake.launchTargetPath}",
             "args": [
                 //"--dumpimage",
+                //"--commonpalette=127",
                 "--paletted=64",
                 "--outformat=bgr555",
+                //"--commontilemap=true",
                 //"--tiles",
                 //"--prune=1",
+                //"--lz4",
                 "\"${workspaceFolder}/data/images/240x160/BigBuckBunny_648_240x160.png\"",
                 "image"
                 //"\"${workspaceFolder}/gba/data/font_sans.png\"",

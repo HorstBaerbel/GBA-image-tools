@@ -68,11 +68,11 @@ namespace DataHelpers
     }
 
     /// @brief Return the start index of each sub-vector in the outer vector as if all vectors were concatenated.
-    template <typename T>
-    std::vector<uint32_t> getStartIndices(const std::vector<std::vector<T>> &data)
+    template <typename DATA_TYPE, typename INDEX_TYPE = uint32_t>
+    std::vector<INDEX_TYPE> getStartIndices(const std::vector<std::vector<DATA_TYPE>> &data)
     {
         size_t currentIndex = 0;
-        std::vector<uint32_t> result;
+        std::vector<INDEX_TYPE> result;
         for (const auto &current : data)
         {
             result.push_back(currentIndex);

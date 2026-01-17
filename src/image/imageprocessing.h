@@ -100,6 +100,12 @@ namespace Image
         /// @param parameters Pass true to detect flip tiles and set flip flags
         static Frame toUniqueTileMap(const Frame &image, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
 
+        /// @brief Store common tile and screen map for multiple images. Max. 16384 unique tiles allowed!
+        /// Width and height of images MUST the same and a multiple of 8!
+        /// Will detect horizontally, vertically and horizontally+vertically flipped tiles and will set the map index flip flags accordingly (if parameter set)
+        /// @param parameters Pass true to detect flip tiles and set flip flags
+        static Frame toCommonTileMap(const std::vector<Frame> &images, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
+
         /// @brief Cut data to 8 x 8 pixel wide tiles and store per tile instead of per scanline.
         /// Width and height of image MUST be a multiple of 8!
         /// @param parameters Unused
@@ -222,11 +228,11 @@ namespace Image
         static void dumpImage(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
 
     private:
-        using ConvertFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;                                // Converts 1 data input into 1 data output
-        using ConvertStateFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, std::vector<uint8_t> &, Statistics::Frame::SPtr statistics)>;   // Converts 1 data input + state into 1 data output
-        using BatchConvertFunc = std::function<std::vector<Frame>(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>; // Converts N data inputs into N data outputs
-        using ReduceFunc = std::function<Frame(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;                    // Converts N data inputs into 1 data output
-        using OutputFunc = std::function<void(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr statistics)>;                                  // Outputs the result and does not change the data
+        using ConvertFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr)>;                                // Converts 1 data input into 1 data output
+        using ConvertStateFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, std::vector<uint8_t> &, Statistics::Frame::SPtr)>;   // Converts 1 data input + state into 1 data output
+        using BatchConvertFunc = std::function<std::vector<Frame>(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr)>; // Converts N data inputs into N data outputs
+        using ReduceFunc = std::function<Frame(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr)>;                    // Converts N data inputs into 1 data output
+        using OutputFunc = std::function<void(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr)>;                                  // Outputs the result and does not change the data
         using FunctionType = std::variant<ConvertFunc, ConvertStateFunc, BatchConvertFunc, ReduceFunc, OutputFunc>;
 
         struct ProcessingFunc

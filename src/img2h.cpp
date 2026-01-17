@@ -60,6 +60,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.sprites.cxxOption);
         opts.add_option("", options.tiles.cxxOption);
         opts.add_option("", options.tilemap.cxxOption);
+        opts.add_option("", options.commonTilemap.cxxOption);
         opts.add_option("", options.delta8.cxxOption);
         opts.add_option("", options.delta16.cxxOption);
         opts.add_option("", options.interleavePixels.cxxOption);
@@ -141,8 +142,14 @@ bool readArguments(int argc, const char *argv[])
         options.pruneIndices.parse(result);
         options.sprites.parse(result);
         options.tilemap.parse(result);
+        options.commonTilemap.parse(result);
+        if ((options.tilemap + options.commonTilemap) > 1)
+        {
+            std::cerr << "Only a single tilemap option is allowed." << std::endl;
+            return false;
+        }
         // if tilemap is set, also set tiles
-        if (options.tilemap)
+        if (options.tilemap || options.commonTilemap)
         {
             options.tiles.isSet = true;
         }
@@ -179,6 +186,7 @@ void printUsage()
     std::cout << options.pruneIndices.helpString() << std::endl;
     std::cout << options.tiles.helpString() << std::endl;
     std::cout << options.tilemap.helpString() << std::endl;
+    std::cout << options.commonTilemap.helpString() << std::endl;
     std::cout << options.sprites.helpString() << std::endl;
     std::cout << options.delta8.helpString() << std::endl;
     std::cout << options.delta16.helpString() << std::endl;
@@ -203,8 +211,9 @@ void printUsage()
     std::cout << options.dumpImage.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << "help: Show this help." << std::endl;
-    std::cout << "ORDER: input, reordercolors, addcolor0, movecolor0, shift, sprites, tiles" << std::endl;
-    std::cout << "tilemap, prune, dump, delta8 / delta16, rle, lz10, interleavepixels, output" << std::endl;
+    std::cout << "ORDER: INPUT, reordercolors, addcolor0, movecolor0, shift, sprites, tiles," << std::endl;
+    std::cout << "tilemap / commontilemap, prune, dumpimage, delta8 / delta16, rle, lz10," << std::endl;
+    std::cout << "interleavepixels, OUTPUT" << std::endl;
 }
 
 std::vector<Image::Frame> readImages(const std::vector<std::string> &fileNames, const ProcessingOptions &options)
@@ -368,6 +377,11 @@ int main(int argc, const char *argv[])
         {
             processing.addStep(Image::ProcessingType::BuildTileMap, {options.tilemap.value});
         }
+        if (options.commonTilemap)
+        {
+            REQUIRE(images.size() >= 1, std::runtime_error, "Option \"--commontilemap\" needs more than one input image. Use \"--tilemap\" instead.");
+            processing.addStep(Image::ProcessingType::BuildCommonTileMap, {options.commonTilemap.value});
+        }
         if (options.pruneIndices)
         {
             processing.addStep(Image::ProcessingType::PruneIndices, {options.pruneIndices.value});
@@ -527,11 +541,11 @@ int main(int argc, const char *argv[])
                         if (data0.type.isTiles() && !data0.map.data.empty())
                         {
                             // convert map data to uint32_ts
-                            auto [mapData32, mapStartIndices] = Image::combineRawMapData<uint32_t>(data);
+                            auto [mapData16, mapStartIndices] = Image::combineRawMapData<uint16_t, uint16_t>(data);
                             IO::Text::writeImageInfoToH(hFile, varName, imageData32, data0.info.size.width(), data0.info.size.height(), nrOfBytesPerImageOrSprite, nrOfImagesOrSprites, storeTileOrSpriteWise);
-                            IO::Text::writeMapInfoToH(hFile, varName, mapData32);
+                            IO::Text::writeMapInfoToH(hFile, varName, mapData16, mapStartIndices.size());
                             IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, storeTileOrSpriteWise);
-                            IO::Text::writeMapDataToC(cFile, varName, mapData32);
+                            IO::Text::writeMapDataToC(cFile, varName, mapData16, mapStartIndices);
                         }
                         else
                         {

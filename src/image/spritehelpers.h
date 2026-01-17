@@ -29,4 +29,10 @@ namespace Image
     /// @return Returns (screen map, unique tile map)
     auto buildUniqueTileMap(const PixelData &data, uint32_t width, uint32_t height, bool detectFlips, uint32_t tileWidth = 8, uint32_t tileHeight = 8) -> std::pair<std::vector<uint16_t>, PixelData>;
 
+    /// @brief Build a screen and tile map from tile data, storing only unique tiles. Max. 16384 unique tiles allowed!
+    /// Source data MUST have been converted to tiles already and width and height MUST be a multiple of 8!
+    /// Moves from left to right first, then top to bottom.
+    /// @param detectFlips Pass true to detect horizontally, vertically and horizontally+vertically flipped tiles and will set the map index flip flags accordingly.
+    /// @return Returns (screen map, unique tile maps)
+    auto buildCommonTileMap(const std::vector<PixelData> &data, uint32_t width, uint32_t height, bool detectFlips, uint32_t tileWidth = 8, uint32_t tileHeight = 8) -> std::pair<std::vector<std::vector<uint16_t>>, PixelData>;
 }

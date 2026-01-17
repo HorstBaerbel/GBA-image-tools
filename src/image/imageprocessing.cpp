@@ -10,6 +10,7 @@
 #include "compression/lzss.h"
 #include "compression/rans.h"
 #include "exception.h"
+#include "image/imagedatahelpers.h"
 #include "image/imageio.h"
 #include "image_codec/dxt.h"
 #include "imagehelpers.h"
@@ -38,6 +39,7 @@ namespace Image
             {ProcessingType::ConvertTiles, {"tiles", ConvertFunc(toTiles)}},
             {ProcessingType::ConvertSprites, {"sprites", ConvertFunc(toSprites)}},
             {ProcessingType::BuildTileMap, {"tilemap", ConvertFunc(toUniqueTileMap)}},
+            {ProcessingType::BuildCommonTileMap, {"common tilemap", ReduceFunc(toCommonTileMap)}},
             {ProcessingType::AddColor0, {"add color #0", ConvertFunc(addColor0)}},
             {ProcessingType::MoveColor0, {"move color #0", ConvertFunc(moveColor0)}},
             {ProcessingType::ReorderColors, {"reorder colors", ConvertFunc(reorderColors)}},
@@ -127,16 +129,12 @@ namespace Image
         REQUIRE(nrOfColors >= 2 && nrOfColors <= 256, std::runtime_error, "Number of colors must be in [2, 256]");
         const auto colorSpaceMap = VariantHelpers::getValue<std::vector<Color::XRGB8888>, 2>(parameters);
         REQUIRE(colorSpaceMap.size() > 0, std::runtime_error, "colorSpaceMap can not be empty");
-        ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
         std::cout << "Combining images..." << std::endl;
         // combine all images into one
-        std::vector<Color::XRGB8888> combinedPixels;
-        std::for_each(data.cbegin(), data.cend(), [&combinedPixels](const Frame &d)
-                      { const auto srcPixels = d.data.pixels().data<Color::XRGB8888>();
-                        combinedPixels.reserve(combinedPixels.size() + srcPixels.size());
-                        std::copy(srcPixels.cbegin(), srcPixels.cend(), std::back_inserter(combinedPixels)); });
+        const auto [combinedPixels, startIndices] = combineRawPixelData<Color::XRGB8888>(data, false);
         // calculate common color map
         std::cout << "Building common color map (this might take some time)..." << std::endl;
+        ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
         const auto colorMapping = colorFit.reduceColors(combinedPixels, nrOfColors);
         REQUIRE(colorMapping.size() > 0 && nrOfColors >= colorMapping.size(), std::runtime_error, "Unexpected number of mapped colors");
         // apply color map to all images
@@ -202,12 +200,38 @@ namespace Image
         // get parameter(s)
         REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "toUniqueTileMap expects a bool detect flips parameter");
         const auto detectFlips = VariantHelpers::getValue<bool, 0>(parameters);
+        // convert data
         auto result = data;
         auto screenAndTileMap = buildUniqueTileMap(data.data.pixels(), data.info.size.width(), data.info.size.height(), detectFlips);
         result.map.size = result.info.size;
+        result.map.data = {screenAndTileMap.first};
+        result.data.pixels() = screenAndTileMap.second;
+        result.type.setBitmap(false); // the image is not really a bitmap anymore, but rather a collection of tiles
+        return result;
+    }
+
+    Frame Processing::toCommonTileMap(const std::vector<Frame> &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics)
+    {
+        REQUIRE(data.size() > 1, std::runtime_error, "toCommonTileMap expects more than one input image");
+        REQUIRE(data.front().type.isBitmap() && data.front().type.isTiles(), std::runtime_error, "toCommonTileMap expects tiled bitmaps as input data");
+        // get parameter(s)
+        REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "toCommonTileMap expects a bool detect flips parameter");
+        const auto detectFlips = VariantHelpers::getValue<bool, 0>(parameters);
+        // get pixel data from images
+        std::vector<PixelData> frames;
+        std::transform(data.cbegin(), data.cend(), std::back_inserter(frames), [](const auto &frame)
+                       { return frame.data.pixels(); });
+        // convert data
+        auto screenAndTileMap = buildCommonTileMap(frames, data.front().info.size.width(), data.front().info.size.height(), detectFlips);
+        Frame result;
+        result.fileName = data.front().fileName;
+        result.type = data.front().type;
+        result.type.setBitmap(false); // the image is not really a bitmap anymore, but rather a collection of tiles
+        result.info = data.front().info;
+        result.map.size = result.info.size;
         result.map.data = screenAndTileMap.first;
         result.data.pixels() = screenAndTileMap.second;
-        result.type.setBitmap(false);
+        result.data.colorMap() = data.front().data.colorMap();
         return result;
     }
 
@@ -658,6 +682,7 @@ namespace Image
 
     void Processing::dumpImage(const Frame &data, [[maybe_unused]] const std::vector<Parameter> &parameters, [[maybe_unused]] Statistics::Frame::SPtr statistics)
     {
+        REQUIRE(data.type.isBitmap(), std::runtime_error, "dumpImage expects bitmaps as input data");
         IO::File::writeImage(data, "", "result" + std::to_string(data.index) + ".png");
     }
 

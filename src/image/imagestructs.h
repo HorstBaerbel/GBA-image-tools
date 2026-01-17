@@ -22,8 +22,8 @@ namespace Image
     /// @brief Information about tile map
     struct MapInfo
     {
-        DataSize size = {0, 0}; // Size of map data (if filled)
-        MapData data;           // Raw screen / tile map data
+        DataSize size = {0, 0};    // Size of map data (if filled)
+        std::vector<MapData> data; // Raw screen / tile map data
     };
 
     /// @brief Information about current / final image data before compression / conversion to raw

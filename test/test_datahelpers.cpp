@@ -71,7 +71,14 @@ TEST_CASE("getStartIndices")
     CATCH_REQUIRE(getStartIndices(v0).empty());
     std::vector<std::vector<uint8_t>> v1 = {{1, 2}, {4, 5, 6}, {1}, {}, {3, 4, 5, 6}};
     auto i1 = getStartIndices(v1);
+    CATCH_STATIC_REQUIRE(std::is_same<decltype(i1)::value_type, uint32_t>::value);
     CATCH_REQUIRE(i1 == std::vector<decltype(i1)::value_type>({0, 2, 5, 6, 6}));
+    auto i2 = getStartIndices<uint8_t, uint16_t>(v1);
+    CATCH_REQUIRE(i2 == std::vector<decltype(i2)::value_type>({0, 2, 5, 6, 6}));
+    std::vector<std::vector<uint16_t>> v2 = {{1, 2}, {4, 5, 6}, {1}, {}, {3, 4, 5, 6}};
+    auto i3 = getStartIndices<uint16_t, uint16_t>(v2);
+    CATCH_STATIC_REQUIRE(std::is_same<decltype(i3)::value_type, uint16_t>::value);
+    CATCH_REQUIRE(i3 == std::vector<decltype(i3)::value_type>({0, 2, 5, 6, 6}));
 }
 
 TEST_CASE("divideBy")

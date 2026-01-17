@@ -14,7 +14,7 @@ TEST_SUITE("Processing helpers")
 template <typename T>
 constexpr auto createData(std::vector<T> &&pixelData, MapData &&mapData) -> Frame
 {
-    return {0, "", DataType(), {{0, 0}, Color::Format::Unknown, Color::Format::Unknown, 0, 0}, pixelData, {{0, 0}, mapData}};
+    return {0, "", DataType(), {{0, 0}, Color::Format::Unknown, Color::Format::Unknown, 0, 0}, pixelData, {{0, 0}, {mapData}}};
 }
 
 template <typename T, typename R>
@@ -25,7 +25,7 @@ constexpr auto createImageData(std::vector<T> &&pixels, Color::Format format, st
 
 constexpr auto createMapData(MapData &&mapData) -> Frame
 {
-    return {0, "", DataType(), {{0, 0}, Color::Format::Unknown, Color::Format::Unknown, 0, 0}, {}, {{0, 0}, mapData}};
+    return {0, "", DataType(), {{0, 0}, Color::Format::Unknown, Color::Format::Unknown, 0, 0}, {}, {{0, 0}, {mapData}}};
 }
 
 TEST_CASE("combineRawPixelData")
@@ -101,6 +101,8 @@ TEST_CASE("combineRawMapData")
     Frame d1 = createMapData(std::vector<uint16_t>({0x5566, 0x7788}));
     std::vector<Frame> v1 = {d0, d1};
     auto r1 = combineRawMapData<uint8_t>(v1);
+    CATCH_STATIC_REQUIRE(std::is_same<decltype(r1.first)::value_type, uint8_t>::value);
+    CATCH_STATIC_REQUIRE(std::is_same<decltype(r1.second)::value_type, uint32_t>::value);
     CATCH_REQUIRE(r1.first.size() == 8);
     CATCH_REQUIRE(r1.first == std::vector<uint8_t>({0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0x88, 0x77}));
     CATCH_REQUIRE(r1.second.size() == 2);
@@ -112,11 +114,13 @@ TEST_CASE("combineRawMapData")
     CATCH_REQUIRE(r2.first == std::vector<uint8_t>({0x22, 0x11, 0x66, 0x55, 0x88, 0x77}));
     CATCH_REQUIRE(r2.second.size() == 2);
     CATCH_REQUIRE(r2.second == std::vector<uint32_t>({0, 2}));
-    auto r3 = combineRawMapData<uint16_t>(v2);
+    auto r3 = combineRawMapData<uint16_t, uint16_t>(v2);
+    CATCH_STATIC_REQUIRE(std::is_same<decltype(r3.first)::value_type, uint16_t>::value);
+    CATCH_STATIC_REQUIRE(std::is_same<decltype(r3.second)::value_type, uint16_t>::value);
     CATCH_REQUIRE(r3.first.size() == 3);
     CATCH_REQUIRE(r3.first == std::vector<uint16_t>({0x1122, 0x5566, 0x7788}));
     CATCH_REQUIRE(r3.second.size() == 2);
-    CATCH_REQUIRE(r3.second == std::vector<uint32_t>({0, 1}));
+    CATCH_REQUIRE(r3.second == std::vector<uint16_t>({0, 1}));
     CATCH_REQUIRE_THROWS(combineRawMapData<uint32_t>(v2));
 }
 

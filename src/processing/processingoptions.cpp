@@ -259,7 +259,7 @@ ProcessingOptions::Option ProcessingOptions::tiles{
 
 ProcessingOptions::OptionT<bool> ProcessingOptions::tilemap{
     false,
-    {"tilemap", "Output optimized screen and tile map for the input image. Implies --tiles. Will detect flipped tiles if --tilemap=true. The image needs to be paletted and its width and height must be a multiple of 8 pixels.", cxxopts::value(tilemap.value)},
+    {"tilemap", "Output optimized screen and tile map for input image(s). Implies --tiles. Will detect flipped tiles if --tilemap=true. The image(s) needs to be Paletted8, XRGB1555, RGB565 or XRGB8888 and its width and height must be a multiple of 8 pixels.", cxxopts::value(tilemap.value)},
     false,
     {},
     [](const cxxopts::ParseResult &r)
@@ -267,6 +267,19 @@ ProcessingOptions::OptionT<bool> ProcessingOptions::tilemap{
         if (r.count(tilemap.cxxOption.opts_))
         {
             tilemap.isSet = true;
+        }
+    }};
+
+ProcessingOptions::OptionT<bool> ProcessingOptions::commonTilemap{
+    false,
+    {"commontilemap", "Output optimized screen and tile map for all input images combined. Implies --tiles. Will detect flipped tiles if --commontilemap=true. The images needs to be Paletted8, XRGB1555, RGB565 or XRGB8888, have to have the same size and and their width and height must be a multiple of 8 pixels.", cxxopts::value(commonTilemap.value)},
+    false,
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(commonTilemap.cxxOption.opts_))
+        {
+            commonTilemap.isSet = true;
         }
     }};
 

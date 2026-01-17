@@ -14,7 +14,8 @@ namespace Image
         ConvertCommonPalette = 14,         // Remap colors of all images to a common palette
         ConvertTiles = 20,                 // Convert data to 8 x 8 pixel tiles
         ConvertSprites = 21,               // Convert data to w x h pixel sprites
-        BuildTileMap = 22,                 // Convert data to 8 x 8 pixel tiles and build optimized screen and tile map
+        BuildTileMap = 22,                 // Build optimized screen and tile map
+        BuildCommonTileMap = 23,           // Build optimized, combined tile map for multiple images and individual screen maps per image
         AddColor0 = 30,                    // Add a color at index #0
         MoveColor0 = 31,                   // Move a color to index #0
         ReorderColors = 32,                // Reorder colors to be perceptually closer to each other

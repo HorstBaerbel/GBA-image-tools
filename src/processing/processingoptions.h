@@ -48,6 +48,7 @@ public:
     static OptionT<std::vector<uint32_t>> sprites;
     static Option tiles;
     static OptionT<bool> tilemap;
+    static OptionT<bool> commonTilemap;
     static Option deltaImage;
     static Option delta8;
     static Option delta16;

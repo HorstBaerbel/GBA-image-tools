@@ -40,12 +40,17 @@ namespace IO
         hFile << "extern const uint32_t " << varName << "_DATA[" << varName << "_DATA_SIZE];" << std::endl;
     }
 
-    auto Text::writeMapInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void
+    auto Text::writeMapInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<uint16_t> &mapData, uint32_t nrOfMaps) -> void
     {
         if (!mapData.empty())
         {
-            hFile << "#define " << varName << "_MAPDATA_SIZE " << mapData.size() << " // size of screen map data in 4 byte units" << std::endl;
-            hFile << "extern const uint32_t " << varName << "_MAPDATA[" << varName << "_MAPDATA_SIZE];" << std::endl;
+            if (nrOfMaps > 1)
+            {
+                hFile << "#define " << varName << "_NR_OF_MAPS " << nrOfMaps << " // # of screen maps in data" << std::endl;
+                hFile << "extern const uint16_t " << varName << "_MAPDATA_START[" << varName << "_NR_OF_MAPS]; // indices where data for a screen map starts (in 2 byte units)" << std::endl;
+            }
+            hFile << "#define " << varName << "_MAPDATA_SIZE " << mapData.size() << " // size of screen map data in 2 byte units" << std::endl;
+            hFile << "extern const uint16_t " << varName << "_MAPDATA[" << varName << "_MAPDATA_SIZE];" << std::endl;
         }
     }
 
@@ -73,11 +78,19 @@ namespace IO
               << std::endl;
     }
 
-    auto Text::writeMapDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint32_t> &mapData) -> void
+    auto Text::writeMapDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<uint16_t> &mapData, const std::vector<uint16_t> &dataStartIndices) -> void
     {
         if (!mapData.empty())
         {
-            cFile << "const _Alignas(4) uint32_t " << varName << "_MAPDATA[" << varName << "_MAPDATA_SIZE] = { " << std::endl;
+            // write map data start indices if passed
+            if (dataStartIndices.size() > 1)
+            {
+                cFile << "const _Alignas(4) uint16_t " << varName << "_MAPDATA_START[" << varName << "_NR_OF_MAPS] = { " << std::endl;
+                writeValues(cFile, dataStartIndices);
+                cFile << "};" << std::endl
+                      << std::endl;
+            }
+            cFile << "const _Alignas(4) uint16_t " << varName << "_MAPDATA[" << varName << "_MAPDATA_SIZE] = { " << std::endl;
             writeValues(cFile, mapData, true);
             cFile << "};" << std::endl
                   << std::endl;
