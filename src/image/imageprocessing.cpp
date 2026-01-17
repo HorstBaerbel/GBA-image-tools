@@ -728,44 +728,36 @@ namespace Image
             const auto &step = m_steps[si];
             const auto &stepFunc = step.function;
             result += stepFunc.description;
-            result += step.parameters.size() > 0 ? " " : "";
             for (std::size_t pi = 0; pi < step.parameters.size(); pi++)
             {
                 const auto &p = step.parameters[pi];
                 if (std::holds_alternative<bool>(p))
                 {
-                    result += std::get<bool>(p) ? "true" : "false";
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::get<bool>(p) ? "true" : "false";
                 }
                 else if (std::holds_alternative<int32_t>(p))
                 {
-                    result += std::to_string(std::get<int32_t>(p));
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::to_string(std::get<int32_t>(p));
                 }
                 else if (std::holds_alternative<uint32_t>(p))
                 {
-                    result += std::to_string(std::get<uint32_t>(p));
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::to_string(std::get<uint32_t>(p));
                 }
                 else if (std::holds_alternative<double>(p))
                 {
-                    result += std::to_string(std::get<double>(p));
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::to_string(std::get<double>(p));
                 }
                 else if (std::holds_alternative<Color::XRGB8888>(p))
                 {
-                    result += Color::XRGB8888::toHex(std::get<Color::XRGB8888>(p));
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + Color::XRGB8888::toHex(std::get<Color::XRGB8888>(p));
                 }
                 else if (std::holds_alternative<Color::Format>(p))
                 {
-                    result += Color::formatInfo(std::get<Color::Format>(p)).name;
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + Color::formatInfo(std::get<Color::Format>(p)).name;
                 }
                 else if (std::holds_alternative<std::string>(p))
                 {
-                    result += std::get<std::string>(p);
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::get<std::string>(p);
                 }
             }
             result += (si < (m_steps.size() - 1) ? seperator : "");

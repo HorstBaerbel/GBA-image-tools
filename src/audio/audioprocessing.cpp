@@ -240,39 +240,32 @@ namespace Audio
             const auto &step = m_steps[si];
             const auto &stepFunc = step.function;
             result += stepFunc.description;
-            result += step.parameters.size() > 0 ? " " : "";
             for (std::size_t pi = 0; pi < step.parameters.size(); pi++)
             {
                 const auto &p = step.parameters[pi];
                 if (std::holds_alternative<bool>(p))
                 {
-                    result += std::get<bool>(p) ? "true" : "false";
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::get<bool>(p) ? "true" : "false";
                 }
                 else if (std::holds_alternative<int32_t>(p))
                 {
-                    result += std::to_string(std::get<int32_t>(p));
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::to_string(std::get<int32_t>(p));
                 }
                 else if (std::holds_alternative<uint32_t>(p))
                 {
-                    result += std::to_string(std::get<uint32_t>(p));
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::to_string(std::get<uint32_t>(p));
                 }
                 else if (std::holds_alternative<double>(p))
                 {
-                    result += std::to_string(std::get<double>(p));
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + std::to_string(std::get<double>(p));
                 }
                 else if (std::holds_alternative<Audio::ChannelFormat>(p))
                 {
-                    result += Audio::formatInfo(std::get<Audio::ChannelFormat>(p)).id;
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + Audio::formatInfo(std::get<Audio::ChannelFormat>(p)).id;
                 }
                 else if (std::holds_alternative<Audio::SampleFormat>(p))
                 {
-                    result += Audio::formatInfo(std::get<Audio::SampleFormat>(p)).id;
-                    result += (pi < (step.parameters.size() - 1) ? " " : "");
+                    result += " " + Audio::formatInfo(std::get<Audio::SampleFormat>(p)).id;
                 }
             }
             result += (si < (m_steps.size() - 1) ? seperator : "");
