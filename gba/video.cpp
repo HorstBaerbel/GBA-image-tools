@@ -114,6 +114,25 @@ int main()
 			Input::waitForKeysDown(Input::KeyA, true);
 			Media::Play(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
 		}
+		Input::scanKeys();
+		const auto keysDown = Input::keysDown();
+		if (keysDown & Input::KeyB)
+		{
+			// B stops playback
+			Media::Stop();
+			Input::waitForKeysDown(Input::KeyA, true);
+			Media::Play(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
+		}
+		else if (keysDown & Input::KeyStart)
+		{
+			// Start pauses / unpauses playback
+			Media::Pause(Media::GetPlayState() == Media::PlayState::Playing);
+		}
+		else if (keysDown & Input::KeySelect)
+		{
+			// Select toggle subtitle display
+			Media::EnableSubtitles(!Media::AreSubtitlesEnabled());
+		}
 	} while (true);
 	return 0;
 }

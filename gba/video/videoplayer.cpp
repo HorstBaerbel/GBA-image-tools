@@ -18,7 +18,7 @@
 namespace Media
 {
     // general
-    IWRAM_DATA bool m_playing = false;
+    IWRAM_DATA PlayState m_playState = PlayState::Stopped;
     IWRAM_DATA int32_t m_playTime = 0;
     IWRAM_DATA IO::Vid2h::Info m_mediaInfo;
     IWRAM_DATA IO::Vid2h::Frame m_mediaFrame;
@@ -75,9 +75,9 @@ namespace Media
 
     IWRAM_FUNC auto AudioBufferRequest() -> void
     {
-        m_playTime += m_audioFrameTime;
-        if (m_playing)
+        if (m_playState == PlayState::Playing)
         {
+            m_playTime += m_audioFrameTime;
             // still playing back. stop both timers
             REG_TM0CNT_H &= ~TIMER_START;
             REG_TM1CNT_H &= ~TIMER_START;
@@ -109,6 +109,8 @@ namespace Media
                 // start both timers
                 REG_TM0CNT_H |= TIMER_START;
                 REG_TM1CNT_H |= TIMER_START;
+                // enable audio. it may have been disable when pausing
+                REG_SOUNDCNT_X = SOUND3_PLAY;
                 // we've used up the decoded frame
                 m_audioFramesDecoded = 0;
             }
@@ -189,11 +191,28 @@ namespace Media
         }
     }
 
+    auto AreSubtitlesEnabled() -> bool
+    {
+        return m_subtitlesEnabled;
+    }
+
+    auto EnableSubtitles(bool enable) -> void
+    {
+        // if the media has subtitles and they are enable, but should be disabled
+        if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled && !enable)
+        {
+            // clear all subtitles / sprites
+            Subtitles::clear();
+            Subtitles::display();
+        }
+        m_subtitlesEnabled = enable;
+    }
+
     IWRAM_FUNC auto VideoFrameRequest() -> void
     {
-        m_playTime += m_videoFrameTime;
-        if (m_playing)
+        if (m_playState == PlayState::Playing)
         {
+            m_playTime += m_videoFrameTime;
             // request more video frames for playback
             ++m_videoFramesRequested;
             // update subtitles
@@ -347,7 +366,7 @@ namespace Media
 
     auto Play(const uint32_t *media, const uint32_t mediaSize) -> void
     {
-        if (!m_playing)
+        if (m_playState == PlayState::Stopped)
         {
             // read file header
             m_mediaInfo = IO::Vid2h::GetInfo(media, mediaSize);
@@ -394,7 +413,7 @@ namespace Media
                 m_subtitleCurrent = {0, 0, nullptr};
                 m_subtitleNext = {0, 0, nullptr};
             }
-            m_playing = true;
+            m_playState = PlayState::Playing;
             m_playTime = 0;
 #ifdef DEBUG_PLAYER
             m_videoStats = FrameStatistics{};
@@ -476,7 +495,7 @@ namespace Media
             if (m_mediaInfo.contentType & IO::FileType::Audio)
             {
                 // start and enable sound playback
-                REG_SOUNDCNT_X = SOUND3_PLAY;
+                // sound output will be enabled in AudioBufferRequest() to prevent clicks
                 AudioBufferRequest();
             }
             if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled)
@@ -492,12 +511,12 @@ namespace Media
 
     IWRAM_FUNC auto HasMoreFrames() -> bool
     {
-        return m_playing && IO::Vid2h::HasMoreFrames(m_mediaInfo, m_mediaFrame);
+        return m_playState != PlayState::Stopped && IO::Vid2h::HasMoreFrames(m_mediaInfo, m_mediaFrame);
     }
 
     IWRAM_FUNC auto DecodeAndPlay() -> void
     {
-        if (m_playing)
+        if (m_playState == PlayState::Playing)
         {
             // blit video frame if one is pending
             if (m_videoFramesRequested > 0 && m_videoFramesDecoded > 0)
@@ -534,11 +553,59 @@ namespace Media
         }
     }
 
+    auto GetPlayState() -> PlayState
+    {
+        return m_playState;
+    }
+
+    auto Pause(bool pause) -> void
+    {
+        if (pause)
+        {
+            if (m_playState == PlayState::Playing)
+            {
+                m_playState = PlayState::Paused;
+                if (m_mediaInfo.contentType & IO::FileType::Audio)
+                {
+                    // disable audio timers
+                    REG_TM1CNT_H &= ~TIMER_START;
+                    REG_TM0CNT_H &= ~TIMER_START;
+                    // disable sound for now
+                    REG_SOUNDCNT_X = 0;
+                }
+                if (m_mediaInfo.contentType & IO::FileType::Video)
+                {
+                    // disable video timer
+                    REG_TM2CNT_H &= ~TIMER_START;
+                }
+            }
+        }
+        else
+        {
+            if (m_playState == PlayState::Paused)
+            {
+                if (m_mediaInfo.contentType & IO::FileType::Audio)
+                {
+                    m_playState = PlayState::Playing;
+                    // enable audio timers
+                    REG_TM1CNT_H |= TIMER_START;
+                    REG_TM0CNT_H |= TIMER_START;
+                    // sound output will be enabled in AudioBufferRequest() to prevent clicks
+                }
+                if (m_mediaInfo.contentType & IO::FileType::Video)
+                {
+                    // enable video timer
+                    REG_TM2CNT_H |= TIMER_START;
+                }
+            }
+        }
+    }
+
     auto Stop() -> void
     {
-        if (m_playing)
+        if (m_playState != PlayState::Stopped)
         {
-            m_playing = false;
+            m_playState = PlayState::Stopped;
             m_audioFramesRequested = 0;
             m_videoFramesRequested = 0;
             // clean up subtitles
@@ -554,8 +621,8 @@ namespace Media
                 // disable sound for now
                 REG_SOUNDCNT_X = 0;
                 // disable audio timers
-                REG_TM0CNT_H = 0;
                 REG_TM1CNT_H = 0;
+                REG_TM0CNT_H = 0;
                 Irq::disable(Irq::Mask::Timer1);
                 // disable audio DMAs
                 REG_DMA[1].control = 0;

@@ -7,6 +7,14 @@
 namespace Media
 {
 
+    /// @brief State of player
+    enum class PlayState
+    {
+        Stopped = 0,
+        Playing = 1,
+        Paused = 2
+    };
+
     /// @brief Set up VRAM info for video playback. Call before Play()back!
     /// @param vramLineStride Stride of one line of VRAM pixels, e.g. 480 for mode 3
     /// @param vramPixelStride Stride of one VRAM pixel, e.g. 2 for mode 3
@@ -22,6 +30,18 @@ namespace Media
     /// @note Will cause corruption when setting this during playback
     auto SetPosition(uint16_t x, uint16_t y) -> void;
 
+    /// @brief Check if subtitles are currently enabled
+    /// @return True if subtitles are currently enabled
+    auto AreSubtitlesEnabled() -> bool;
+
+    /// @brief Toggle display of video subtitles. Will take effect for the next subtitle
+    /// @param show Pass true to enable, false to disable
+    auto EnableSubtitles(bool show = true) -> void;
+
+    /// @brief Get current play state
+    /// @return Current play state
+    auto GetPlayState() -> PlayState;
+
     /// @brief Start playing media
     /// @param media Media source data
     /// @param mediaSize Media source size in bytes
@@ -29,6 +49,9 @@ namespace Media
     /// Will use Timer 0, 1, 2, IRQ 1, 2 and DMA 1 (mono) or DMA 1 + 2 (stereo).
     /// Also modifies sound registers, especially REG_SOUNDCNT_X
     auto Play(const uint32_t *media, const uint32_t mediaSize) -> void;
+
+    /// @brief Pause / Unpause playing media
+    auto Pause(bool pause = true) -> void;
 
     /// @brief Stop playing media
     auto Stop() -> void;
