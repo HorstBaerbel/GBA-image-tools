@@ -22,8 +22,6 @@ namespace Subtitles
     {
         // disable sprites
         REG_DISPCNT &= ~OBJ_ON;
-        // clear all sprites
-        Sprites::clearOAM();
         // build sprite color palette
         spritePaletteIndex = paletteIndex;
         Memory::memset16(Palette::Sprite16[spritePaletteIndex], 0, 16);

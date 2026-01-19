@@ -26,8 +26,6 @@ namespace VideoHelp
     {
         // disable sprites
         REG_DISPCNT &= ~OBJ_ON;
-        // clear all sprites
-        Sprites::clearOAM();
         // build sprite color palette #0
         spritePaletteIndex = paletteIndex;
         Palette::Sprite16[spritePaletteIndex][0] = 0;
