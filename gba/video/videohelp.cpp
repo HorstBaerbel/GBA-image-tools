@@ -109,8 +109,8 @@ namespace VideoHelp
             REG_BLDCNT |= 0x00C4;
             // set brightness decrease factor to 12/16
             REG_BLDY = 12;
-            // set mosaic to x=4 and y=4
-            REG_MOSAIC = (4 << 4) | 4;
+            // set mosaic to x=2 and y=2
+            REG_MOSAIC = (2 << 4) | 2;
             // show sprites
             for (uint32_t i = 0; i < (sizeof(symbols) / sizeof(SymbolInfo)); ++i)
             {
