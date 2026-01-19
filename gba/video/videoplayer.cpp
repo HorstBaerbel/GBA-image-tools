@@ -4,6 +4,7 @@
 #include "subtitles.h"
 #include "sys/base.h"
 #include "vid2hdecoder.h"
+#include "videohelp.h"
 #include <memory/dma.h>
 #include <sys/interrupts.h>
 #include <sys/sound.h>
@@ -58,6 +59,9 @@ namespace Media
     IWRAM_DATA Subtitles::Frame m_subtitleCurrent;       // Currently used/displayed subtitle
     IWRAM_DATA Subtitles::Frame m_subtitleNext;          // Decoded/next subtitle
 
+    // help
+    IWRAM_DATA bool m_videoHelpEnabled = false;
+
 #ifdef DEBUG_PLAYER
     struct FrameStatistics
     {
@@ -72,6 +76,103 @@ namespace Media
     IWRAM_DATA FrameStatistics m_audioStats;
     IWRAM_DATA FrameStatistics m_subtitlesStats;
 #endif
+
+    // ------ Video help functions ----------------------------------------------------
+
+    auto IsVideoHelpEnabled() -> bool
+    {
+        return m_videoHelpEnabled;
+    }
+
+    auto EnableVideoHelp(bool enable) -> void
+    {
+        m_videoHelpEnabled = enable;
+        VideoHelp::SetVisible(enable);
+        VideoHelp::Present();
+        if (m_subtitlesEnabled)
+        {
+            Subtitles::SetVisible(!enable);
+            Subtitles::Present();
+        }
+    }
+
+    // ------ Subtitle functions ----------------------------------------------------
+
+    IWRAM_FUNC auto UpdateSubtitles() -> void
+    {
+        if (m_subtitleCurrent.text)
+        {
+#ifdef DEBUG_PLAYER
+            auto startTime = Time::now();
+#endif
+            bool mustUpdateDisplay = false;
+            if (m_playTime >= m_subtitleCurrent.endTimeS)
+            {
+                // remove subtitle
+                Subtitles::Clear();
+                // make the next subtitle the current
+                m_subtitleCurrent = m_subtitleNext;
+                m_subtitleNext = {0, 0, nullptr};
+                mustUpdateDisplay = true;
+            }
+            if (m_playTime < m_subtitleCurrent.endTimeS && m_playTime >= m_subtitleCurrent.startTimeS)
+            {
+                // count line breaks in subtitle
+                const uint32_t nrOfLines = Subtitles::GetNrOfLines(m_subtitleCurrent.text);
+                auto string = m_subtitleCurrent.text;
+                auto end = string;
+                auto y = m_videoPositionY + m_mediaInfo.video.height - nrOfLines * (Subtitles::FontHeight + Subtitles::FontHeight / 2);
+                for (uint32_t i = 0; i < nrOfLines; ++i)
+                {
+                    // find end of string
+                    while (*end != '\0' && *end != '\n')
+                    {
+                        ++end;
+                    }
+                    // calculate subtitle length
+                    const auto textLength = Subtitles::GetScreenWidth(string, end);
+                    // show subtitle centered at bottom of video
+                    const auto x = m_videoPositionX + (m_mediaInfo.video.width - textLength) / 2;
+                    Subtitles::PrintString(string, end, x, y);
+                    string = end + 1;
+                    end = string;
+                    y += Subtitles::FontHeight + Subtitles::FontHeight / 2;
+                }
+                // clear start time so we don't display again
+                m_subtitleCurrent.startTimeS = m_subtitleCurrent.endTimeS;
+                mustUpdateDisplay = true;
+            }
+            if (mustUpdateDisplay)
+            {
+                Subtitles::Present();
+            }
+#ifdef DEBUG_PLAYER
+            auto duration = Time::now() * 1000 - startTime * 1000;
+            m_subtitlesStats.m_accCopiedMs += duration;
+            m_subtitlesStats.m_maxCopiedMs = m_subtitlesStats.m_maxCopiedMs < duration ? duration : m_subtitlesStats.m_maxCopiedMs;
+            m_subtitlesStats.m_nrCopied++;
+#endif
+        }
+    }
+
+    auto AreSubtitlesEnabled() -> bool
+    {
+        return m_subtitlesEnabled;
+    }
+
+    auto EnableSubtitles(bool enable) -> void
+    {
+        // if the media has subtitles and they are enable, but should be disabled
+        if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled && !enable)
+        {
+            // clear all subtitles / sprites
+            Subtitles::Clear();
+            Subtitles::Present();
+        }
+        m_subtitlesEnabled = enable;
+    }
+
+    // ------ Timer IRQ handlers ----------------------------------------------------
 
     IWRAM_FUNC auto AudioBufferRequest() -> void
     {
@@ -132,80 +233,6 @@ namespace Media
             }
             m_audioFramesRequested = 0;
         }
-    }
-
-    IWRAM_FUNC auto UpdateSubtitles() -> void
-    {
-        if (m_subtitleCurrent.text)
-        {
-#ifdef DEBUG_PLAYER
-            auto startTime = Time::now();
-#endif
-            bool mustUpdateDisplay = false;
-            if (m_playTime >= m_subtitleCurrent.endTimeS)
-            {
-                // remove subtitle
-                Subtitles::clear();
-                // make the next subtitle the current
-                m_subtitleCurrent = m_subtitleNext;
-                m_subtitleNext = {0, 0, nullptr};
-                mustUpdateDisplay = true;
-            }
-            if (m_playTime < m_subtitleCurrent.endTimeS && m_playTime >= m_subtitleCurrent.startTimeS)
-            {
-                // count line breaks in subtitle
-                const uint32_t nrOfLines = Subtitles::getNrOfLines(m_subtitleCurrent.text);
-                auto string = m_subtitleCurrent.text;
-                auto end = string;
-                auto y = m_videoPositionY + m_mediaInfo.video.height - nrOfLines * (Subtitles::FontHeight + Subtitles::FontHeight / 2);
-                for (uint32_t i = 0; i < nrOfLines; ++i)
-                {
-                    // find end of string
-                    while (*end != '\0' && *end != '\n')
-                    {
-                        ++end;
-                    }
-                    // calculate subtitle length
-                    const auto textLength = Subtitles::getScreenWidth(string, end);
-                    // show subtitle centered at bottom of video
-                    const auto x = m_videoPositionX + (m_mediaInfo.video.width - textLength) / 2;
-                    Subtitles::printString(string, end, x, y);
-                    string = end + 1;
-                    end = string;
-                    y += Subtitles::FontHeight + Subtitles::FontHeight / 2;
-                }
-                // clear start time so we don't display again
-                m_subtitleCurrent.startTimeS = m_subtitleCurrent.endTimeS;
-                mustUpdateDisplay = true;
-            }
-            if (mustUpdateDisplay)
-            {
-                Subtitles::display();
-            }
-#ifdef DEBUG_PLAYER
-            auto duration = Time::now() * 1000 - startTime * 1000;
-            m_subtitlesStats.m_accCopiedMs += duration;
-            m_subtitlesStats.m_maxCopiedMs = m_subtitlesStats.m_maxCopiedMs < duration ? duration : m_subtitlesStats.m_maxCopiedMs;
-            m_subtitlesStats.m_nrCopied++;
-#endif
-        }
-    }
-
-    auto AreSubtitlesEnabled() -> bool
-    {
-        return m_subtitlesEnabled;
-    }
-
-    auto EnableSubtitles(bool enable) -> void
-    {
-        // if the media has subtitles and they are enable, but should be disabled
-        if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled && !enable)
-        {
-            // clear all subtitles / sprites
-            Subtitles::clear();
-            Subtitles::display();
-        }
-        m_subtitlesEnabled = enable;
     }
 
     IWRAM_FUNC auto VideoFrameRequest() -> void
@@ -368,6 +395,9 @@ namespace Media
     {
         if (m_playState == PlayState::Stopped)
         {
+            m_playState = PlayState::Playing;
+            m_playTime = 0;
+            m_videoHelpEnabled = false;
             // read file header
             m_mediaInfo = IO::Vid2h::GetInfo(media, mediaSize);
             if (m_mediaInfo.contentType & IO::FileType::Video)
@@ -405,16 +435,19 @@ namespace Media
                 m_queuedColorMapFrame.data = nullptr;
                 m_videoFramesRequested = 0;
                 m_videoFramesDecoded = 0;
+                VideoHelp::Setup(0, 512, 0);
+                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Subtitles, false);
+                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Previous, false);
+                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Next, false);
             }
             if (m_mediaInfo.contentType & IO::FileType::Subtitles)
             {
-                Subtitles::setup();
+                Subtitles::Setup(VideoHelp::SpritesInUse(), 512 + VideoHelp::TilesInUse(), 1);
                 m_queuedSubtitleFrame.data = nullptr;
                 m_subtitleCurrent = {0, 0, nullptr};
                 m_subtitleNext = {0, 0, nullptr};
+                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Subtitles, true);
             }
-            m_playState = PlayState::Playing;
-            m_playTime = 0;
 #ifdef DEBUG_PLAYER
             m_videoStats = FrameStatistics{};
             m_audioStats = FrameStatistics{};
@@ -611,7 +644,7 @@ namespace Media
             // clean up subtitles
             if (m_mediaInfo.contentType & IO::FileType::Subtitles)
             {
-                Subtitles::cleanup();
+                Subtitles::Cleanup();
                 m_subtitleCurrent = {0, 0, nullptr};
                 m_subtitleNext = {0, 0, nullptr};
             }
@@ -655,6 +688,8 @@ namespace Media
                     Memory::free(m_videoScratchPad);
                     m_videoScratchPad = nullptr;
                 }
+                // clean up video help
+                VideoHelp::Cleanup();
             }
 #ifdef DEBUG_PLAYER
             Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);

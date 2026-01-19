@@ -6,39 +6,57 @@
 #include "sprites.h"
 #include "tiles.h"
 
-#include "./data/font_sans.h"
-#include "./data/font_sans_chars.h"
+#include "./data/font_subtitles.h"
+#include "./data/font_subtitles_chars.h"
 
 namespace Subtitles
 {
-    constexpr const uint16_t CGA_COLORS[16]{0, 0x5000, 0x280, 0x5280, 0x0014, 0x5014, 0x0154, 0x5294, 0x294a, 0x7d4a, 0x2bea, 0x7fea, 0x295f, 0x7d5f, 0x2bff, 0x7fff};
-    constexpr Color backColor = Color::Black;
-    constexpr Color textColor = Color::White;
     constexpr uint32_t MaxSubtitlesChars = 64;
-    EWRAM_DATA uint32_t spritesInUse = 0;
     EWRAM_DATA Sprites::Sprite2D *sprites = nullptr;
+    EWRAM_DATA uint16_t spritesInUse = 0;
+    EWRAM_DATA uint16_t spritePaletteIndex = 0;
+    EWRAM_DATA uint16_t spriteTileIndex = 0;
+    EWRAM_DATA bool spritesVisible = true;
 
-    auto setup() -> void
+    auto Setup(uint32_t spriteStartIndex, uint32_t tileStartIndex, uint16_t paletteIndex) -> void
     {
         // disable sprites
         REG_DISPCNT &= ~OBJ_ON;
         // clear all sprites
         Sprites::clearOAM();
-        // build sprite color palette #0
-        Memory::memset16(Palette::Sprite, 0, 16);
-        Palette::Sprite[1] = CGA_COLORS[15];
+        // build sprite color palette
+        spritePaletteIndex = paletteIndex;
+        Memory::memset16(Palette::Sprite16[spritePaletteIndex], 0, 16);
+        Palette::Sprite16[spritePaletteIndex][1] = 0x7fff;
         // allocate sprites
         spritesInUse = 0;
         sprites = Memory::malloc_EWRAM<Sprites::Sprite2D>(MaxSubtitlesChars);
-        Sprites::create(sprites, MaxSubtitlesChars, 0, 512, Sprites::SizeCode::Size8x8, Sprites::ColorDepth::Depth16);
+        spriteTileIndex = tileStartIndex;
+        Sprites::create(sprites, MaxSubtitlesChars, spriteStartIndex, spriteTileIndex, Sprites::SizeCode::Size8x8, Sprites::ColorDepth::Depth16, spritePaletteIndex);
         // copy data to tile map
-        auto spriteTile = Sprites::TILE_INDEX_TO_MEM<uint32_t>(512);
-        Memory::memcpy32(spriteTile, FONT_SANS_DATA, FONT_SANS_DATA_SIZE);
+        auto spriteTile = Sprites::TILE_INDEX_TO_MEM<uint32_t>(spriteTileIndex);
+        Memory::memcpy32(spriteTile, FONT_SUBTITLES_DATA, FONT_SUBTITLES_DATA_SIZE);
         // enable sprites
         REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     }
 
-    auto getScreenWidth(const char *string, const char *end) -> uint32_t
+    auto SpritesInUse() -> uint32_t
+    {
+        return sprites != nullptr ? spritesInUse : 0;
+    }
+
+    auto TilesInUse() -> uint32_t
+    {
+        if (sprites != nullptr && spritesInUse > 0)
+        {
+            const auto tileStart = sprites[0].tileIndex;
+            const auto &sprite = sprites[spritesInUse - 1];
+            return sprite.tileIndex + Tiles::TileCountForSizeCode[static_cast<uint32_t>(sprite.size)] - tileStart;
+        }
+        return 0;
+    }
+
+    auto GetScreenWidth(const char *string, const char *end) -> uint32_t
     {
         if (string == nullptr)
         {
@@ -49,9 +67,9 @@ namespace Subtitles
         while (*string != '\0' && string < end)
         {
             auto charIndex = static_cast<int32_t>(*string) - 32;
-            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
+            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SUBTITLES_NR_OF_CHARS))
             {
-                screenWidth += FONT_SANS_CHAR_WIDTH[charIndex] + 1;
+                screenWidth += FONT_SUBTITLES_CHAR_WIDTH[charIndex] + 1;
                 ++charCount;
             }
             ++string;
@@ -59,7 +77,7 @@ namespace Subtitles
         return screenWidth - 1;
     }
 
-    auto getNrOfLines(const char *string) -> uint32_t
+    auto GetNrOfLines(const char *string) -> uint32_t
     {
         if (string == nullptr)
         {
@@ -74,7 +92,7 @@ namespace Subtitles
         return nrOfLines;
     }
 
-    auto getStringLength(const char *string, const char *end) -> uint32_t
+    auto GetStringLength(const char *string, const char *end) -> uint32_t
     {
         if (string == nullptr)
         {
@@ -84,7 +102,7 @@ namespace Subtitles
         while (*string != '\0' && string < end)
         {
             auto charIndex = static_cast<int32_t>(*string) - 32;
-            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
+            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SUBTITLES_NR_OF_CHARS))
             {
                 ++charCount;
             }
@@ -93,7 +111,7 @@ namespace Subtitles
         return charCount;
     }
 
-    auto printString(const char *string, const char *end, int16_t x, int16_t y, Color textColor) -> void
+    auto PrintString(const char *string, const char *end, int16_t x, int16_t y, color16 textColor) -> void
     {
         if (string == nullptr)
         {
@@ -103,29 +121,36 @@ namespace Subtitles
         while (*string != '\0' && string < end && spritesInUse < MaxSubtitlesChars)
         {
             auto charIndex = static_cast<int32_t>(*string) - 32;
-            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SANS_NR_OF_CHARS))
+            if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SUBTITLES_NR_OF_CHARS))
             {
                 auto &sprite = sprites[spritesInUse];
-                sprite.tileIndex = 512 + charIndex;
+                sprite.tileIndex = spriteTileIndex + charIndex;
                 sprite.x = charX;
                 sprite.y = y;
-                sprite.visible = true;
                 sprite.priority = Sprites::Priority::Prio0;
-                charX += FONT_SANS_CHAR_WIDTH[charIndex] + 1;
+                charX += FONT_SUBTITLES_CHAR_WIDTH[charIndex] + 1;
                 ++spritesInUse;
             }
             ++string;
         }
-        setColor(textColor);
+        SetColor(textColor);
     }
 
-    auto setColor(Color text) -> void
+    auto SetColor(color16 textColor) -> void
     {
-        Palette::Sprite[1] = CGA_COLORS[static_cast<uint8_t>(text)];
+        Palette::Sprite16[spritePaletteIndex][1] = textColor;
     }
 
-    auto display() -> void
+    auto Present() -> void
     {
+        // enable used sprites depending on visibility
+        for (uint32_t i = 0; i < spritesInUse; ++i)
+        {
+            auto &sprite = sprites[i];
+            sprite.visible = spritesVisible;
+            sprite.priority = spritesVisible ? Sprites::Priority::Prio0 : Sprites::Priority::Prio3;
+        }
+        // hide unused sprites
         for (uint32_t i = spritesInUse; i < MaxSubtitlesChars; ++i)
         {
             auto &sprite = sprites[i];
@@ -135,21 +160,23 @@ namespace Subtitles
         Sprites::copyToOAM(sprites, 0, MaxSubtitlesChars);
     }
 
-    auto clear() -> void
+    auto SetVisible(bool visible) -> void
     {
-        for (uint32_t i = 0; i < spritesInUse; ++i)
-        {
-            auto &sprite = sprites[i];
-            sprite.visible = false;
-            sprite.priority = Sprites::Priority::Prio3;
-        }
+        spritesVisible = visible;
+    }
+
+    auto Clear() -> void
+    {
         spritesInUse = 0;
     }
 
-    auto cleanup() -> void
+    auto Cleanup() -> void
     {
         REG_DISPCNT &= ~OBJ_ON;
         spritesInUse = 0;
+        spritePaletteIndex = 0;
+        spriteTileIndex = 0;
+        spritesVisible = true;
         Sprites::clearOAM();
         Memory::free(sprites);
     }

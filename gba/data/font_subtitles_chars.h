@@ -2,8 +2,8 @@
 
 #include <cstdint>
 
-constexpr uint32_t FONT_SANS_NR_OF_CHARS = 96;
-const uint8_t FONT_SANS_CHAR_WIDTH[FONT_SANS_NR_OF_CHARS] = {
+constexpr uint32_t FONT_SUBTITLES_NR_OF_CHARS = 96;
+const uint8_t FONT_SUBTITLES_CHAR_WIDTH[FONT_SUBTITLES_NR_OF_CHARS] = {
     5,
     1,
     3,

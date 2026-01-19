@@ -1,10 +1,11 @@
 #pragma once
 
+#include "color.h"
+
 #include <cstdint>
 
 namespace Subtitles
 {
-
     constexpr unsigned FontHeight = 8;
 
     /// @brief Subtitles data for one subtitle entry
@@ -15,52 +16,43 @@ namespace Subtitles
         const char *text = nullptr; // Subtitle string
     };
 
-    /// @brief CGA colors. See: https://en.wikipedia.org/wiki/Color_Graphics_Adapter
-    enum class Color : uint8_t
-    {
-        Black = 0,
-        Blue = 1,
-        Green = 2,
-        Cyan = 3,
-        Red = 4,
-        Magenta = 5,
-        Brown = 6,
-        LightGray = 7,
-        DarkGray = 8,
-        LightBlue = 9,
-        LightGreen = 10,
-        LightCyan = 11,
-        LightRed = 12,
-        LightMagenta = 13,
-        Yellow = 14,
-        White = 15
-    };
+    /// @brief Set up Subtitles: Does not change display mode, but enable sprites
+    /// @param spriteStartIndex Index at which the sprites start
+    /// @param tileStartIndex Index at which the tiles for the sprites start
+    /// @param paletteIndex 16-color palette index for sprites
+    auto Setup(uint32_t spriteStartIndex = 0, uint32_t tileStartIndex = 0, uint16_t paletteIndex = 0) -> void;
 
-    /// @brief Set up Subtitles mode: Don't change display mode, but enable sprites
-    auto setup() -> void;
+    /// @brief Get the number of sprites in use by subtitles
+    auto SpritesInUse() -> uint32_t;
+
+    /// @brief Get the number of tiles in use by subtitles
+    auto TilesInUse() -> uint32_t;
 
     /// @brief Get width of text on screen in pixels
-    auto getScreenWidth(const char *string, const char *end = nullptr) -> uint32_t;
+    auto GetScreenWidth(const char *string, const char *end = nullptr) -> uint32_t;
 
     /// @brief Get number of lines of text in string
-    auto getNrOfLines(const char *string) -> uint32_t;
+    auto GetNrOfLines(const char *string) -> uint32_t;
 
     /// @brief Get length of text on screen in characters
-    auto getStringLength(const char *string, const char *end = nullptr) -> uint32_t;
+    auto GetStringLength(const char *string, const char *end = nullptr) -> uint32_t;
 
     /// @brief Print null-terminated string or sub-string to screen using sprites
-    /// Call clear() to clear all subtitles / sprites
-    auto printString(const char *string, const char *end, int16_t x, int16_t y, Color textColor = Color::White) -> void;
+    /// Call Present() to update display. Call clear() to clear all subtitles / sprites
+    auto PrintString(const char *string, const char *end, int16_t x, int16_t y, color16 textColor = COLOR16_WHITE) -> void;
 
-    /// @brief Set foreground color
-    auto setColor(Color textColor = Color::White) -> void;
+    /// @brief Set foreground color. Applied immediately
+    auto SetColor(color16 textColor = COLOR16_WHITE) -> void;
 
-    /// @Display all subtitles on screen / copy sprites to OAM
-    auto display() -> void;
+    /// @brief Display all subtitles on screen / copy sprites to OAM
+    auto Present() -> void;
 
-    /// @brief Clear all subtitles by hiding all sprites
-    auto clear() -> void;
+    /// @brief Show or hide current subtitle. Call Present() to update display
+    auto SetVisible(bool visible) -> void;
+
+    /// @brief Clear all subtitles. Call Present() to update display
+    auto Clear() -> void;
 
     /// @brief Clean up Subtitles mode: Disable sprites
-    auto cleanup() -> void;
+    auto Cleanup() -> void;
 }

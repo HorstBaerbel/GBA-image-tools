@@ -30,11 +30,20 @@ namespace Media
     /// @note Will cause corruption when setting this during playback
     auto SetPosition(uint16_t x, uint16_t y) -> void;
 
+    /// @brief Check if video help is currently enabled
+    /// @return True if video help is currently enabled
+    auto IsVideoHelpEnabled() -> bool;
+
+    /// @brief Toggle display of video help. Will temporarily hide subtitles if enabled
+    /// @param show Pass true to enable, false to disable
+    auto EnableVideoHelp(bool show = true) -> void;
+
     /// @brief Check if subtitles are currently enabled
     /// @return True if subtitles are currently enabled
     auto AreSubtitlesEnabled() -> bool;
 
     /// @brief Toggle display of video subtitles. Will take effect for the next subtitle
+    /// Currently visible subtitle will be disabled instantly
     /// @param show Pass true to enable, false to disable
     auto EnableSubtitles(bool show = true) -> void;
 
@@ -45,7 +54,7 @@ namespace Media
     /// @brief Start playing media
     /// @param media Media source data
     /// @param mediaSize Media source size in bytes
-    /// @note Will allocate EWRAM and IWRAM as needed for video and audio buffers.
+    /// @note Will allocate EWRAM and IWRAM as needed for video and audio buffers
     /// Will use Timer 0, 1, 2, IRQ 1, 2 and DMA 1 (mono) or DMA 1 + 2 (stereo).
     /// Also modifies sound registers, especially REG_SOUNDCNT_X
     auto Play(const uint32_t *media, const uint32_t mediaSize) -> void;
@@ -56,11 +65,11 @@ namespace Media
     /// @brief Stop playing media
     auto Stop() -> void;
 
-    /// @brief Check if there are more frames in the media data
+    /// @brief Check if there are more frames in the media data. Call this in your main loop to check when to stop the video
     /// @return True if the media data has more frames, false if this is the last frame
     auto HasMoreFrames() -> bool;
 
-    /// @brief Decode the next frame(s) from media data
+    /// @brief Decode the next frame(s) from media data. Call this in your main loop
     /// The player will only decode new frames when it needs to due to the frame rate of the video.
     auto DecodeAndPlay() -> void;
 }

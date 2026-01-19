@@ -14,6 +14,8 @@ include(ToolsGBA)
 # Using some special compiler flags for GBA
 include(CompilerFlagsGBA)
 
+# Image data conversion --------------------------------------------
+
 set(IMG2H_PATH "${CMAKE_CURRENT_LIST_DIR}/../build/src/img2h")
 
 macro(target_img2h_file _listName _outname _infiles _options)
@@ -28,6 +30,7 @@ macro(target_img2h_file _listName _outname _infiles _options)
 		DEPENDS ${_globbed_infiles}
 		WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
 		COMMAND_EXPAND_LISTS
+		VERBATIM
 	)
 	LIST(APPEND ${_listName} "${CMAKE_CURRENT_SOURCE_DIR}/data/${_outname}.c")
 endmacro()
@@ -64,15 +67,17 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	video/subtitles.cpp
 	video/vid2hdecoder.cpp
 	video/vid2hio.cpp
+	video/videohelp.cpp
 	video/videoplayer.cpp
 	video.cpp
-	data/font_8x8.c
 	data/video.s
 )
 set_source_files_properties(data/video.s OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/data/video.bin)
 
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
-target_img2h_file(FONT_SANS_FILE "font_sans" "\"data/font_sans.png\"" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
+target_img2h_file(VIDEO_DATA_FILES "font_8x8" "\"data/font_8x8.png\"" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
+target_img2h_file(VIDEO_DATA_FILES "font_subtitles" "\"data/font_subtitles.png\"" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
+target_img2h_file(VIDEO_DATA_FILES "videohelp" "\"data/videohelp.png\"" "--paletted=16 --outformat=bgr555 --tiles --sprites=64,32 --prune=4")
 
 # Image example sources --------------------------------------------
 LIST(APPEND IMAGE_SOURCE_FILES
@@ -94,11 +99,10 @@ LIST(APPEND IMAGE_SOURCE_FILES
 	../src/if/dxt_tables.cpp
 	image/dxt.cpp
 	image.cpp
-	data/font_8x8.c
 )
 
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
-# These files will be added to IMAGE_DATA_FILES
+target_img2h_file(IMAGE_DATA_FILES "font_8x8" "\"data/font_8x8.png\"" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
 target_img2h_file(IMAGE_DATA_FILES "images_dxt" "\"../data/images/240x160/*.png\"" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true")
 
 LIST(APPEND INCLUDE_DIRS
@@ -117,7 +121,7 @@ LIST(APPEND LIBS
 )
 
 # Video example
-add_executable(video ${VIDEO_SOURCE_FILES} ${FONT_SANS_FILE}) # Create the elf file
+add_executable(video ${VIDEO_SOURCE_FILES} ${VIDEO_DATA_FILES}) # Create the elf file
 add_gba_executables(video "GBAIT_VIDEO" "GITV" "HB" 1) # Generate the .gba from the elf
 add_map_file(video)
 add_sections_file(video)

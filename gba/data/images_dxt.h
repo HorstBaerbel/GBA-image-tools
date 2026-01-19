@@ -1,4 +1,4 @@
-// Converted with img2h --truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true ../data/images/240x160/artificial_240x160.png ../data/images/240x160/BigBuckBunny_282_240x160.png ../data/images/240x160/BigBuckBunny_361_240x160.png ../data/images/240x160/BigBuckBunny_40_240x160.png ../data/images/240x160/BigBuckBunny_639_240x160.png ../data/images/240x160/BigBuckBunny_648_240x160.png ../data/images/240x160/BigBuckBunny_664_240x160.png ../data/images/240x160/flower_foveon_240x160.png ../data/images/240x160/gradient_240x160.png ../data/images/240x160/nightshot_iso_100_240x160.png ../data/images/240x160/squish_240x160.png ../data/images/240x160/TearsOfSteel_1200_240x160.png ../data/images/240x160/TearsOfSteel_676_240x160.png data/images_dxt
+// Converted with img2h --truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true ../data/images/240x160/*.png data/images_dxt
 // Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))
 
 // Data is bitmap tiles compressed, pixel format: XBGR1555, color map format: Unknown
