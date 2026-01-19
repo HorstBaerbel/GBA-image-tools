@@ -62,7 +62,7 @@ public:
         // check if we already have enough colors
         if (colorHistogram.size() <= nrOfColors)
         {
-            std::cout << "Data already has less than requested " << nrOfColors << "(" << colorHistogram.size() << ")" << std::endl;
+            std::cout << "Data already has less than requested " << nrOfColors << " (" << colorHistogram.size() << ")" << std::endl;
             std::map<PIXEL_TYPE, std::vector<PIXEL_TYPE>> colorMapping;
             std::transform(colorHistogram.cbegin(), colorHistogram.cend(), std::inserter(colorMapping, colorMapping.end()), [](const auto &entry)
                            { return std::make_pair(entry.first, std::vector<PIXEL_TYPE>{entry.first}); });
