@@ -245,7 +245,7 @@ namespace Audio
                 const auto &p = step.parameters[pi];
                 if (std::holds_alternative<bool>(p))
                 {
-                    result += " " + std::get<bool>(p) ? "true" : "false";
+                    result += " " + std::string(std::get<bool>(p) ? "true" : "false");
                 }
                 else if (std::holds_alternative<int32_t>(p))
                 {
