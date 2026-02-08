@@ -91,73 +91,68 @@ namespace Image
         return convertToTiles(convertToWidth(data, width, height, spriteWidth), width, height);
     }
 
+    // FNV-1a hash of a tile pixel, see: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1a_hash
     template <typename pixel_type>
-    auto hashPixel(const typename std::vector<pixel_type>::const_iterator src, uint32_t hash, uint32_t prime) -> uint32_t
+    auto hashPixel(const typename std::vector<pixel_type>::const_iterator src, uint64_t hash) -> uint64_t
     {
         if constexpr (std::is_same<pixel_type, uint8_t>())
         {
-            hash += prime * (263 + static_cast<uint32_t>(*src));
+            hash ^= static_cast<uint64_t>(*src);
+            hash *= 0x100000001b3;
         }
         else
         {
-            hash += prime * (2 + static_cast<uint32_t>(src->R()));
-            hash += prime * (263 + static_cast<uint32_t>(src->G()));
-            hash += prime * (521 + static_cast<uint32_t>(src->B()));
+            hash ^= static_cast<uint64_t>(src->R());
+            hash *= 0x100000001b3;
+            hash ^= static_cast<uint64_t>(src->G());
+            hash *= 0x100000001b3;
+            hash ^= static_cast<uint64_t>(src->B());
+            hash *= 0x100000001b3;
         }
         return hash;
     }
 
     // Hash tile block 4 different ways: normal, flipped horizontally, flipped vertically, flipped in both directions
     template <typename pixel_type>
-    auto hashTileBlock(const typename std::vector<pixel_type>::const_iterator src, uint32_t columns, uint32_t rows, bool hashFlips) -> std::array<uint32_t, 4>
+    auto hashTileBlock(const typename std::vector<pixel_type>::const_iterator src, uint32_t columns, uint32_t rows, bool hashFlips) -> std::array<uint64_t, 4>
     {
-        static const std::array<uint32_t, 256> primes = {1277, 1889, 1021, 1231, 1069, 239, 1789, 1913, 359, 1163, 151, 1861, 103, 47, 1567, 1693, 509, 1297, 467, 1571, 1613, 1097, 491, 1987, 349, 1787, 907, 967, 1213, 41, 1427, 1171, 109, 619, 499, 199, 1489, 857, 421, 1091, 1217, 1999, 13, 97, 257, 1187, 229, 1291, 761, 547, 1831, 1759, 751, 1327, 53, 43, 11, 1459, 1061, 71, 1637, 887, 293, 1601, 659, 1811, 431, 1973, 1871, 853, 409, 1559, 1721, 571, 1993, 787, 181, 1709, 1549, 557, 773, 653, 941, 983, 1867, 1151, 1483, 233, 107, 1621, 317, 733, 1399, 1511, 1879, 1303, 719, 1933, 997, 1259, 1951, 1033, 661, 977, 1409, 59, 127, 641, 701, 1523, 1901, 449, 1453, 1249, 37, 1753, 1367, 1847, 929, 457, 1949, 1579, 1201, 149, 1997, 877, 1451, 1583, 953, 859, 347, 227, 839, 367, 31, 1907, 1117, 271, 139, 911, 1193, 1627, 1123, 1051, 419, 797, 2, 1873, 283, 397, 1031, 131, 179, 23, 157, 263, 1747, 631, 1381, 379, 1039, 863, 1663, 1103, 1697, 313, 919, 1223, 1741, 1657, 1493, 607, 1087, 709, 1423, 1597, 727, 1321, 523, 569, 7, 1009, 167, 677, 563, 1429, 1619, 991, 1153, 73, 613, 383, 79, 17, 89, 211, 947, 643, 61, 811, 241, 829, 1607, 1931, 463, 1877, 373, 197, 599, 1109, 1783, 1471, 937, 1237, 401, 277, 353, 1319, 281, 389, 743, 1307, 587, 1093, 541, 1049, 83, 67, 163, 769, 1447, 1229, 1129, 193, 1487, 337, 617, 461, 647, 443, 883, 1063, 3, 1499, 1667, 1531, 1669, 251, 101, 823, 173, 439, 757, 1433, 1013, 311};
-        static constexpr uint32_t piStart = 5;
-        std::array<uint32_t, 4> hash = {5381, 5381, 5381, 5381};
+        std::array<uint64_t, 4> hash = {0xcbf29ce484222325, 0xcbf29ce484222325, 0xcbf29ce484222325, 0xcbf29ce484222325};
         // hash normally
-        uint32_t pi = piStart;
         auto src0 = src;
         for (int32_t y = 0; y < rows; y++)
         {
             for (int32_t x = 0; x < columns; x++, ++src0)
             {
-                auto p = primes[pi++ % (primes.size() - 1)];
-                hash[0] = hashPixel<pixel_type>(src0, hash[0], p);
+                hash[0] = hashPixel<pixel_type>(src0, hash[0]);
             }
         }
         if (hashFlips)
         {
             // hash flipped horizontally
-            pi = piStart;
             for (int32_t y = 0; y < rows; y++)
             {
                 auto src1 = std::next(src, y * columns + columns - 1);
                 for (int32_t x = columns - 1; x >= 0; x--, --src1)
                 {
-                    auto p = primes[pi++ % (primes.size() - 1)];
-                    hash[1] = hashPixel<pixel_type>(src1, hash[1], p);
+                    hash[1] = hashPixel<pixel_type>(src1, hash[1]);
                 }
             }
             // hash flipped vertically
-            pi = piStart;
             for (int32_t y = rows - 1; y >= 0; y--)
             {
                 auto src2 = std::next(src, y * columns);
                 for (int32_t x = 0; x < columns; x++, ++src2)
                 {
-                    auto p = primes[pi++ % (primes.size() - 1)];
-                    hash[2] = hashPixel<pixel_type>(src2, hash[2], p);
+                    hash[2] = hashPixel<pixel_type>(src2, hash[2]);
                 }
             }
             // hash flipped both ways
-            pi = piStart;
             auto src3 = std::next(src, (rows - 1) * columns + columns - 1);
             for (int32_t y = 0; y < rows; y++)
             {
                 for (int32_t x = columns - 1; x >= 0; x--, --src3)
                 {
-                    auto p = primes[pi++ % (primes.size() - 1)];
-                    hash[3] = hashPixel<pixel_type>(src3, hash[3], p);
+                    hash[3] = hashPixel<pixel_type>(src3, hash[3]);
                 }
             }
         }
@@ -176,7 +171,7 @@ namespace Image
         std::vector<std::vector<uint16_t>> dstScreens; // screen maps for individual frames
         std::vector<pixel_type> dstTiles;              // unique tile map
         uint32_t nrOfUniqueTiles = 0;                  // # of tiles currently in tile map
-        std::map<uint32_t, uint16_t> dstTileHashes;    // map from hash values of tile pixels -> tile map index
+        std::map<uint64_t, uint16_t> dstTileHashes;    // map from hash values of tile pixels -> tile map index
         for (const auto &framePixels : frames)
         {
             std::vector<uint16_t> frameScreen(width / tileWidth * height / tileHeight); // screen map for frame
