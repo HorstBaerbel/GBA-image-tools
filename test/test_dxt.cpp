@@ -6,6 +6,7 @@
 #include "image_codec/dxt.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <vector>

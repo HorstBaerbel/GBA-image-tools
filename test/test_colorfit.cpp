@@ -7,6 +7,7 @@
 #include "math/colorfit.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <vector>
