@@ -290,7 +290,11 @@ namespace Image
         // try to find color in palette
         auto colorMap = data.data.colorMap().data<Color::XRGB8888>();
         auto oldColorIt = std::find(colorMap.begin(), colorMap.end(), color0);
-        REQUIRE(oldColorIt != colorMap.end(), std::runtime_error, "Color " << color0.toHex() << " not found in image color map");
+        if (oldColorIt == colorMap.end())
+        {
+            auto closestToColor0 = ColorHelpers::getClosestColor(color0, colorMap);
+            THROW(std::runtime_error, "Color " << color0.toHex() << " not found in image color map. Closest color is " << closestToColor0.toHex() << ".");
+        }
         const size_t oldIndex = std::distance(colorMap.begin(), oldColorIt);
         // check if index needs to move
         if (oldIndex != 0)
