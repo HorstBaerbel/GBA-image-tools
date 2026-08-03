@@ -54,6 +54,20 @@ list(APPEND GENCOLORMAPS_SRC
     ${LIBPLUM_INCLUDE_DIR}/libplum.c
 )
 
+list(APPEND GENFADETABLE_SRC
+    genfadetable.cpp
+    color/colorformat.cpp
+    color/colorhelpers.cpp
+    color/cielabf.cpp
+    color/xrgb1555.cpp
+    color/rgb565.cpp
+    color/rgb888.cpp
+    color/xrgb8888.cpp
+    color/conversions.cpp
+    image/imageio.cpp
+    ${LIBPLUM_INCLUDE_DIR}/libplum.c
+)
+
 list(APPEND HEX2GBA_SRC
     hex2gba.cpp
     color/xrgb8888.cpp
@@ -96,6 +110,10 @@ add_executable(gencolormaps ${GENCOLORMAPS_SRC})
 target_link_libraries(gencolormaps PRIVATE OpenMP::OpenMP_CXX)
 add_dependencies(gencolormaps BuildLibplumBasefiles)
 
+add_executable(genfadetable ${GENFADETABLE_SRC})
+target_link_libraries(genfadetable PRIVATE OpenMP::OpenMP_CXX)
+add_dependencies(genfadetable BuildLibplumBasefiles)
+
 add_executable(hex2gba ${HEX2GBA_SRC})
 
 add_executable(img2h ${IMG2H_SRC})
@@ -115,6 +133,7 @@ add_dependencies(vid2hplay BuildLibplumBasefiles)
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/gencolormaps"
+    "${CMAKE_CURRENT_BINARY_DIR}/genfadetable"
     "${CMAKE_CURRENT_BINARY_DIR}/hex2gba"
     "${CMAKE_CURRENT_BINARY_DIR}/img2h"
     "${CMAKE_CURRENT_BINARY_DIR}/vid2h"
