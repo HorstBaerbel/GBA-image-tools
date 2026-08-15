@@ -29,6 +29,7 @@ namespace ColorHelpers
     template <typename T, typename R>
     auto getClosestColor(const T &color, const std::vector<R> &colors) -> T
     {
+        REQUIRE(!colors.empty(), std::runtime_error, "List of colors can not be empty");
         R colorR;
         if constexpr (std::is_same<T, R>())
         {
@@ -61,6 +62,38 @@ namespace ColorHelpers
         {
             return convertTo<T>(closestColor);
         }
+    }
+
+    /// @brief Find index of color closest to input color in list of colors
+    template <typename T, typename R>
+    auto getClosestColorIndex(const T &color, const std::vector<R> &colors) -> std::size_t
+    {
+        REQUIRE(!colors.empty(), std::runtime_error, "List of colors can not be empty");
+        R colorR;
+        if constexpr (std::is_same<T, R>())
+        {
+            colorR = color;
+        }
+        else
+        {
+            colorR = convertTo<R>(color);
+        }
+        // Note: We don't use min_element here due to double distance function evaluations
+        // Improvement: Use distance query acceleration structure
+        auto colorIt = colors.cbegin();
+        auto closestColorIt = colorIt;
+        float closestDistance = std::numeric_limits<float>::max();
+        while (colorIt != colors.cend())
+        {
+            auto colorDistance = R::mse(*colorIt, colorR);
+            if (closestDistance > colorDistance)
+            {
+                closestDistance = colorDistance;
+                closestColorIt = colorIt;
+            }
+            ++colorIt;
+        }
+        return std::distance(colors.cbegin(), closestColorIt);
     }
 
     /// @brief Convert pixels to XRGB8888
