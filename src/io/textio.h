@@ -73,11 +73,34 @@ namespace IO
             {
                 hFile << "uint16_t";
             }
-            else if constexpr (sizeof(T) == 3)
+            else if constexpr (sizeof(T) == 4)
             {
                 hFile << "uint32_t";
             }
             hFile << " " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE];" << std::endl;
+        }
+
+        /// @brief Write arbitrary table information to a .h file
+        template <typename T>
+        static auto writeTableInfoToH(std::ofstream &hFile, const std::string &varName, const std::vector<T> &data, uint32_t nrOfEntries) -> void
+        {
+            hFile << "#define " << varName << "_LENGTH " << nrOfEntries << " // # of table entries" << std::endl;
+            hFile << "#define " << varName << "_SIZE " << data.size() << " // size of table in 4 byte units" << std::endl;
+            hFile << "extern const ";
+            static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4);
+            if constexpr (sizeof(T) == 1)
+            {
+                hFile << "uint8_t";
+            }
+            else if constexpr (sizeof(T) == 2)
+            {
+                hFile << "uint16_t";
+            }
+            else if constexpr (sizeof(T) == 4)
+            {
+                hFile << "uint32_t";
+            }
+            hFile << " " << varName << "[" << varName << "_SIZE];" << std::endl;
         }
 
         /// @brief Write compression information to a .h file.
@@ -116,11 +139,36 @@ namespace IO
             {
                 cFile << "uint16_t";
             }
-            else if constexpr (sizeof(T) == 3)
+            else if constexpr (sizeof(T) == 4)
             {
                 cFile << "uint32_t";
             }
             cFile << " " << varName << "_PALETTE[" << varName << "_PALETTE_SIZE] = { " << std::endl;
+            writeValues(cFile, data, true);
+            cFile << "};" << std::endl
+                  << std::endl;
+        }
+
+        /// @brief Write arbitrary table data to a .c file
+        template <typename T>
+        static auto writeTableDataToC(std::ofstream &cFile, const std::string &varName, const std::vector<T> &data) -> void
+        {
+            // write table data
+            cFile << "const _Alignas(4) ";
+            static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4);
+            if constexpr (sizeof(T) == 1)
+            {
+                cFile << "uint8_t";
+            }
+            else if constexpr (sizeof(T) == 2)
+            {
+                cFile << "uint16_t";
+            }
+            else if constexpr (sizeof(T) == 4)
+            {
+                cFile << "uint32_t";
+            }
+            cFile << " " << varName << "[" << varName << "_SIZE] = { " << std::endl;
             writeValues(cFile, data, true);
             cFile << "};" << std::endl
                   << std::endl;
