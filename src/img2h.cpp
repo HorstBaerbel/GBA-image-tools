@@ -535,7 +535,7 @@ int main(int argc, const char *argv[])
                             hFile << " compressed";
                         }
                         hFile << ", pixel format: " << Color::formatInfo(data0.info.pixelFormat).name;
-                        if (data0.info.pixelFormat != Color::Format::Unknown)
+                        if (data0.info.colorMapFormat != Color::Format::Unknown)
                         {
                             hFile << ", color map format: " << Color::formatInfo(data0.info.colorMapFormat).name;
                         }
