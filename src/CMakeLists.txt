@@ -64,7 +64,11 @@ list(APPEND GENFADETABLE_SRC
     color/rgb888.cpp
     color/xrgb8888.cpp
     color/conversions.cpp
+    color/gamma.cpp
+    image/quantization.cpp
+    image/quantizationmethod.cpp
     image/imageio.cpp
+    io/textio.cpp
     ${LIBPLUM_INCLUDE_DIR}/libplum.c
 )
 
