@@ -141,6 +141,37 @@
             ]
         },
         {
+            "name": "genfadetable debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [
+                "--imgcolors=16",
+                "--outcolors=256",
+                "--outformat=bgr555",
+                "--fadeamount=1",
+                "\"${workspaceFolder}/data/images/240x160/BigBuckBunny_40_240x160.png",
+                "credits_screen"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Automatische Strukturierung und Einrückung für \"gdb\" aktivieren",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Do not step into library code",
+                    "text": "-interpreter-exec console \"skip -rfu std::.*\nskip -rfu std::.*::.*\nskip -gfi /usr/include/c++/*/*/*\nskip -gfi /usr/include/c++/*/*\nskip -gfi /usr/include/c++/*\nskip enable\"",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "unit test debug",
             "type": "cppdbg",
             "request": "launch",
