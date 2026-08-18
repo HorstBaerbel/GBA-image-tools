@@ -7,6 +7,8 @@
 
 #include "adpcm-xq/adpcm-lib.h"
 
+// #define DECODE_WITH_ADPCM_XQ // define to use library to decode ADPCM data
+
 namespace Audio
 {
     /// @brief ADPCM-XQ state for (de-)compression
@@ -72,67 +74,55 @@ namespace Audio
         auto data8 = reinterpret_cast<const uint8_t *>(data.data()) + sizeof(AdpcmFrameHeader);
         const auto adpcmDataSize = data.size() - sizeof(Audio::AdpcmFrameHeader);
         const auto adpcmChannelBlockSize = adpcmDataSize / frameHeader.nrOfChannels;
-        const auto adpcmChannelNrOfSamples = (frameHeader.uncompressedSize / sizeof(int16_t)) / frameHeader.nrOfChannels;
+#ifdef DECODE_WITH_ADPCM_XQ
+        // allocate audio conversion buffers
+        const auto adpcmChannelNrOfSamples = adpcm_block_size_to_sample_count(adpcmChannelBlockSize, 1, AdpcmConstants::BITS_PER_SAMPLE);
         std::vector<int16_t> pcmSamples(adpcmChannelNrOfSamples * frameHeader.nrOfChannels);
-        auto dst16 = pcmSamples.data();
+        // decode ADPCM samples
+        auto adpcmChannelDataPtr = data.data() + sizeof(AdpcmFrameHeader);
+        auto pcmChannelDataPtr = pcmSamples.data();
+        for (uint32_t ch = 0; ch < frameHeader.nrOfChannels; ++ch)
+        {
+            const auto pcmChannelNrOfSamples = adpcm_decode_block_ex(pcmChannelDataPtr, adpcmChannelDataPtr, adpcmChannelBlockSize, 1, AdpcmConstants::BITS_PER_SAMPLE);
+            REQUIRE(adpcmChannelNrOfSamples == pcmChannelNrOfSamples, std::runtime_error, "Failed to decode channel " << ch << " (expected " << adpcmChannelNrOfSamples << " samples , got " << pcmChannelNrOfSamples << " samples)");
+            pcmChannelDataPtr += pcmChannelNrOfSamples;
+            adpcmChannelDataPtr += adpcmChannelBlockSize;
+        }
+#else
+        const auto adpcmChannelNrOfSamples = (frameHeader.uncompressedSize / sizeof(int16_t)) / frameHeader.nrOfChannels;
+        std::vector<int16_t> pcmSamples;
+        pcmSamples.reserve(adpcmChannelNrOfSamples * frameHeader.nrOfChannels);
         for (uint32_t channel = 0; channel < frameHeader.nrOfChannels; ++channel)
         {
             // first sample is stored verbatim in header
             int32_t pcmData = *reinterpret_cast<const int16_t *>(data8);
-            *dst16++ = pcmData;
+            pcmSamples.push_back(pcmData);
             int32_t index = data8[2];
             data8 += 4;
             int32_t bytesLeft = adpcmChannelBlockSize - 4;
-            while (bytesLeft--)
+            uint32_t nibbles = 0;
+            while (bytesLeft && pcmSamples.size() < adpcmChannelNrOfSamples)
             {
-                // get two ADPCM nibbles
-                const uint32_t nibbles = *data8;
-                // decode first nibble
+                // load two ADPCM nibbles every 2 ADPCM samples
+                if ((pcmSamples.size() & 1) == 0 && bytesLeft--)
+                {
+                    nibbles = *data8++;
+                }
+                // decode nibble
                 uint32_t delta = ADPCM_DeltaTable_4bit[index][nibbles & 0x07];
-                if (nibbles & 8)
-                    pcmData -= delta;
-                else
-                    pcmData += delta;
-                index += ADPCM_IndexTable_4bit[*data8 & 0x7];
+                pcmData += (nibbles & 8) ? -delta : delta;
+                index += ADPCM_IndexTable_4bit[nibbles & 0x7];
                 index = index < 0 ? 0 : index;
                 index = index > 88 ? 88 : index;
+                // clamp PCM data
                 pcmData = pcmData < -32768 ? -32768 : pcmData;
                 pcmData = pcmData > 32767 ? 32767 : pcmData;
-                *dst16++ = pcmData;
-                // decode second nibble only if not last sample
-                if (bytesLeft > 0)
-                {
-                    delta = ADPCM_DeltaTable_4bit[index][(nibbles >> 4) & 0x07];
-                    if ((nibbles >> 4) & 8)
-                        pcmData -= delta;
-                    else
-                        pcmData += delta;
-                    index += ADPCM_IndexTable_4bit[(nibbles >> 4) & 0x7];
-                    index = index < 0 ? 0 : index;
-                    index = index > 88 ? 88 : index;
-                    pcmData = pcmData < -32768 ? -32768 : pcmData;
-                    pcmData = pcmData > 32767 ? 32767 : pcmData;
-                    *dst16++ = pcmData;
-                }
-                // advance input data
-                data8++;
+                pcmSamples.push_back(pcmData);
+                nibbles >>= 4;
             }
         }
-        /*   // allocate audio conversion buffers
-           const auto adpcmDataSize = data.size() - sizeof(AdpcmFrameHeader);
-           const auto adpcmChannelBlockSize = adpcmDataSize / frameHeader.nrOfChannels;
-           const auto adpcmChannelNrOfSamples = adpcm_block_size_to_sample_count(adpcmChannelBlockSize, 1, AdpcmConstants::BITS_PER_SAMPLE);
-           std::vector<int16_t> pcmSamples(adpcmChannelNrOfSamples * frameHeader.nrOfChannels);
-           // decode ADPCM samples
-           auto adpcmChannelDataPtr = data.data() + sizeof(AdpcmFrameHeader);
-           auto pcmChannelDataPtr = pcmSamples.data();
-           for (uint32_t ch = 0; ch < frameHeader.nrOfChannels; ++ch)
-           {
-               const auto pcmChannelNrOfSamples = adpcm_decode_block_ex(pcmChannelDataPtr, adpcmChannelDataPtr, adpcmChannelBlockSize, 1, AdpcmConstants::BITS_PER_SAMPLE);
-               REQUIRE(adpcmChannelNrOfSamples == pcmChannelNrOfSamples, std::runtime_error, "Failed to decode channel " << ch << " (expected " << adpcmChannelNrOfSamples << " samples , got " << pcmChannelNrOfSamples << " samples)");
-               pcmChannelDataPtr += pcmChannelNrOfSamples;
-               adpcmChannelDataPtr += adpcmChannelBlockSize;
-           }*/
+#endif
+        REQUIRE(pcmSamples.size() == adpcmChannelNrOfSamples * frameHeader.nrOfChannels, std::runtime_error, "Unexpected number of decoded samples. Should be " << adpcmChannelNrOfSamples * frameHeader.nrOfChannels << ", but is " << pcmSamples.size());
         return pcmSamples;
     }
 
