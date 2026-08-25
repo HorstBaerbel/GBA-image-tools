@@ -72,9 +72,9 @@ namespace Audio
         const AdpcmFrameHeader frameHeader = AdpcmFrameHeader::read(reinterpret_cast<const uint32_t *>(data.data()));
         // uncompress 4-bit ADPCM samples. These are stored planar / per channel, e.g. L0 L1 ... R0 R1 ...
         auto data8 = reinterpret_cast<const uint8_t *>(data.data()) + sizeof(AdpcmFrameHeader);
+#ifdef DECODE_WITH_ADPCM_XQ
         const auto adpcmDataSize = data.size() - sizeof(Audio::AdpcmFrameHeader);
         const auto adpcmChannelBlockSize = adpcmDataSize / frameHeader.nrOfChannels;
-#ifdef DECODE_WITH_ADPCM_XQ
         // allocate audio conversion buffers
         const auto adpcmChannelNrOfSamples = adpcm_block_size_to_sample_count(adpcmChannelBlockSize, 1, AdpcmConstants::BITS_PER_SAMPLE);
         std::vector<int16_t> pcmSamples(adpcmChannelNrOfSamples * frameHeader.nrOfChannels);

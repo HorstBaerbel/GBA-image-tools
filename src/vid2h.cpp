@@ -373,9 +373,9 @@ auto buildAudioProcessing(const ProcessingOptions &opts, const Media::Reader::Me
 {
     Audio::Processing audioProcessing;
     const auto audioOutSampleRateHz = opts.sampleRateHz ? opts.sampleRateHz.value : mediaInfo.audioSampleRateHz;
+    const auto audioOutChannelFormat = opts.channelFormat ? opts.channelFormat.value : mediaInfo.audioChannelFormat;
     if (opts.channelFormat || opts.sampleRateHz || opts.sampleFormat)
     {
-        const auto audioOutChannelFormat = opts.channelFormat ? opts.channelFormat.value : mediaInfo.audioChannelFormat;
         const auto audioOutSampleFormat = opts.sampleFormat ? opts.sampleFormat.value : mediaInfo.audioSampleFormat;
         audioProcessing.addStep(Audio::ProcessingType::Resample, {audioOutChannelFormat, audioOutSampleRateHz, audioOutSampleFormat});
     }
@@ -386,7 +386,8 @@ auto buildAudioProcessing(const ProcessingOptions &opts, const Media::Reader::Me
     // * Multiple of 4 bytes per channel for NDS audio playback
     // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
     const double audioOutSamplesPerFrame = audioOutSampleRateHz / mediaInfo.videoFrameRateHz; // Number of audio samples per channel needed per frame of video
-    audioProcessing.addStep(Audio::ProcessingType::Repackage, {audioOutSamplesPerFrame, uint32_t(16)});
+    const uint32_t audioOutSamplesModuloPerFrame = 16 * (audioOutChannelFormat == Audio::ChannelFormat::Stereo ? 2 : 1); // Modulo value for audio sample count per frame of video
+    audioProcessing.addStep(Audio::ProcessingType::Repackage, {audioOutSamplesPerFrame, audioOutSamplesModuloPerFrame});
     // build audio processing pipeline - audio compression
     if (opts.adpcm)
     {
