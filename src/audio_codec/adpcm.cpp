@@ -92,6 +92,8 @@ namespace Audio
         const auto adpcmChannelNrOfSamples = (frameHeader.uncompressedSize / sizeof(int16_t)) / frameHeader.nrOfChannels;
         std::vector<int16_t> pcmSamples;
         pcmSamples.reserve(adpcmChannelNrOfSamples * frameHeader.nrOfChannels);
+        // we decode one less nibble than samples, as the first sample is verbatim
+        const auto adpcmChannelNrOfNibbles = adpcmChannelNrOfSamples - 1;
         for (uint32_t channel = 0; channel < frameHeader.nrOfChannels; ++channel)
         {
             // first sample is stored verbatim in header
@@ -99,12 +101,12 @@ namespace Audio
             pcmSamples.push_back(pcmData);
             int32_t index = data8[2];
             data8 += 4;
-            int32_t bytesLeft = adpcmChannelBlockSize - 4;
+            uint32_t nibblesDecoded = 0;
             uint32_t nibbles = 0;
-            while (bytesLeft && pcmSamples.size() < adpcmChannelNrOfSamples)
+            while (nibblesDecoded < adpcmChannelNrOfNibbles)
             {
                 // load two ADPCM nibbles every 2 ADPCM samples
-                if ((pcmSamples.size() & 1) == 0 && bytesLeft--)
+                if ((nibblesDecoded & 1) == 0)
                 {
                     nibbles = *data8++;
                 }
@@ -119,6 +121,7 @@ namespace Audio
                 pcmData = pcmData > 32767 ? 32767 : pcmData;
                 pcmSamples.push_back(pcmData);
                 nibbles >>= 4;
+                nibblesDecoded++;
             }
         }
 #endif
