@@ -390,6 +390,20 @@ ProcessingOptions::OptionT<Audio::SampleFormat> ProcessingOptions::sampleFormat{
         }
     }};
 
+ProcessingOptions::OptionT<double> ProcessingOptions::bpm{
+    false,
+    {"bpm", "Set audio tempo / bpm [1.0, 512.0].", cxxopts::value(bpm.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(bpm.cxxOption.opts_))
+        {
+            REQUIRE(bpm.value >= 1 && bpm.value <= 512, std::runtime_error, "Audio tempo / bpm must be [1.0, 512.0]");
+            bpm.isSet = true;
+        }
+    }};
+
 ProcessingOptions::Option ProcessingOptions::adpcm{
     false,
     {"adpcm", "Compress audio using 4-bit APDCM.", cxxopts::value(adpcm.isSet)}};

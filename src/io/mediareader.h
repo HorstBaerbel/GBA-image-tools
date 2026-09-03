@@ -46,6 +46,7 @@ namespace Media
             Audio::ChannelFormat audioChannelFormat = Audio::ChannelFormat::Unknown; // Only mono = 1 or stereo = 2 supported
             Audio::SampleFormat audioSampleFormat = Audio::SampleFormat::Unknown;    // Description of bits and signed / unsigned in sample format
             double audioOffsetS = 0;                                                 // Offset of audio relative to video in s
+            double audioBpm = 0;                                                     // Temp / bpm of audio
             // ----- subtitles -----
             uint32_t subtitlesNrOfFrames = 0; // Number of all subtitles frames (must not be the same as video/audio frames)
             // ----- meta data -----

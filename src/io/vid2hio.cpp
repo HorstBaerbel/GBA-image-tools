@@ -67,7 +67,7 @@ namespace IO::Vid2h
         return outHeader;
     }
 
-    auto createAudioHeader(const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded, const std::vector<Audio::ProcessingType> &decodingSteps) -> AudioHeader
+    auto createAudioHeader(const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded, double bpm, const std::vector<Audio::ProcessingType> &decodingSteps) -> AudioHeader
     {
         REQUIRE(audioNrOfFrames < 2 ^ 16, std::runtime_error, "Number of audio frames must be < 2^16");
         REQUIRE(audioMemoryNeeded < 2 ^ 16, std::runtime_error, "Max. audio memory needed must be < 2^16");
@@ -84,6 +84,8 @@ namespace IO::Vid2h
         outHeader.offsetSamples = audioOffsetSamples;
         REQUIRE(audioMemoryNeeded <= std::numeric_limits<uint16_t>::max(), std::runtime_error, "Audio memory needed must be <= " << std::numeric_limits<uint16_t>::max());
         outHeader.memoryNeeded = audioMemoryNeeded;
+        REQUIRE(bpm >= 1 && bpm <= 512, std::runtime_error, "Bpm must be in [1.0, 512.0]");
+        outHeader.bpm = static_cast<uint16_t>(std::round(bpm * 128.0));
         REQUIRE(decodingSteps.size() <= 4, std::runtime_error, "Number of decoding steps must be <= 4");
         std::memcpy(outHeader.processing, decodingSteps.data(), decodingSteps.size());
         return outHeader;

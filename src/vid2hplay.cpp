@@ -144,6 +144,10 @@ int main(int argc, const char *argv[])
                 std::cout << "Audio stream: " << mediaInfo.audioCodecName << ", " << Audio::formatInfo(mediaInfo.audioChannelFormat).description << ", " << mediaInfo.audioSampleRateHz << " Hz, ";
                 std::cout << Audio::formatInfo(mediaInfo.audioSampleFormat).description;
                 std::cout << ", duration " << mediaInfo.audioDurationS << "s, " << mediaInfo.audioNrOfFrames << " frames, " << mediaInfo.audioNrOfSamples << " samples, offset " << mediaInfo.audioOffsetS << "s" << std::endl;
+                if (mediaInfo.audioBpm > 0)
+                {
+                    std::cout << "Tempo " << mediaInfo.audioBpm << " bpm" << std::endl;
+                }
             }
             if (hasSubtitles)
             {

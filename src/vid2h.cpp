@@ -77,6 +77,7 @@ bool readArguments(int argc, const char *argv[])
         opts.add_option("", options.channelFormat.cxxOption);
         opts.add_option("", options.sampleFormat.cxxOption);
         opts.add_option("", options.sampleRateHz.cxxOption);
+        opts.add_option("", options.bpm.cxxOption);
         opts.add_option("", options.adpcm.cxxOption);
         opts.add_option("", options.subtitlesFile.cxxOption);
         opts.add_option("", options.metaFile.cxxOption);
@@ -168,6 +169,7 @@ bool readArguments(int argc, const char *argv[])
         options.channelFormat.parse(result);
         options.sampleFormat.parse(result);
         options.sampleRateHz.parse(result);
+        options.bpm.parse(result);
     }
     catch (const cxxopts::exceptions::parsing &e)
     {
@@ -216,6 +218,7 @@ void printUsage()
     std::cout << options.channelFormat.helpString() << std::endl;
     std::cout << options.sampleFormat.helpString() << std::endl;
     std::cout << options.sampleRateHz.helpString() << std::endl;
+    std::cout << options.bpm.helpString() << std::endl;
     std::cout << "Audio compression options (all optional):" << std::endl;
     std::cout << options.adpcm.helpString() << std::endl;
     std::cout << "Subtitles options:" << std::endl;
@@ -714,7 +717,8 @@ int main(int argc, const char *argv[])
             // write headers
             if (outputHasAudio)
             {
-                auto audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), audioProcessing.getDecodingSteps());
+                const auto bpm = options.bpm ? options.bpm.value : 0;
+                auto audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), bpm, audioProcessing.getDecodingSteps());
                 IO::Vid2h::writeAudioHeader(binFile, fileDataInfo, audioHeader);
             }
             if (outputHasVideo)

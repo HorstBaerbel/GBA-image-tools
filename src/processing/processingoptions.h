@@ -67,6 +67,7 @@ public:
     static OptionT<uint32_t> sampleRateHz;
     static OptionT<Audio::ChannelFormat> channelFormat;
     static OptionT<Audio::SampleFormat> sampleFormat;
+    static OptionT<double> bpm;
     static Option adpcm;
 
     // Meta data options

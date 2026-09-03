@@ -40,7 +40,7 @@ namespace IO::Vid2h
     auto createVideoHeader(const Image::FrameInfo &imageInfo, uint32_t videoNrOfFrames, double videoFrameRateHz, uint32_t videoMemoryNeeded, uint32_t videoNrOfColorMapFrames, const std::vector<Image::ProcessingType> &decodingSteps) -> VideoHeader;
 
     /// @brief Create audio header
-    auto createAudioHeader(const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded, const std::vector<Audio::ProcessingType> &decodingSteps) -> AudioHeader;
+    auto createAudioHeader(const Audio::FrameInfo &audioInfo, uint32_t audioNrOfFrames, uint32_t audioNrOfSamples, int32_t audioOffsetSamples, uint32_t audioMemoryNeeded, double bpm, const std::vector<Audio::ProcessingType> &decodingSteps) -> AudioHeader;
 
     /// @brief Create subtitles header
     auto createSubtitlesHeader(uint32_t subtitlesNrOfFrames) -> SubtitlesHeader;

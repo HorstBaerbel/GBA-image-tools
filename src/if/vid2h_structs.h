@@ -37,7 +37,7 @@ namespace IO::Vid2h
         uint8_t sampleBits = 0;               // Audio sample bit depth (8, 16), always a signed data type
         int16_t offsetSamples = 0;            // Audio offset in comparison to video in # of samples
         uint16_t memoryNeeded = 0;            // Max. intermediate memory needed to decompress an audio frame. 0 if data can be directly written to destination (single compression stage)
-        uint16_t dummy = 0;                   // Padding so size is multiple of 4
+        uint16_t bpm = 0;                     // Tempo / bpm of file as 9.7 fixed-point
         Audio::ProcessingType processing[4] = // Audio processing steps. See audio/processingtypes.h
             {Audio::ProcessingType::Invalid, Audio::ProcessingType::Invalid, Audio::ProcessingType::Invalid, Audio::ProcessingType::Invalid};
     } __attribute__((packed));

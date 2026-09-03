@@ -52,6 +52,7 @@ namespace Media
             REQUIRE(m_audioHeader.sampleBits == 8 || m_audioHeader.sampleBits == 16 || m_audioHeader.sampleBits == 32, std::runtime_error, "Number of audio samples must 8, 16 or or 32");
             m_info.audioSampleFormat = Audio::findSampleFormat(m_audioHeader.sampleBits, true);
             m_info.audioOffsetS = static_cast<double>(m_audioHeader.offsetSamples) / static_cast<double>(m_audioHeader.sampleRateHz);
+            m_info.audioBpm = static_cast<double>(m_audioHeader.bpm) / 128.0;
         }
         // read video info
         if (m_fileDataInfo.contentType & IO::FileType::Video)
