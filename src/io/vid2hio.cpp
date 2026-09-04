@@ -84,7 +84,7 @@ namespace IO::Vid2h
         outHeader.offsetSamples = audioOffsetSamples;
         REQUIRE(audioMemoryNeeded <= std::numeric_limits<uint16_t>::max(), std::runtime_error, "Audio memory needed must be <= " << std::numeric_limits<uint16_t>::max());
         outHeader.memoryNeeded = audioMemoryNeeded;
-        REQUIRE(bpm >= 1 && bpm <= 512, std::runtime_error, "Bpm must be in [1.0, 512.0]");
+        REQUIRE(bpm >= 0 && bpm <= 512, std::runtime_error, "Bpm must be in [0.0, 512.0]");
         outHeader.bpm = static_cast<uint16_t>(std::round(bpm * 128.0));
         REQUIRE(decodingSteps.size() <= 4, std::runtime_error, "Number of decoding steps must be <= 4");
         std::memcpy(outHeader.processing, decodingSteps.data(), decodingSteps.size());
