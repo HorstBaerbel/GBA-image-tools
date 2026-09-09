@@ -15,10 +15,8 @@ namespace Video
     class Dxtv
     {
     public:
-        static constexpr std::pair<int32_t, int32_t> CurrMotionHOffset{-((1 << DxtvConstants::BLOCK_MOTION_BITS) / 2 - 1), (1 << DxtvConstants::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for current frame for 8, 4
-        static constexpr std::pair<int32_t, int32_t> CurrMotionVOffset{-((1 << DxtvConstants::BLOCK_MOTION_BITS) / 2 - 1), 0};                                           // Block position search offsets for current frame for 8, 4
-        static constexpr std::pair<int32_t, int32_t> PrevMotionHOffset{-((1 << DxtvConstants::BLOCK_MOTION_BITS) / 2 - 1), (1 << DxtvConstants::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
-        static constexpr std::pair<int32_t, int32_t> PrevMotionVOffset{-((1 << DxtvConstants::BLOCK_MOTION_BITS) / 2 - 1), (1 << DxtvConstants::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for previous frame for 8, 4
+        static constexpr std::pair<int32_t, int32_t> MaxMotionHOffset{-((1 << DxtvConstants::BLOCK_MOTION_BITS) / 2 - 1), (1 << DxtvConstants::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for 8x8, 4x4
+        static constexpr std::pair<int32_t, int32_t> MaxMotionVOffset{-((1 << DxtvConstants::BLOCK_MOTION_BITS) / 2 - 1), (1 << DxtvConstants::BLOCK_MOTION_BITS) / 2}; // Block position search offsets for 8x8, 4x4
 
         using CodeBook8x8 = CodeBook<Color::XRGB8888, DxtvConstants::BLOCK_MAX_DIM>; // Code book for storing 8x8 RGB pixel blocks
 

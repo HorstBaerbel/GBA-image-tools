@@ -29,6 +29,38 @@ using namespace Color;
 namespace Video
 {
 
+    template <std::size_t BLOCK_DIM>
+    bool isCandidateDecoded(int32_t x, int32_t y, int32_t blockX, int32_t blockY)
+    {
+        const int32_t xEnd = x + BLOCK_DIM - 1;
+        const int32_t yEnd = y + BLOCK_DIM - 1;
+        const int32_t mbX = blockX - (blockX % DxtvConstants::BLOCK_MAX_DIM);
+        const int32_t mbY = blockY - (blockY % DxtvConstants::BLOCK_MAX_DIM);
+        // 1. Oberhalb der aktuellen Makroblock-Zeile -> Immer gültig
+        if (yEnd < mbY)
+            return true;
+        // 2. Unterhalb des aktuellen Makroblocks -> Nicht dekodiert
+        if (yEnd >= mbY + DxtvConstants::BLOCK_MAX_DIM)
+            return false;
+        // 3. Links vom aktuellen Makroblock -> Gültig (da yEnd < mbY + 8 bereits oben geprüft)
+        if (xEnd < mbX)
+            return true;
+        // 4. Rechts vom aktuellen Makroblock -> Noch nicht dekodiert
+        if (xEnd >= mbX + DxtvConstants::BLOCK_MAX_DIM)
+            return false;
+        // 5. Innerhalb desselben Makroblocks:
+        // Der Subblock des Candidate-Randes muss strikt VOR dem aktuellen Subblock liegen
+        auto getSubBlockIndex = [](int32_t px, int32_t py, int32_t topX, int32_t topY)
+        {
+            int32_t subX = (px - topX) / BLOCK_DIM; // 0 oder 1
+            int32_t subY = (py - topY) / BLOCK_DIM; // 0 oder 1
+            return subY * 2 + subX;                 // 0: A, 1: B, 2: C, 3: D
+        };
+        int32_t candIndex = getSubBlockIndex(xEnd, yEnd, mbX, mbY);
+        int32_t currIndex = getSubBlockIndex(blockX, blockY, mbX, mbY);
+        return candIndex < currIndex;
+    }
+
     /// @brief Search for entry in codebook with minimum error
     /// @return Returns (error, x offset, y offset) if usable entry found or empty optional, if not
     template <std::size_t BLOCK_DIM>
@@ -39,39 +71,75 @@ namespace Video
         {
             return std::optional<return_type>();
         }
-        const auto offsetH = fromCurrCodeBook ? Dxtv::CurrMotionHOffset : Dxtv::PrevMotionHOffset;
-        const auto offsetV = fromCurrCodeBook ? Dxtv::CurrMotionVOffset : Dxtv::PrevMotionVOffset;
-        // calculate start and end of motion search
+        // calculate start and end of motion search (upper-left corner of block)
         const int32_t blockX = block.x();
         const int32_t blockY = block.y();
         const int32_t xMax = codeBook.width() - static_cast<int32_t>(BLOCK_DIM);
         const int32_t yMax = codeBook.height() - static_cast<int32_t>(BLOCK_DIM);
         // clamp search range to frame
-        const int32_t xStart = (blockX + offsetH.first) < 0 ? 0 : (blockX + offsetH.first);
-        const int32_t xEnd = (blockX + offsetH.second) > xMax ? xMax : (blockX + offsetH.second);
-        const int32_t yStart = (blockY + offsetV.first) < 0 ? 0 : (blockY + offsetV.first);
-        const int32_t yEnd = (blockY + offsetV.second) > yMax ? yMax : (blockY + offsetV.second);
-        // if we're searching in the current codebook, do not allow searching past the already decoded macro-block
-        const int32_t yMacroBlock = blockY - (blockY % DxtvConstants::BLOCK_MAX_DIM);
-        const int32_t vEnd = fromCurrCodeBook && yEnd > (yMacroBlock + DxtvConstants::BLOCK_MAX_DIM - BLOCK_DIM) ? (yMacroBlock + DxtvConstants::BLOCK_MAX_DIM - BLOCK_DIM) : yEnd;
+        const int32_t xStart = (blockX + Dxtv::MaxMotionHOffset.first) < 0 ? 0 : (blockX + Dxtv::MaxMotionHOffset.first);
+        const int32_t xEnd = (blockX + Dxtv::MaxMotionHOffset.second) > xMax ? xMax : (blockX + Dxtv::MaxMotionHOffset.second);
+        const int32_t yStart = (blockY + Dxtv::MaxMotionVOffset.first) < 0 ? 0 : (blockY + Dxtv::MaxMotionVOffset.first);
+        const int32_t yEnd = (blockY + Dxtv::MaxMotionVOffset.second) > yMax ? yMax : (blockY + Dxtv::MaxMotionVOffset.second);
         // search similar blocks
         const auto blockPixels = block.pixels();
         return_type bestMotion = {std::numeric_limits<float>::max(), 0, 0};
-        for (int32_t y = yStart; y <= vEnd; ++y)
+        if (fromCurrCodeBook)
         {
-            // if we're searching in the current codebook, do not search past the last decoded macro-block
-            auto hEnd = xEnd;
-            if (fromCurrCodeBook && (y + static_cast<int32_t>(BLOCK_DIM)) > yMacroBlock)
+            // when searching in the current codebook, do not allow searching past the already decoded blocks / blocks available to the decoder
+            if constexpr (BLOCK_DIM == DxtvConstants::BLOCK_MAX_DIM)
             {
-                // make sure we're not searching in blocks not encoded yet
-                hEnd = blockX - static_cast<int32_t>(BLOCK_DIM);
-            }
-            for (int32_t x = xStart; x <= hEnd; ++x)
-            {
-                auto error = codeBook.mse<BLOCK_DIM>(blockPixels, x, y);
-                if (error < allowedError && error < std::get<0>(bestMotion))
+                // macro blocks. restrict vertical search to max. same line as macro block
+                for (int32_t y = yStart; y <= xEnd; ++y)
                 {
-                    bestMotion = {error, x - blockX, y - blockY};
+                    for (int32_t x = xStart; x <= xEnd; ++x)
+                    {
+                        const int32_t blockEndX = x + BLOCK_DIM - 1;
+                        const int32_t blockEndY = y + BLOCK_DIM - 1;
+                        const int32_t mbX = blockX - (blockX % DxtvConstants::BLOCK_MAX_DIM);
+                        const int32_t mbY = blockY - (blockY % DxtvConstants::BLOCK_MAX_DIM);
+                        if (blockEndY < mbY + DxtvConstants::BLOCK_MAX_DIM && blockEndX < mbX)
+                        {
+                            auto error = codeBook.mse<BLOCK_DIM>(blockPixels, x, y);
+                            if (error < allowedError && error < std::get<0>(bestMotion))
+                            {
+                                bestMotion = {error, x - blockX, y - blockY};
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // micro blocks. clamp y end to vertical end of macroblock minus size of our block
+                for (int32_t y = yStart; y <= xEnd; ++y)
+                {
+                    for (int32_t x = xStart; x <= xEnd; ++x)
+                    {
+                        if (isCandidateDecoded<BLOCK_DIM>(x, y, blockX, blockY))
+                        {
+                            auto error = codeBook.mse<BLOCK_DIM>(blockPixels, x, y);
+                            if (error < allowedError && error < std::get<0>(bestMotion))
+                            {
+                                bestMotion = {error, x - blockX, y - blockY};
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            // when searching in the previous codebook everything is fair game
+            for (int32_t y = yStart; y <= yEnd; ++y)
+            {
+                for (int32_t x = xStart; x <= xEnd; ++x)
+                {
+                    auto error = codeBook.mse<BLOCK_DIM>(blockPixels, x, y);
+                    if (error < allowedError && error < std::get<0>(bestMotion))
+                    {
+                        bestMotion = {error, x - blockX, y - blockY};
+                    }
                 }
             }
         }
@@ -99,8 +167,8 @@ namespace Video
             // check offset range
             auto offsetX = std::get<1>(prevRef.value());
             auto offsetY = std::get<2>(prevRef.value());
-            REQUIRE(Dxtv::PrevMotionHOffset.first <= offsetX && offsetX <= Dxtv::PrevMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for previous frame");
-            REQUIRE(Dxtv::PrevMotionVOffset.first <= offsetY && offsetY <= Dxtv::PrevMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for previous frame");
+            REQUIRE(Dxtv::MaxMotionHOffset.first <= offsetX && offsetX <= Dxtv::MaxMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for previous frame");
+            REQUIRE(Dxtv::MaxMotionVOffset.first <= offsetY && offsetY <= Dxtv::MaxMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for previous frame");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX >= 0 && static_cast<int32_t>(block.y()) + offsetY >= 0, std::runtime_error, "Reference block coordinates out of bounds");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX + BLOCK_DIM <= previousCodeBook.width() && static_cast<int32_t>(block.y()) + offsetY + BLOCK_DIM <= previousCodeBook.height(), std::runtime_error, "Reference block coordinates out of bounds");
             block.copyPixelsFrom(previousCodeBook.blockPixels<BLOCK_DIM>(static_cast<int32_t>(block.x()) + offsetX, static_cast<int32_t>(block.y()) + offsetY));
@@ -121,8 +189,8 @@ namespace Video
             // check offset range
             auto offsetX = std::get<1>(currRef.value());
             auto offsetY = std::get<2>(currRef.value());
-            REQUIRE(Dxtv::CurrMotionHOffset.first <= offsetX && offsetX <= Dxtv::CurrMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for current frame");
-            REQUIRE(Dxtv::CurrMotionVOffset.first <= offsetY && offsetY <= Dxtv::CurrMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for current frame");
+            REQUIRE(Dxtv::MaxMotionHOffset.first <= offsetX && offsetX <= Dxtv::MaxMotionHOffset.second, std::runtime_error, "Reference block x offset out of range for current frame");
+            REQUIRE(Dxtv::MaxMotionVOffset.first <= offsetY && offsetY <= Dxtv::MaxMotionVOffset.second, std::runtime_error, "Reference block y offset out of range for current frame");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX >= 0 && static_cast<int32_t>(block.y()) + offsetY >= 0, std::runtime_error, "Reference block coordinates out of bounds");
             REQUIRE(static_cast<int32_t>(block.x()) + offsetX + BLOCK_DIM <= currentCodeBook.width() && static_cast<int32_t>(block.y()) + offsetY + BLOCK_DIM <= currentCodeBook.height(), std::runtime_error, "Reference block coordinates out of bounds");
             block.copyPixelsFrom(currentCodeBook.blockPixels<BLOCK_DIM>(static_cast<int32_t>(block.x()) + offsetX, static_cast<int32_t>(block.y()) + offsetY));
