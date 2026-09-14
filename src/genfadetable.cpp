@@ -16,9 +16,10 @@
 #include <iostream>
 #include <type_traits>
 
-#include <cxxopts/include/cxxopts.hpp>
+#include "cxxopts/include/cxxopts.hpp"
+#include "glob/single_include/glob/glob.hpp"
 
-std::string m_inFile;
+std::vector<std::string> m_inFile;
 std::string m_outFile;
 Color::Format m_outformat = Color::Format::Unknown;
 uint32_t m_imgcolors = 0;
@@ -45,13 +46,13 @@ bool readArguments(int argc, const char *argv[])
 {
     try
     {
-        cxxopts::Options opts("genfadetable", "Generate a paletted image and fade table in RGB555, RGB565 and BGR555, BGR565 for GBA / NDS");
+        cxxopts::Options opts("genfadetable", "Generate paletted image(s) and fade table in RGB555, RGB565 and BGR555, BGR565 for GBA / NDS");
         opts.add_option("", {"h,help", "Print help"});
         opts.add_option("", {"imgcolors", "Number of colors reserved for image, e.g. \"imgcolors=16\" in [1,255]", cxxopts::value<uint32_t>()});
         opts.add_option("", {"outcolors", "Number of output colors / color map size, e.g. \"outcolors=128\" in [1,255]", cxxopts::value<uint32_t>()});
         opts.add_option("", {"outformat", "Set output color format (direct pixel color / color map) to RGB565, RGB555, BGR565 or BGR555", cxxopts::value<std::string>()});
         opts.add_option("", {"fadeamount", "How much to fade per step, e.g. \"fadeamount=2\" in [1,8]", cxxopts::value<uint32_t>()});
-        opts.add_option("", {"infile", "Input file, e.g. \"foo.png\"", cxxopts::value<std::string>()});
+        opts.add_option("", {"infile", "Input file(s), e.g. \"foo.png\"", cxxopts::value<std::vector<std::string>>()});
         opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
         opts.parse_positional({"infile", "outname"});
         auto result = opts.parse(argc, argv);
@@ -68,12 +69,30 @@ bool readArguments(int argc, const char *argv[])
         // get input file(s)
         if (result.count("infile"))
         {
-            m_inFile = result["infile"].as<std::string>();
-            // make sure input file exist
-            if (!std::filesystem::exists(m_inFile))
+            m_inFile = result["infile"].as<std::vector<std::string>>();
+            // get last positional argument as output file / name
+            if (m_outFile.empty())
             {
-                std::cout << "Input file \"" << m_inFile << "\" does not exist!" << std::endl;
-                return false;
+                m_outFile = m_inFile.back();
+                m_inFile.resize(m_inFile.size() - 1);
+            }
+            // check if the name contains possible wildcard characters
+            if (m_inFile.size() == 1 && m_inFile.front().find_first_of("*?![]") != std::string::npos)
+            {
+                // resolve wildcards in input files
+                auto filePaths = glob::glob(m_inFile);
+                m_inFile.clear();
+                std::transform(filePaths.cbegin(), filePaths.cend(), std::back_inserter(m_inFile), [](const auto &p)
+                               { return p.string(); });
+            }
+            // make sure all input files exist
+            for (const auto &fileName : m_inFile)
+            {
+                if (!std::filesystem::exists(fileName))
+                {
+                    std::cout << "Input file \"" << fileName << "\" does not exist!" << std::endl;
+                    return false;
+                }
             }
         }
         else
@@ -170,13 +189,10 @@ auto fadeColor(Color::XRGB8888 color0, Color::XRGB8888 color1, const uint32_t fa
 }
 
 template <typename OUT_FORMAT>
-auto buildFadeTable(const Image::ImageData &img, const std::vector<Color::XRGB8888> &colorSpaceMap, uint32_t targetColorMapSize, const uint32_t fadeAmount = 1) -> std::pair<std::vector<Color::XRGB8888>, std::vector<uint8_t>>
+auto buildFadeTable(const std::vector<Color::XRGB8888> &imgColorMap, const std::vector<Color::XRGB8888> &colorSpaceMap, uint32_t targetColorMapSize, const uint32_t fadeAmount = 1) -> std::pair<std::vector<Color::XRGB8888>, std::vector<uint8_t>>
 {
-    REQUIRE(img.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Input pixel format must be 8-bit paletted");
-    REQUIRE(img.colorMap().format() == Color::Format::XRGB8888, std::runtime_error, "Input color map format must be XRGB8888");
     // add initial colors to queue of colors to process
     std::deque<Color::XRGB8888> colorQueue;
-    const auto imgColorMap = img.colorMap().convertData<Color::XRGB8888>();
     std::copy(imgColorMap.cbegin(), imgColorMap.cend(), std::back_inserter(colorQueue));
     // generate all possible combinations of mixed colors
     // we generate new colors by:
@@ -235,7 +251,8 @@ auto buildFadeTable(const Image::ImageData &img, const std::vector<Color::XRGB88
                    { return entry.first; });
     // build table that maps two input colors to one output color
     std::map<uint16_t, uint8_t> fadeMap;
-    for (uint32_t index0 = 0; index0 < finalColorMap.size(); ++index0)
+#pragma omp parallel for
+    for (int index0 = 0; index0 < static_cast<int>(finalColorMap.size()); index0++)
     {
         const auto color0 = finalColorMap[index0];
         for (uint32_t index1 = 0; index1 < finalColorMap.size(); ++index1)
@@ -255,7 +272,10 @@ auto buildFadeTable(const Image::ImageData &img, const std::vector<Color::XRGB88
             }
             // store new color index
             auto colorsHash = (static_cast<uint16_t>(index0) << 8) | static_cast<uint16_t>(index1);
-            fadeMap[colorsHash] = bestIndex;
+#pragma omp critical
+            {
+                fadeMap[colorsHash] = bestIndex;
+            }
         }
     }
     // fill index map for the whole of the 16-bit space. empty colors map to first entry / transparent / backdrop
@@ -265,6 +285,51 @@ auto buildFadeTable(const Image::ImageData &img, const std::vector<Color::XRGB88
         indexMap[fadeEntry.first] = fadeEntry.second;
     }
     return {finalColorMap, indexMap};
+}
+
+std::vector<Image::Frame> readImages(const std::vector<std::string> &fileNames)
+{
+    Color::Format commonImgFormat = Color::Format::Unknown;
+    Image::DataSize commonImgSize = {0, 0};
+    std::vector<Image::Frame> images;
+    // open first image and store type
+    auto ifIt = fileNames.cbegin();
+    while (ifIt != fileNames.cend())
+    {
+        std::cout << "Reading " << *ifIt;
+        Image::Frame img;
+        try
+        {
+            img = IO::File::readImage(*ifIt);
+        }
+        catch (const std::runtime_error &e)
+        {
+            THROW(std::runtime_error, "Failed to read image: " << e.what());
+        }
+        const auto imgSize = img.info.size;
+        std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
+        const auto imgFormat = img.data.pixels().format();
+        std::cout << Color::formatInfo(imgFormat).name;
+        const auto imgIsIndexed = img.data.pixels().isIndexed();
+        if (ifIt == fileNames.cbegin())
+        {
+            // set type and size of first image
+            commonImgFormat = imgFormat;
+            commonImgSize = imgSize;
+        }
+        else
+        {
+            // check type and size
+            REQUIRE(commonImgFormat == imgFormat, std::runtime_error, "Image color formats do not match");
+            REQUIRE(commonImgSize == imgSize, std::runtime_error, "Image sizes do not match");
+        }
+        img.index = static_cast<uint32_t>(std::distance(fileNames.cbegin(), ifIt));
+        img.fileName = *ifIt;
+        images.push_back(img);
+        ifIt++;
+        std::cout << std::endl;
+    }
+    return images;
 }
 
 int main(int argc, const char *argv[])
@@ -291,23 +356,8 @@ int main(int argc, const char *argv[])
         // set up number of cores for parallel processing
         const auto nrOfProcessors = omp_get_num_procs();
         omp_set_num_threads(nrOfProcessors);
-        // read image
-        std::cout << "Reading " << m_inFile;
-        Image::Frame img;
-        try
-        {
-            img = IO::File::readImage(m_inFile);
-        }
-        catch (const std::runtime_error &e)
-        {
-            THROW(std::runtime_error, "Failed to read image: " << e.what());
-        }
-        const auto imgSize = img.info.size;
-        std::cout << " -> " << imgSize.width() << "x" << imgSize.height() << ", ";
-        const auto imgFormat = img.data.pixels().format();
-        std::cout << Color::formatInfo(imgFormat).name;
-        const auto imgIsIndexed = img.data.pixels().isIndexed();
-        std::cout << std::endl;
+        // read image(s) from disk
+        auto inImages = readImages(m_inFile);
         // add palette conversion using a RGB555 or RGB565 reference color map
         std::vector<Color::XRGB8888> colorSpaceMap;
         switch (m_outformat)
@@ -321,31 +371,49 @@ int main(int argc, const char *argv[])
         default:
             colorSpaceMap = ColorHelpers::buildColorMapFor(m_outformat);
         }
-        // ----- convert output image to paletted -----
+        // ----- convert output image(s) to paletted -----
+        // combine all images into one
+        std::cout << "Combining images..." << std::endl;
+        const auto [inPixels, inStartIndices] = combineRawPixelData<Color::XRGB8888>(inImages, false);
         // use cluster fit to find optimum color mapping
+        std::cout << "Building common color map (this might take some time)..." << std::endl;
         ColorFit<Color::XRGB8888> colorFit(colorSpaceMap);
-        const auto srcPixels = img.data.pixels().data<Color::XRGB8888>();
-        const auto colorMapping = colorFit.reduceColors(srcPixels, m_imgcolors);
+        const auto colorMapping = colorFit.reduceColors(inPixels, m_imgcolors);
         REQUIRE(colorMapping.size() > 0 && m_imgcolors >= colorMapping.size(), std::runtime_error, "Unexpected number of mapped colors");
-        // convert image to paletted possibly using dithering
-        Image::ImageData finalImg;
-        switch (m_quantizationMethod)
+        // apply color map to all images
+        std::cout << "Converting images..." << std::endl;
+        std::vector<Image::Frame> finalImages(inImages.size());
+#pragma omp parallel for
+        for (int di = 0; di < static_cast<int>(inImages.size()); di++)
         {
-        case Image::Quantization::Method::ClosestColor:
-            finalImg = Image::Quantization::quantizeClosest(img.data, colorMapping);
-            break;
-        case Image::Quantization::Method::AtkinsonDither:
-            finalImg = Image::Quantization::atkinsonDither(img.data, img.info.size.width(), img.info.size.height(), colorMapping);
-            break;
-        default:
-            THROW(std::runtime_error, "Unsupported quantization method " << Image::Quantization::toString(m_quantizationMethod));
+            // convert image to paletted using dithering
+            const auto &d = inImages.at(di);
+            auto r = d;
+            switch (m_quantizationMethod)
+            {
+            case Image::Quantization::Method::ClosestColor:
+                r.data = Image::Quantization::quantizeClosest(d.data, colorMapping);
+                break;
+            case Image::Quantization::Method::AtkinsonDither:
+                r.data = Image::Quantization::atkinsonDither(d.data, d.info.size.width(), d.info.size.height(), colorMapping);
+                break;
+            default:
+                THROW(std::runtime_error, "Unsupported quantization method " << Image::Quantization::toString(m_quantizationMethod));
+            }
+            REQUIRE(r.data.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted return image");
+            r.info.pixelFormat = r.data.pixels().format();
+            r.info.colorMapFormat = r.data.colorMap().format();
+            r.info.nrOfColorMapEntries = r.data.colorMap().size();
+            finalImages.at(di) = r;
         }
-        REQUIRE(finalImg.pixels().format() == Color::Format::Paletted8, std::runtime_error, "Expected 8-bit paletted return image");
         // ----- create fade table -----
+        std::cout << "Building fade table..." << std::endl;
+        const auto quantizedColorMap = finalImages.front().data.colorMap().convertData<Color::XRGB8888>();
         const bool outFormat565 = m_outformat == Color::Format::RGB565 || m_outformat == Color::Format::BGR565;
-        const auto [colorMap32, indexMap] = outFormat565 ? buildFadeTable<Color::RGB565>(finalImg, colorSpaceMap, m_outcolors, m_fadeAmount) : buildFadeTable<Color::XRGB1555>(finalImg, colorSpaceMap, m_outcolors, m_fadeAmount);
+        const auto [colorMap32, indexMap] = outFormat565 ? buildFadeTable<Color::RGB565>(quantizedColorMap, colorSpaceMap, m_outcolors, m_fadeAmount) : buildFadeTable<Color::XRGB1555>(quantizedColorMap, colorSpaceMap, m_outcolors, m_fadeAmount);
         // ----- convert color map to output format -----
         const Image::PixelData finalColorMap = Image::PixelData(colorMap32, Color::Format::XRGB8888).convertTo(m_outformat);
+        auto finalImage0 = finalImages.front();
         // write output images
         if (!m_dryRun)
         {
@@ -366,17 +434,20 @@ int main(int argc, const char *argv[])
                     hFile << "// Note that the _Alignas specifier will need C11, as a workaround use __attribute__((aligned(4)))" << std::endl
                           << std::endl;
                     // output image data info
-                    hFile << "// Data is bitmap, pixel format: " << Color::formatInfo(finalImg.pixels().format()).name;
+                    hFile << "// Data is bitmap, pixel format: " << Color::formatInfo(finalImage0.data.pixels().format()).name;
                     if (finalColorMap.format() != Color::Format::Unknown)
                     {
                         hFile << ", color map format: " << Color::formatInfo(finalColorMap.format()).name;
                     }
                     hFile << std::endl
                           << std::endl;
+                    // convert image data to uint32_ts
+                    auto [imageData32, imageOrSpriteStartIndices] = Image::combineRawPixelData<uint32_t>(finalImages, false);
+                    // make sure we have the correct number of images
+                    const uint32_t nrOfImages = imageOrSpriteStartIndices.size();
                     // output image data
-                    const auto imageData32 = DataHelpers::convertTo<uint32_t>(finalImg.pixels().convertDataToRaw());
-                    IO::Text::writeImageInfoToH(hFile, varName, imageData32, imgSize.width(), imgSize.height(), finalImg.pixels().rawSize(), 1, false);
-                    IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, {}, false);
+                    IO::Text::writeImageInfoToH(hFile, varName, imageData32, finalImage0.info.size.width(), finalImage0.info.size.height(), finalImage0.data.pixels().rawSize(), nrOfImages, false);
+                    IO::Text::writeImageDataToC(cFile, varName, baseName, imageData32, imageOrSpriteStartIndices, false);
                     if (finalColorMap.format() != Color::Format::Unknown)
                     {
                         const auto paletteData8 = finalColorMap.convertDataToRaw();
@@ -386,8 +457,7 @@ int main(int argc, const char *argv[])
                     hFile << std::endl;
                     // output fade table info
                     hFile << "// This table maps two 8-bit palette entries i0 (src pixel color) and i1 (dest pixel color) to a new palette entry io:" << std::endl;
-                    hFile << "// io = fadetable[(i0 << 8) | i1]" << std::endl
-                          << std::endl;
+                    hFile << "// io = fadetable[(i0 << 8) | i1]" << std::endl;
                     // output fade table data
                     const auto indexMap32 = DataHelpers::convertTo<uint32_t>(indexMap);
                     IO::Text::writeTableInfoToH(hFile, varName + "_INDEXMAP", indexMap32, indexMap.size());
@@ -410,6 +480,7 @@ int main(int argc, const char *argv[])
                 return 1;
             }
         }
+        std::cout << "Done" << std::endl;
     }
     catch (const std::runtime_error &e)
     {
