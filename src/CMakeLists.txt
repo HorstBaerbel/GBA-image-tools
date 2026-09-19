@@ -69,6 +69,7 @@ list(APPEND GENFADETABLE_SRC
     image/quantizationmethod.cpp
     image/imageio.cpp
     io/textio.cpp
+    processing/datahelpers.cpp
     ${LIBPLUM_INCLUDE_DIR}/libplum.c
 )
 
