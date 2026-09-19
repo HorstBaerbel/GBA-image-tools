@@ -150,7 +150,7 @@ namespace Media
                     m_state->audioTimeBase = stream->time_base;
                     m_state->audioNrOfFrames = stream->nb_frames;
                     m_state->audioDuration = stream->duration;
-                    m_state->audioStartTime = stream->start_time;
+                    m_state->audioStartTime = stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time;
                     REQUIRE(codecParams->ch_layout.nb_channels > 0, std::runtime_error, "Number of audio channels must be > 0");
                     av_channel_layout_copy(&m_state->audioOutChannelLayout, codecParams->ch_layout.nb_channels == 1 ? &MonoLayout : &StereoLayout);
                     m_state->audioOutSampleRate = codecParams->sample_rate;
