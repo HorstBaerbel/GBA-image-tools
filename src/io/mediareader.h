@@ -28,7 +28,7 @@ namespace Media
             IO::FileType fileType = IO::FileType::Unknown;
             // ----- video -----
             uint32_t videoNrOfFrames = 0; // Number of all video frames (must not be the same as audio frames)
-            double videoFrameRateHz = 0;  // Vide frame rate in Hz
+            double videoFrameRateHz = 0;  // Video frame rate in Hz
             double videoDurationS = 0;    // Video runtime in s
             std::string videoCodecName;
             uint32_t videoStreamIndex = 0;

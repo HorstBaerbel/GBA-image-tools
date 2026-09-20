@@ -228,14 +228,22 @@ namespace Media
             m_info.videoHeight = static_cast<uint32_t>(m_state->videoHeight);
             m_info.videoNrOfFrames = static_cast<uint64_t>(m_state->videoNrOfFrames);
             m_info.videoDurationS = static_cast<double>(m_state->videoDuration) * static_cast<double>(m_state->videoTimeBase.num) / static_cast<double>(m_state->videoTimeBase.den);
-            m_info.videoFrameRateHz = m_state->videoFrameRateHz;
+            m_info.videoFrameRateHz = std::isnan(m_state->videoFrameRateHz) ? 0 : m_state->videoFrameRateHz;
             m_info.videoPixelFormat = Color::Format::XRGB8888;
             m_info.videoColorMapFormat = Color::Format::Unknown;
         }
         if (m_state->audioStreamIndex >= 0 && m_state->audioCodec != nullptr)
         {
             m_info.fileType = static_cast<IO::FileType>(static_cast<uint8_t>(m_info.fileType) | IO::FileType::Audio);
-            m_info.audioNrOfFrames = static_cast<uint32_t>(m_state->audioNrOfFrames);
+            // if this is a audio-only file and reports 0 frames, it has only "one"
+            if (m_state->videoStreamIndex <= 0 && m_state->videoCodec == nullptr && m_state->audioNrOfFrames <= 0)
+            {
+                m_info.audioNrOfFrames = 1;
+            }
+            else
+            {
+                m_info.audioNrOfFrames = static_cast<uint32_t>(m_state->audioNrOfFrames);
+            }
             m_info.audioNrOfSamples = static_cast<uint32_t>(m_state->audioDuration);
             m_info.audioDurationS = static_cast<double>(m_state->audioDuration) * static_cast<double>(m_state->audioTimeBase.num) / static_cast<double>(m_state->audioTimeBase.den);
             m_info.audioCodecName = m_state->audioCodecName;
