@@ -7,6 +7,7 @@ Call img2h like this: ```img2h FORMAT OUTFORMAT [CONVERSION] [IMAGE COMPRESSION]
 * ```FORMAT``` is mandatory and means the color format to convert the input image(s) to:
   * ```--blackwhite=T``` - Convert frame to b/w paletted image with two colors according to a brightness threshold ```T``` [0, 1].
   * ```--paletted=N``` - Convert frame to paletted image with specified number of colors ```N``` [2, 256].
+  * ```--commonpalette=N``` - Convert images to a paletted image with a common palette of ```N``` colors using dithering. ```N``` [2, 256].
   * ```--truecolor=F``` - Convert frame to true-color image format ```F``` [```RGB888```, ```RGB565``` or ```RGB555```].
   * ```--outformat=F``` - Set final output color format ```F``` [```RGB888```, ```RGB565```, ```RGB555```, ```BGR888```, ```BGR565``` or ```BGR555```].
 * ```OUTFORMAT``` is mandatory and is the final output pixel or color map format:
