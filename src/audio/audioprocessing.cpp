@@ -35,6 +35,11 @@ namespace Audio
         const auto outChannelFormat = VariantHelpers::getValue<ChannelFormat, 0>(parameters);
         const auto outSampleRateHz = VariantHelpers::getValue<uint32_t, 1>(parameters);
         const auto outSampleFormat = VariantHelpers::getValue<SampleFormat, 2>(parameters);
+        // return if we have an empty input frame and do not want to flush buffers
+        if (isEmpty(frame) && !flushBuffers)
+        {
+            return {};
+        }
         // resample data
         if (processing.m_resampler == nullptr)
         {
@@ -54,7 +59,11 @@ namespace Audio
         {
             processing.m_sampleBuffer = std::make_shared<SampleBuffer>(frame.info.channelFormat, frame.info.sampleRateHz, frame.info.sampleFormat);
         }
-        processing.m_sampleBuffer->push_back(frame);
+        // only add the frame if not empty
+        if (!isEmpty(frame.data))
+        {
+            processing.m_sampleBuffer->push_back(frame);
+        }
         if (flushBuffers)
         {
             // flush buffer. check if we have audio samples left
@@ -99,6 +108,11 @@ namespace Audio
         // get parameter(s)
         REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZ4_40 expects a bool VRAMcompatible parameter");
         const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
+        // return if we have an empty input frame and do not want to flush buffers
+        if (isEmpty(frame))
+        {
+            return {};
+        }
         // compress data
         auto result = frame;
         result.data = Compression::encodeLZ4_40(AudioHelpers::toRawData(result.data, result.info.channelFormat), vramCompatible);
@@ -117,6 +131,11 @@ namespace Audio
         // get parameter(s)
         REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressLZSS_10 expects a bool VRAMcompatible parameter");
         const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
+        // return if we have an empty input frame and do not want to flush buffers
+        if (isEmpty(frame))
+        {
+            return {};
+        }
         // compress data
         auto result = frame;
         result.data = Compression::encodeLZSS_10(AudioHelpers::toRawData(result.data, result.info.channelFormat), vramCompatible);
@@ -132,6 +151,11 @@ namespace Audio
 
     std::optional<Frame> Processing::compressRANS_50(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
     {
+        // return if we have an empty input frame and do not want to flush buffers
+        if (isEmpty(frame))
+        {
+            return {};
+        }
         // compress data
         auto result = frame;
         result.data = Compression::encodeRANS_50(AudioHelpers::toRawData(result.data, result.info.channelFormat));
@@ -150,6 +174,11 @@ namespace Audio
         // get parameter(s)
         REQUIRE(VariantHelpers::hasTypes<bool>(parameters), std::runtime_error, "compressRLE expects a bool VRAMcompatible parameter");
         const auto vramCompatible = VariantHelpers::getValue<bool, 0>(parameters);
+        // return if we have an empty input frame and do not want to flush buffers
+        if (isEmpty(frame))
+        {
+            return {};
+        }
         // compress data
         auto result = frame;
         // result.data = RLE::encodeRLE(frame.data, vramCompatible);
@@ -159,6 +188,11 @@ namespace Audio
 
     std::optional<Frame> Processing::compressADPCM(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics)
     {
+        // return if we have an empty input frame and do not want to flush buffers
+        if (isEmpty(frame))
+        {
+            return {};
+        }
         // compress data
         if (processing.m_codecAdpcm == nullptr)
         {
@@ -218,12 +252,12 @@ namespace Audio
 
     void Processing::reset()
     {
-        m_nrOfInputFrames = 0;
-        m_nrOfOutputFrames = 0;
+        m_nrOfInputSamples = 0;
         m_nrOfOutputSamples = 0;
         m_outputFrameInfo = FrameInfo();
         m_resampler.reset();
         m_sampleBuffer.reset();
+        m_outputProcessedSize = 0;
         m_outputMaxMemoryNeeded = 0;
         m_sampleDeltaPrevFrame = 0;
         for (std::size_t si = 0; si < m_steps.size(); si++)
@@ -273,55 +307,61 @@ namespace Audio
         return result;
     }
 
-    std::optional<Frame> Processing::processStream(const Frame &frame, bool flushBuffers, Statistics::Container::SPtr statistics)
+    std::vector<Frame> Processing::processStream(const Frame &frame, bool flushBuffers, Statistics::Container::SPtr statistics)
     {
-        m_nrOfInputFrames++;
-        bool finalStepFound = false;
+        m_nrOfInputSamples += AudioHelpers::nrOfSamples(frame.data, frame.info.channelFormat);
         Frame processed = frame;
-        processed.nrOfSamples = flushBuffers ? 0 : AudioHelpers::nrOfSamples(processed.data, processed.info.channelFormat);
-        auto frameStatistics = statistics != nullptr ? statistics->addFrame() : nullptr;
-        for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
+        std::vector<Frame> outputFrames;
+        bool frameOutput = false;
+        do
         {
-            const uint32_t inputSize = AudioHelpers::rawDataSize(processed.data);
-            auto stepStatistics = stepIt->addStatistics ? frameStatistics : nullptr;
-            const auto &stepFunc = stepIt->function.func;
-            if (std::holds_alternative<ConvertFunc>(stepFunc))
+            processed.nrOfSamples = flushBuffers ? 0 : AudioHelpers::nrOfSamples(processed.data, processed.info.channelFormat);
+            auto frameStatistics = statistics != nullptr ? statistics->addFrame() : nullptr;
+            for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
             {
-                auto convertFunc = std::get<ConvertFunc>(stepFunc);
-                auto result = convertFunc(*this, processed, stepIt->parameters, flushBuffers, stepStatistics);
-                // check if we got an output frame, else report to the caller
-                if (!result.has_value())
+                frameOutput = false;
+                auto stepStatistics = stepIt->addStatistics ? frameStatistics : nullptr;
+                const auto &stepFunc = stepIt->function.func;
+                if (std::holds_alternative<ConvertFunc>(stepFunc))
                 {
-                    return {};
+                    auto convertFunc = std::get<ConvertFunc>(stepFunc);
+                    auto result = convertFunc(*this, processed, stepIt->parameters, flushBuffers, stepStatistics);
+                    processed = result ? result.value() : Frame();
+                    frameOutput = result ? true : false;
                 }
-                processed = result.value();
+                else if (std::holds_alternative<ConvertStateFunc>(stepFunc))
+                {
+                    auto convertFunc = std::get<ConvertStateFunc>(stepFunc);
+                    auto result = convertFunc(*this, processed, stepIt->parameters, stepIt->state, flushBuffers, stepStatistics);
+                    processed = result ? result.value() : Frame();
+                    frameOutput = result ? true : false;
+                }
+                // we're silently ignoring OperationType::BatchInput ::BatchConvert and ::Reduce operations here
+                if (frameOutput)
+                {
+                    // record max. memory needed for everything, but the first step
+                    auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : AudioHelpers::rawDataSize(processed.data) + sizeof(uint32_t);
+                    processed.info.maxMemoryNeeded = (processed.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.info.maxMemoryNeeded;
+                }
             }
-            else if (std::holds_alternative<ConvertStateFunc>(stepFunc))
+            // check if we have produced frames this iteration
+            if (frameOutput)
             {
-                auto convertFunc = std::get<ConvertStateFunc>(stepFunc);
-                auto result = convertFunc(*this, processed, stepIt->parameters, stepIt->state, flushBuffers, stepStatistics);
-                // check if we got an output frame, else report to the caller
-                if (!result)
-                {
-                    return {};
-                }
-                processed = result.value();
+                m_outputProcessedSize += AudioHelpers::rawDataSize(processed.data);
+                m_outputMaxMemoryNeeded = m_outputMaxMemoryNeeded < processed.info.maxMemoryNeeded ? processed.info.maxMemoryNeeded : m_outputMaxMemoryNeeded;
+                m_nrOfOutputSamples += processed.nrOfSamples;
+                m_outputFrameInfo = processed.info;
+                processed.index = m_nrOfOutputFrames++;
+                outputFrames.push_back(processed);
             }
-            // we're silently ignoring OperationType::BatchInput ::BatchConvert and ::Reduce operations here
-            // record max. memory needed for everything, but the first step
-            auto chunkMemoryNeeded = stepIt == m_steps.begin() ? 0 : AudioHelpers::rawDataSize(processed.data) + sizeof(uint32_t);
-            processed.info.maxMemoryNeeded = (processed.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.info.maxMemoryNeeded;
-        }
-        m_outputMaxMemoryNeeded = m_outputMaxMemoryNeeded < processed.info.maxMemoryNeeded ? processed.info.maxMemoryNeeded : m_outputMaxMemoryNeeded;
-        m_nrOfOutputSamples += processed.nrOfSamples;
-        m_outputFrameInfo = processed.info;
-        processed.index = m_nrOfOutputFrames++;
-        return processed;
+            processed = Frame();
+        } while (frameOutput);
+        return outputFrames;
     }
 
-    uint32_t Processing::nrOfInputFrames() const
+    uint32_t Processing::nrOfInputSamples() const
     {
-        return m_nrOfInputFrames;
+        return m_nrOfInputSamples;
     }
 
     uint32_t Processing::nrOfOutputFrames() const
@@ -332,6 +372,11 @@ namespace Audio
     uint32_t Processing::nrOfOutputSamples() const
     {
         return m_nrOfOutputSamples;
+    }
+
+    uint32_t Processing::outputProcessedSize() const
+    {
+        return m_outputProcessedSize;
     }
 
     uint32_t Processing::outputMaxMemoryNeeded() const

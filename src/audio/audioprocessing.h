@@ -50,11 +50,11 @@ namespace Audio
         /// @param statistics Statistics container to write statistics to
         /// @return Returns a frame when the pipeline can output one. Due to buffering this might not be 1:1.
         /// Call the function until even after flushing the stream with an empty frame nor frames are returned: !processStream(Audio::Frame(), true);
-        std::optional<Frame> processStream(const Frame &frame, bool flushBuffers = false, Statistics::Container::SPtr statistics = nullptr);
+        std::vector<Frame> processStream(const Frame &frame, bool flushBuffers = false, Statistics::Container::SPtr statistics = nullptr);
 
-        /// @brief Get number of frames received in processStream()
-        /// @return Number of frames received in processStream()
-        uint32_t nrOfInputFrames() const;
+        /// @brief Get number of samples received in processStream()
+        /// @return Number of samples received in processStream()
+        uint32_t nrOfInputSamples() const;
 
         /// @brief Get number of frames returned from processStream()
         /// @return Number of frames returned from processStream()
@@ -63,6 +63,10 @@ namespace Audio
         /// @brief Get number of output samples returned from processStream()
         /// @return Number of output samples returned from processStream()
         uint32_t nrOfOutputSamples() const;
+
+        /// @brief Get size of output data
+        /// @return Output data size in bytes
+        uint32_t outputProcessedSize() const;
 
         /// @brief Get max. memory needed to keep intermediate processing results
         /// @return Max. memory needed to keep intermediate processing results
@@ -153,9 +157,10 @@ namespace Audio
         /// @param parameters "Modulo value" as uint32_t. The audio data will be padded to a multiple of this
         static std::optional<Frame> padAudioData(Processing &processing, const Frame &frame, const std::vector<Parameter> &parameters, bool flushBuffers, Statistics::Frame::SPtr statistics);
 
-        uint32_t m_nrOfInputFrames = 0;               // Number of frames input into processing
+        uint32_t m_nrOfInputSamples = 0;              // Number of samples input into processing
         uint32_t m_nrOfOutputFrames = 0;              // Number of frames output from processing
         uint32_t m_nrOfOutputSamples = 0;             // Number of samples output from processing
+        uint32_t m_outputProcessedSize = 0;           // Size of processed / output data
         uint32_t m_outputMaxMemoryNeeded = 0;         // Max. buffer size needed for decompression
         FrameInfo m_outputFrameInfo;                  // Frame info from last frame output from processStream()
         std::shared_ptr<Resampler> m_resampler;       // Audio resampler using FFmpeg

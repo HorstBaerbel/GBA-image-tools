@@ -32,6 +32,8 @@ std::string m_inFile;
 std::string m_outFile;
 ProcessingOptions options;
 
+// ----- Command line parsing ---------------------------------------------------------------------
+
 std::string getCommandLine(int argc, const char *argv[])
 {
     std::string result;
@@ -46,49 +48,54 @@ std::string getCommandLine(int argc, const char *argv[])
     return result;
 }
 
-bool readArguments(int argc, const char *argv[])
+auto parseCommandline(int argc, const char *argv[]) -> cxxopts::ParseResult
+{
+    cxxopts::Options opts("vid2h", "Convert and compress a video file to .h / .c files or a binary file");
+    opts.add_option("", {"h,help", "Print help"});
+    opts.add_option("", options.audio.cxxOption);
+    opts.add_option("", options.video.cxxOption);
+    opts.add_option("", options.blackWhite.cxxOption);
+    opts.add_option("", options.paletted.cxxOption);
+    opts.add_option("", options.truecolor.cxxOption);
+    opts.add_option("", options.outformat.cxxOption);
+    opts.add_option("", options.addColor0.cxxOption);
+    opts.add_option("", options.moveColor0.cxxOption);
+    opts.add_option("", options.shiftIndices.cxxOption);
+    opts.add_option("", options.pruneIndices.cxxOption);
+    opts.add_option("", options.sprites.cxxOption);
+    opts.add_option("", options.tiles.cxxOption);
+    opts.add_option("", options.deltaImage.cxxOption);
+    opts.add_option("", options.delta8.cxxOption);
+    opts.add_option("", options.delta16.cxxOption);
+    opts.add_option("", options.dxt.cxxOption);
+    opts.add_option("", options.dxtv.cxxOption);
+    // opts.add_option("", options.gvid.cxxOption);
+    // opts.add_option("", options.rle.cxxOption);
+    opts.add_option("", options.lz4.cxxOption);
+    opts.add_option("", options.lz10.cxxOption);
+    opts.add_option("", options.vram.cxxOption);
+    opts.add_option("", options.channelFormat.cxxOption);
+    opts.add_option("", options.sampleFormat.cxxOption);
+    opts.add_option("", options.sampleRateHz.cxxOption);
+    opts.add_option("", options.bpm.cxxOption);
+    opts.add_option("", options.adpcm.cxxOption);
+    opts.add_option("", options.subtitlesFile.cxxOption);
+    opts.add_option("", options.metaFile.cxxOption);
+    opts.add_option("", options.metaString.cxxOption);
+    opts.add_option("", options.frameRate.cxxOption);
+    opts.add_option("", options.printStats.cxxOption);
+    opts.add_option("", options.dryRun.cxxOption);
+    opts.add_option("", options.outputStats.cxxOption);
+    opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
+    opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
+    opts.parse_positional({"infile", "outname"});
+    return opts.parse(argc, argv);
+}
+
+auto readGeneralOptions(const cxxopts::ParseResult &result) -> bool
 {
     try
     {
-        cxxopts::Options opts("vid2h", "Convert and compress a video file to .h / .c files or a binary file");
-        opts.add_option("", {"h,help", "Print help"});
-        opts.add_option("", options.audio.cxxOption);
-        opts.add_option("", options.video.cxxOption);
-        opts.add_option("", options.blackWhite.cxxOption);
-        opts.add_option("", options.paletted.cxxOption);
-        opts.add_option("", options.truecolor.cxxOption);
-        opts.add_option("", options.outformat.cxxOption);
-        opts.add_option("", options.addColor0.cxxOption);
-        opts.add_option("", options.moveColor0.cxxOption);
-        opts.add_option("", options.shiftIndices.cxxOption);
-        opts.add_option("", options.pruneIndices.cxxOption);
-        opts.add_option("", options.sprites.cxxOption);
-        opts.add_option("", options.tiles.cxxOption);
-        opts.add_option("", options.deltaImage.cxxOption);
-        opts.add_option("", options.delta8.cxxOption);
-        opts.add_option("", options.delta16.cxxOption);
-        opts.add_option("", options.dxt.cxxOption);
-        opts.add_option("", options.dxtv.cxxOption);
-        // opts.add_option("", options.gvid.cxxOption);
-        // opts.add_option("", options.rle.cxxOption);
-        opts.add_option("", options.lz4.cxxOption);
-        opts.add_option("", options.lz10.cxxOption);
-        opts.add_option("", options.vram.cxxOption);
-        opts.add_option("", options.channelFormat.cxxOption);
-        opts.add_option("", options.sampleFormat.cxxOption);
-        opts.add_option("", options.sampleRateHz.cxxOption);
-        opts.add_option("", options.bpm.cxxOption);
-        opts.add_option("", options.adpcm.cxxOption);
-        opts.add_option("", options.subtitlesFile.cxxOption);
-        opts.add_option("", options.metaFile.cxxOption);
-        opts.add_option("", options.metaString.cxxOption);
-        opts.add_option("", options.printStats.cxxOption);
-        opts.add_option("", options.dryRun.cxxOption);
-        opts.add_option("", options.outputStats.cxxOption);
-        opts.add_option("", {"infile", "Input video file to convert, e.g. \"foo.avi\"", cxxopts::value<std::string>()});
-        opts.add_option("", {"outname", "Output file and variable name, e.g \"foo\". This will name the output files \"foo.h\" and \"foo.c\" and variable names will start with \"FOO_\"", cxxopts::value<std::string>()});
-        opts.parse_positional({"infile", "outname"});
-        auto result = opts.parse(argc, argv);
         // check if help was requested
         if (result.count("h"))
         {
@@ -140,6 +147,37 @@ bool readArguments(int argc, const char *argv[])
             std::cerr << "Can only add a file OR string meta data to output" << std::endl;
             return false;
         }
+        options.frameRate.parse(result);
+    }
+    catch (const cxxopts::exceptions::parsing &e)
+    {
+        std::cerr << "Argument error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+auto readAudioOptions(const cxxopts::ParseResult &result) -> bool
+{
+    try
+    {
+        options.channelFormat.parse(result);
+        options.sampleFormat.parse(result);
+        options.sampleRateHz.parse(result);
+        options.bpm.parse(result);
+    }
+    catch (const cxxopts::exceptions::parsing &e)
+    {
+        std::cerr << "Argument error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+auto readVideoOptions(const cxxopts::ParseResult &result) -> bool
+{
+    try
+    {
         options.blackWhite.parse(result);
         options.paletted.parse(result);
         options.truecolor.parse(result);
@@ -166,10 +204,6 @@ bool readArguments(int argc, const char *argv[])
         options.pruneIndices.parse(result);
         options.sprites.parse(result);
         options.dxtv.parse(result);
-        options.channelFormat.parse(result);
-        options.sampleFormat.parse(result);
-        options.sampleRateHz.parse(result);
-        options.bpm.parse(result);
     }
     catch (const cxxopts::exceptions::parsing &e)
     {
@@ -232,6 +266,7 @@ void printUsage()
     std::cout << "OUTNAME.c will be generated. All variables will begin with the base name " << std::endl;
     std::cout << "portion of OUTNAME." << std::endl;
     std::cout << "Misc options (all optional):" << std::endl;
+    std::cout << options.frameRate.helpString() << std::endl;
     std::cout << options.printStats.helpString() << std::endl;
     std::cout << options.dryRun.helpString() << std::endl;
     std::cout << options.outputStats.helpString() << std::endl;
@@ -241,6 +276,8 @@ void printUsage()
     std::cout << "Note: Multi-channel audio will be converted to stereo and sample bit depth will " << std::endl;
     std::cout << "be converted to 16 bit" << std::endl;
 }
+
+// ----- Processing pipeline ---------------------------------------------------------------------
 
 auto buildImageProcessing(const ProcessingOptions &opts) -> Image::Processing
 {
@@ -374,6 +411,7 @@ auto buildImageProcessing(const ProcessingOptions &opts) -> Image::Processing
 
 auto buildAudioProcessing(const ProcessingOptions &opts, const Media::Reader::MediaInfo &mediaInfo) -> Audio::Processing
 {
+    // check what out final sample rate and output formats are
     Audio::Processing audioProcessing;
     const auto audioOutSampleRateHz = opts.sampleRateHz ? opts.sampleRateHz.value : mediaInfo.audioSampleRateHz;
     const auto audioOutChannelFormat = opts.channelFormat ? opts.channelFormat.value : mediaInfo.audioChannelFormat;
@@ -382,14 +420,17 @@ auto buildAudioProcessing(const ProcessingOptions &opts, const Media::Reader::Me
         const auto audioOutSampleFormat = opts.sampleFormat ? opts.sampleFormat.value : mediaInfo.audioSampleFormat;
         audioProcessing.addStep(Audio::ProcessingType::Resample, {audioOutChannelFormat, audioOutSampleRateHz, audioOutSampleFormat});
     }
+    // if the media file has video, but we do not process video, we can still use the video frame rate
+    // if the media file does NOT have video, there is no frame rate info, so the user must specify a frameRate
+    REQUIRE(mediaInfo.videoFrameRateHz > 0 || options.frameRate.isSet, std::runtime_error, "No frame rate information available. Must specify a frameRate");
     // ----- build audio processing pipeline - frame sample packaging
     // We need to provide enough samples for one frame of video at the video frame rate
     // We also need to make sure audio frames size requirements are met:
     // * Multiple of 16 int8_t samples per channel for GBA audio playback (sound DMA always copies 16 * int8_t when buffer drains)
     // * Multiple of 4 bytes per channel for NDS audio playback
     // This can result in the buffer size varying between frames, otherwise the buffer would grow during playback
-    const double audioOutSamplesPerFrame = audioOutSampleRateHz / mediaInfo.videoFrameRateHz; // Number of audio samples per channel needed per frame of video
-    const uint32_t audioOutSamplesModuloPerFrame = 16 * (audioOutChannelFormat == Audio::ChannelFormat::Stereo ? 2 : 1); // Modulo value for audio sample count per frame of video
+    const double audioOutSamplesPerFrame = audioOutSampleRateHz / (mediaInfo.videoFrameRateHz > 0 ? mediaInfo.videoFrameRateHz : options.frameRate.value); // Number of audio sample count per channel needed per frame of audio
+    const uint32_t audioOutSamplesModuloPerFrame = 16 * (audioOutChannelFormat == Audio::ChannelFormat::Stereo ? 2 : 1);                                   // Modulo value for audio sample count per frame of audio
     audioProcessing.addStep(Audio::ProcessingType::Repackage, {audioOutSamplesPerFrame, audioOutSamplesModuloPerFrame});
     // build audio processing pipeline - audio compression
     if (opts.adpcm)
@@ -436,15 +477,50 @@ auto buildMetaData(const ProcessingOptions &opts) -> std::vector<uint8_t>
     return metaData;
 }
 
+// ----- Helpers ---------------------------------------------------------------------
+
+auto printByteSize(const std::string &s, const double size, bool perSecond = false) -> void
+{
+    std::cout << s;
+    if (size < 1024)
+    {
+        std::cout << std::fixed << std::setprecision(2) << size << " Byte";
+    }
+    else if (size < 1024 * 1024)
+    {
+        std::cout << std::fixed << std::setprecision(2) << size / 1024 << " kB";
+    }
+    else if (size < 1024 * 1024 * 1024)
+    {
+        std::cout << std::fixed << std::setprecision(2) << size / (1024 * 1024) << " MB";
+    }
+    else
+    {
+        std::cout << std::fixed << std::setprecision(2) << size / (1024 * 1024 * 1024) << " GB";
+    }
+    std::cout << (perSecond ? "/s" : "") << std::endl;
+}
+
+// ----- Main ---------------------------------------------------------------------
+
 int main(int argc, const char *argv[])
 {
     try
     {
+        // set up number of cores for parallel processing
+        const auto nrOfProcessors = omp_get_num_procs();
+        omp_set_num_threads(nrOfProcessors);
         // check arguments
-        if (argc < 3 || !readArguments(argc, argv))
+        if (argc < 3)
         {
             printUsage();
             return 2;
+        }
+        // parse command line and read file arguments first
+        auto result = parseCommandline(argc, argv);
+        if (!readGeneralOptions(result))
+        {
+            return 1;
         }
         // check input and output
         if (m_inFile.empty())
@@ -457,10 +533,7 @@ int main(int argc, const char *argv[])
             std::cerr << "No output name passed. Aborting." << std::endl;
             return 1;
         }
-        // set up number of cores for parallel processing
-        const auto nrOfProcessors = omp_get_num_procs();
-        omp_set_num_threads(nrOfProcessors);
-        // fire up video reader and open video file
+        // open media file
         Media::FFmpegReader mediaReader;
         Media::Reader::MediaInfo mediaInfo;
         bool sourceHasVideo = false;
@@ -486,7 +559,7 @@ int main(int argc, const char *argv[])
         }
         catch (const std::runtime_error &e)
         {
-            std::cerr << "Failed to open video file: " << e.what() << std::endl;
+            std::cerr << "Failed to open media file: " << e.what() << std::endl;
             return 1;
         }
         // check if processing makes sense
@@ -500,10 +573,17 @@ int main(int argc, const char *argv[])
             std::cerr << "Chose not to output audio, but source has no video. Output would be empty. Exiting..." << std::endl;
             return 1;
         }
+        // now that we've determined if we have video / audio and the user wants video / audio, build processing
+        const bool outputVideo = sourceHasVideo && options.video;
+        const bool outputAudio = sourceHasAudio && options.audio;
         // ----- build image processing pipeline - input -----
         Image::Processing videoProcessing;
-        if (options.video)
+        if (outputVideo)
         {
+            if (!readVideoOptions(result))
+            {
+                return 1;
+            }
             videoProcessing = buildImageProcessing(options);
             // print image processing pipeline configuration
             const auto imageProcessingDesc = videoProcessing.getProcessingDescription();
@@ -515,8 +595,12 @@ int main(int argc, const char *argv[])
         }
         // ----- build audio processing pipeline - input -----
         Audio::Processing audioProcessing;
-        if (options.audio)
+        if (outputAudio)
         {
+            if (!readAudioOptions(result))
+            {
+                return 1;
+            }
             audioProcessing = buildAudioProcessing(options, mediaInfo);
             // print audio processing pipeline configuration
             const auto audioProcessingDesc = audioProcessing.getProcessingDescription();
@@ -527,7 +611,7 @@ int main(int argc, const char *argv[])
             std::cout << "Ignoring audio. Won't add audio to output" << std::endl;
         }
         // ----- read subtitles -----
-        bool outputHasSubtitles = false;
+        bool outputSubtitles = false;
         std::vector<Subtitles::Frame> subtitles;
         if (options.subtitlesFile)
         {
@@ -543,7 +627,7 @@ int main(int argc, const char *argv[])
                     std::cout << "Warning: Subtitle #" << subtitle.index << " exceeds max. subtitle length of " << Subtitles::MaxSubTitleLength << std::endl;
                 }
             }
-            outputHasSubtitles = true;
+            outputSubtitles = true;
         }
         // ----- get meta data -----
         const auto metaData = buildMetaData(options);
@@ -552,8 +636,6 @@ int main(int argc, const char *argv[])
             std::cout << "Adding " << metaData.size() << " Bytes of meta data to output" << std::endl;
         }
         // check if we want to write output files
-        const bool outputHasVideo = (mediaInfo.fileType & IO::FileType::Video) && options.video;
-        const bool outputHasAudio = (mediaInfo.fileType & IO::FileType::Audio) && options.audio;
         IO::Vid2h::FileDataInfo fileDataInfo;
         std::ofstream binFile;
         if (!options.dryRun)
@@ -565,7 +647,7 @@ int main(int argc, const char *argv[])
                 std::cout << "Writing output file " << m_outFile << ".bin" << std::endl;
                 try
                 {
-                    const auto contentType = static_cast<IO::FileType>((outputHasVideo ? IO::FileType::Video : IO::FileType::Unknown) | (outputHasAudio ? IO::FileType::Audio : IO::FileType::Unknown) | (outputHasSubtitles ? IO::FileType::Subtitles : IO::FileType::Unknown));
+                    const auto contentType = static_cast<IO::FileType>((outputVideo ? IO::FileType::Video : IO::FileType::Unknown) | (outputAudio ? IO::FileType::Audio : IO::FileType::Unknown) | (outputSubtitles ? IO::FileType::Subtitles : IO::FileType::Unknown));
                     fileDataInfo = IO::Vid2h::writeFileHeader(binFile, contentType);
                 }
                 catch (const std::runtime_error &e)
@@ -586,11 +668,11 @@ int main(int argc, const char *argv[])
         if (options.outputStats)
         {
             std::vector<std::string> types;
-            if (outputHasAudio)
+            if (outputAudio)
             {
                 types.push_back("audio");
             }
-            if (outputHasVideo)
+            if (outputVideo)
             {
                 types.push_back("video");
             }
@@ -599,32 +681,25 @@ int main(int argc, const char *argv[])
         // create statistics window
         Statistics::Window window(2 * mediaInfo.videoWidth, 2 * mediaInfo.videoHeight, "vid2h");
         auto statistics = window.getStatisticsContainer();
-        // process media frames
+        // ----- process media frames -----
         uint32_t lastProgress = 0;
         auto startTime = std::chrono::steady_clock::now();
-        // Video info
-        uint32_t videoFrameIndex = 0;         // Index of last frame processed
-        uint64_t videoOutCompressedSize = 0;  // Combined size of compressed video data
-        uint32_t videoOutMaxMemoryNeeded = 0; // Maximum memory needed for decoding video frames
-        Image::FrameInfo videoOutInfo;        // Information about video from media decoder
-        // Audio info
-        uint64_t audioOutCompressedSize = 0; // Combined size of compressed audio data
         int32_t audioFirstFrameOffset = 0;   // Offset of first audio frame in samples
         // Subtitles info
         uint32_t subtitleFrameIndex = 0; // Index of last processed subtitle
-        while (videoFrameIndex < mediaInfo.videoNrOfFrames && audioProcessing.nrOfInputFrames() < mediaInfo.audioNrOfFrames)
+        while ((!outputVideo || videoProcessing.nrOfInputFrames() < mediaInfo.videoNrOfFrames) && (!outputAudio || audioProcessing.nrOfInputSamples() < mediaInfo.audioNrOfSamples))
         {
             const auto inFrame = mediaReader.readFrame();
             // check if EOF
             if (inFrame.frameType == IO::FrameType::Unknown)
             {
-                REQUIRE(!outputHasVideo || videoFrameIndex == (mediaInfo.videoNrOfFrames - 1), std::runtime_error, "Expected " << mediaInfo.videoNrOfFrames << " video frames, but got " << videoFrameIndex);
-                REQUIRE(!outputHasAudio || audioProcessing.nrOfInputFrames() == (mediaInfo.audioNrOfFrames - 1), std::runtime_error, "Expected " << mediaInfo.audioNrOfFrames << " audio frames, but got " << audioProcessing.nrOfInputFrames());
+                REQUIRE(!outputVideo || videoProcessing.nrOfInputFrames() == (mediaInfo.videoNrOfFrames - 1), std::runtime_error, "Expected " << mediaInfo.videoNrOfFrames << " video frames, but got " << videoProcessing.nrOfInputFrames());
+                REQUIRE(!outputAudio || audioProcessing.nrOfInputSamples() == mediaInfo.audioNrOfSamples, std::runtime_error, "Expected " << mediaInfo.audioNrOfSamples << " audio samples, but got " << audioProcessing.nrOfInputSamples());
                 break;
             }
             // check if we need to store a subtitle frame
             // we do this before adding the actual frame, because its present time might already be higher
-            if (outputHasSubtitles && subtitleFrameIndex < subtitles.size())
+            if (outputSubtitles && subtitleFrameIndex < subtitles.size())
             {
                 const auto &subtitle = subtitles[subtitleFrameIndex];
                 if (inFrame.presentTimeInS >= subtitle.startTimeS)
@@ -638,40 +713,38 @@ int main(int argc, const char *argv[])
                 }
             }
             // check if image frame
-            if (inFrame.frameType == IO::FrameType::Pixels && outputHasVideo)
+            if (inFrame.frameType == IO::FrameType::Pixels && outputVideo)
             {
                 const auto &inImage = std::get<std::vector<Color::XRGB8888>>(inFrame.data);
                 REQUIRE(inImage.size() == mediaInfo.videoWidth * mediaInfo.videoHeight, std::runtime_error, "Unexpected image size");
                 // build internal image from pixels and apply processing
                 const Image::FrameInfo imageInfo = {{mediaInfo.videoWidth, mediaInfo.videoHeight}, Color::Format::Unknown, Color::Format::Unknown, 0, 0};
                 const Image::MapInfo mapInfo = {{0, 0}, {}};
-                const auto outFrame = videoProcessing.processStream(Image::Frame{videoFrameIndex, "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, inImage, mapInfo}, statistics);
-                videoOutCompressedSize += outFrame.data.pixels().rawSize() + (options.paletted ? outFrame.data.colorMap().rawSize() : 0);
-                videoOutMaxMemoryNeeded = videoOutMaxMemoryNeeded < outFrame.info.maxMemoryNeeded ? outFrame.info.maxMemoryNeeded : videoOutMaxMemoryNeeded;
-                videoOutInfo = outFrame.info;
-                // write image to file
-                if (!options.dryRun && binFile.is_open())
-                {
-                    IO::Vid2h::writeFrame(binFile, outFrame);
-                }
-                ++videoFrameIndex;
-                // write output statistics
-                if (options.outputStats)
-                {
-                    auto compressed = outFrame.data.pixels().convertDataToRaw();
-                    statisticsWriter.writeFrame("video", compressed);
-                }
-            }
-            // check if audio frame
-            else if (inFrame.frameType == IO::FrameType::Audio && outputHasAudio)
-            {
-                // build audio frame from sample data
-                const Audio::Frame audioFrame = {audioProcessing.nrOfInputFrames(), "", {mediaInfo.audioSampleRateHz, mediaInfo.audioChannelFormat, mediaInfo.audioSampleFormat, false, 0}, std::get<std::vector<int16_t>>(inFrame.data), 0};
-                const auto outFrameOpt = audioProcessing.processStream(audioFrame, false, statistics);
+                const auto outFrameOpt = videoProcessing.processStream(Image::Frame{videoProcessing.nrOfInputFrames(), "", Image::DataType(Image::DataType::Flags::Bitmap), imageInfo, inImage, mapInfo}, false, statistics);
                 if (outFrameOpt.has_value())
                 {
                     const auto &outFrame = outFrameOpt.value();
-                    audioOutCompressedSize += AudioHelpers::rawDataSize(outFrame.data);
+                    // write image to file
+                    if (!options.dryRun && binFile.is_open())
+                    {
+                        IO::Vid2h::writeFrame(binFile, outFrame);
+                    }
+                    // write output statistics
+                    if (options.outputStats)
+                    {
+                        auto compressed = outFrame.data.pixels().convertDataToRaw();
+                        statisticsWriter.writeFrame("video", compressed);
+                    }
+                }
+            }
+            // check if audio frame
+            else if (inFrame.frameType == IO::FrameType::Audio && outputAudio)
+            {
+                // build audio frame from sample data
+                const Audio::Frame audioFrame = {0, "", {mediaInfo.audioSampleRateHz, mediaInfo.audioChannelFormat, mediaInfo.audioSampleFormat, false, 0}, std::get<std::vector<int16_t>>(inFrame.data), 0};
+                const auto outFrames = audioProcessing.processStream(audioFrame, false, statistics);
+                for (const auto &outFrame : outFrames)
+                {
                     // write samples to file
                     if (!options.dryRun && binFile.is_open())
                     {
@@ -686,47 +759,52 @@ int main(int argc, const char *argv[])
                 }
             }
             // calculate progress
-            const uint32_t newProgress = ((100 * videoFrameIndex) / mediaInfo.videoNrOfFrames);
+            const auto processed = videoProcessing.nrOfInputFrames() + audioProcessing.nrOfInputSamples();
+            const uint32_t newProgress = ((100 * processed) / (mediaInfo.videoNrOfFrames + mediaInfo.audioNrOfSamples));
             if (lastProgress != newProgress)
             {
                 lastProgress = newProgress;
                 const auto newTime = std::chrono::steady_clock::now();
                 const auto timePassedMs = std::chrono::duration<double>(newTime - startTime);
-                const auto fps = static_cast<double>(videoFrameIndex) / timePassedMs.count();
-                const auto restS = (mediaInfo.videoNrOfFrames - videoFrameIndex) / fps;
+                const auto fps = static_cast<double>(processed) / timePassedMs.count();
+                const auto restS = ((mediaInfo.videoNrOfFrames + mediaInfo.audioNrOfSamples) - processed) / fps;
                 std::cout << std::fixed << std::setprecision(1) << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
             }
             // update statistics
             window.update();
         }
         // flush remaining buffers
-        auto outFrameOpt = audioProcessing.processStream(Audio::Frame(), true, statistics);
-        if (outFrameOpt.has_value())
+        const auto outFrames = audioProcessing.processStream(Audio::Frame(), true, statistics);
+        for (const auto &outFrame : outFrames)
         {
-            const auto &outFrame = outFrameOpt.value();
-            audioOutCompressedSize += AudioHelpers::rawDataSize(outFrame.data);
             // write samples to file
             if (!options.dryRun && binFile.is_open())
             {
                 IO::Vid2h::writeFrame(binFile, outFrame);
             }
+            // write output statistics
+            if (options.outputStats)
+            {
+                auto compressed = AudioHelpers::toRawData(outFrame.data, outFrame.info.channelFormat);
+                statisticsWriter.writeFrame("audio", compressed);
+            }
         }
-        // write final file header to start of stream
+        // ----- write final file header to start of stream -----
         if (!options.dryRun && binFile.is_open())
         {
             // write headers
-            if (outputHasAudio)
+            if (outputAudio)
             {
                 const auto bpm = options.bpm ? options.bpm.value : 0;
                 auto audioHeader = IO::Vid2h::createAudioHeader(audioProcessing.outputFrameInfo(), audioProcessing.nrOfOutputFrames(), audioProcessing.nrOfOutputSamples(), audioFirstFrameOffset, audioProcessing.outputMaxMemoryNeeded(), bpm, audioProcessing.getDecodingSteps());
                 IO::Vid2h::writeAudioHeader(binFile, fileDataInfo, audioHeader);
             }
-            if (outputHasVideo)
+            if (outputVideo)
             {
-                auto videoHeader = IO::Vid2h::createVideoHeader(videoOutInfo, mediaInfo.videoNrOfFrames, mediaInfo.videoFrameRateHz, videoOutMaxMemoryNeeded, 0, videoProcessing.getDecodingSteps());
+                auto videoHeader = IO::Vid2h::createVideoHeader(videoProcessing.outputFrameInfo(), videoProcessing.nrOfOutputFrames(), mediaInfo.videoFrameRateHz, videoProcessing.outputMaxMemoryNeeded(), 0, videoProcessing.getDecodingSteps());
                 IO::Vid2h::writeVideoHeader(binFile, fileDataInfo, videoHeader);
             }
-            if (outputHasSubtitles)
+            if (outputSubtitles)
             {
                 auto subtitlesHeader = IO::Vid2h::createSubtitlesHeader(subtitleFrameIndex);
                 IO::Vid2h::writeSubtitlesHeader(binFile, fileDataInfo, subtitlesHeader);
@@ -739,24 +817,26 @@ int main(int argc, const char *argv[])
             binFile.close();
         }
         // output some info about data
-        if (outputHasVideo)
+        if (outputVideo)
         {
             const auto videoInputSize = mediaInfo.videoWidth * mediaInfo.videoHeight * 3 * mediaInfo.videoNrOfFrames;
             std::cout << "Video:" << std::endl;
-            std::cout << "  Video input size: " << static_cast<double>(videoInputSize) / (1024 * 1024) << " MB" << std::endl;
-            std::cout << "  Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(videoOutCompressedSize) / (1024 * 1024) << " MB" << std::endl;
-            std::cout << "  Avg. bit rate: " << std::fixed << std::setprecision(2) << (static_cast<double>(videoOutCompressedSize) / 1024) / mediaInfo.videoDurationS << " kB/s" << std::endl;
-            std::cout << "  Avg. frame size: " << videoOutCompressedSize / mediaInfo.videoNrOfFrames << " Byte" << std::endl;
-            std::cout << "  Max. intermediate memory for decompression: " << videoOutMaxMemoryNeeded << " Byte" << std::endl;
+            printByteSize("  Raw size (True-color RGB888): ", videoInputSize);
+            printByteSize("  Compressed size: ", videoProcessing.outputProcessedSize());
+            printByteSize("  Avg. bit rate: ", videoProcessing.outputProcessedSize() / mediaInfo.videoDurationS, true);
+            printByteSize("  Avg. frame size: ", videoProcessing.outputProcessedSize() / mediaInfo.videoNrOfFrames);
+            std::cout << "  Max. intermediate memory for decompression: " << videoProcessing.outputMaxMemoryNeeded() << " Byte" << std::endl;
         }
-        if (outputHasAudio)
+        if (outputAudio)
         {
             std::cout << "Audio:" << std::endl;
-            std::cout << "  Compressed size: " << std::fixed << std::setprecision(2) << static_cast<double>(audioOutCompressedSize) / (1024 * 1024) << " MB" << std::endl;
-            std::cout << "  Avg. frame size: " << audioOutCompressedSize / audioProcessing.nrOfOutputFrames() << " Byte" << std::endl;
+            printByteSize("  Raw size (16 bit PCM): ", mediaInfo.audioNrOfSamples * formatInfo(mediaInfo.audioChannelFormat).nrOfChannels * 2);
+            printByteSize("  Compressed size: ", audioProcessing.outputProcessedSize());
+            printByteSize("  Avg. bit rate: ", audioProcessing.outputProcessedSize() / mediaInfo.audioDurationS, true);
+            printByteSize("  Avg. frame size: ", audioProcessing.outputProcessedSize() / audioProcessing.nrOfOutputFrames());
             std::cout << "  Max. intermediate memory for decompression: " << audioProcessing.outputMaxMemoryNeeded() << " Byte" << std::endl;
         }
-        if (outputHasSubtitles)
+        if (outputSubtitles)
         {
             std::cout << "Subtitles:" << std::endl;
             std::cout << "  Wrote " << subtitleFrameIndex << " subtitle frames to output" << std::endl;

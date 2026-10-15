@@ -285,7 +285,7 @@ namespace Media
                 av_packet_unref(m_state->packet);
                 continue;
             }
-            // try to send packet to vaudio or video codec
+            // try to send packet to audio or video codec
             const bool isVideoPacket = m_state->packet->stream_index == m_state->videoStreamIndex;
             const auto sendResult = avcodec_send_packet(isVideoPacket ? m_state->videoCodecContext : m_state->audioCodecContext, m_state->packet);
             if (sendResult == AVERROR_EOF)

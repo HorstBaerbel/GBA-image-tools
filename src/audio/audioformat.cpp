@@ -83,4 +83,10 @@ namespace Audio
         }
         return false;
     }
+
+    auto isEmpty(const SampleData &sampleData) -> bool
+    {
+        return std::visit([](const auto &data)
+                          { return data.empty(); }, sampleData);
+    }
 }

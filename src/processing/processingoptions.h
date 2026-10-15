@@ -50,13 +50,6 @@ public:
     static OptionT<bool> tilemap;
     static OptionT<bool> commonTilemap;
     static Option deltaImage;
-    static Option delta8;
-    static Option delta16;
-    static Option rans;
-    static Option lz4;
-    static Option lz10;
-    // static Option rle;
-    static Option vram;
     static Option dxt;
     static OptionT<double> dxtv;
     // static Option gvid;
@@ -70,6 +63,15 @@ public:
     static OptionT<double> bpm;
     static Option adpcm;
 
+    // Entropy compression options
+    static Option delta8;
+    static Option delta16;
+    static Option rans;
+    static Option lz4;
+    static Option lz10;
+    // static Option rle;
+    static Option vram;
+
     // Meta data options
     static OptionT<std::string> metaFile;
     static OptionT<std::string> metaString;
@@ -78,6 +80,7 @@ public:
     static OptionT<std::string> subtitlesFile;
 
     // General options
+    static OptionT<uint32_t> frameRate;
     static Option printStats;
     static Option dryRun;
     static Option dumpImage;

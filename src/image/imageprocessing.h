@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -55,9 +56,32 @@ namespace Image
         std::vector<Frame> processBatch(const std::vector<Frame> &data);
 
         /// @brief Run processing steps in pipeline on single image. Used for processing a stream of images / video frames
-        /// @param data Input data and file name
+        /// @param frame Input data and file name
+        /// @param flushBuffers Pass true to dump queued data from internal buffers to the output frame
+        /// @return Returns a frame when the pipeline can output one. Due to buffering this might not be 1:1.
+        /// Call the function until even after flushing the stream with an empty frame nor frames are returned: !processStream(Audio::Frame(), true);
         /// @note Will silently ignore OperationType::BatchConvert and ::Reduce operations
-        Frame processStream(const Frame &data, Statistics::Container::SPtr statistics = nullptr);
+        std::optional<Frame> processStream(const Frame &frame, bool flushBuffers = false, Statistics::Container::SPtr statistics = nullptr);
+
+        /// @brief Get number of frames received in processStream()
+        /// @return Number of frames received in processStream()
+        uint32_t nrOfInputFrames() const;
+
+        /// @brief Get number of frames returned from processStream()
+        /// @return Number of frames returned from processStream()
+        uint32_t nrOfOutputFrames() const;
+
+        /// @brief Get size of output data
+        /// @return Output data size in bytes
+        uint32_t outputProcessedSize() const;
+
+        /// @brief Get max. memory needed to keep intermediate processing results
+        /// @return Max. memory needed to keep intermediate processing results
+        uint32_t outputMaxMemoryNeeded() const;
+
+        /// @brief Get output frame info of last frame output from processStream()
+        /// @return Output frame info of last frame output from processStream()
+        FrameInfo outputFrameInfo() const;
 
         /// @brief Get the processing needed to decode the data (steps reversed). These might not be all steps added with addStep()
         /// @return Processing steps needed to decode the data
@@ -228,6 +252,12 @@ namespace Image
         static void dumpImage(const Frame &data, const std::vector<Parameter> &parameters, Statistics::Frame::SPtr statistics);
 
     private:
+        uint32_t m_nrOfInputFrames = 0;       // Number of frames input into processing
+        uint32_t m_nrOfOutputFrames = 0;      // Number of frames output from processing
+        uint32_t m_outputProcessedSize = 0;   // Size of processed / output data
+        uint32_t m_outputMaxMemoryNeeded = 0; // Max. buffer size needed for decompression
+        FrameInfo m_outputFrameInfo;          // Frame info from last frame output from processStream()
+
         using ConvertFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, Statistics::Frame::SPtr)>;                                // Converts 1 data input into 1 data output
         using ConvertStateFunc = std::function<Frame(const Frame &, const std::vector<Parameter> &, std::vector<uint8_t> &, Statistics::Frame::SPtr)>;   // Converts 1 data input + state into 1 data output
         using BatchConvertFunc = std::function<std::vector<Frame>(const std::vector<Frame> &, const std::vector<Parameter> &, Statistics::Frame::SPtr)>; // Converts N data inputs into N data outputs

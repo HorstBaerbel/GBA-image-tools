@@ -73,4 +73,8 @@ namespace Audio
     /// @param sampleFormat Input sample format
     /// @return true
     auto checkSampleFormat(const SampleData &sampleData, SampleFormat sampleFormat) -> bool;
+
+    /// @brief Check if sample data is empty
+    /// @return True if sample is empty
+    auto isEmpty(const SampleData &sampleData) -> bool;
 }

@@ -451,6 +451,20 @@ ProcessingOptions::OptionT<std::string> ProcessingOptions::subtitlesFile{
         }
     }};
 
+ProcessingOptions::OptionT<uint32_t> ProcessingOptions::frameRate{
+    false,
+    {"frameRate", "Set target audio / video frame rate. Must be in [1, 60].", cxxopts::value(frameRate.value)},
+    {},
+    {},
+    [](const cxxopts::ParseResult &r)
+    {
+        if (r.count(frameRate.cxxOption.opts_))
+        {
+            REQUIRE(frameRate.value >= 1 && frameRate.value <= 60, std::runtime_error, "Audio / video frame rate must be in [1, 60]");
+            frameRate.isSet = true;
+        }
+    }};
+
 ProcessingOptions::Option ProcessingOptions::printStats{
     false,
     {"statistics", "Print statistics about the processing steps.", cxxopts::value(printStats.isSet)}};

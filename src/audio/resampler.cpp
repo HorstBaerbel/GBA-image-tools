@@ -162,60 +162,68 @@ namespace Audio
             REQUIRE(m_state->outDataMaxSamples - nrOfOutputSamples > 0, std::runtime_error, "Audio output buffer too small for flushing");
             const auto nrOfSamplesFlushed = swr_convert(m_state->swrContext, flushData, m_state->outDataMaxSamples - nrOfOutputSamples, nullptr, 0);
             REQUIRE(nrOfSamplesFlushed >= 0, std::runtime_error, "Failed to flush audio data: " << nrOfSamplesFlushed);
-            nrOfOutputSamples += nrOfSamplesFlushed;
-            // get size of a raw, combined, byte buffer needed to hold all sample data of all flushed channels
-            const auto flushedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->outLayout.nb_channels, nrOfSamplesFlushed, m_state->outFormat, 1);
-            REQUIRE(flushedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples flushed to buffer: " << flushedRawBufferSize);
-            outputRawBufferSize += flushedRawBufferSize;
+            // check if we have flushed any samples at all (nrOfSamplesFlushed == 0 can happen on repeated calls)
+            if (nrOfSamplesFlushed > 0)
+            {
+                nrOfOutputSamples += nrOfSamplesFlushed;
+                // get size of a raw, combined, byte buffer needed to hold all sample data of all flushed channels
+                const auto flushedRawBufferSize = av_samples_get_buffer_size(nullptr, m_state->outLayout.nb_channels, nrOfSamplesFlushed, m_state->outFormat, 1);
+                REQUIRE(flushedRawBufferSize >= 0, std::runtime_error, "Failed to get number of audio samples flushed to buffer: " << flushedRawBufferSize);
+                outputRawBufferSize += flushedRawBufferSize;
+            }
         }
-        // build output frame
-        Frame outFrame;
-        outFrame.index = inFrame.index;
-        outFrame.fileName = inFrame.fileName;
-        outFrame.nrOfSamples = nrOfOutputSamples;
-        outFrame.info.compressed = inFrame.info.compressed;
-        outFrame.info.maxMemoryNeeded = inFrame.info.maxMemoryNeeded;
-        outFrame.info.channelFormat = m_outChannelFormat;
-        outFrame.info.sampleFormat = m_outSampleFormat;
-        outFrame.info.sampleRateHz = m_outSampleRateHz;
-        // convert output sample format from AV formats
-        switch (m_outSampleFormat)
+        // build output frame if we convert or flush data
+        if (nrOfOutputSamples > 0 && outputRawBufferSize > 0)
         {
-        case SampleFormat::Signed8P:
-        {
-            // ffmpeg supports no S8P, so we converted to U8P to resample. correctly convert to int8_t now
-            auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
-            std::vector<int8_t> dataI8;
-            dataI8.reserve(dataU8.size());
-            std::transform(dataU8.cbegin(), dataU8.cend(), std::back_inserter(dataI8), [](auto v)
-                           { return static_cast<int32_t>(v) - 128; });
-            outFrame.data = dataI8;
-            break;
+            Frame outFrame;
+            outFrame.index = inFrame.index;
+            outFrame.fileName = inFrame.fileName;
+            outFrame.nrOfSamples = nrOfOutputSamples;
+            outFrame.info.compressed = inFrame.info.compressed;
+            outFrame.info.maxMemoryNeeded = inFrame.info.maxMemoryNeeded;
+            outFrame.info.channelFormat = m_outChannelFormat;
+            outFrame.info.sampleFormat = m_outSampleFormat;
+            outFrame.info.sampleRateHz = m_outSampleRateHz;
+            // convert output sample format from AV formats
+            switch (m_outSampleFormat)
+            {
+            case SampleFormat::Signed8P:
+            {
+                // ffmpeg supports no S8P, so we converted to U8P to resample. correctly convert to int8_t now
+                auto dataU8 = rawBufferToVector<uint8_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
+                std::vector<int8_t> dataI8;
+                dataI8.reserve(dataU8.size());
+                std::transform(dataU8.cbegin(), dataU8.cend(), std::back_inserter(dataI8), [](auto v)
+                               { return static_cast<int32_t>(v) - 128; });
+                outFrame.data = dataI8;
+                break;
+            }
+            case SampleFormat::Unsigned8P:
+                outFrame.data = rawBufferToVector<uint8_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
+                break;
+            case SampleFormat::Signed16P:
+                outFrame.data = rawBufferToVector<int16_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
+                break;
+            case SampleFormat::Unsigned16P:
+            {
+                // ffmpeg supports no U16P, so we converted to S16P to resample. correctly convert to uint16_t now
+                auto dataS16 = rawBufferToVector<int16_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
+                std::vector<uint16_t> dataU16;
+                dataU16.reserve(dataS16.size());
+                std::transform(dataS16.cbegin(), dataS16.cend(), std::back_inserter(dataU16), [](auto v)
+                               { return static_cast<uint16_t>(static_cast<int32_t>(v) + 32768); });
+                outFrame.data = dataU16;
+                break;
+            }
+            case SampleFormat::Float32P:
+                outFrame.data = rawBufferToVector<float>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
+                break;
+            default:
+                THROW(std::runtime_error, "Bad output sample format");
+            }
+            return outFrame;
         }
-        case SampleFormat::Unsigned8P:
-            outFrame.data = rawBufferToVector<uint8_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
-            break;
-        case SampleFormat::Signed16P:
-            outFrame.data = rawBufferToVector<int16_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
-            break;
-        case SampleFormat::Unsigned16P:
-        {
-            // ffmpeg supports no U16P, so we converted to S16P to resample. correctly convert to uint16_t now
-            auto dataS16 = rawBufferToVector<int16_t>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
-            std::vector<uint16_t> dataU16;
-            dataU16.reserve(dataS16.size());
-            std::transform(dataS16.cbegin(), dataS16.cend(), std::back_inserter(dataU16), [](auto v)
-                           { return static_cast<uint16_t>(static_cast<int32_t>(v) + 32768); });
-            outFrame.data = dataU16;
-            break;
-        }
-        case SampleFormat::Float32P:
-            outFrame.data = rawBufferToVector<float>(m_state->outData, outputRawBufferSize, m_state->outLayout.nb_channels);
-            break;
-        default:
-            THROW(std::runtime_error, "Bad output sample format");
-        }
-        return outFrame;
+        return {};
     }
 
     Resampler::~Resampler()

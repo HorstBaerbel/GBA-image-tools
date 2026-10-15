@@ -7,7 +7,6 @@
 
 namespace Audio
 {
-
     /// @brief Audio data returned from media reader
     using RawData = std::vector<int16_t>;
 
@@ -31,4 +30,8 @@ namespace Audio
         uint32_t nrOfSamples = 0; // Number of samples per channel in data
     };
 
+    /// @brief Check if frame is empty
+    /// @param frame Input frame
+    /// @return True if frame resp. its data is empty
+    auto isEmpty(const Frame &frame) -> bool;
 }

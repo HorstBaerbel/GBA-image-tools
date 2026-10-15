@@ -718,6 +718,11 @@ namespace Image
 
     void Processing::reset()
     {
+        m_nrOfInputFrames = 0;
+        m_nrOfOutputFrames = 0;
+        m_outputFrameInfo = FrameInfo();
+        m_outputProcessedSize = 0;
+        m_outputMaxMemoryNeeded = 0;
         for (std::size_t si = 0; si < m_steps.size(); si++)
         {
             m_steps[si].state.clear();
@@ -841,10 +846,10 @@ namespace Image
         return processed;
     }
 
-    Frame Processing::processStream(const Frame &data, Statistics::Container::SPtr statistics)
+    std::optional<Frame> Processing::processStream(const Frame &frame, bool flushBuffers, Statistics::Container::SPtr statistics)
     {
-        bool finalStepFound = false;
-        Frame processed = data;
+        m_nrOfInputFrames++;
+        Frame processed = frame;
         auto frameStatistics = statistics != nullptr ? statistics->addFrame() : nullptr;
         for (auto stepIt = m_steps.begin(); stepIt != m_steps.end(); ++stepIt)
         {
@@ -877,7 +882,36 @@ namespace Image
                 processed.info.maxMemoryNeeded = (processed.info.maxMemoryNeeded < chunkMemoryNeeded) ? chunkMemoryNeeded : processed.info.maxMemoryNeeded;
             }
         }
+        m_outputProcessedSize += processed.data.pixels().rawSize() + processed.data.colorMap().rawSize();
+        m_outputMaxMemoryNeeded = m_outputMaxMemoryNeeded < processed.info.maxMemoryNeeded ? processed.info.maxMemoryNeeded : m_outputMaxMemoryNeeded;
+        m_outputFrameInfo = processed.info;
+        processed.index = m_nrOfOutputFrames++;
         return processed;
+    }
+
+    uint32_t Processing::nrOfInputFrames() const
+    {
+        return m_nrOfInputFrames;
+    }
+
+    uint32_t Processing::nrOfOutputFrames() const
+    {
+        return m_nrOfOutputFrames;
+    }
+
+    uint32_t Processing::outputProcessedSize() const
+    {
+        return m_outputProcessedSize;
+    }
+
+    uint32_t Processing::outputMaxMemoryNeeded() const
+    {
+        return m_outputMaxMemoryNeeded;
+    }
+
+    FrameInfo Processing::outputFrameInfo() const
+    {
+        return m_outputFrameInfo;
     }
 
     std::vector<ProcessingType> Processing::getDecodingSteps() const
