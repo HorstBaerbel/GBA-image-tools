@@ -6,6 +6,9 @@
 
 Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DATA COMPRESSION] [AUDIO CONVERSION] [OPTIONS] INFILE OUTNAME```
 
+* ```GENERAL``` options are optional, mutually exclusive:
+  * ```--audio``` - Add audio to output (default=true).
+  * ```--video``` - Add video to output (default=true).
 * ```IMG FORMAT``` is mandatory and means the color format to convert the input frame to:
   * ```--blackwhite=T``` - Convert frame to b/w paletted image with two colors according to a brightness threshold ```T``` [0, 1].
   * ```--paletted=N``` - Convert frame to paletted image with specified number of colors ```N``` [2, 256].
@@ -34,6 +37,7 @@ Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DA
   * ```channelformat=F``` - Audio channel format ```F``` [```mono``` or ```stereo```].
   * ```sampleformat=F``` - Audio sample format ```F``` [```s8p``` (signed 8-bit), ```u8p``` (unsigned 8-bit), ```s16p``` (signed 16-bit), ```u16p```(unsigned 16-bit), ```f32p``` (32-bit floating-point)]. All sample formats are planar (non-interleaved).
   * ```samplerate=R``` - Audio sample rate ```R``` [4000, 48000] in Hz.
+  * ```--bpm=R``` - Set audio tempo / bpm ```R``` [1.0, 512.0].
   Note that all input audio is currently converted to signed 16-bit data and multiple channels are reduced to stereo.
 * ```AUDIO COMPRESSION``` is optional:
   * ```--adpcm``` - Apply 4-bit ADPCM compression to audio.
@@ -43,9 +47,12 @@ Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DA
   * ```--metafile=F``` - Append meta data from file ```F``` to output.
   * ```--metastring=S``` - Append meta data from string ```S``` to output.
 * ```OPTIONS``` are optional:
+  * ```--framerate=R``` - Set target audio / video frame rate ```R``` [1, 60]. Necessary when converting audio-only files.
   * ```--dryrun``` - Process data, but do not write output files.
   * ```--dumpimage``` - Process video data and dump results to *<INFILE>\*.png* files.
   * ```--dumpaudio``` - Process audio data and dump result to *<INFILE>.wav* file.
+  * ```--statistics``` - Print statistics about the processing steps.
+  * ```--outputstats``` - Output statistics for compressed output data (to *<OUTFILE>_stats_audio/_video.csv*).
 * ```INFILE``` specifies the input video file. Must be readable with FFmpeg.
 * ```OUTNAME``` is the (base)name of the output file and also the name of the prefix for #defines and variable names generated. "abc" will generate "abc.h", "abc.c" and #defines / variables names that start with "ABC_". Binary output will be written as "abc.bin".
 
