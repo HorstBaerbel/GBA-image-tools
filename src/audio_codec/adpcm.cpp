@@ -1,9 +1,9 @@
 #include "adpcm.h"
 
 #include "exception.h"
-#include "if/adpcm_constants.h"
-#include "if/adpcm_structs.h"
-#include "if/adpcm_tables.h"
+#include "adpcm_constants.h"
+#include "adpcm_structs.h"
+#include "adpcm_tables.h"
 
 #include "adpcm-xq/adpcm-lib.h"
 

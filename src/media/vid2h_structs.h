@@ -1,7 +1,7 @@
 #pragma once
 
-#include "audio_processingtype.h"
-#include "image_processingtype.h"
+#include "audio/processingtype.h"
+#include "image/processingtype.h"
 #include "mediatypes.h"
 
 #include <cstdint>

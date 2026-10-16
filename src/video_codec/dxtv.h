@@ -3,7 +3,7 @@
 #include "blockview.h"
 #include "codebook.h"
 #include "color/xrgb8888.h"
-#include "if/dxtv_constants.h"
+#include "dxtv_constants.h"
 #include "statistics/statistics.h"
 
 #include <cstdint>
@@ -25,7 +25,7 @@ namespace Video
         static auto encodeBlock(CodeBook8x8 &currentCodeBook, const CodeBook8x8 &previousCodeBook, BlockView<Color::XRGB8888, bool, BLOCK_DIM> &block, float quality, const bool swapToBGR = false, Statistics::Frame::SPtr statistics = nullptr) -> std::pair<bool, std::vector<uint8_t>>;
 
         /// @brief Compress image to format similar to DXT1 (https://www.khronos.org/opengl/wiki/S3_Texture_Compression#DXT1_Format) while also using motion-compensation.
-        /// The frame and block format can be found in src/if/dxtv_constants.h
+        /// The frame and block format can be found in src/video_codec/dxtv_constants.h
         /// @param image Input image to compress
         /// @param previousImage Previous image to detect motion-compensated blocks
         /// @param width Image width. Must be a multiple of 8!

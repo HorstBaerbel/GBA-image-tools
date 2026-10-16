@@ -3,7 +3,7 @@
 #include <cstdint>
 
 /// @brief Intermediate IWRAM DXT block color storage
-extern "C" uint16_t DXT_BlockColors[4];
+extern "C" uint32_t DXT_BlockColors[16];
 
 /// @brief Lookup table for a 5-bit RGB color component (c0 << 5 | c1) that returns (c2 << 16 | c3)
 /// Formula: (round((2.0*floor(x/32)+(x%32))/3.0)) | (round((floor(x/32)+2.0*(x%32))/3.0)<<16), x in [0,32*32]

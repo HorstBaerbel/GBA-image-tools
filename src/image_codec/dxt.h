@@ -1,7 +1,7 @@
 #pragma once
 
 #include "color/xrgb8888.h"
-#include "if/dxt_tables.h"
+#include "dxt_tables.h"
 
 #include <cstdint>
 #include <vector>

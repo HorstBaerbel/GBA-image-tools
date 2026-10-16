@@ -17,8 +17,8 @@ namespace Audio
         uint16_t adpcmBitsPerSample : 3; // ADPCM sample bit depth in [3,5]
         uint16_t uncompressedSize = 0;   // Uncompressed size of PCM output data
 
-        static auto write(uint32_t *dst, const AdpcmFrameHeader &header) -> void;
-        static auto read(const uint32_t *src) -> AdpcmFrameHeader;
+        static auto write(void *dst, const AdpcmFrameHeader &header) -> void;
+        static auto read(const void *src) -> AdpcmFrameHeader;
     } __attribute__((aligned(4), packed));
 }
 #else

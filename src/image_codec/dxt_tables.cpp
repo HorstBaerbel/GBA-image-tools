@@ -5,9 +5,9 @@
 #endif
 
 #ifdef __arm__
-IWRAM_DATA ALIGN(4) uint16_t DXT_BlockColors[4]; // intermediate DXT block color storage
+IWRAM_DATA ALIGN(4) uint32_t DXT_BlockColors[16]; // intermediate DXT block color storage
 #else
-uint16_t DXT_BlockColors[4]; // intermediate DXT block color storage
+uint32_t DXT_BlockColors[16]; // intermediate DXT block color storage
 #endif
 
 #ifdef __arm__

@@ -2,7 +2,7 @@
 
 #include "audio/audiostructs.h"
 #include "color/xrgb8888.h"
-#include "if/mediatypes.h"
+#include "media/mediatypes.h"
 #include "image/imagestructs.h"
 #include "subtitles/subtitlesstructs.h"
 

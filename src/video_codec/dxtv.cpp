@@ -6,10 +6,10 @@
 #include "color/psnr.h"
 #include "color/rgbf.h"
 #include "color/xrgb1555.h"
-#include "image_codec/dxt.h"
+#include "dxtv_structs.h"
 #include "exception.h"
+#include "image_codec/dxt.h"
 #include "math/linefit.h"
-#include "if/dxtv_structs.h"
 #include "processing/datahelpers.h"
 
 #include <Eigen/Core>

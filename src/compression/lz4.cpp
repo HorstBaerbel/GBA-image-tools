@@ -1,7 +1,7 @@
 #include "lz4.h"
 
 #include "exception.h"
-#include "if/lz4_constants.h"
+#include "lz4_constants.h"
 
 #include <map>
 
