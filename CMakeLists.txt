@@ -51,8 +51,8 @@ endfunction()
 set(SUBMODULE_SRC_DIR ${PROJECT_SOURCE_DIR}/gba/GBA-demo-framework/src)
 
 # Files that must stay in sync between the host tools and the GBA submodule
-sync_shared_file(${PROJECT_SOURCE_DIR}/src/media/vid2h_structs.h         ${SUBMODULE_SRC_DIR}/media/vid2h_structs.h)
-sync_shared_file(${PROJECT_SOURCE_DIR}/src/media/mediatypes.h            ${SUBMODULE_SRC_DIR}/media/mediatypes.h)
+sync_shared_file(${PROJECT_SOURCE_DIR}/src/io/vid2h_structs.h            ${SUBMODULE_SRC_DIR}/io/vid2h_structs.h)
+sync_shared_file(${PROJECT_SOURCE_DIR}/src/io/mediatypes.h               ${SUBMODULE_SRC_DIR}/io/mediatypes.h)
 sync_shared_file(${PROJECT_SOURCE_DIR}/src/audio/processingtype.h        ${SUBMODULE_SRC_DIR}/audio/processingtype.h)
 sync_shared_file(${PROJECT_SOURCE_DIR}/src/audio_codec/adpcm_tables.h    ${SUBMODULE_SRC_DIR}/audio/adpcm_tables.h)
 sync_shared_file(${PROJECT_SOURCE_DIR}/src/audio_codec/adpcm_tables.cpp  ${SUBMODULE_SRC_DIR}/audio/adpcm_tables.cpp)

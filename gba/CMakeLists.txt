@@ -77,6 +77,9 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	${DEMO_FRAMEWORK_SRC_DIR}/tui.cpp
 	${DEMO_FRAMEWORK_SRC_DIR}/tiles.cpp
 	${DEMO_FRAMEWORK_SRC_DIR}/audio/resampler.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/compression/bios.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/compression/lz77_asm.s
+	${DEMO_FRAMEWORK_SRC_DIR}/io/vid2hio.cpp
 	${DEMO_FRAMEWORK_SRC_DIR}/memory/dma.cpp
 	${DEMO_FRAMEWORK_SRC_DIR}/memory/memcpy.s
 	${DEMO_FRAMEWORK_SRC_DIR}/memory/memory.cpp
@@ -88,9 +91,6 @@ LIST(APPEND VIDEO_SOURCE_FILES
 	${DEMO_FRAMEWORK_SRC_DIR}/sys/intdispatcher.s
 	${DEMO_FRAMEWORK_SRC_DIR}/sys/input.cpp
 	${DEMO_FRAMEWORK_SRC_DIR}/sys/memctrl.cpp
-	${DEMO_FRAMEWORK_SRC_DIR}/compression/bios.cpp
-	${DEMO_FRAMEWORK_SRC_DIR}/compression/lz77_asm.s
-	${DEMO_FRAMEWORK_SRC_DIR}/media/vid2hio.cpp
 	${DXTV_DECODER_FILES}
 	${LZ4_DECODER_FILES}
 	${ADPCM_DECODER_FILES}
@@ -131,7 +131,7 @@ LIST(APPEND IMAGE_SOURCE_FILES
 
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
 target_img2h_file(IMAGE_DATA_FILES "font_8x8" "data/font_8x8.png" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
-target_img2h_file(IMAGE_DATA_FILES "images_dxt" "../data/images/240x160/*.png" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz10 --vram=true")
+target_img2h_file(IMAGE_DATA_FILES "images_dxt" "../data/images/240x160/*.png" "--truecolor=rgb888 --outformat=bgr555 --dxt --lz4 --vram=true")
 
 LIST(APPEND INCLUDE_DIRS
 	${DEVKITARM}/arm-none-eabi/include

@@ -5,8 +5,8 @@
 #include "exception.h"
 #include "image/imagestructs.h"
 #include "image/processingtype.h"
-#include "media/vid2h_structs.h"
 #include "subtitles/subtitlesstructs.h"
+#include "vid2h_structs.h"
 
 #include <array>
 #include <cstdint>

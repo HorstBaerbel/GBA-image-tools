@@ -1,6 +1,6 @@
 #pragma once
 
-#include "media/vid2hio.h"
+#include "io/vid2hio.h"
 
 #include <cstdint>
 #include <tuple>

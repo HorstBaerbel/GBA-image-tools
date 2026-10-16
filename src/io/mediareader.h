@@ -2,8 +2,8 @@
 
 #include "audio/audiostructs.h"
 #include "color/xrgb8888.h"
-#include "media/mediatypes.h"
 #include "image/imagestructs.h"
+#include "mediatypes.h"
 #include "subtitles/subtitlesstructs.h"
 
 #include <cstdint>

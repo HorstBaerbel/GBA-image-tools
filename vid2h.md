@@ -63,7 +63,7 @@ Some general information:
 
 ## Binary file storage format
 
-vid2h will store binary file header fields and frame header fields (see [vid2h_structs.h](src/media/vid2h_structs.h), [vid2hio.h](src/io/vid2hio.h) and [vid2hio.cpp](src/io/vid2hio.cpp)):
+vid2h will store binary file header fields and frame header fields (see [vid2h_structs.h](src/io/vid2h_structs.h), [vid2hio.h](src/io/vid2hio.h) and [vid2hio.cpp](src/io/vid2hio.cpp)):
 
 | Field                                 | Size    |                                                                                                                                      |
 | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
