@@ -65,7 +65,7 @@ Some general information:
 
 ## Binary file storage format
 
-vid2h will store binary file header fields and frame header fields (see [vid2h_structs.h](src/if/vid2h_structs.h), [vid2hio.h](src/io/vid2hio.h) and [vid2hio.cpp](src/io/vid2hio.cpp)):
+vid2h will store binary file header fields and frame header fields (see [vid2h_structs.h](src/media/vid2h_structs.h), [vid2hio.h](src/io/vid2hio.h) and [vid2hio.cpp](src/io/vid2hio.cpp)):
 
 | Field                                 | Size    |                                                                                                                                      |
 | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -83,7 +83,7 @@ vid2h will store binary file header fields and frame header fields (see [vid2h_s
 | Audio sample offset                   | 2 bytes | Signed offset of audio relative to video in number of samples                                                                        |
 | Max. intermediate audio memory needed | 2 bytes | Max. intermediate memory needed to decompress an audio frame. If 0 size should be determined by audio frame size                     |
 | Audio tempo / bpm                     | 2 bytes | Tempo / bpm of file as 9.7 fixed-point                                                                                             |
-| Audio processing types                | 4 bytes | Max. of 4 audio processings or Audio::ProcessingType::Invalid, see [audio_processingtype.h](src/if/audio_processingtype.h). In reverse order |
+| Audio processing types                | 4 bytes | Max. of 4 audio processings or Audio::ProcessingType::Invalid, see [audio_processingtype.h](src/audio/processingtype.h). In reverse order |
 | **Video header**                      |
 | Number of video frames in file        | 2 bytes |
 | Frames / s                            | 4 bytes | Frames / s in 16:16 fixed-point format                                                                                               |
@@ -95,7 +95,7 @@ vid2h will store binary file header fields and frame header fields (see [vid2h_s
 | Red-blue channel swap flag            | 1 byte  | If != 0 red and blue channel are swapped                                                                                             |
 | Number of color map frames in file    | 2 byte  |
 | Max. intermediate video memory needed | 4 bytes | Max. intermediate memory needed to decompress a video frame. If 0 size should be determined by video frame size                      |
-| Image processing types                | 4 bytes | Max. of 4 image processings or Image::ProcessingType::Invalid, see [image_processingtype.h](src/if/image_processingtype.h). In reverse order |
+| Image processing types                | 4 bytes | Max. of 4 image processings or Image::ProcessingType::Invalid, see [image_processingtype.h](src/image/processingtype.h). In reverse order |
 | **Subtitles header**                  |
 | Number of subtitle frames in file     | 2 bytes |
 | ---                                   | 2 byte  |
@@ -113,7 +113,7 @@ vid2h will store binary file header fields and frame header fields (see [vid2h_s
 
 Note that (if the file header is aligned to 4 bytes) every *Frame* and every *Data chunk* in the file will be aligned to 4 bytes. If you use aligned memory as a scratchpad when decoding, again, every *Chunk data* will be aligned too.
 
-For processing types see e.g. [image_processingtype.h](src/if/image_processingtype.h). A processing chain could be `60, 50, 255` meaning `LZ77 10, 8-bit deltas, End` (reverse order / correct order for decoding).
+For processing types see e.g. [image_processingtype.h](src/image/processingtype.h). A processing chain could be `60, 50, 255` meaning `LZ77 10, 8-bit deltas, End` (reverse order / correct order for decoding).
 
 ## Decompression on PC
 
@@ -121,7 +121,7 @@ Use [vid2hplay](src/vid2hplay.cpp) to play back vid2h files.
 
 ## Decompression on GBA
 
-An example for a small video player can be found in the [gba](gba) subdirectory.
+An example for a video player can be found in the [gba](gba) subdirectory.
 
 ## Todo
 
