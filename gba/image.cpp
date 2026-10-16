@@ -1,4 +1,4 @@
-#include "compression/lz77.h"
+#include "compression/lz4.h"
 #include "image/dxt.h"
 #include "print/output.h"
 #include "sys/base.h"
