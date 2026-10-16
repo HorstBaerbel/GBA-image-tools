@@ -1,7 +1,5 @@
 # vid2h - convert videos to .h / .c files or binary files
 
-## *NOTE THAT THIS IS WIP!* Currently video compression ratio is rather bad, compression is slow, quality is so-so and decompression is slow too. You have been warned!
-
 ## General usage
 
 Call vid2h like this: ```vid2h IMG FORMAT [IMG CONVERSION] [IMG COMPRESSION] [DATA COMPRESSION] [AUDIO CONVERSION] [OPTIONS] INFILE OUTNAME```
