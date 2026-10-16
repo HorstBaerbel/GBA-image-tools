@@ -1,40 +1,50 @@
-#include "videoplayer.h"
+#include "mediaplayer.h"
 
+#include "mediahelp.h"
 #include "memory/memory.h"
 #include "subtitles.h"
 #include "sys/base.h"
 #include "vid2hdecoder.h"
-#include "videohelp.h"
 #include <memory/dma.h>
 #include <sys/interrupts.h>
 #include <sys/sound.h>
 #include <sys/timers.h>
 
-// #define DEBUG_PLAYER
-#ifdef DEBUG_PLAYER
+// #define DEBUG_VIDEOPLAYER
+#ifdef DEBUG_VIDEOPLAYER
 #include "print/output.h"
 #include "time.h"
 #endif
 
-namespace Media
+#define AUDIO_SAMPLERATE 32768 // m_mediaInfo.audio.sampleRateHz // define to 32768 to upsample audio to 32kHz
+
+namespace MediaPlayer
 {
+    // sprites
+    EWRAM_DATA uint16_t m_tileStartIndex = 0;
+    EWRAM_DATA uint8_t m_spriteStartIndex = 0;
+    EWRAM_DATA uint8_t m_paletteStartIndex = 0;
+
     // general
+    IWRAM_DATA Features m_features = Features::None;
+    IWRAM_DATA PlaybackType m_playbackType = PlaybackType::AudioVideo;
     IWRAM_DATA PlayState m_playState = PlayState::Stopped;
     IWRAM_DATA int32_t m_playTime = 0;
-    IWRAM_DATA IO::Vid2h::Info m_mediaInfo;
-    IWRAM_DATA IO::Vid2h::Frame m_mediaFrame;
+    IWRAM_DATA IO::Vid2h::Info m_mediaInfo{};
+    IWRAM_DATA IO::Vid2h::Frame m_mediaFrame{};
 
     // audio
-    IWRAM_DATA int32_t m_audioFrameTime = 0;
-    IWRAM_DATA IO::Vid2h::Frame m_queuedAudioFrame{};       // Audio frame waiting to be decoded
-    IWRAM_DATA volatile int16_t m_audioFramesDecoded = 0;   // Number of audio frames decoded in m_audioBackSampleBuffer
-    IWRAM_DATA volatile int16_t m_audioFramesRequested = 0; // Number of audio frames requested by AudioBufferRequest()
-    IWRAM_DATA uint32_t *m_audioScratchPad = nullptr;       // Pointer to audio scratch pad for decoding in EWRAM
-    IWRAM_DATA uint16_t m_audioBufferSize8 = 0;             // Size of one audio buffer in IWRAM and the scratch pad in EWRAM
-    IWRAM_DATA uint32_t *m_audioPlayBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently playing in IWRAM
-    IWRAM_DATA uint32_t *m_audioBackBuffer = nullptr;       // Pointer to planar data for left / mono channel and right channel currently decoding in IWRAM
-    IWRAM_DATA uint16_t m_audioPlayBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently playing
-    IWRAM_DATA uint16_t m_audioBackBufferChannelSize8 = 0;  // Size of data stored per channel == number of samples per channel of buffer currently decoding
+    IWRAM_DATA int32_t m_audioSampleTime = 0;                        // Time per audio sample in s in 0.32 format
+    IWRAM_DATA IO::Vid2h::Frame m_queuedAudioFrame{};                // Audio frame waiting to be decoded
+    IWRAM_DATA volatile int16_t m_audioFramesDecoded = 0;            // Number of audio frames decoded in m_audioBackSampleBuffer
+    IWRAM_DATA volatile int16_t m_audioFramesRequested = 0;          // Number of audio frames requested by AudioBufferRequest()
+    IWRAM_DATA uint32_t *m_audioScratchPad = nullptr;                // Audio scratch pad for decoding in EWRAM
+    IWRAM_DATA uint8_t *m_audioSampleBuffer[2] = {nullptr, nullptr}; // Planar sample data for left and right channel in IWRAM
+    IWRAM_DATA uint8_t *m_audioPlayPtr[2] = {nullptr, nullptr};      // Pointers to planar sample data for left and right channel currently playing in IWRAM
+    IWRAM_DATA uint8_t *m_audioBackPtr[2] = {nullptr, nullptr};      // Pointers to planar sample data for left and right channel currently fro next frame in IWRAM
+    IWRAM_DATA uint16_t m_audioBufferTrailingBytes8 = 0;             // Size of bytes trailing after current play buffer not being played this frame to make its size a multiple of 16 bytes
+    IWRAM_DATA uint16_t m_audioPlayBufferChannelSize8 = 0;           // Size of data stored per channel == number of samples per channel of buffer currently playing
+    IWRAM_DATA uint16_t m_audioBackBufferChannelSize8 = 0;           // Size of data stored per channel == number of samples per channel of buffer currently decoding
 
     // video
     IWRAM_DATA uint32_t *m_videoScratchPad = nullptr;
@@ -45,7 +55,7 @@ namespace Media
     IWRAM_DATA uint32_t m_vramOffset8 = 0;
     IWRAM_DATA uint16_t m_videoPositionX = 0;
     IWRAM_DATA uint16_t m_videoPositionY = 0;
-    IWRAM_DATA int32_t m_videoFrameTime = 0;
+    IWRAM_DATA int32_t m_videoFrameTime = 0;                  // Time per video frame in s in 16.16 format
     IWRAM_DATA IO::Vid2h::Frame m_queuedColorMapFrame{};      // Color map frame waiting to be decoded
     IWRAM_DATA IO::Vid2h::Frame m_queuedVideoFrame{};         // Video frame waiting to be decoded
     IWRAM_DATA volatile int16_t m_videoFramesDecoded = 0;     // Number of video frames decoded in m_videoDecodedFrame
@@ -56,13 +66,13 @@ namespace Media
     // subtitle
     IWRAM_DATA bool m_subtitlesEnabled = true;
     IWRAM_DATA IO::Vid2h::Frame m_queuedSubtitleFrame{}; // Subtitle frame waiting to be decoded
-    IWRAM_DATA Subtitles::Frame m_subtitleCurrent;       // Currently used/displayed subtitle
-    IWRAM_DATA Subtitles::Frame m_subtitleNext;          // Decoded/next subtitle
+    IWRAM_DATA Subtitles::Frame m_subtitleCurrent{};     // Currently used/displayed subtitle
+    IWRAM_DATA Subtitles::Frame m_subtitleNext{};        // Decoded/next subtitle
 
     // help
     IWRAM_DATA bool m_videoHelpEnabled = false;
 
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
     struct FrameStatistics
     {
         int64_t m_accDecodedMs = 0; // Accumulated time decoding frames
@@ -77,6 +87,19 @@ namespace Media
     IWRAM_DATA FrameStatistics m_subtitlesStats;
 #endif
 
+    // ------ Some macros ----------------------------------------------------
+
+#define HAS_FEATURE_HELP (m_features & Features::Help)
+#define HAS_FEATURE_SUBTILES (m_features & Features::Subtitles)
+#define HAS_PLAYBACK_AUDIO (m_playbackType & PlaybackType::Audio)
+#define HAS_PLAYBACK_VIDEO (m_playbackType & PlaybackType::Video)
+#define HAS_MEDIA_AUDIO (m_mediaInfo.contentType & IO::FileType::Audio)
+#define HAS_MEDIA_VIDEO (m_mediaInfo.contentType & IO::FileType::Video)
+#define HAS_MEDIA_SUBTITLES (m_features & Features::Subtitles)
+#define AUDIO_PLAYBACK_ON (HAS_MEDIA_AUDIO && HAS_PLAYBACK_AUDIO)
+#define VIDEO_PLAYBACK_ON (HAS_MEDIA_VIDEO && HAS_PLAYBACK_VIDEO)
+#define SUBTITLES_PLAYBACK_ON (HAS_MEDIA_SUBTITLES && HAS_FEATURE_SUBTILES)
+
     // ------ Video help functions ----------------------------------------------------
 
     auto IsVideoHelpEnabled() -> bool
@@ -86,13 +109,17 @@ namespace Media
 
     auto EnableVideoHelp(bool enable) -> void
     {
-        m_videoHelpEnabled = enable;
-        VideoHelp::SetVisible(enable);
-        VideoHelp::Present();
-        if (m_subtitlesEnabled)
+        // check if the feature is enabled
+        if (HAS_FEATURE_HELP)
         {
-            Subtitles::SetVisible(!enable);
-            Subtitles::Present();
+            m_videoHelpEnabled = enable;
+            MediaHelp::SetVisible(enable);
+            MediaHelp::Present();
+            if (SUBTITLES_PLAYBACK_ON && m_subtitlesEnabled)
+            {
+                Subtitles::SetVisible(!enable);
+                Subtitles::Present();
+            }
         }
     }
 
@@ -102,7 +129,7 @@ namespace Media
     {
         if (m_subtitleCurrent.text)
         {
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
             auto startTime = Time::now();
 #endif
             bool mustUpdateDisplay = false;
@@ -146,7 +173,7 @@ namespace Media
             {
                 Subtitles::Present();
             }
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
             auto duration = Time::now() * 1000 - startTime * 1000;
             m_subtitlesStats.m_accCopiedMs += duration;
             m_subtitlesStats.m_maxCopiedMs = m_subtitlesStats.m_maxCopiedMs < duration ? duration : m_subtitlesStats.m_maxCopiedMs;
@@ -162,14 +189,18 @@ namespace Media
 
     auto EnableSubtitles(bool enable) -> void
     {
-        // if the media has subtitles and they are enable, but should be disabled
-        if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled && !enable)
+        // check if the subtitles are generally available
+        if (SUBTITLES_PLAYBACK_ON)
         {
-            // clear all subtitles / sprites
-            Subtitles::Clear();
-            Subtitles::Present();
+            // check if they are enable, but should be disabled
+            if (m_subtitlesEnabled && !enable)
+            {
+                // clear all subtitles / sprites
+                Subtitles::Clear();
+                Subtitles::Present();
+            }
+            m_subtitlesEnabled = enable;
         }
-        m_subtitlesEnabled = enable;
     }
 
     // ------ Timer IRQ handlers ----------------------------------------------------
@@ -178,7 +209,6 @@ namespace Media
     {
         if (m_playState == PlayState::Playing)
         {
-            m_playTime += m_audioFrameTime;
             // still playing back. stop both timers
             REG_TM0CNT_H &= ~TIMER_START;
             REG_TM1CNT_H &= ~TIMER_START;
@@ -191,40 +221,74 @@ namespace Media
             if (m_audioFramesDecoded > 0)
             {
                 // swap sample buffers
-                std::swap(m_audioPlayBuffer, m_audioBackBuffer);
+                std::swap(m_audioPlayPtr[0], m_audioBackPtr[0]);
+                std::swap(m_audioPlayPtr[1], m_audioBackPtr[1]);
                 std::swap(m_audioPlayBufferChannelSize8, m_audioBackBufferChannelSize8);
-                // calculate buffer start
-                const auto sampleBuffer0 = reinterpret_cast<uint32_t>(m_audioPlayBuffer);
                 // set DMA channels to read from new buffer and restart DMA
-                REG_DMA[1].source = (uint32_t)sampleBuffer0;
+                REG_DMA[1].source = reinterpret_cast<uint32_t>(m_audioPlayPtr[0]);
                 REG_DMA[1].control |= DMA_ENABLE;
                 if (m_mediaInfo.audio.channels == 2)
                 {
-                    // align output buffer to next word boundary
-                    const auto sampleBuffer1 = (sampleBuffer0 + m_audioPlayBufferChannelSize8 + 3) & 0xFFFFFFFC;
-                    REG_DMA[2].source = (uint32_t)sampleBuffer1;
+                    REG_DMA[2].source = reinterpret_cast<uint32_t>(m_audioPlayPtr[1]);
                     REG_DMA[2].control |= DMA_ENABLE;
+                }
+                // audio may have been started or resumed. check if we need to (re-)enable it
+                if (REG_SOUNDCNT_X == 0)
+                {
+                    if (m_mediaInfo.audio.channels == 1)
+                    {
+                        // set DMA channel A to output to left and right at 100%. by default timer 0 is used for both channels
+                        REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_R_ENABLE | SNDA_RESET_FIFO;
+                    }
+                    else if (m_mediaInfo.audio.channels == 2)
+                    {
+                        // set DMA channel A to output to left at 100% and reset FIFO. by default timer 0 is used for both channels
+                        // set DMA channel B to output to right at 100% and reset FIFO. by default timer 0 is used for both channels
+                        REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_RESET_FIFO | SNDB_VOL_100 | SNDB_R_ENABLE | SNDB_RESET_FIFO;
+                    }
+                    REG_SOUNDBIAS = SND_BIAS_LEVEL_DEFAULT | SND_SAMPLE_FREQ_DEFAULT;
+                    REG_SOUNDCNT_X = SOUND3_PLAY;
                 }
                 // set timer 1 count to number of words in new buffer
                 REG_TM1CNT_L = 65536U - m_audioPlayBufferChannelSize8;
                 // start both timers
                 REG_TM0CNT_H |= TIMER_START;
                 REG_TM1CNT_H |= TIMER_START;
-                // enable audio. it may have been disable when pausing
-                REG_SOUNDCNT_X = SOUND3_PLAY;
                 // we've used up the decoded frame
                 m_audioFramesDecoded = 0;
             }
+            else
+            {
+                // we expected decoded audio frames here, but we seem to be skipping frames
+                // at least make sure AudioBufferRequest() gets called for next frame
+                // set timer 1 count to number of words in new buffer (technically this is incorrect, but well...)
+                REG_TM1CNT_L = 65536U - m_audioPlayBufferChannelSize8;
+                // start both timers
+                REG_TM0CNT_H |= TIMER_START;
+                REG_TM1CNT_H |= TIMER_START;
+            }
+            // update play time (use back buffer, as this is the one we've played before)
+            m_playTime += (uint64_t(m_audioSampleTime) * m_audioBackBufferChannelSize8) >> 16;
             // request more audio frames for playback
             ++m_audioFramesRequested;
+            // check if the subtitles are generally available
+            if (SUBTITLES_PLAYBACK_ON)
+            {
+                // update subtitles here only if we're not playing video
+                if (m_subtitlesEnabled && !VIDEO_PLAYBACK_ON)
+                {
+                    UpdateSubtitles();
+                }
+            }
         }
         else
         {
-            // this was the last frame. turn off sounds
-            REG_SOUNDCNT_X = 0;
             // stop both timers
             REG_TM0CNT_H = 0;
             REG_TM1CNT_H = 0;
+            // this was the last frame. turn off sounds
+            REG_SOUNDCNT_X = 0;
+            REG_SOUNDBIAS = 0;
             // stop DMA channels
             REG_DMA[1].control = 0;
             if (m_mediaInfo.audio.channels == 2)
@@ -242,9 +306,10 @@ namespace Media
             m_playTime += m_videoFrameTime;
             // request more video frames for playback
             ++m_videoFramesRequested;
-            // update subtitles
-            if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled)
+            // check if the subtitles are generally available
+            if (SUBTITLES_PLAYBACK_ON && m_subtitlesEnabled)
             {
+                // update subtitles
                 UpdateSubtitles();
             }
         }
@@ -253,6 +318,13 @@ namespace Media
             // this was the last frame. stop requesting frames
             m_videoFramesRequested = 0;
         }
+    }
+
+    // ------ Get/Set ----------------------------------------------------
+
+    auto SetFeatures(Features features) -> void
+    {
+        m_features = features;
     }
 
     auto SetDisplayInfo(const uint32_t vramLineStride8, const uint32_t vramPixelStride8) -> void
@@ -266,6 +338,13 @@ namespace Media
         m_vramClearColor = color;
     }
 
+    auto SetSpriteInfo(uint32_t spriteStartIndex, uint32_t tileStartIndex, uint16_t paletteStartIndex) -> void
+    {
+        m_tileStartIndex = tileStartIndex;
+        m_spriteStartIndex = spriteStartIndex;
+        m_paletteStartIndex = paletteStartIndex;
+    }
+
     auto SetPosition(uint16_t x, uint16_t y) -> void
     {
         m_videoPositionX = x;
@@ -273,22 +352,24 @@ namespace Media
         m_vramOffset8 = y * m_vramLineStride8 + x * m_vramPixelStride8;
     }
 
+    // ------ Frame handling ----------------------------------------------------
+
     IWRAM_FUNC auto ReadAndQueueNextFrame() -> void
     {
         m_mediaFrame = IO::Vid2h::GetNextFrame(m_mediaInfo, m_mediaFrame);
-        if (m_mediaFrame.dataType == IO::FrameType::Pixels)
+        if (HAS_PLAYBACK_VIDEO && m_mediaFrame.dataType == IO::FrameType::Pixels)
         {
             m_queuedVideoFrame = m_mediaFrame;
         }
-        else if (m_mediaFrame.dataType == IO::FrameType::Colormap)
+        else if (HAS_PLAYBACK_VIDEO && m_mediaFrame.dataType == IO::FrameType::Colormap)
         {
             m_queuedColorMapFrame = m_mediaFrame;
         }
-        else if (m_mediaFrame.dataType == IO::FrameType::Audio)
+        else if (HAS_PLAYBACK_AUDIO && m_mediaFrame.dataType == IO::FrameType::Audio)
         {
             m_queuedAudioFrame = m_mediaFrame;
         }
-        else if (m_mediaFrame.dataType == IO::FrameType::Subtitles)
+        else if (HAS_FEATURE_SUBTILES && m_mediaFrame.dataType == IO::FrameType::Subtitles)
         {
             m_queuedSubtitleFrame = m_mediaFrame;
         }
@@ -296,14 +377,53 @@ namespace Media
 
     IWRAM_FUNC auto DecodeAudioFrame() -> void
     {
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto startTime = Time::now();
 #endif
-        const auto audioDecodedFrameSize = DecodeAudio(m_audioBackBuffer, m_audioScratchPad, m_mediaInfo, m_queuedAudioFrame);
-        m_audioBackBufferChannelSize8 = audioDecodedFrameSize / m_mediaInfo.audio.channels;
+        // if we're playing the lower half of the buffer set back buffer to end of play buffer
+        // if we're playing the upper half of the buffer set back buffer to start of sample buffer
+        m_audioBackPtr[0] = m_audioPlayPtr[0] == m_audioSampleBuffer[0] ? m_audioSampleBuffer[0] + m_audioPlayBufferChannelSize8 : m_audioSampleBuffer[0];
+        m_audioBackPtr[1] = m_audioPlayPtr[1] == m_audioSampleBuffer[1] ? m_audioSampleBuffer[1] + m_audioPlayBufferChannelSize8 : m_audioSampleBuffer[1];
+        // move the decode pointers back m_audioBufferTrailingBytes8 to the actual end of the play buffers
+        uint8_t *decodePtr[2] = {
+            m_audioBackPtr[0] + m_audioBufferTrailingBytes8,
+            m_audioBackPtr[1] + m_audioBufferTrailingBytes8};
+        // now decode next audio frame
+        const auto decodedBufferSize8 = Vid2hDecoder::DecodeAudio(decodePtr, m_audioScratchPad, m_mediaInfo, m_queuedAudioFrame);
+        // we actually have m_audioBufferTrailingBytes8 more than decodedBufferSize8 per buffer
+        const uint16_t combinedBufferSize8 = decodedBufferSize8 / m_mediaInfo.audio.channels + m_audioBufferTrailingBytes8;
+        // make next buffer size a multiple of 16, round down. this might leave trailing bytes at the end of the next buffer
+        m_audioBackBufferChannelSize8 = combinedBufferSize8 & 0xFFF0;
+        m_audioBufferTrailingBytes8 = combinedBufferSize8 - m_audioBackBufferChannelSize8;
+        // copy extra bytes from end of back buffers to start of play buffers (they will be the new back buffers after the swap)
+        if (m_audioBackPtr[0] != m_audioSampleBuffer[0] && m_audioBufferTrailingBytes8 > 0)
+        {
+            for (uint32_t channel = 0; channel < m_mediaInfo.audio.channels; ++channel)
+            {
+                auto dstPtr = m_audioPlayPtr[channel];
+                auto srcPtr = const_cast<const uint8_t *>(m_audioBackPtr[channel]) + m_audioBackBufferChannelSize8;
+                for (uint32_t i = 0; i < m_audioBufferTrailingBytes8; ++i)
+                {
+                    *dstPtr++ = *srcPtr++;
+                }
+            }
+        }
+        // if this the last frame, add silence to the end of the back buffer if it was cut short
+        if (m_queuedAudioFrame.index == (m_mediaInfo.audio.nrOfFrames - 1) && m_audioBufferTrailingBytes8 > 0)
+        {
+            for (uint32_t channel = 0; channel < m_mediaInfo.audio.channels; ++channel)
+            {
+                auto dstPtr = m_audioBackPtr[channel] + m_audioBackBufferChannelSize8 + m_audioBufferTrailingBytes8;
+                for (uint32_t i = 0; i < (16U - m_audioBufferTrailingBytes8); ++i)
+                {
+                    *dstPtr++ = 0;
+                }
+            }
+            m_audioBackBufferChannelSize8 += 16;
+        }
         m_queuedAudioFrame.data = nullptr;
         ++m_audioFramesDecoded;
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto duration = Time::now() * 1000 - startTime * 1000;
         m_audioStats.m_accDecodedMs += duration;
         m_audioStats.m_maxDecodedMs = m_audioStats.m_maxDecodedMs < duration ? duration : m_audioStats.m_maxDecodedMs;
@@ -313,16 +433,16 @@ namespace Media
 
     IWRAM_FUNC auto DecodeVideoFrame() -> void
     {
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto startTime = Time::now();
 #endif
         auto vramPtr8 = (uint8_t *)VRAM + m_vramOffset8;
-        auto [videoDecodedFrame, videoDecodedFramesize] = DecodeVideo(m_videoScratchPad, m_videoScratchPadSize8, vramPtr8, m_vramLineStride8, m_mediaInfo, m_queuedVideoFrame);
+        auto [videoDecodedFrame, videoDecodedFramesize] = Vid2hDecoder::DecodeVideo(m_videoScratchPad, m_videoScratchPadSize8, vramPtr8, m_vramLineStride8, m_mediaInfo, m_queuedVideoFrame);
         m_videoDecodedFrame = videoDecodedFrame;
         m_videoDecodedFrameSize8 = videoDecodedFramesize;
         m_queuedVideoFrame.data = nullptr;
         ++m_videoFramesDecoded;
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto duration = Time::now() * 1000 - startTime * 1000;
         m_videoStats.m_accDecodedMs += duration;
         m_videoStats.m_maxDecodedMs = m_videoStats.m_maxDecodedMs < duration ? duration : m_videoStats.m_maxDecodedMs;
@@ -332,10 +452,10 @@ namespace Media
 
     IWRAM_FUNC auto DecodeSubtitlesFrame() -> void
     {
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto startTime = Time::now();
 #endif
-        const auto subtitle = DecodeSubtitles(m_queuedSubtitleFrame);
+        const auto subtitle = Vid2hDecoder::DecodeSubtitles(m_queuedSubtitleFrame);
         m_queuedSubtitleFrame.data = nullptr;
         if (m_subtitleCurrent.text == nullptr)
         {
@@ -349,7 +469,7 @@ namespace Media
             m_subtitleNext.endTimeS = std::get<1>(subtitle);
             m_subtitleNext.text = std::get<2>(subtitle);
         }
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto duration = Time::now() * 1000 - startTime * 1000;
         m_subtitlesStats.m_accDecodedMs += duration;
         m_subtitlesStats.m_maxDecodedMs = m_subtitlesStats.m_maxDecodedMs < duration ? duration : m_subtitlesStats.m_maxDecodedMs;
@@ -359,7 +479,7 @@ namespace Media
 
     IWRAM_FUNC auto BlitVideoFrame() -> void
     {
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto startTime = Time::now();
 #endif
         // copy video data to VRAM
@@ -383,7 +503,7 @@ namespace Media
                 vramPtr8 += m_vramLineStride8;
             }
         }
-#ifdef DEBUG_PLAYER
+#ifdef DEBUG_VIDEOPLAYER
         auto duration = Time::now() * 1000 - startTime * 1000;
         m_videoStats.m_accCopiedMs += duration;
         m_videoStats.m_maxCopiedMs = m_videoStats.m_maxCopiedMs < duration ? duration : m_videoStats.m_maxCopiedMs;
@@ -391,16 +511,17 @@ namespace Media
 #endif
     }
 
-    auto Play(const uint32_t *media, const uint32_t mediaSize) -> void
+    auto Play(const uint32_t *media, const uint32_t mediaSize, PlaybackType playbackType) -> void
     {
         if (m_playState == PlayState::Stopped)
         {
             m_playState = PlayState::Playing;
+            m_playbackType = playbackType;
             m_playTime = 0;
             m_videoHelpEnabled = false;
             // read file header
             m_mediaInfo = IO::Vid2h::GetInfo(media, mediaSize);
-            if (m_mediaInfo.contentType & IO::FileType::Video)
+            if (VIDEO_PLAYBACK_ON)
             {
                 // allocate video back buffer and scratch pad
                 const uint32_t videoBuffersize = m_mediaInfo.video.width * m_mediaInfo.video.height * ((m_mediaInfo.video.bitsPerPixel + 7) / 8);
@@ -409,77 +530,101 @@ namespace Media
                 // fill background with clear color
                 const uint32_t clearColor = static_cast<uint32_t>(m_vramClearColor) << 16 | m_vramClearColor;
                 Memory::memset32((void *)VRAM, clearColor, m_mediaInfo.video.width * m_mediaInfo.video.height / 2);
-            }
-            if (m_mediaInfo.contentType & IO::FileType::Audio)
-            {
-                // if sample depth is > 8 we can shrink the audio buffer, because we're resampling to 8 bit for output
-                constexpr uint32_t outputDepth = 8;
-                const auto sampleDepth = m_mediaInfo.audio.sampleBits;
-                // allocate audio buffers (play buffer + back buffer + scratch pad)
-                const uint32_t singleAudioBufferSize = ((m_mediaInfo.audio.memoryNeeded * outputDepth) + (outputDepth - 1)) / sampleDepth + 16;
-                m_audioBufferSize8 = singleAudioBufferSize;
-                m_audioScratchPad = reinterpret_cast<uint32_t *>(Memory::malloc_EWRAM(singleAudioBufferSize));
-                m_audioPlayBuffer = reinterpret_cast<uint32_t *>(Memory::malloc_IWRAM(2 * singleAudioBufferSize));
-                m_audioBackBuffer = m_audioPlayBuffer + m_audioBufferSize8 / 4;
-            }
-            m_mediaFrame.data = nullptr;
-            if (m_mediaInfo.contentType & IO::FileType::Audio)
-            {
-                m_queuedAudioFrame.data = nullptr;
-                m_audioFramesRequested = 0;
-                m_audioFramesDecoded = 0;
-            }
-            if (m_mediaInfo.contentType & IO::FileType::Video)
-            {
+                // clear video frame information
                 m_queuedVideoFrame.data = nullptr;
                 m_queuedColorMapFrame.data = nullptr;
                 m_videoFramesRequested = 0;
                 m_videoFramesDecoded = 0;
-                VideoHelp::Setup(0, 512, 0);
-                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Subtitles, false);
-                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Previous, false);
-                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Next, false);
             }
-            if (m_mediaInfo.contentType & IO::FileType::Subtitles)
+            if (AUDIO_PLAYBACK_ON)
             {
-                Subtitles::Setup(VideoHelp::SpritesInUse(), 512 + VideoHelp::TilesInUse(), 1);
+                // allocate audio decoding scratch pad (for both channels)
+                m_audioScratchPad = reinterpret_cast<uint32_t *>(Memory::malloc_EWRAM(m_mediaInfo.audio.memoryNeeded));
+                // initialize audio decoder / resampler
+                Vid2hDecoder::DecodeAudioInit(m_mediaInfo, AUDIO_SAMPLERATE);
+                // we're resampling to 32kHz / 8 bit for GBA output, so calculate needed buffer size plus 16 bytes for safety
+                const uint32_t singleAudioBufferSize = (Vid2hDecoder::GetMaxAudioBufferSize(m_mediaInfo, 8, AUDIO_SAMPLERATE) & 0xFFFFFFF0) + 16;
+                // allocate audio buffers
+                // we need singleAudioBufferSize for a single buffer of mono or stereo audio. we need twice that for playback for double buffering
+                m_audioSampleBuffer[0] = reinterpret_cast<uint8_t *>(Memory::malloc_IWRAM(2 * singleAudioBufferSize));
+                m_audioSampleBuffer[1] = m_audioSampleBuffer[0] + singleAudioBufferSize;
+                m_audioPlayPtr[0] = m_audioSampleBuffer[0] + 16; // pretend we're playing the back half of the buffer for the initial frame decode
+                m_audioPlayPtr[1] = m_audioSampleBuffer[1] + 16; // pretend we're playing the back half of the buffer for the initial frame decode
+                m_audioBackPtr[0] = m_audioSampleBuffer[0];
+                m_audioBackPtr[1] = m_audioSampleBuffer[1];
+                m_audioBufferTrailingBytes8 = 0;
+                m_audioPlayBufferChannelSize8 = 0;
+                m_audioBackBufferChannelSize8 = 0;
+                // fill audio buffers with silence
+                Memory::memset32(m_audioSampleBuffer[0], 0, 2 * singleAudioBufferSize / 4);
+                // clear audio frame information
+                m_queuedAudioFrame.data = nullptr;
+                m_audioFramesRequested = 0;
+                m_audioFramesDecoded = 0;
+            }
+            // enable video help only if requested
+            if (HAS_FEATURE_HELP)
+            {
+                MediaHelp::Setup(m_spriteStartIndex, m_tileStartIndex, m_paletteStartIndex);
+                MediaHelp::SetSymbolEnabled(MediaHelp::Symbol::Subtitles, false);
+                MediaHelp::SetSymbolEnabled(MediaHelp::Symbol::Previous, false);
+                MediaHelp::SetSymbolEnabled(MediaHelp::Symbol::Next, false);
+            }
+            if (SUBTITLES_PLAYBACK_ON)
+            {
+                // set up subtitle sprites
+                Subtitles::Setup(m_spriteStartIndex + MediaHelp::SpritesInUse(), m_tileStartIndex + MediaHelp::TilesInUse(), m_paletteStartIndex + 1);
                 m_queuedSubtitleFrame.data = nullptr;
                 m_subtitleCurrent = {0, 0, nullptr};
                 m_subtitleNext = {0, 0, nullptr};
-                VideoHelp::SetSymbolEnabled(VideoHelp::Symbol::Subtitles, true);
+                MediaHelp::SetSymbolEnabled(MediaHelp::Symbol::Subtitles, true);
             }
-#ifdef DEBUG_PLAYER
+            m_mediaFrame.data = nullptr;
+#ifdef DEBUG_VIDEOPLAYER
             m_videoStats = FrameStatistics{};
             m_audioStats = FrameStatistics{};
             m_subtitlesStats = FrameStatistics{};
             Time::start();
 #endif
             // load and decode initial frame(s)
-            if (m_mediaInfo.contentType & IO::FileType::Audio)
+            if (AUDIO_PLAYBACK_ON)
             {
                 // disable all sounds for now
                 REG_SOUNDCNT_X = 0;
-                // fill audio buffers with silence
-                Memory::memset32(m_audioBackBuffer, 0, m_audioBufferSize8 / 4);
-                // enable DMA 1 to copy words to sound FIFO A
+                REG_SOUNDBIAS = 0;
+                // set DMA 1 to copy words to sound FIFO A
                 REG_DMA[1].destination = (uint32_t)&REG_FIFO_A;                                      // write to sound FIFO A
                 REG_DMA[1].control = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
                 if (m_mediaInfo.audio.channels == 1)
                 {
                     // set DMA channel A to output to left and right at 100% and reset FIFO. by default timer 0 is used for both channels
                     REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_R_ENABLE | SNDA_RESET_FIFO;
+                    // prime sound FIFO with 16 bytes of silence (is this needed?)
+                    // REG_FIFO_A = 0UL;
+                    // REG_FIFO_A = 0UL;
+                    // REG_FIFO_A = 0UL;
+                    // REG_FIFO_A = 0UL;
                 }
                 else if (m_mediaInfo.audio.channels == 2)
                 {
-                    // enable DMA 2 to copy words to sound FIFO B
+                    // set DMA 2 to copy words to sound FIFO B
                     REG_DMA[2].destination = (uint32_t)&REG_FIFO_B;                                      // write to sound FIFO B
                     REG_DMA[2].control = DMA_DST_FIXED | DMA_SRC_INC | DMA_REPEAT | DMA32 | DMA_SPECIAL; // start DMA later
                     // set DMA channel A to output to left at 100% and reset FIFO
                     // set DMA channel B to output to right at 100% and reset FIFO
                     REG_SOUNDCNT_H = SNDA_VOL_100 | SNDA_L_ENABLE | SNDA_RESET_FIFO | SNDB_VOL_100 | SNDB_R_ENABLE | SNDB_RESET_FIFO;
+                    // prime sound FIFOs with 16 bytes of silence (is this needed?)
+                    // REG_FIFO_A = 0UL;
+                    // REG_FIFO_A = 0UL;
+                    // REG_FIFO_A = 0UL;
+                    // REG_FIFO_A = 0UL;
+                    // REG_FIFO_B = 0UL;
+                    // REG_FIFO_B = 0UL;
+                    // REG_FIFO_B = 0UL;
+                    // REG_FIFO_B = 0UL;
                 }
                 // set up timer 0 to increase with sample rate = 1 / sample rate (where 16777216 == 1s) and set divider to 0 == 1/1
-                const uint32_t frameTime = uint64_t(16777216) / m_mediaInfo.audio.sampleRateHz;
+                const uint32_t frameTime = uint64_t(16777216) / AUDIO_SAMPLERATE;
                 REG_TM0CNT_L = 65536U - frameTime;
                 REG_TM0CNT_H = 0; // start timer later
                 // set timer 1 to cascade from timer 0, issue IRQ to swap sample buffers and set divider to 0 == 1/1
@@ -487,16 +632,17 @@ namespace Media
                 Irq::enable(Irq::Mask::Timer1);
                 REG_TM1CNT_L = 0;                           // set up number of samples in buffer later
                 REG_TM1CNT_H = TIMER_COUNT | TIMER_IRQ | 0; // start timer later
-                // read the first video frame from media data
+                // read the first audio frame from media data
                 while (m_queuedAudioFrame.data == nullptr)
                 {
                     ReadAndQueueNextFrame();
                 }
                 // decode the first audio frame
                 DecodeAudioFrame();
-                m_audioFrameTime = m_mediaInfo.contentType & IO::FileType::Video ? 0 : frameTime;
+                // calculate time per sample in 0.32 format used in AudioBufferRequest()
+                m_audioSampleTime = VIDEO_PLAYBACK_ON ? 0 : uint64_t(4294967296) / AUDIO_SAMPLERATE;
             }
-            if (m_mediaInfo.contentType & IO::FileType::Video)
+            if (VIDEO_PLAYBACK_ON)
             {
                 // fill scratch pad with clear color
                 const uint32_t clearColor = static_cast<uint32_t>(m_vramClearColor) << 16 | m_vramClearColor;
@@ -518,20 +664,20 @@ namespace Media
                 DecodeVideoFrame();
             }
             // now display / play initial data
-            if (m_mediaInfo.contentType & IO::FileType::Video)
+            if (VIDEO_PLAYBACK_ON)
             {
                 // blit first frame to screen
                 BlitVideoFrame();
                 // start timer for video frame rate
                 REG_TM2CNT_H |= TIMER_START;
             }
-            if (m_mediaInfo.contentType & IO::FileType::Audio)
+            if (AUDIO_PLAYBACK_ON)
             {
                 // start and enable sound playback
                 // sound output will be enabled in AudioBufferRequest() to prevent clicks
                 AudioBufferRequest();
             }
-            if (m_mediaInfo.contentType & IO::FileType::Subtitles && m_subtitlesEnabled)
+            if (SUBTITLES_PLAYBACK_ON && m_subtitlesEnabled)
             {
                 if (m_queuedSubtitleFrame.data != nullptr)
                 {
@@ -572,12 +718,34 @@ namespace Media
             if (m_audioFramesDecoded < 1 && m_queuedAudioFrame.data != nullptr)
             {
                 --m_audioFramesRequested;
-                DecodeAudioFrame();
+                // only decode the current frame if there are no more requests waiting, because this would mean we are skipping frames
+                if (m_audioFramesRequested <= 0)
+                {
+                    DecodeAudioFrame();
+                }
+                else
+                {
+                    m_queuedAudioFrame.data = nullptr;
+#ifdef DEBUG_VIDEOPLAYER
+                    Debug::printf("Skipping audio frame #%d", m_queuedAudioFrame.index);
+#endif
+                }
             }
             if (m_videoFramesDecoded < 1 && m_queuedVideoFrame.data != nullptr)
             {
                 --m_videoFramesRequested;
-                DecodeVideoFrame();
+                // only decode the current frame if there are no more requests waiting, because this would mean we are skipping frames
+                if (m_videoFramesRequested <= 0)
+                {
+                    DecodeVideoFrame();
+                }
+                else
+                {
+                    m_queuedVideoFrame.data = nullptr;
+#ifdef DEBUG_VIDEOPLAYER
+                    Debug::printf("Skipping video frame #%d", m_queuedVideoFrame.index);
+#endif
+                }
             }
             if (m_queuedSubtitleFrame.data != nullptr)
             {
@@ -598,15 +766,16 @@ namespace Media
             if (m_playState == PlayState::Playing)
             {
                 m_playState = PlayState::Paused;
-                if (m_mediaInfo.contentType & IO::FileType::Audio)
+                if (AUDIO_PLAYBACK_ON)
                 {
                     // disable audio timers
                     REG_TM1CNT_H &= ~TIMER_START;
                     REG_TM0CNT_H &= ~TIMER_START;
                     // disable sound for now
                     REG_SOUNDCNT_X = 0;
+                    REG_SOUNDBIAS = 0;
                 }
-                if (m_mediaInfo.contentType & IO::FileType::Video)
+                if (VIDEO_PLAYBACK_ON)
                 {
                     // disable video timer
                     REG_TM2CNT_H &= ~TIMER_START;
@@ -617,7 +786,7 @@ namespace Media
         {
             if (m_playState == PlayState::Paused)
             {
-                if (m_mediaInfo.contentType & IO::FileType::Audio)
+                if (AUDIO_PLAYBACK_ON)
                 {
                     m_playState = PlayState::Playing;
                     // enable audio timers
@@ -625,7 +794,7 @@ namespace Media
                     REG_TM0CNT_H |= TIMER_START;
                     // sound output will be enabled in AudioBufferRequest() to prevent clicks
                 }
-                if (m_mediaInfo.contentType & IO::FileType::Video)
+                if (VIDEO_PLAYBACK_ON)
                 {
                     // enable video timer
                     REG_TM2CNT_H |= TIMER_START;
@@ -641,18 +810,12 @@ namespace Media
             m_playState = PlayState::Stopped;
             m_audioFramesRequested = 0;
             m_videoFramesRequested = 0;
-            // clean up subtitles
-            if (m_mediaInfo.contentType & IO::FileType::Subtitles)
-            {
-                Subtitles::Cleanup();
-                m_subtitleCurrent = {0, 0, nullptr};
-                m_subtitleNext = {0, 0, nullptr};
-            }
             // clean up audio
-            if (m_mediaInfo.contentType & IO::FileType::Audio)
+            if (AUDIO_PLAYBACK_ON)
             {
                 // disable sound for now
                 REG_SOUNDCNT_X = 0;
+                REG_SOUNDBIAS = 0;
                 // disable audio timers
                 REG_TM1CNT_H = 0;
                 REG_TM0CNT_H = 0;
@@ -664,11 +827,15 @@ namespace Media
                     REG_DMA[2].control = 0;
                 }
                 // free audio memory
-                if (m_audioPlayBuffer)
+                if (m_audioSampleBuffer[0])
                 {
-                    Memory::free(m_audioPlayBuffer);
-                    m_audioPlayBuffer = nullptr;
-                    m_audioBackBuffer = nullptr;
+                    Memory::free(m_audioSampleBuffer[0]);
+                    m_audioSampleBuffer[0] = nullptr;
+                    m_audioSampleBuffer[1] = nullptr;
+                    m_audioPlayPtr[0] = nullptr;
+                    m_audioPlayPtr[1] = nullptr;
+                    m_audioBackPtr[0] = nullptr;
+                    m_audioBackPtr[1] = nullptr;
                 }
                 if (m_audioScratchPad)
                 {
@@ -677,7 +844,7 @@ namespace Media
                 }
             }
             // clean up video
-            if (m_mediaInfo.contentType & IO::FileType::Video)
+            if (VIDEO_PLAYBACK_ON)
             {
                 // disable video timer
                 REG_TM2CNT_H = 0;
@@ -688,15 +855,24 @@ namespace Media
                     Memory::free(m_videoScratchPad);
                     m_videoScratchPad = nullptr;
                 }
-                // clean up video help
-                VideoHelp::Cleanup();
             }
-#ifdef DEBUG_PLAYER
-            Debug::printf("Audio avg. decode: %f ms (max. %f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);
-            Debug::printf("Video avg. decode: %f ms (max. %f ms)", int32_t(m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded), m_videoStats.m_maxDecodedMs);
-            Debug::printf("Video avg. blit: %f ms (max. %f ms)", int32_t(m_videoStats.m_accCopiedMs / m_videoStats.m_nrCopied), m_videoStats.m_maxCopiedMs);
-            Debug::printf("Subtitles avg. update: %f ms (max. %f ms)", int32_t(m_subtitlesStats.m_accCopiedMs / m_subtitlesStats.m_nrCopied), m_subtitlesStats.m_maxCopiedMs);
-            Time::stop();
+            // clean up subtitles
+            if (SUBTITLES_PLAYBACK_ON)
+            {
+                Subtitles::Cleanup();
+                m_subtitleCurrent = {0, 0, nullptr};
+                m_subtitleNext = {0, 0, nullptr};
+            }
+            // clean up video help
+            if (HAS_FEATURE_HELP)
+            {
+                MediaHelp::Cleanup();
+            }
+#ifdef DEBUG_VIDEOPLAYER
+            Debug::printf("Audio avg. decode: %.2f ms (max. %.2f ms)", int32_t(m_audioStats.m_accDecodedMs / m_audioStats.m_nrDecoded), m_audioStats.m_maxDecodedMs);
+            Debug::printf("Video avg. decode: %.3f ms (max. %.3f ms)", int32_t(m_videoStats.m_accDecodedMs / m_videoStats.m_nrDecoded), m_videoStats.m_maxDecodedMs);
+            Debug::printf("Video avg. blit: %.4f ms (max. %.4f ms)", int32_t(m_videoStats.m_accCopiedMs / m_videoStats.m_nrCopied), m_videoStats.m_maxCopiedMs);
+            Debug::printf("Subtitles avg. update: %.1f ms (max. %.1f ms)", int32_t(m_subtitlesStats.m_accCopiedMs / m_subtitlesStats.m_nrCopied), m_subtitlesStats.m_maxCopiedMs);
 #endif
         }
     }

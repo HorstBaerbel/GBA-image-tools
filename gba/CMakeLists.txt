@@ -35,40 +35,69 @@ macro(target_img2h_file _listName _outname _infiles _options)
 	LIST(APPEND ${_listName} "${CMAKE_CURRENT_SOURCE_DIR}/data/${_outname}.c")
 endmacro()
 
+# Decoder sources --------------------------------------------
+
+# Set directory for GBA demo framework
+set(DEMO_FRAMEWORK_SRC_DIR GBA-demo-framework/src)
+
+# Set flags on which version of decoders to use
+set(DXTV_USE_ASM True)
+if(DXTV_USE_ASM)
+	list(APPEND DXTV_DECODER_FILES ${DEMO_FRAMEWORK_SRC_DIR}/video/dxtv_asm.s)
+else()
+	list(APPEND DXTV_DECODER_FILES ${DEMO_FRAMEWORK_SRC_DIR}/video/dxtv.cpp)
+endif()
+list(APPEND DXTV_DECODER_FILES
+	${DEMO_FRAMEWORK_SRC_DIR}/image/dxt_tables.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/video/dxtv_structs.cpp
+)
+
+set(LZ4_USE_ASM True)
+if(LZ4_USE_ASM)
+	list(APPEND LZ4_DECODER_FILES ${DEMO_FRAMEWORK_SRC_DIR}/compression/lz4_asm.s)
+else()
+	list(APPEND LZ4_DECODER_FILES ${DEMO_FRAMEWORK_SRC_DIR}/compression/lz4.cpp)
+endif()
+
+set(ADPCM_USE_ASM True)
+if(ADPCM_USE_ASM)
+	list(APPEND ADPCM_DECODER_FILES ${DEMO_FRAMEWORK_SRC_DIR}/audio/adpcm_asm.s)
+else()
+	list(APPEND ADPCM_DECODER_FILES ${DEMO_FRAMEWORK_SRC_DIR}/audio/adpcm.cpp)
+endif()
+list(APPEND ADPCM_DECODER_FILES
+	${DEMO_FRAMEWORK_SRC_DIR}/audio/adpcm_structs.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/audio/adpcm_tables.cpp
+)
+
 # Video example sources --------------------------------------------
 LIST(APPEND VIDEO_SOURCE_FILES
-	GBA-demo-framework/src/sprites.cpp
-	GBA-demo-framework/src/time.cpp
-	GBA-demo-framework/src/tui.cpp
-	GBA-demo-framework/src/tiles.cpp
-	GBA-demo-framework/src/memory/dma.cpp
-	GBA-demo-framework/src/memory/memcpy.s
-	GBA-demo-framework/src/memory/memory.cpp
-	GBA-demo-framework/src/memory/memset.s
-	GBA-demo-framework/src/print/itoa.cpp
-	GBA-demo-framework/src/print/output.cpp
-	GBA-demo-framework/src/sys/halt.cpp
-	GBA-demo-framework/src/sys/interrupts.cpp
-	GBA-demo-framework/src/sys/intdispatcher.s
-	GBA-demo-framework/src/sys/input.cpp
-	GBA-demo-framework/src/sys/memctrl.cpp
-	GBA-demo-framework/src/compression/bios.cpp
-	GBA-demo-framework/src/compression/lz4.cpp
-	GBA-demo-framework/src/compression/lz4_asm.s
-	GBA-demo-framework/src/compression/lz77_asm.s
-	GBA-demo-framework/src/compression/adpcm.cpp
-	GBA-demo-framework/src/compression/adpcm_asm.s
-	../src/if/adpcm_structs.cpp
-	../src/if/adpcm_tables.cpp
-	../src/if/dxt_tables.cpp
-	../src/if/dxtv_structs.cpp
-	video/dxtv.cpp
-	video/dxtv_asm.s
+	${DEMO_FRAMEWORK_SRC_DIR}/sprites.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/time.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/tui.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/tiles.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/audio/resampler.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/memory/dma.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/memory/memcpy.s
+	${DEMO_FRAMEWORK_SRC_DIR}/memory/memory.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/memory/memset.s
+	${DEMO_FRAMEWORK_SRC_DIR}/print/itoa.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/print/output.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/halt.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/interrupts.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/intdispatcher.s
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/input.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/memctrl.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/compression/bios.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/compression/lz77_asm.s
+	${DEMO_FRAMEWORK_SRC_DIR}/media/vid2hio.cpp
+	${DXTV_DECODER_FILES}
+	${LZ4_DECODER_FILES}
+	${ADPCM_DECODER_FILES}
+	video/mediahelp.cpp
+	video/mediaplayer.cpp
 	video/subtitles.cpp
 	video/vid2hdecoder.cpp
-	video/vid2hio.cpp
-	video/videohelp.cpp
-	video/videoplayer.cpp
 	video.cpp
 	data/video.s
 )
@@ -77,27 +106,26 @@ set_source_files_properties(data/video.s OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/data
 # Add image source files to be converted with img2h here. Paths with spaces need escaping (\"\")
 target_img2h_file(VIDEO_DATA_FILES "font_8x8" "data/font_8x8.png" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
 target_img2h_file(VIDEO_DATA_FILES "font_subtitles" "data/font_subtitles.png" "--blackwhite=0.5 --outformat=bgr555 --tiles --prune=4")
-target_img2h_file(VIDEO_DATA_FILES "videohelp" "data/videohelp.png" "--paletted=16 --outformat=bgr555 --tiles --sprites=64,32 --prune=4")
+target_img2h_file(VIDEO_DATA_FILES "mediahelp" "data/mediahelp.png" "--paletted=16 --outformat=bgr555 --tiles --sprites=64,32 --prune=4")
 
 # Image example sources --------------------------------------------
 LIST(APPEND IMAGE_SOURCE_FILES
-	GBA-demo-framework/src/tui.cpp
-	GBA-demo-framework/src/memory/dma.cpp
-	GBA-demo-framework/src/memory/memcpy.s
-	GBA-demo-framework/src/memory/memset.s
-	GBA-demo-framework/src/print/itoa.cpp
-	GBA-demo-framework/src/print/output.cpp
-	GBA-demo-framework/src/sys/halt.cpp
-	GBA-demo-framework/src/sys/interrupts.cpp
-	GBA-demo-framework/src/sys/intdispatcher.s
-	GBA-demo-framework/src/sys/input.cpp
-	GBA-demo-framework/src/sys/memctrl.cpp
-	GBA-demo-framework/src/compression/bios.cpp
-	GBA-demo-framework/src/compression/lz4.cpp
-	GBA-demo-framework/src/compression/lz4_asm.s
-	GBA-demo-framework/src/compression/lz77_asm.s
-	../src/if/dxt_tables.cpp
-	image/dxt.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/tui.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/memory/dma.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/memory/memcpy.s
+	${DEMO_FRAMEWORK_SRC_DIR}/memory/memset.s
+	${DEMO_FRAMEWORK_SRC_DIR}/print/itoa.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/print/output.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/halt.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/interrupts.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/intdispatcher.s
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/input.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/sys/memctrl.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/compression/bios.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/compression/lz77_asm.s
+	${DEMO_FRAMEWORK_SRC_DIR}/image/dxt.cpp
+	${DEMO_FRAMEWORK_SRC_DIR}/image/dxt_tables.cpp
+	${LZ4_DECODER_FILES}
 	image.cpp
 )
 
@@ -107,7 +135,6 @@ target_img2h_file(IMAGE_DATA_FILES "images_dxt" "../data/images/240x160/*.png" "
 
 LIST(APPEND INCLUDE_DIRS
 	${DEVKITARM}/arm-none-eabi/include
-	${CMAKE_CURRENT_SOURCE_DIR}/../src/if # Include directory for common code from the GBA image tools
 	${CMAKE_CURRENT_SOURCE_DIR}/GBA-demo-framework/src
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/data

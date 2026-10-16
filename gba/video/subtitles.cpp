@@ -62,7 +62,7 @@ namespace Subtitles
         }
         uint32_t screenWidth = 0;
         uint32_t charCount = 0;
-        while (*string != '\0' && string < end)
+        while (*string != '\0' && (end ? string < end : true))
         {
             auto charIndex = static_cast<int32_t>(*string) - 32;
             if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SUBTITLES_NR_OF_CHARS))
@@ -97,7 +97,7 @@ namespace Subtitles
             return 0;
         }
         uint32_t charCount = 0;
-        while (*string != '\0' && string < end)
+        while (*string != '\0' && (end ? string < end : true))
         {
             auto charIndex = static_cast<int32_t>(*string) - 32;
             if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SUBTITLES_NR_OF_CHARS))
@@ -116,7 +116,7 @@ namespace Subtitles
             return;
         }
         int16_t charX = x;
-        while (*string != '\0' && string < end && spritesInUse < MaxSubtitlesChars)
+        while (*string != '\0' && (end ? string < end : true) && spritesInUse < MaxSubtitlesChars)
         {
             auto charIndex = static_cast<int32_t>(*string) - 32;
             if (charIndex >= 0 && charIndex < static_cast<int32_t>(FONT_SUBTITLES_NR_OF_CHARS))
@@ -176,6 +176,10 @@ namespace Subtitles
         spriteTileIndex = 0;
         spritesVisible = true;
         Sprites::clearOAM();
-        Memory::free(sprites);
+        if (sprites)
+        {
+            Memory::free(sprites);
+            sprites = nullptr;
+        }
     }
 }

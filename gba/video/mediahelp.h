@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace VideoHelp
+namespace MediaHelp
 {
     /// @brief The symbols the help can display
     enum class Symbol : uint8_t

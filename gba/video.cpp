@@ -1,11 +1,11 @@
 #include "sys/video.h"
+#include "mediaplayer.h"
 #include "print/output.h"
 #include "sys/base.h"
 #include "sys/input.h"
 #include "sys/interrupts.h"
 #include "sys/memctrl.h"
 #include "tui.h"
-#include "videoplayer.h"
 
 #include "data/video.h"
 
@@ -99,23 +99,40 @@ int main()
 		}
 		TUI::setColor(TUI::Color::Black, TUI::Color::LightGray);
 		TUI::printf(0, 19, "        Press A to play");
-		// center video on screen
-		Media::SetPosition((240 - mediaInfo.video.width) / 2, (160 - mediaInfo.video.height) / 2);
 		// wait for keypress
 		Input::waitForKeysDown(Input::KeyA, true);
-		// switch video mode to 240x160x2
-		REG_DISPCNT = MODE_3 | BG2_ON;
+		// enable all features on player
+		MediaPlayer::SetFeatures(MediaPlayer::Features::All);
+		// center video on screen
+		MediaPlayer::SetPosition((240 - mediaInfo.video.width) / 2, (160 - mediaInfo.video.height) / 2);
 		// set up video system and clear color
-		Media::SetDisplayInfo(480, 2);
-		Media::SetClearColor(0);
+		MediaPlayer::SetDisplayInfo(480, 2);
+		MediaPlayer::SetClearColor(0);
+		// switch video mode to 240x160x2
+		REG_DISPCNT = MODE_3 | BG2_ON | OBJ_ON;
+		// reset BG2 affine parameters
+		REG_BG2X = 0;
+		REG_BG2Y = 0;
+		REG_BG2PA = 256;
+		REG_BG2PB = 0;
+		REG_BG2PC = 0;
+		REG_BG2PD = 256;
+		// clear mosaic setting
+		REG_MOSAIC = 0;
+		// clear blending
+		REG_BLDCNT = 0;
+		REG_BLDALPHA = 0;
+		REG_BLDY = 0;
+		// set up sprite info for subtitles and help
+		MediaPlayer::SetSpriteInfo(0, 512, 0);
 		// start main loop
-		Media::Play(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE);
+		MediaPlayer::Play(reinterpret_cast<const uint32_t *>(VIDEO_DATA), VIDEO_DATA_SIZE, MediaPlayer::PlaybackType::AudioVideo);
 		do
 		{
-			Media::DecodeAndPlay();
-			if (!Media::HasMoreFrames())
+			MediaPlayer::DecodeAndPlay();
+			if (!MediaPlayer::HasMoreFrames())
 			{
-				Media::Stop();
+				MediaPlayer::Stop();
 				break;
 			}
 			Input::scanKeys();
@@ -123,23 +140,23 @@ int main()
 			if (keysDown & Input::KeyA)
 			{
 				// A pauses / unpauses playback
-				Media::Pause(Media::GetPlayState() == Media::PlayState::Playing);
+				MediaPlayer::Pause(MediaPlayer::GetPlayState() == MediaPlayer::PlayState::Playing);
 			}
 			else if (keysDown & Input::KeyB)
 			{
 				// B stops playback
-				Media::Stop();
+				MediaPlayer::Stop();
 				break;
 			}
 			else if (keysDown & Input::KeySelect)
 			{
 				// Select toggle subtitle display
-				Media::EnableSubtitles(!Media::AreSubtitlesEnabled());
+				MediaPlayer::EnableSubtitles(!MediaPlayer::AreSubtitlesEnabled());
 			}
 			else if (keysDown & Input::KeyStart)
 			{
 				// Start shows player help
-				Media::EnableVideoHelp(!Media::IsVideoHelpEnabled());
+				MediaPlayer::EnableVideoHelp(!MediaPlayer::IsVideoHelpEnabled());
 			}
 		} while (true);
 	} while (true);

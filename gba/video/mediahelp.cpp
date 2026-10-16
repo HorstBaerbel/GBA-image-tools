@@ -1,14 +1,13 @@
-#include "videohelp.h"
+#include "mediahelp.h"
 
 #include "memory/memory.h"
 #include "palette.h"
-#include "print/itoa.h"
 #include "sprites.h"
 #include "tiles.h"
 
-#include "./data/videohelp.h"
+#include "./data/mediahelp.h"
 
-namespace VideoHelp
+namespace MediaHelp
 {
     struct SymbolInfo
     {
@@ -31,33 +30,33 @@ namespace VideoHelp
         Palette::Sprite16[spritePaletteIndex][0] = 0;
         Memory::memset16(&Palette::Sprite16[spritePaletteIndex][1], 0x7fff, 15);
         // allocate sprites
-        spritesInUse = VIDEOHELP_NR_OF_TILES;
+        spritesInUse = MEDIAHELP_NR_OF_TILES;
         sprites = Memory::malloc_EWRAM<Sprites::Sprite2D>(spritesInUse);
         Sprites::create(sprites, spritesInUse, spriteStartIndex, tileStartIndex, Sprites::SizeCode::Size64x32, Sprites::ColorDepth::Depth16, spritePaletteIndex);
         // play
         symbols[static_cast<uint32_t>(Symbol::Play)].spriteIndex = 0;
         symbols[static_cast<uint32_t>(Symbol::Play)].spriteCount = 2;
         sprites[0].x = 30;
-        sprites[0].y = 22;
+        sprites[0].y = 38;
         sprites[1].x = 30 + 64;
-        sprites[1].y = 22;
+        sprites[1].y = 38;
         // stop
         symbols[static_cast<uint32_t>(Symbol::Stop)].spriteIndex = 2;
         symbols[static_cast<uint32_t>(Symbol::Stop)].spriteCount = 1;
         sprites[2].x = 164;
-        sprites[2].y = 22;
+        sprites[2].y = 38;
         // help
         symbols[static_cast<uint32_t>(Symbol::Help)].spriteIndex = 3;
         symbols[static_cast<uint32_t>(Symbol::Help)].spriteCount = 1;
         sprites[3].x = 32;
-        sprites[3].y = 66;
+        sprites[3].y = 82;
         // subtitles
         symbols[static_cast<uint32_t>(Symbol::Subtitles)].spriteIndex = 4;
         symbols[static_cast<uint32_t>(Symbol::Subtitles)].spriteCount = 2;
         sprites[4].x = 102;
-        sprites[4].y = 66;
+        sprites[4].y = 82;
         sprites[5].x = 102 + 64;
-        sprites[5].y = 66;
+        sprites[5].y = 82;
         // previous
         symbols[static_cast<uint32_t>(Symbol::Previous)].spriteIndex = 6;
         symbols[static_cast<uint32_t>(Symbol::Previous)].spriteCount = 2;
@@ -72,7 +71,7 @@ namespace VideoHelp
         sprites[8].y = 106;
         // copy data to tile map
         auto spriteTile = Sprites::TILE_INDEX_TO_MEM<uint32_t>(tileStartIndex);
-        Memory::memcpy32(spriteTile, VIDEOHELP_DATA, VIDEOHELP_DATA_SIZE);
+        Memory::memcpy32(spriteTile, MEDIAHELP_DATA, MEDIAHELP_DATA_SIZE);
         // enable sprites
         REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     }
@@ -156,6 +155,10 @@ namespace VideoHelp
         spritesInUse = 0;
         spritePaletteIndex = 0;
         Sprites::clearOAM();
-        Memory::free(sprites);
+        if (sprites)
+        {
+            Memory::free(sprites);
+            sprites = nullptr;
+        }
     }
 }

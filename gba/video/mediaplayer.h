@@ -1,19 +1,41 @@
 #pragma once
 
-#include "vid2hio.h"
+#include "media/vid2hio.h"
 
 #include <cstdint>
 
-namespace Media
+namespace MediaPlayer
 {
 
+    /// @brief Type of playback
+    enum PlaybackType : uint8_t
+    {
+        Audio = 0x01,      // Play audio only
+        Video = 0x02,      // Play video only
+        AudioVideo = 0x03, // Play both video and audio
+    };
+
     /// @brief State of player
-    enum class PlayState
+    enum class PlayState : uint8_t
     {
         Stopped = 0,
         Playing = 1,
         Paused = 2
     };
+
+    /// @brief Media player features
+    enum Features : uint8_t
+    {
+        None = 0x00,
+        Help = 0x01,      // Enable media player help
+        Subtitles = 0x02, // Enable subtitles
+        All = 0x03
+    };
+
+    /// @brief Enable usage of features in player. Call before Play()back!
+    /// Per default no features are available.
+    /// @param features Set of features available in player
+    auto SetFeatures(Features features = Features::All) -> void;
 
     /// @brief Set up VRAM info for video playback. Call before Play()back!
     /// @param vramLineStride Stride of one line of VRAM pixels, e.g. 480 for mode 3
@@ -23,6 +45,12 @@ namespace Media
     /// @brief Set color that screen and scratchpad will be set to when starting playback. Call before Play()back!
     /// @param color
     auto SetClearColor(uint16_t color) -> void;
+
+    /// @brief Set up information where to place sprites for the video player. Call before Play()back!
+    /// @param spriteStartIndex Index at which the sprites start
+    /// @param tileStartIndex Index at which the tiles for the sprites start
+    /// @param paletteIndex First 16-color palette index for sprites
+    auto SetSpriteInfo(uint32_t spriteStartIndex = 0, uint32_t tileStartIndex = 0, uint16_t paletteStartIndex = 0) -> void;
 
     /// @brief Set draw position of video. Call before Play()back!
     /// @param x Horizontal position
@@ -54,10 +82,12 @@ namespace Media
     /// @brief Start playing media
     /// @param media Media source data
     /// @param mediaSize Media source size in bytes
+    /// @param playbackType What types of media to play back from the data
     /// @note Will allocate EWRAM and IWRAM as needed for video and audio buffers
-    /// Will use Timer 0, 1, 2, IRQ 1, 2 and DMA 1 (mono) or DMA 1 + 2 (stereo).
+    /// Will use Timer 0, 1, 2, Timer IRQ 1, 2 and DMA 1 (mono) or DMA 1 + 2 (stereo).
     /// Also modifies sound registers, especially REG_SOUNDCNT_X
-    auto Play(const uint32_t *media, const uint32_t mediaSize) -> void;
+    /// If you want video help and subtitle support, enable them before using SetFeatures()
+    auto Play(const uint32_t *media, const uint32_t mediaSize, PlaybackType playbackType = PlaybackType::AudioVideo) -> void;
 
     /// @brief Pause / Unpause playing media
     auto Pause(bool pause = true) -> void;
