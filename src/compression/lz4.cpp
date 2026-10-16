@@ -41,12 +41,8 @@ namespace Compression
             const auto matchStartPosition = possibleMatchIt->second;
             // calculate match distance and make sure it stays below the max. allowed distance
             const int32_t distance = srcPosition - matchStartPosition;
-            // if we want to be VRAM-compatible, skip matches with a distance of 1
-            if (vramCompatible && (distance == 1))
-            {
-                continue;
-            }
-            if (matchStartPosition < srcPosition && distance <= Lz4Constants::MAX_MATCH_DISTANCE)
+            // make sure the match is valid and, for VRAM compatibility, skip matches with a distance of 1
+            if (matchStartPosition < srcPosition && distance <= Lz4Constants::MAX_MATCH_DISTANCE && !(vramCompatible && distance == 1))
             {
                 // if we currently have no best match, store this one
                 if (bestMatch.distance == 0 && bestMatch.length == 0)
