@@ -49,6 +49,7 @@ namespace Kmeans
             clusters.back().center = maxDistancePosition;
         }
         REQUIRE(clusters.size() == nrOfClusters, std::runtime_error, "Failed build expected number of clusters");
+        return clusters;
     }
 
     /// @brief Run online k-mean algorithm on clusters
