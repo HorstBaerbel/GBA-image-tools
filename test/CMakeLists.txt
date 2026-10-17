@@ -39,6 +39,7 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/color/conversions.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorformat.cpp
     ${PROJECT_SOURCE_DIR}/src/color/colorhelpers.cpp
+    ${PROJECT_SOURCE_DIR}/src/color/optimizedistance.cpp
     ${PROJECT_SOURCE_DIR}/src/color/grayf.cpp
     ${PROJECT_SOURCE_DIR}/src/color/cielabf.cpp
     ${PROJECT_SOURCE_DIR}/src/color/gamma.cpp
@@ -53,6 +54,10 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/compression/rans.cpp
     ${PROJECT_SOURCE_DIR}/src/image/imageio.cpp
     ${PROJECT_SOURCE_DIR}/src/image/datatype.cpp
+    ${PROJECT_SOURCE_DIR}/src/image/quantizationmethod.cpp
+    ${PROJECT_SOURCE_DIR}/src/image/quantization.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio/audiostructs.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio/audioformat.cpp
     ${PROJECT_SOURCE_DIR}/src/image/imagehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/image/spritehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/datahelpers.cpp
