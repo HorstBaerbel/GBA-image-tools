@@ -47,7 +47,7 @@ public:
     }
 
 private:
-    std::array<coordinate_type, dimensions> coords_;
+    std::array<coordinate_type, dimensions> coords_{};
 };
 
 template <typename coordinate_type, size_t dimensions>
