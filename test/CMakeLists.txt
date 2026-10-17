@@ -58,10 +58,18 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/image/quantization.cpp
     ${PROJECT_SOURCE_DIR}/src/audio/audiostructs.cpp
     ${PROJECT_SOURCE_DIR}/src/audio/audioformat.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio/audiohelpers.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio/samplebuffer.cpp
     ${PROJECT_SOURCE_DIR}/src/image/imagehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/image/spritehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/datahelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/statistics/statistics.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio_codec/adpcm.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio_codec/adpcm_structs.cpp
+    ${PROJECT_SOURCE_DIR}/src/audio_codec/adpcm_tables.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/binio.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/textio.cpp
+    ${PROJECT_SOURCE_DIR}/src/subtitles/srtio.cpp
     ${LIBPLUM_INCLUDE_DIR}/libplum.c
 )
 
@@ -81,6 +89,7 @@ add_executable(${TARGET_NAME}
 target_link_libraries(${TARGET_NAME}
     PRIVATE
         OpenMP::OpenMP_CXX
+        adpcm-lib
         Catch2::Catch2WithMain
         pthread
 )
@@ -88,6 +97,7 @@ target_include_directories(${TARGET_NAME}
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${TARGET_INCLUDES}
+        ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/eigen
         ${CMAKE_CURRENT_SOURCE_DIR}/Catch2
         ${LIBPLUM_INCLUDE_DIR}
