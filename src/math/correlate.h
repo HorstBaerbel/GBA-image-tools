@@ -54,19 +54,18 @@ namespace Correlation
     /// @brief 1D convolution of arrays at zero shift with Eigen::Vectors
     /// @tparam T Array type
     /// @tparam N Number of values in array
-    /// @return Correlation value in [-1,1]
+    /// @return Convolution value at shift 0 in [-1,1]
     /// See: http://paulbourke.net/miscellaneous/correlate/
     /// See: https://en.wikipedia.org/wiki/Cross-correlation
     template <typename T, std::size_t N>
     auto convolve0(const std::array<T, N> &a, const std::array<T, N> &b) -> T
     {
-        // calculate the 0-shift convolution
+        // calculate the 0-shift convolution (flip b)
         T sAB{};
         for (std::size_t i = 0; i < N; ++i)
         {
-            sAB += a[i].cwiseProduct(b[i]);
+            sAB += a[i].cwiseProduct(b[N - 1 - i]);
         }
         return sAB;
     }
-
 }
