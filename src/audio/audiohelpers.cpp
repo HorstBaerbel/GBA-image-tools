@@ -16,7 +16,7 @@ namespace AudioHelpers
         {
         case Audio::SampleFormat::Signed8P:
             std::transform(samples.cbegin(), samples.cend(), std::back_inserter(result), [](auto s)
-                           { return static_cast<int16_t>((static_cast<int32_t>(s) + 128) * 257 - 32768); });
+                           { return static_cast<int16_t>((static_cast<int32_t>(static_cast<int8_t>(s)) + 128) * 257 - 32768); });
             break;
         case Audio::SampleFormat::Unsigned8P:
             std::transform(samples.cbegin(), samples.cend(), std::back_inserter(result), [](auto s)
