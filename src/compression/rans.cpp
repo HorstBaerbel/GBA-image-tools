@@ -18,7 +18,7 @@ namespace Compression
     //    Complete count table stored
     // 2: RLE with literal blocks
     //    Use the most significant bit (MSB) of the control byte as a flag:
-    //    Flag 0 (Literal block): 0 + 6-bit count. The following count bytes are literal data (raw copies)
+    //    Flag 0 (Literal block): 0 + 7-bit count. The following count bytes are literal data (raw copies)
     //    Flag 1 (Run block): 1 + 3-bit count, 4-bit value. The value is repeated count + 1 times. if value == 15 an extra value byte follows
 
     template <typename CountType>

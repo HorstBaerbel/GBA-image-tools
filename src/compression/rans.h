@@ -20,10 +20,10 @@ namespace Compression
     static constexpr uint8_t RANS_HEADER_MODE_256 = 1 << RANS_HEADER_MIN_BITS;    // Flag value for 256 count mode
     static constexpr uint8_t RANS_HEADER_MODE_RLE = 2 << RANS_HEADER_MIN_BITS;    // Flag value for RLE mode (not implemented)
 
-    /// @brief Compress input data using rANS with a 256-byte alphabet and RANS_M = 256.
+    /// @brief Compress input data using rANS with a 256-byte alphabet
     /// Stream format:
     ///       0: 3 bytes uncompressed size
-    ///       3: 1 byte rANS type marker "0x40"
+    ///       3: 1 byte rANS type marker "0x50"
     ///       4: 1 byte rANS header mode
     ///       5: C bytes symbol frequencies (256 or 512 bytes)
     ///     5+C: 1 byte initial rANS state size S
