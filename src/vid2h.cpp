@@ -761,14 +761,14 @@ int main(int argc, const char *argv[])
             // calculate progress
             const auto processed = videoProcessing.nrOfInputFrames() + audioProcessing.nrOfInputSamples();
             const uint32_t newProgress = ((100 * processed) / (mediaInfo.videoNrOfFrames + mediaInfo.audioNrOfSamples));
-            if (lastProgress != newProgress)
+            if (lastProgress < newProgress)
             {
                 lastProgress = newProgress;
                 const auto newTime = std::chrono::steady_clock::now();
                 const auto timePassedMs = std::chrono::duration<double>(newTime - startTime);
-                const auto fps = static_cast<double>(processed) / timePassedMs.count();
-                const auto restS = ((mediaInfo.videoNrOfFrames + mediaInfo.audioNrOfSamples) - processed) / fps;
-                std::cout << std::fixed << std::setprecision(1) << lastProgress << "%, " << fps << " fps, " << restS << "s remaining" << std::endl;
+                const auto pps = static_cast<double>(newProgress) / timePassedMs.count();
+                const auto restS = (100 - newProgress) / pps;
+                std::cout << std::fixed << std::setprecision(1) << lastProgress << "%, " << restS << "s remaining" << std::endl;
             }
             // update statistics
             window.update();
