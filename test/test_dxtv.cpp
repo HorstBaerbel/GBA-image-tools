@@ -40,7 +40,7 @@ auto testEncodeBlock(const Image::Frame &data, const float quality, const float 
     const auto size = data.info.size;
     auto currentCodeBook = Video::Dxtv::CodeBook8x8(data.data.pixels().convertData<Color::XRGB8888>(), size.width(), size.height(), false);
     auto &inBlock = currentCodeBook.block(0);
-    const auto inPixels = inBlock.pixels();
+    const auto inPixels = inBlock.pixelsAsArray();
     // output image
     std::vector<Color::XRGB8888> outImage(data.data.pixels().size());
     // compress block
@@ -62,7 +62,7 @@ auto testEncodeBlock(const Image::Frame &data, const float quality, const float 
     }
     // compare input and output
     auto outCodeBook = Video::Dxtv::CodeBook8x8(outImage, size.width(), size.height(), false);
-    auto outPixels = currentCodeBook.block(0).pixels();
+    auto outPixels = currentCodeBook.block(0).pixelsAsArray();
     auto psnr = Color::psnr(inPixels, outPixels);
     std::cout << "DXTV-compressed " << (swapToBGR ? "BGR555 " : "RGB555 ") << Video::DxtvConstants::BLOCK_MAX_DIM << "x" << Video::DxtvConstants::BLOCK_MAX_DIM << " block, psnr: " << std::setprecision(4) << psnr << std::endl;
     CATCH_REQUIRE(psnr >= allowedPsnr);

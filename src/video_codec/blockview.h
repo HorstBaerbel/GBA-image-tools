@@ -181,6 +181,17 @@ public:
         return result;
     }
 
+    /// @brief Return block pixels as stack-allocated array (no heap allocation)
+    auto pixelsAsArray() const -> std::array<value_type, Dim * Dim>
+    {
+        std::array<value_type, Dim * Dim> result{};
+        for (std::size_t i = 0; i < Dim * Dim; ++i)
+        {
+            result[i] = m_pixels[m_indices[i]];
+        }
+        return result;
+    }
+
     /// @brief Deep copy pixels from other block into this one
     auto copyPixelsFrom(const BlockView &other) -> void
     {
@@ -351,6 +362,17 @@ public:
     auto pixels() const -> std::vector<value_type>
     {
         std::vector<value_type> result(Dim * Dim);
+        for (std::size_t i = 0; i < Dim * Dim; ++i)
+        {
+            result[i] = m_pixels[m_indices[i]];
+        }
+        return result;
+    }
+
+    /// @brief Return block pixels as stack-allocated array (no heap allocation)
+    auto pixelsAsArray() const -> std::array<value_type, Dim * Dim>
+    {
+        std::array<value_type, Dim * Dim> result{};
         for (std::size_t i = 0; i < Dim * Dim; ++i)
         {
             result[i] = m_pixels[m_indices[i]];

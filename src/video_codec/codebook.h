@@ -187,6 +187,33 @@ public:
         return static_cast<float>(dist / (BLOCK_DIM * BLOCK_DIM));
     }
 
+    /// @brief Calculate mean squared error with early termination
+    /// @param block Block pixels (must be BLOCK_DIM * BLOCK_DIM elements)
+    /// @param x X position in codebook
+    /// @param y Y position in codebook
+    /// @param maxError If accumulated MSE exceeds this, return early with a value > maxError
+    /// @return Returns average color distance in [0,1], or > maxError if terminated early
+    template <std::size_t BLOCK_DIM = BlockMaxDim>
+    auto mseWithEarlyExit(const std::array<COLOR_TYPE, BLOCK_DIM * BLOCK_DIM> &block, const uint32_t x, const uint32_t y, float maxError) const -> float
+    {
+        const uint32_t offset = y * m_width + x;
+        float dist = 0.0F;
+        const float earlyExitThreshold = maxError * BLOCK_DIM * BLOCK_DIM;
+        for (uint32_t v = 0; v < BLOCK_DIM; ++v)
+        {
+            const COLOR_TYPE *pRow = m_pixels.data() + offset + v * m_width;
+            for (uint32_t u = 0; u < BLOCK_DIM; ++u)
+            {
+                dist += COLOR_TYPE::mse(pRow[u], block[v * BLOCK_DIM + u]);
+                if (dist > earlyExitThreshold)
+                {
+                    return maxError + 1.0F;
+                }
+            }
+        }
+        return dist / (BLOCK_DIM * BLOCK_DIM);
+    }
+
 private:
     uint32_t m_width = 0;
     uint32_t m_height = 0;

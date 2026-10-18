@@ -82,29 +82,29 @@ namespace Video
         const int32_t yStart = (blockY + Dxtv::MaxMotionVOffset.first) < 0 ? 0 : (blockY + Dxtv::MaxMotionVOffset.first);
         const int32_t yEnd = (blockY + Dxtv::MaxMotionVOffset.second) > yMax ? yMax : (blockY + Dxtv::MaxMotionVOffset.second);
         // search similar blocks
-        const auto blockPixels = block.pixels();
+        const auto blockPixels = block.pixelsAsArray();
         return_type bestMotion = {std::numeric_limits<float>::max(), 0, 0};
+        // Calculate macro block coordinates (invariant for this block)
+        const int32_t mbX = blockX - (blockX % DxtvConstants::BLOCK_MAX_DIM);
+        const int32_t mbY = blockY - (blockY % DxtvConstants::BLOCK_MAX_DIM);
         if (fromCurrCodeBook)
         {
             // when searching in the current codebook, do not allow searching past the already decoded blocks / blocks available to the decoder
             if constexpr (BLOCK_DIM == DxtvConstants::BLOCK_MAX_DIM)
             {
                 // macro blocks. restrict vertical search to max. same line as macro block
-                for (int32_t y = yStart; y <= xEnd; ++y)
+                const int32_t yLimit = mbY;
+                const int32_t xLimit = mbX - static_cast<int32_t>(BLOCK_DIM);
+                for (int32_t y = yStart; y <= yEnd && y <= yLimit; ++y)
                 {
-                    for (int32_t x = xStart; x <= xEnd; ++x)
+                    for (int32_t x = xStart; x <= xEnd && x <= xLimit; ++x)
                     {
-                        const int32_t blockEndX = x + BLOCK_DIM - 1;
-                        const int32_t blockEndY = y + BLOCK_DIM - 1;
-                        const int32_t mbX = blockX - (blockX % DxtvConstants::BLOCK_MAX_DIM);
-                        const int32_t mbY = blockY - (blockY % DxtvConstants::BLOCK_MAX_DIM);
-                        if (blockEndY < mbY + DxtvConstants::BLOCK_MAX_DIM && blockEndX < mbX)
+                        // Early termination threshold: we only need to beat current best AND stay below allowedError
+                        const float threshold = std::min(allowedError, std::get<0>(bestMotion));
+                        auto error = codeBook.mseWithEarlyExit<BLOCK_DIM>(blockPixels, x, y, threshold);
+                        if (error < threshold)
                         {
-                            auto error = codeBook.mse<BLOCK_DIM>(blockPixels, x, y);
-                            if (error < allowedError && error < std::get<0>(bestMotion))
-                            {
-                                bestMotion = {error, x - blockX, y - blockY};
-                            }
+                            bestMotion = std::make_tuple(error, x - blockX, y - blockY);
                         }
                     }
                 }
@@ -118,10 +118,11 @@ namespace Video
                     {
                         if (isCandidateDecoded<BLOCK_DIM>(x, y, blockX, blockY))
                         {
-                            auto error = codeBook.mse<BLOCK_DIM>(blockPixels, x, y);
-                            if (error < allowedError && error < std::get<0>(bestMotion))
+                            const float threshold = std::min(allowedError, std::get<0>(bestMotion));
+                            auto error = codeBook.mseWithEarlyExit<BLOCK_DIM>(blockPixels, x, y, threshold);
+                            if (error < threshold)
                             {
-                                bestMotion = {error, x - blockX, y - blockY};
+                                bestMotion = std::make_tuple(error, x - blockX, y - blockY);
                             }
                         }
                     }
@@ -135,10 +136,11 @@ namespace Video
             {
                 for (int32_t x = xStart; x <= xEnd; ++x)
                 {
-                    auto error = codeBook.mse<BLOCK_DIM>(blockPixels, x, y);
-                    if (error < allowedError && error < std::get<0>(bestMotion))
+                    const float threshold = std::min(allowedError, std::get<0>(bestMotion));
+                    auto error = codeBook.mseWithEarlyExit<BLOCK_DIM>(blockPixels, x, y, threshold);
+                    if (error < threshold)
                     {
-                        bestMotion = {error, x - blockX, y - blockY};
+                        bestMotion = std::make_tuple(error, x - blockX, y - blockY);
                     }
                 }
             }
@@ -291,8 +293,8 @@ namespace Video
         DxtvFrameHeader::write(reinterpret_cast<uint32_t *>(compressedFrameData.data()), frameHeader);
         // build vector of one block result per line for parallel execution
         std::vector<std::vector<uint8_t>> compressedBlockData(currentCodeBook.blockHeight());
-        // #pragma omp parallel for
-        //  loop through source images in lines
+        // loop through source images in lines (parallelized per row)
+        // #pragma omp parallel for schedule(static)
         for (int by = 0; by < currentCodeBook.blockHeight(); ++by)
         {
             // reserve maximum compressed data size
