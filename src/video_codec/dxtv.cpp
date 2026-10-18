@@ -112,7 +112,7 @@ namespace Video
             else
             {
                 // micro blocks. clamp y end to vertical end of macroblock minus size of our block
-                for (int32_t y = yStart; y <= xEnd; ++y)
+                for (int32_t y = yStart; y <= yEnd; ++y)
                 {
                     for (int32_t x = xStart; x <= xEnd; ++x)
                     {
