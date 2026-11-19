@@ -64,6 +64,7 @@ set(TARGET_SRC
     ${PROJECT_SOURCE_DIR}/src/image/spritehelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/datahelpers.cpp
     ${PROJECT_SOURCE_DIR}/src/processing/bitstream.cpp
+    ${PROJECT_SOURCE_DIR}/src/processing/motionvectors.cpp
     ${PROJECT_SOURCE_DIR}/src/statistics/statistics.cpp
     ${PROJECT_SOURCE_DIR}/src/audio_codec/adpcm.cpp
     ${PROJECT_SOURCE_DIR}/src/audio_codec/adpcm_structs.cpp
