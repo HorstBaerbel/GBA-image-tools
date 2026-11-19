@@ -28,8 +28,8 @@ namespace MotionVectors
     extern const DeltaVector DeltaVectors[1 << DeltaLongCodeLength];
 
     /// Writes the a motion vector delta to the bit stream
-    auto writeInterMotionDelta(Bitstream::Writer &bw, uint32_t index) -> void;
+    auto writeMotionDelta(Bitstream::Writer &bw, uint32_t index) -> void;
 
     /// Reads and decodes a motion vector delta from the bit stream
-    auto readInterMotionDelta(Bitstream::Reader &br) -> DeltaVector;
+    auto readMotionDelta(Bitstream::Reader &br) -> DeltaVector;
 }

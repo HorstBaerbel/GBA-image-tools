@@ -64,22 +64,22 @@ TEST_CASE("DeltaVectors all values within range")
 TEST_CASE("writeMotionDelta short code writes 6 bits")
 {
     Writer writer;
-    writeInterMotionDelta(writer, 0);
+    writeMotionDelta(writer, 0);
     CATCH_REQUIRE(writer.bitsPushed() == 6);
-    writeInterMotionDelta(writer, (1 << MotionVectors::DeltaShortCodeLength) - 1);
+    writeMotionDelta(writer, (1 << MotionVectors::DeltaShortCodeLength) - 1);
     CATCH_REQUIRE(writer.bitsPushed() == 12);
 }
 
 TEST_CASE("writeMotionDelta short code writes correct bits")
 {
     Writer writer0;
-    writeInterMotionDelta(writer0, 0);
+    writeMotionDelta(writer0, 0);
     writer0.flush();
     auto data0 = writer0.data();
     CATCH_REQUIRE(data0.size() == 1);
     CATCH_REQUIRE(data0[0] == 0x00);
     Writer writer1;
-    writeInterMotionDelta(writer1, (1 << MotionVectors::DeltaShortCodeLength) - 1);
+    writeMotionDelta(writer1, (1 << MotionVectors::DeltaShortCodeLength) - 1);
     writer1.flush();
     auto data1 = writer1.data();
     CATCH_REQUIRE(data1.size() == 1);
@@ -89,16 +89,16 @@ TEST_CASE("writeMotionDelta short code writes correct bits")
 TEST_CASE("writeMotionDelta long code writes 10 bits")
 {
     Writer writer;
-    writeInterMotionDelta(writer, (1 << MotionVectors::DeltaShortCodeLength));
+    writeMotionDelta(writer, (1 << MotionVectors::DeltaShortCodeLength));
     CATCH_REQUIRE(writer.bitsPushed() == 10);
-    writeInterMotionDelta(writer, (1 << MotionVectors::DeltaLongCodeLength) - 1);
+    writeMotionDelta(writer, (1 << MotionVectors::DeltaLongCodeLength) - 1);
     CATCH_REQUIRE(writer.bitsPushed() == 20);
 }
 
 TEST_CASE("writeMotionDelta long code writes correct bits")
 {
     Writer writer0;
-    writeInterMotionDelta(writer0, (1 << MotionVectors::DeltaShortCodeLength));
+    writeMotionDelta(writer0, (1 << MotionVectors::DeltaShortCodeLength));
     writer0.flush();
     auto data0 = writer0.data();
     // 10 bits: 32 | 512 = 544 = 0b1000100000
@@ -107,7 +107,7 @@ TEST_CASE("writeMotionDelta long code writes correct bits")
     CATCH_REQUIRE(data0[0] == 0x88);
     CATCH_REQUIRE(data0[1] == 0x00);
     Writer writer1;
-    writeInterMotionDelta(writer1, (1 << MotionVectors::DeltaLongCodeLength) - 1);
+    writeMotionDelta(writer1, (1 << MotionVectors::DeltaLongCodeLength) - 1);
     writer1.flush();
     auto data1 = writer1.data();
     // 10 bits: 511 | 512 = 1023 = 0b1111111111
@@ -120,7 +120,7 @@ TEST_CASE("writeMotionDelta long code writes correct bits")
 TEST_CASE("writeMotionDelta index 512 throws")
 {
     Writer writer;
-    CATCH_CHECK_THROWS_AS(writeInterMotionDelta(writer, (1 << MotionVectors::DeltaLongCodeLength)), std::runtime_error);
+    CATCH_CHECK_THROWS_AS(writeMotionDelta(writer, (1 << MotionVectors::DeltaLongCodeLength)), std::runtime_error);
 }
 
 // =============================================================================
@@ -132,13 +132,13 @@ TEST_CASE("readMotionDelta short code index")
     // Encode: prefix 0 + 5-bit index 0 = 0b000000
     std::vector<uint8_t> stream0 = {0x00};
     Reader reader0(stream0, 6);
-    auto vec0 = readInterMotionDelta(reader0);
+    auto vec0 = readMotionDelta(reader0);
     CATCH_REQUIRE(vec0.dx == DeltaVectors[0].dx);
     CATCH_REQUIRE(vec0.dy == DeltaVectors[0].dy);
     // Encode: prefix 0 + 5-bit index 31 = 0b011111
     std::vector<uint8_t> stream1 = {(1 << MotionVectors::DeltaShortCodeLength) - 1};
     Reader reader1(stream1, 6);
-    auto vec1 = readInterMotionDelta(reader1);
+    auto vec1 = readMotionDelta(reader1);
     CATCH_REQUIRE(vec1.dx == DeltaVectors[31].dx);
     CATCH_REQUIRE(vec1.dy == DeltaVectors[31].dy);
 }
@@ -149,7 +149,7 @@ TEST_CASE("readMotionDelta long code index")
     // 10 bits MSB-first: 1,0,0,0,1,0,0,0,0,0
     std::vector<uint8_t> stream0 = {0x88, 0x00};
     Reader reader0(stream0, 10);
-    auto vec0 = readInterMotionDelta(reader0);
+    auto vec0 = readMotionDelta(reader0);
     CATCH_REQUIRE(vec0.dx == DeltaVectors[32].dx);
     CATCH_REQUIRE(vec0.dy == DeltaVectors[32].dy);
     // Encode: 511 | 512 = 1023 = 0b1111111111
@@ -157,7 +157,7 @@ TEST_CASE("readMotionDelta long code index")
     // First byte: 0xFF (8 bits), second byte: 0x03 (2 bits in LSB)
     std::vector<uint8_t> stream1 = {0xFF, 0x03};
     Reader reader1(stream1, 10);
-    auto vec1 = readInterMotionDelta(reader1);
+    auto vec1 = readMotionDelta(reader1);
     CATCH_REQUIRE(vec1.dx == DeltaVectors[511].dx);
     CATCH_REQUIRE(vec1.dy == DeltaVectors[511].dy);
 }
@@ -171,13 +171,13 @@ TEST_CASE("RoundTrip short code all indices 0 to DeltaShortCodeLength - 1")
     Writer writer;
     for (uint32_t i = 0; i < (1 << MotionVectors::DeltaShortCodeLength) - 1; ++i)
     {
-        writeInterMotionDelta(writer, i);
+        writeMotionDelta(writer, i);
     }
     writer.flush();
     Reader reader(writer.data(), writer.bitsPushed());
     for (uint32_t i = 0; i < (1 << MotionVectors::DeltaShortCodeLength) - 1; ++i)
     {
-        auto vec = readInterMotionDelta(reader);
+        auto vec = readMotionDelta(reader);
         CATCH_REQUIRE(vec.dx == DeltaVectors[i].dx);
         CATCH_REQUIRE(vec.dy == DeltaVectors[i].dy);
     }
@@ -188,13 +188,13 @@ TEST_CASE("RoundTrip long code all indices DeltaShortCodeLength to DeltaLongCode
     Writer writer;
     for (uint32_t i = (1 << MotionVectors::DeltaShortCodeLength); i < (1 << MotionVectors::DeltaLongCodeLength); ++i)
     {
-        writeInterMotionDelta(writer, i);
+        writeMotionDelta(writer, i);
     }
     writer.flush();
     Reader reader(writer.data(), writer.bitsPushed());
     for (uint32_t i = (1 << MotionVectors::DeltaShortCodeLength); i < (1 << MotionVectors::DeltaLongCodeLength); ++i)
     {
-        auto vec = readInterMotionDelta(reader);
+        auto vec = readMotionDelta(reader);
         CATCH_REQUIRE(vec.dx == DeltaVectors[i].dx);
         CATCH_REQUIRE(vec.dy == DeltaVectors[i].dy);
     }
@@ -206,7 +206,7 @@ TEST_CASE("RoundTrip total bits for short codes")
     Writer writer;
     for (uint32_t i = 0; i < (1 << MotionVectors::DeltaShortCodeLength); ++i)
     {
-        writeInterMotionDelta(writer, i);
+        writeMotionDelta(writer, i);
     }
     CATCH_REQUIRE(writer.bitsPushed() == (1 << MotionVectors::DeltaShortCodeLength) * (MotionVectors::DeltaShortCodeLength + 1));
 }
@@ -217,7 +217,7 @@ TEST_CASE("RoundTrip total bits for long codes")
     Writer writer;
     for (uint32_t i = (1 << MotionVectors::DeltaShortCodeLength); i < (1 << MotionVectors::DeltaLongCodeLength); ++i)
     {
-        writeInterMotionDelta(writer, i);
+        writeMotionDelta(writer, i);
     }
     CATCH_REQUIRE(writer.bitsPushed() == ((1 << MotionVectors::DeltaLongCodeLength) - (1 << MotionVectors::DeltaShortCodeLength)) * (MotionVectors::DeltaLongCodeLength + 1));
 }
@@ -229,14 +229,14 @@ TEST_CASE("RoundTrip mixed short and long codes")
     uint32_t indices0[] = {0, 1, 2, 5, 10, 31, 32, 100, 255, 511};
     for (auto idx : indices0)
     {
-        writeInterMotionDelta(writer0, idx);
+        writeMotionDelta(writer0, idx);
     }
     writer0.flush();
     Reader reader0(writer0.data(), writer0.bitsPushed());
 
     for (auto idx : indices0)
     {
-        auto vec = readInterMotionDelta(reader0);
+        auto vec = readMotionDelta(reader0);
         CATCH_REQUIRE(vec.dx == DeltaVectors[idx].dx);
         CATCH_REQUIRE(vec.dy == DeltaVectors[idx].dy);
     }
@@ -245,13 +245,13 @@ TEST_CASE("RoundTrip mixed short and long codes")
     uint32_t indices1[] = {39, 66, 2, 0, 31, 32, 511, 12, 13};
     for (auto idx : indices1)
     {
-        writeInterMotionDelta(writer1, idx);
+        writeMotionDelta(writer1, idx);
     }
     writer1.flush();
     Reader reader1(writer1.data(), writer1.bitsPushed());
     for (auto idx : indices1)
     {
-        auto vec = readInterMotionDelta(reader1);
+        auto vec = readMotionDelta(reader1);
         CATCH_REQUIRE(vec.dx == DeltaVectors[idx].dx);
         CATCH_REQUIRE(vec.dy == DeltaVectors[idx].dy);
     }
@@ -290,11 +290,11 @@ TEST_CASE("Read consumes correct number of bits for short code")
 {
     // Write short code index 7 (6 bits) + 6 extra bits
     Writer writer;
-    writeInterMotionDelta(writer, 7);
+    writeMotionDelta(writer, 7);
     writer.push(0x3F, 6);
     writer.flush();
     Reader reader(writer.data(), writer.bitsPushed());
-    auto vec = readInterMotionDelta(reader);
+    auto vec = readMotionDelta(reader);
     CATCH_REQUIRE(vec.dx == DeltaVectors[7].dx);
     CATCH_REQUIRE(vec.dy == DeltaVectors[7].dy);
     // Should have consumed 6 bits, leaving 6
@@ -305,11 +305,11 @@ TEST_CASE("Read consumes correct number of bits for long code")
 {
     // Write long code index 100 (10 bits) + 6 extra bits
     Writer writer;
-    writeInterMotionDelta(writer, 100);
+    writeMotionDelta(writer, 100);
     writer.push(0x3F, 6);
     writer.flush();
     Reader reader(writer.data(), writer.bitsPushed());
-    auto vec = readInterMotionDelta(reader);
+    auto vec = readMotionDelta(reader);
     CATCH_REQUIRE(vec.dx == DeltaVectors[100].dx);
     CATCH_REQUIRE(vec.dy == DeltaVectors[100].dy);
     // Should have consumed 10 bits, leaving 6
